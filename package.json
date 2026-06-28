@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "vitest run",
     "typecheck": "vue-tsc -b",
     "lint": "eslint . --max-warnings 0",
     "build": "pnpm typecheck && vite build",
@@ -32,6 +33,7 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.62.0",
     "vite": "^8.1.0",
+    "vitest": "^4.1.9",
     "vue-tsc": "^3.3.5"
   }
 }

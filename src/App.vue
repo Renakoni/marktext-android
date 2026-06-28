@@ -9,6 +9,13 @@ import {
   PreviewToolBar,
   en,
 } from '@muyajs/core'
+import {
+  createUntitledDocument,
+  markDocumentSaved,
+  markDocumentSaveFailed,
+  markDocumentSaving,
+  updateDocumentMarkdown,
+} from './lib/documentState'
 import { createLogger, getNativeLogInfo } from './lib/logger'
 
 const STORAGE_KEY = 'marktext-for-android:draft'
@@ -40,7 +47,7 @@ const editorPlugins = [
 ] as const
 
 const editorElement = ref<HTMLElement | null>(null)
-const markdown = ref('')
+const documentState = ref(createUntitledDocument())
 const status = ref('Ready')
 
 let editor: Muya | null = null
@@ -52,10 +59,10 @@ const editorLog = createLogger('editor')
 const draftLog = createLogger('draft')
 const loggingLog = createLogger('logging')
 
-const lineCount = computed(() => (markdown.value ? markdown.value.split(/\r\n|\r|\n/).length : 0))
-const characterCount = computed(() => markdown.value.length)
-const wordCount = computed(() => countWords(markdown.value))
-const documentTitle = computed(() => getDocumentTitle(markdown.value))
+const lineCount = computed(() => documentState.value.stats.lines)
+const characterCount = computed(() => documentState.value.stats.characters)
+const wordCount = computed(() => documentState.value.stats.words)
+const documentTitle = computed(() => documentState.value.title)
 
 function registerMuyaPlugins() {
   editorLog.debug('register Muya plugins start', { count: editorPlugins.length })
@@ -67,32 +74,19 @@ function registerMuyaPlugins() {
   editorLog.debug('register Muya plugins complete', { registered: Muya.plugins.length })
 }
 
-function countWords(value: string) {
-  const latinWords = value.match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*/g)?.length ?? 0
-  const cjkCharacters = value.match(/[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/g)?.length ?? 0
-  return latinWords + cjkCharacters
-}
-
-function getDocumentTitle(value: string) {
-  const heading = value
-    .split(/\r\n|\r|\n/)
-    .map(line => line.match(/^#{1,6}\s+(.+)$/)?.[1]?.trim())
-    .find(Boolean)
-
-  return heading || 'Untitled'
-}
-
 function syncMarkdown(nextStatus: unknown = 'Edited') {
   if (!editor) {
     return
   }
 
   const resolvedStatus = typeof nextStatus === 'string' ? nextStatus : 'Edited'
-  markdown.value = editor.getMarkdown()
-  status.value = resolvedStatus
+  const nextMarkdown = editor.getMarkdown()
+  const markDirty = resolvedStatus === 'Edited'
+  documentState.value = updateDocumentMarkdown(documentState.value, nextMarkdown, { markDirty })
+  status.value = markDirty ? 'Autosaving locally' : resolvedStatus
   logContentSnapshot(resolvedStatus)
 
-  if (resolvedStatus === 'Edited') {
+  if (markDirty) {
     scheduleDraftSave()
   }
 }
@@ -106,7 +100,7 @@ function logContentSnapshot(reason: string) {
   lastContentLogAt = now
   editorLog.debug('content snapshot', {
     reason,
-    characters: markdown.value.length,
+    characters: characterCount.value,
     words: wordCount.value,
     lines: lineCount.value,
   })
@@ -126,17 +120,25 @@ function saveDraft() {
   }
 
   const value = editor.getMarkdown()
+  documentState.value = markDocumentSaving(
+    updateDocumentMarkdown(documentState.value, value, { markDirty: documentState.value.isDirty }),
+  )
+
   try {
     localStorage.setItem(STORAGE_KEY, value)
-    markdown.value = value
-    status.value = 'Saved locally'
+    documentState.value = markDocumentSaved(
+      updateDocumentMarkdown(documentState.value, value, { markDirty: false }),
+      { autosaveTarget: 'local-draft' },
+    )
+    status.value = 'Autosaved locally'
     draftLog.debug('local draft saved', {
-      characters: markdown.value.length,
+      characters: characterCount.value,
       words: wordCount.value,
       lines: lineCount.value,
     })
   } catch (error) {
-    status.value = 'Draft save failed'
+    documentState.value = markDocumentSaveFailed(documentState.value, error)
+    status.value = 'Autosave failed'
     draftLog.error('local draft save failed', error)
   }
 }
@@ -150,10 +152,15 @@ onMounted(() => {
   registerMuyaPlugins()
 
   try {
-    const initialMarkdown = localStorage.getItem(STORAGE_KEY) ?? SAMPLE_MARKDOWN
+    const restoredDraft = localStorage.getItem(STORAGE_KEY)
+    const initialMarkdown = restoredDraft ?? SAMPLE_MARKDOWN
+    documentState.value = createUntitledDocument({
+      markdown: initialMarkdown,
+      autosaveTarget: 'local-draft',
+    })
     editorLog.info('Muya init start', {
       initialCharacters: initialMarkdown.length,
-      restoredDraft: initialMarkdown !== SAMPLE_MARKDOWN,
+      restoredDraft: restoredDraft !== null,
     })
 
     editor = new Muya(editorElement.value, {
@@ -181,7 +188,7 @@ onMounted(() => {
     })
     syncMarkdown('Ready')
     editorLog.info('Muya init complete', {
-      characters: markdown.value.length,
+      characters: characterCount.value,
       words: wordCount.value,
       lines: lineCount.value,
     })
