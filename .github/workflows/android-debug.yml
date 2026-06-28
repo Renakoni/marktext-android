@@ -29,6 +29,9 @@ jobs:
           java-version: "22"
           cache: gradle
 
+      - name: Build web shell
+        run: pnpm build
+
       - name: Sync Capacitor Android assets
         run: pnpm exec cap sync android
 
