@@ -11,8 +11,9 @@
 
 - [ ] Open the generated Android project with `pnpm android:open`.
 - [ ] Run the app on an Android emulator.
+- [x] Run the app on a MuMu Android emulator.
+- [x] Confirm initial editor rendering in Android WebView.
 - [ ] Run the app on a physical Android device.
-- [ ] Confirm initial editor rendering in Android WebView.
 - [ ] Confirm soft keyboard behavior does not cover the active editing line.
 - [ ] Confirm toolbar/status bar safe-area behavior on small screens.
 

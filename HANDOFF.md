@@ -33,6 +33,7 @@ Configured Codex MCP server:
 - Config path: `C:\Users\25799\.codex\config.toml`
 - SDK path: `E:\Android\Sdk`
 - ADB is available at `E:\platform-tools\adb.exe` and `E:\Android\Sdk\platform-tools\adb.exe`
+- Local Java note: command-line `java` defaults to JDK 8, but Android debug builds for the current Capacitor setup require JDK 22 on this machine: `E:\Java\jdk-22`.
 
 Restart Codex after this handoff to pick up newly installed skills and the new Android MCP server.
 
@@ -44,6 +45,9 @@ Restart Codex after this handoff to pick up newly installed skills and the new A
 - `vite.config.ts` uses `base: './'` so bundled assets work from Capacitor's local Android WebView.
 - `pnpm build` passed.
 - `pnpm exec cap sync android` passed.
+- `.\android\gradlew.bat -p android assembleDebug --no-daemon` passed when run with `JAVA_HOME=E:\Java\jdk-22` and `ANDROID_HOME=E:\Android\Sdk`.
+- Debug APK was installed and launched on MuMu via ADB serial `127.0.0.1:7555`.
+- Screenshot verification confirmed the Muya editor shell renders inside the Android WebView.
 - A local Vite dev server was started during setup at `http://127.0.0.1:5173/`. Treat it as disposable; restart it in the next session if needed.
 
 ## Verification Already Done
@@ -53,12 +57,27 @@ pnpm build
 pnpm exec cap sync android
 ```
 
+Android debug build and MuMu install:
+
+```powershell
+$env:JAVA_HOME = 'E:\Java\jdk-22'
+$env:ANDROID_HOME = 'E:\Android\Sdk'
+$env:ANDROID_SDK_ROOT = 'E:\Android\Sdk'
+$env:PATH = "$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\emulator;$env:PATH"
+
+.\android\gradlew.bat -p android assembleDebug --no-daemon
+adb connect 127.0.0.1:7555
+adb -s 127.0.0.1:7555 install -r .\android\app\build\outputs\apk\debug\app-debug.apk
+adb -s 127.0.0.1:7555 shell monkey -p io.github.renakoni.marktextandroid 1
+```
+
 Manual/browser check:
 
 - Opened `http://127.0.0.1:5173/`.
 - Confirmed the Muya editor renders.
 - Confirmed no browser console warnings or errors were reported at page load.
 - Checked desktop viewport rendering through Playwright MCP.
+- Confirmed MuMu Android 12 sees package `io.github.renakoni.marktextandroid/.MainActivity` as the resumed activity after launch.
 
 Known build note:
 
