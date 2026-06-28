@@ -28,6 +28,9 @@ jobs:
       - name: Run TypeScript typecheck
         run: pnpm typecheck
 
+      - name: Run unit tests
+        run: pnpm test
+
   build:
     name: Vite production build
     runs-on: ubuntu-latest
