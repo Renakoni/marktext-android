@@ -29,11 +29,13 @@ Installed global Codex skills:
 
 Configured Codex MCP server:
 
-- `android`, using `android-mcp-server@latest`
+- `android`, using local wrapper `C:\Users\25799\.codex\mcp-wrappers\android-mcp-codex-wrapper.mjs`
 - Config path: `C:\Users\25799\.codex\config.toml`
 - SDK path: `E:\Android\Sdk`
 - ADB is available at `E:\platform-tools\adb.exe` and `E:\Android\Sdk\platform-tools\adb.exe`
 - Local Java note: command-line `java` defaults to JDK 8, but Android debug builds for the current Capacitor setup require JDK 22 on this machine: `E:\Java\jdk-22`.
+
+The wrapper starts `android-mcp-server@1.3.0` and strips the MCP `execution` field from `tools/list` responses. Without this compatibility shim, Codex CLI 0.142.2 showed the Android MCP as enabled but with `Tools: (none)`.
 
 Restart Codex after this handoff to pick up newly installed skills and the new Android MCP server.
 
