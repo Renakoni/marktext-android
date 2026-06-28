@@ -7,11 +7,12 @@ import {
   Muya,
   ParagraphQuickInsertMenu,
   PreviewToolBar,
-  renderToStaticHTML,
   en,
 } from '@muyajs/core'
+import { createLogger, getNativeLogInfo } from './lib/logger'
 
 const STORAGE_KEY = 'marktext-for-android:draft'
+const DRAFT_SAVE_DELAY_MS = 800
 
 const SAMPLE_MARKDOWN = `# MarkText for Android
 
@@ -41,20 +42,29 @@ const editorPlugins = [
 const editorElement = ref<HTMLElement | null>(null)
 const markdown = ref('')
 const status = ref('Ready')
-const lastSavedAt = ref('')
 
 let editor: Muya | null = null
+let lastContentLogAt = 0
+let draftSaveTimer: number | null = null
+
+const appLog = createLogger('app')
+const editorLog = createLogger('editor')
+const draftLog = createLogger('draft')
+const loggingLog = createLogger('logging')
 
 const lineCount = computed(() => (markdown.value ? markdown.value.split(/\r\n|\r|\n/).length : 0))
 const characterCount = computed(() => markdown.value.length)
 const wordCount = computed(() => countWords(markdown.value))
+const documentTitle = computed(() => getDocumentTitle(markdown.value))
 
 function registerMuyaPlugins() {
+  editorLog.debug('register Muya plugins start', { count: editorPlugins.length })
   for (const plugin of editorPlugins) {
     if (!Muya.plugins.some(entry => entry.plugin === plugin)) {
       Muya.use(plugin)
     }
   }
+  editorLog.debug('register Muya plugins complete', { registered: Muya.plugins.length })
 }
 
 function countWords(value: string) {
@@ -63,13 +73,51 @@ function countWords(value: string) {
   return latinWords + cjkCharacters
 }
 
-function syncMarkdown(nextStatus = 'Edited') {
+function getDocumentTitle(value: string) {
+  const heading = value
+    .split(/\r\n|\r|\n/)
+    .map(line => line.match(/^#{1,6}\s+(.+)$/)?.[1]?.trim())
+    .find(Boolean)
+
+  return heading || 'Untitled'
+}
+
+function syncMarkdown(nextStatus: unknown = 'Edited') {
   if (!editor) {
     return
   }
 
+  const resolvedStatus = typeof nextStatus === 'string' ? nextStatus : 'Edited'
   markdown.value = editor.getMarkdown()
-  status.value = nextStatus
+  status.value = resolvedStatus
+  logContentSnapshot(resolvedStatus)
+
+  if (resolvedStatus === 'Edited') {
+    scheduleDraftSave()
+  }
+}
+
+function logContentSnapshot(reason: string) {
+  const now = Date.now()
+  if (reason === 'Edited' && now - lastContentLogAt < 1000) {
+    return
+  }
+
+  lastContentLogAt = now
+  editorLog.debug('content snapshot', {
+    reason,
+    characters: markdown.value.length,
+    words: wordCount.value,
+    lines: lineCount.value,
+  })
+}
+
+function scheduleDraftSave() {
+  if (draftSaveTimer !== null) {
+    window.clearTimeout(draftSaveTimer)
+  }
+
+  draftSaveTimer = window.setTimeout(saveDraft, DRAFT_SAVE_DELAY_MS)
 }
 
 function saveDraft() {
@@ -78,56 +126,19 @@ function saveDraft() {
   }
 
   const value = editor.getMarkdown()
-  localStorage.setItem(STORAGE_KEY, value)
-  markdown.value = value
-  lastSavedAt.value = new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date())
-  status.value = 'Saved'
-}
-
-function restoreSample() {
-  if (!editor) {
-    return
+  try {
+    localStorage.setItem(STORAGE_KEY, value)
+    markdown.value = value
+    status.value = 'Saved locally'
+    draftLog.debug('local draft saved', {
+      characters: markdown.value.length,
+      words: wordCount.value,
+      lines: lineCount.value,
+    })
+  } catch (error) {
+    status.value = 'Draft save failed'
+    draftLog.error('local draft save failed', error)
   }
-
-  editor.setContent(SAMPLE_MARKDOWN, true)
-  syncMarkdown()
-}
-
-async function copyMarkdown() {
-  if (!navigator.clipboard || !editor) {
-    return
-  }
-
-  await navigator.clipboard.writeText(editor.getMarkdown())
-  status.value = 'Copied'
-}
-
-function exportHtml() {
-  const body = renderToStaticHTML(markdown.value)
-  const html = `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MarkText Export</title>
-</head>
-<body>
-  <article>
-${body}
-  </article>
-</body>
-</html>
-`
-  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }))
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = 'marktext-export.html'
-  anchor.click()
-  URL.revokeObjectURL(url)
-  status.value = 'Exported'
 }
 
 onMounted(() => {
@@ -135,33 +146,66 @@ onMounted(() => {
     return
   }
 
+  appLog.info('app mounted')
   registerMuyaPlugins()
 
-  editor = new Muya(editorElement.value, {
-    markdown: localStorage.getItem(STORAGE_KEY) ?? SAMPLE_MARKDOWN,
-    fontSize: 16,
-    lineHeight: 1.6,
-    codeBlockLineNumbers: true,
-    frontMatter: true,
-    footnote: true,
-    math: true,
-    spellcheckEnabled: true,
-    locale: en,
-  })
+  try {
+    const initialMarkdown = localStorage.getItem(STORAGE_KEY) ?? SAMPLE_MARKDOWN
+    editorLog.info('Muya init start', {
+      initialCharacters: initialMarkdown.length,
+      restoredDraft: initialMarkdown !== SAMPLE_MARKDOWN,
+    })
 
-  editor.init()
-  editor.on('content-change', syncMarkdown)
-  editor.on('json-change', syncMarkdown)
-  editor.on('focus', () => {
-    status.value = 'Editing'
+    editor = new Muya(editorElement.value, {
+      markdown: initialMarkdown,
+      fontSize: 16,
+      lineHeight: 1.6,
+      codeBlockLineNumbers: true,
+      frontMatter: true,
+      footnote: true,
+      math: true,
+      spellcheckEnabled: true,
+      locale: en,
+    })
+
+    editor.init()
+    editor.on('content-change', syncMarkdown)
+    editor.on('json-change', syncMarkdown)
+    editor.on('focus', () => {
+      status.value = 'Editing'
+      editorLog.debug('editor focused')
+    })
+    editor.on('blur', () => {
+      status.value = 'Ready'
+      editorLog.debug('editor blurred')
+    })
+    syncMarkdown('Ready')
+    editorLog.info('Muya init complete', {
+      characters: markdown.value.length,
+      words: wordCount.value,
+      lines: lineCount.value,
+    })
+  } catch (error) {
+    status.value = 'Editor failed'
+    editorLog.error('Muya init failed', error)
+  }
+
+  getNativeLogInfo().then(info => {
+    if (info) {
+      loggingLog.info('native logging ready', info)
+    } else {
+      loggingLog.warn('native logging unavailable')
+    }
   })
-  editor.on('blur', () => {
-    status.value = 'Ready'
-  })
-  syncMarkdown('Ready')
 })
 
 onBeforeUnmount(() => {
+  appLog.info('app before unmount')
+  if (draftSaveTimer !== null) {
+    window.clearTimeout(draftSaveTimer)
+    draftSaveTimer = null
+  }
+  saveDraft()
   editor?.destroy()
   editor = null
 })
@@ -170,24 +214,15 @@ onBeforeUnmount(() => {
 <template>
   <main class="app-shell">
     <header class="top-bar">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true">M</span>
-        <div>
-          <h1>MarkText Android</h1>
-          <p>{{ status }}<span v-if="lastSavedAt"> at {{ lastSavedAt }}</span></p>
-        </div>
-      </div>
-
-      <div class="actions" aria-label="Document actions">
-        <button type="button" @click="saveDraft">Save</button>
-        <button type="button" @click="copyMarkdown">Copy</button>
-        <button type="button" @click="exportHtml">HTML</button>
-        <button type="button" @click="restoreSample">Sample</button>
+      <div class="document-heading">
+        <span>MarkText Android</span>
+        <h1>{{ documentTitle }}</h1>
+        <p>{{ status }}</p>
       </div>
     </header>
 
     <section class="editor-pane" aria-label="Markdown editor">
-      <div ref="editorElement" class="muya-host"></div>
+      <div ref="editorElement" class="muya-host" />
     </section>
 
     <footer class="status-bar">
