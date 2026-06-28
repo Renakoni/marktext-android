@@ -10,6 +10,13 @@ import {
 } from '@muyajs/core'
 import DocumentHome from './components/DocumentHome.vue'
 import {
+  getAndroidDocumentErrorCode,
+  getAndroidDocumentUserMessage,
+  openAndroidMarkdownDocument,
+  readAndroidMarkdownDocument,
+  type OpenedAndroidDocument,
+} from './lib/androidDocuments'
+import {
   createUntitledDocument,
   markDocumentSaved,
   markDocumentSaveFailed,
@@ -25,13 +32,19 @@ import {
 } from './lib/localDrafts'
 import { createLogger, getNativeLogInfo } from './lib/logger'
 import {
+  createRecentDocumentFromAndroidDocument,
   createRecentDocumentFromLocalDraft,
   getRecentDocumentListItems,
+  parseRecentDocuments,
+  serializeRecentDocuments,
+  upsertRecentDocument,
   type RecentDocumentListItem,
+  type RecentDocumentRecord,
 } from './lib/recentDocuments'
 
 const LEGACY_DRAFT_STORAGE_KEY = 'marktext-for-android:draft'
 const DRAFTS_STORAGE_KEY = 'marktext-for-android:drafts'
+const RECENT_DOCUMENTS_STORAGE_KEY = 'marktext-for-android:recent-documents'
 const DRAFT_SAVE_DELAY_MS = 800
 
 const editorPlugins = [
@@ -44,7 +57,9 @@ const editorPlugins = [
 const editorElement = ref<HTMLElement | null>(null)
 const documentState = ref(createUntitledDocument())
 const localDrafts = ref<LocalDraftRecord[]>([])
+const androidRecentDocuments = ref<RecentDocumentRecord[]>([])
 const status = ref('Ready')
+const homeNotice = ref<string | null>(null)
 const currentScreen = ref<'home' | 'editor'>('home')
 
 let editor: Muya | null = null
@@ -54,6 +69,7 @@ let draftSaveTimer: number | null = null
 const appLog = createLogger('app')
 const editorLog = createLogger('editor')
 const draftLog = createLogger('draft')
+const androidDocumentLog = createLogger('android-document')
 const loggingLog = createLogger('logging')
 
 const lineCount = computed(() => documentState.value.stats.lines)
@@ -61,7 +77,10 @@ const characterCount = computed(() => documentState.value.stats.characters)
 const wordCount = computed(() => documentState.value.stats.words)
 const documentTitle = computed(() => documentState.value.title)
 const recentDocumentRecords = computed(() =>
-  localDrafts.value.map(createRecentDocumentFromLocalDraft),
+  [
+    ...localDrafts.value.map(createRecentDocumentFromLocalDraft),
+    ...androidRecentDocuments.value,
+  ],
 )
 const documentItems = computed(() => getRecentDocumentListItems(recentDocumentRecords.value))
 const continueDocumentItem = computed(() => documentItems.value[0] ?? null)
@@ -122,6 +141,21 @@ function createDocumentFromDraft(draft: LocalDraftRecord) {
   }
 }
 
+function createDocumentFromAndroidDocument(document: OpenedAndroidDocument) {
+  const openedDocument = createUntitledDocument({
+    markdown: document.markdown,
+    displayName: document.displayName,
+    sourceUri: document.sourceUri,
+    autosaveTarget: 'android-document',
+  })
+
+  return {
+    ...openedDocument,
+    id: `android-document:${document.sourceUri}`,
+    lastSavedAt: null,
+  }
+}
+
 function normalizeEditorMarkdown(markdown: string) {
   return markdown === '\n' ? '' : markdown
 }
@@ -135,10 +169,14 @@ function syncMarkdown(nextStatus: unknown = 'Edited') {
   const nextMarkdown = normalizeEditorMarkdown(editor.getMarkdown())
   const markDirty = resolvedStatus === 'Edited'
   documentState.value = updateDocumentMarkdown(documentState.value, nextMarkdown, { markDirty })
-  status.value = markDirty ? 'Autosaving locally' : resolvedStatus
+  if (markDirty && documentState.value.autosaveTarget === 'android-document') {
+    status.value = 'Unsaved changes'
+  } else {
+    status.value = markDirty ? 'Autosaving locally' : resolvedStatus
+  }
   logContentSnapshot(resolvedStatus)
 
-  if (markDirty) {
+  if (markDirty && documentState.value.autosaveTarget === 'local-draft') {
     scheduleDraftSave()
   }
 }
@@ -178,8 +216,28 @@ function persistLocalDrafts(nextDrafts: LocalDraftRecord[]) {
   localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY)
 }
 
+function persistAndroidRecentDocuments(nextDocuments: RecentDocumentRecord[]) {
+  const filteredDocuments = nextDocuments.filter(record => record.kind === 'android-document')
+  androidRecentDocuments.value = filteredDocuments
+
+  if (filteredDocuments.length > 0) {
+    localStorage.setItem(RECENT_DOCUMENTS_STORAGE_KEY, serializeRecentDocuments(filteredDocuments))
+  } else {
+    localStorage.removeItem(RECENT_DOCUMENTS_STORAGE_KEY)
+  }
+}
+
 function saveDraft() {
   if (!editor) {
+    return
+  }
+
+  if (documentState.value.autosaveTarget !== 'local-draft') {
+    androidDocumentLog.debug('skip local draft autosave for Android document', {
+      id: documentState.value.id,
+      sourceUri: documentState.value.sourceUri,
+      autosaveState: documentState.value.autosaveState,
+    })
     return
   }
 
@@ -270,33 +328,108 @@ function initEditor(initialMarkdown: string) {
 }
 
 async function openEditor(markdown: string) {
+  destroyEditor()
   currentScreen.value = 'editor'
   await nextTick()
   initEditor(markdown)
 }
 
-function openDocument(id: string) {
+function rememberAndroidDocument(document: OpenedAndroidDocument) {
+  const recentDocument = createRecentDocumentFromAndroidDocument({
+    sourceUri: document.sourceUri,
+    displayName: document.displayName,
+    providerName: document.providerName,
+    pathHint: document.pathHint,
+    markdown: document.markdown,
+    canWrite: document.canWrite,
+  })
+
+  persistAndroidRecentDocuments(upsertRecentDocument(androidRecentDocuments.value, recentDocument))
+}
+
+async function openAndroidDocumentResult(document: OpenedAndroidDocument) {
+  homeNotice.value = null
+  rememberAndroidDocument(document)
+  documentState.value = createDocumentFromAndroidDocument(document)
+  androidDocumentLog.info('open Android document in editor', {
+    displayName: document.displayName,
+    sourceUri: document.sourceUri,
+    canWrite: document.canWrite,
+    persisted: document.persisted,
+    characters: document.markdown.length,
+  })
+  await openEditor(document.markdown)
+  status.value = document.canWrite ? 'Opened from Android' : 'Opened read-only'
+}
+
+async function openFileFromAndroid() {
+  homeNotice.value = null
+  androidDocumentLog.info('open Android document picker')
+
+  try {
+    const document = await openAndroidMarkdownDocument()
+    if (document.canceled) {
+      androidDocumentLog.info('Android document picker canceled')
+      return
+    }
+
+    await openAndroidDocumentResult(document)
+  } catch (error) {
+    const code = getAndroidDocumentErrorCode(error)
+    homeNotice.value = getAndroidDocumentUserMessage(error)
+    if (code === 'UNAVAILABLE') {
+      androidDocumentLog.warn('Android document picker unavailable', error)
+    } else {
+      androidDocumentLog.error('Android document picker failed', error)
+    }
+  }
+}
+
+async function openDocument(id: string) {
   const recentDocument = documentItems.value.find(record => record.id === id)
-  if (recentDocument && recentDocument.kind !== 'local-draft') {
-    appLog.warn('recent document type is not openable yet', {
-      id,
-      kind: recentDocument.kind,
-    })
+  if (!recentDocument) {
+    appLog.warn('recent document not found', { id })
     return
   }
 
-  const draft = localDrafts.value.find(record => record.id === id)
-  if (!draft) {
-    draftLog.warn('recent local draft not found', { id })
+  if (recentDocument.kind === 'local-draft') {
+    const draft = localDrafts.value.find(record => record.id === id)
+    if (!draft) {
+      draftLog.warn('recent local draft not found', { id })
+      return
+    }
+
+    homeNotice.value = null
+    documentState.value = createDocumentFromDraft(draft)
+    appLog.info('open recent local document', { id })
+    await openEditor(draft.markdown)
     return
   }
 
-  documentState.value = createDocumentFromDraft(draft)
-  appLog.info('open recent local document', { id })
-  void openEditor(draft.markdown)
+  if (recentDocument.kind === 'android-document' && recentDocument.sourceUri) {
+    homeNotice.value = null
+    try {
+      const document = await readAndroidMarkdownDocument(recentDocument.sourceUri)
+      await openAndroidDocumentResult(document)
+    } catch (error) {
+      homeNotice.value = getAndroidDocumentUserMessage(error)
+      androidDocumentLog.error('open recent Android document failed', {
+        id,
+        sourceUri: recentDocument.sourceUri,
+        error,
+      })
+    }
+    return
+  }
+
+  appLog.warn('recent document type is not openable yet', {
+    id,
+    kind: recentDocument.kind,
+  })
 }
 
 function newDocument() {
+  homeNotice.value = null
   appLog.info('create new local document')
   documentState.value = createUntitledDocument({ autosaveTarget: 'local-draft' })
   void openEditor('')
@@ -321,7 +454,12 @@ function showHome() {
 onMounted(() => {
   appLog.info('app mounted')
   const restoredDrafts = parseLocalDrafts(localStorage.getItem(DRAFTS_STORAGE_KEY))
+  const restoredRecentDocuments = parseRecentDocuments(
+    localStorage.getItem(RECENT_DOCUMENTS_STORAGE_KEY),
+  ).filter(record => record.kind === 'android-document')
   const legacyDraft = localStorage.getItem(LEGACY_DRAFT_STORAGE_KEY)
+
+  androidRecentDocuments.value = restoredRecentDocuments
 
   if (restoredDrafts.length > 0) {
     localDrafts.value = restoredDrafts
@@ -345,6 +483,7 @@ onMounted(() => {
 
   draftLog.info('local draft checked', {
     restoredDrafts: localDrafts.value.length,
+    restoredAndroidDocuments: androidRecentDocuments.value.length,
     characters: characterCount.value,
   })
 
@@ -369,8 +508,10 @@ onBeforeUnmount(() => {
     <DocumentHome
       :continue-document="continueDocument"
       :earlier-documents="earlierDocuments"
+      :notice="homeNotice"
       @new-document="newDocument"
       @open-document="openDocument"
+      @open-file="openFileFromAndroid"
     />
   </main>
 
