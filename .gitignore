@@ -23,6 +23,8 @@ dist-ssr
 
 # Playwright MCP output
 .playwright-mcp/
+playwright-report/
+test-results/
 
 # Capacitor generated web assets
 android/app/src/main/assets/public/
