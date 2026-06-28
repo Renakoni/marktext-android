@@ -17,15 +17,18 @@ import {
   updateDocumentMarkdown,
 } from './lib/documentState'
 import {
-  getLocalDraftListItems,
   parseLocalDrafts,
   removeLocalDraft,
   serializeLocalDrafts,
   upsertLocalDraft,
-  type LocalDraftListItem,
   type LocalDraftRecord,
 } from './lib/localDrafts'
 import { createLogger, getNativeLogInfo } from './lib/logger'
+import {
+  createRecentDocumentFromLocalDraft,
+  getRecentDocumentListItems,
+  type RecentDocumentListItem,
+} from './lib/recentDocuments'
 
 const LEGACY_DRAFT_STORAGE_KEY = 'marktext-for-android:draft'
 const DRAFTS_STORAGE_KEY = 'marktext-for-android:drafts'
@@ -57,22 +60,26 @@ const lineCount = computed(() => documentState.value.stats.lines)
 const characterCount = computed(() => documentState.value.stats.characters)
 const wordCount = computed(() => documentState.value.stats.words)
 const documentTitle = computed(() => documentState.value.title)
-const draftItems = computed(() => getLocalDraftListItems(localDrafts.value))
-const continueDraftItem = computed(() => draftItems.value[0] ?? null)
-const earlierDraftItems = computed(() => draftItems.value.slice(1))
-const continueDraft = computed(() =>
-  continueDraftItem.value ? toHomeDraftItem(continueDraftItem.value) : null,
+const recentDocumentRecords = computed(() =>
+  localDrafts.value.map(createRecentDocumentFromLocalDraft),
 )
-const earlierDrafts = computed(() => earlierDraftItems.value.map(toHomeDraftItem))
+const documentItems = computed(() => getRecentDocumentListItems(recentDocumentRecords.value))
+const continueDocumentItem = computed(() => documentItems.value[0] ?? null)
+const earlierDocumentItems = computed(() => documentItems.value.slice(1))
+const continueDocument = computed(() =>
+  continueDocumentItem.value ? toHomeDocumentItem(continueDocumentItem.value) : null,
+)
+const earlierDocuments = computed(() => earlierDocumentItems.value.map(toHomeDocumentItem))
 
-function toHomeDraftItem(item: LocalDraftListItem) {
+function toHomeDocumentItem(item: RecentDocumentListItem) {
   const savedAt = formatSavedTime(item.lastSavedAt ?? item.updatedAt)
-  const count = `${item.stats.words} ${item.stats.words === 1 ? 'word' : 'words'}`
+  const count = item.stats ? `${item.stats.words} ${item.stats.words === 1 ? 'word' : 'words'}` : ''
+  const source = item.providerName ?? 'Markdown document'
 
   return {
     id: item.id,
     title: item.title,
-    details: savedAt ? `Autosaved locally - ${savedAt} - ${count}` : `Local draft - ${count}`,
+    details: [source, savedAt, count].filter(Boolean).join(' - '),
   }
 }
 
@@ -268,15 +275,24 @@ async function openEditor(markdown: string) {
   initEditor(markdown)
 }
 
-function openDraft(id: string) {
+function openDocument(id: string) {
+  const recentDocument = documentItems.value.find(record => record.id === id)
+  if (recentDocument && recentDocument.kind !== 'local-draft') {
+    appLog.warn('recent document type is not openable yet', {
+      id,
+      kind: recentDocument.kind,
+    })
+    return
+  }
+
   const draft = localDrafts.value.find(record => record.id === id)
   if (!draft) {
-    draftLog.warn('local draft not found', { id })
+    draftLog.warn('recent local draft not found', { id })
     return
   }
 
   documentState.value = createDocumentFromDraft(draft)
-  appLog.info('open local draft', { id })
+  appLog.info('open recent local document', { id })
   void openEditor(draft.markdown)
 }
 
@@ -351,10 +367,10 @@ onBeforeUnmount(() => {
 <template>
   <main v-if="currentScreen === 'home'" class="app-shell is-home">
     <DocumentHome
-      :continue-draft="continueDraft"
-      :earlier-drafts="earlierDrafts"
+      :continue-document="continueDocument"
+      :earlier-documents="earlierDocuments"
       @new-document="newDocument"
-      @open-draft="openDraft"
+      @open-document="openDocument"
     />
   </main>
 

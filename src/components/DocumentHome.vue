@@ -1,19 +1,19 @@
 <script setup lang="ts">
-interface DraftListItem {
+interface DocumentListItem {
   id: string
   title: string
   details: string
 }
 
 interface Props {
-  continueDraft: DraftListItem | null
-  earlierDrafts: DraftListItem[]
+  continueDocument: DocumentListItem | null
+  earlierDocuments: DocumentListItem[]
 }
 
 defineProps<Props>()
 
 defineEmits<{
-  openDraft: [id: string]
+  openDocument: [id: string]
   newDocument: []
 }>()
 </script>
@@ -41,36 +41,36 @@ defineEmits<{
     </nav>
 
     <div class="home-content">
-      <section v-if="continueDraft" class="document-group" aria-labelledby="continue-title">
+      <section v-if="continueDocument" class="document-group" aria-labelledby="continue-title">
         <h2 id="continue-title">Continue writing</h2>
-        <button class="document-row" type="button" @click="$emit('openDraft', continueDraft.id)">
+        <button class="document-row" type="button" @click="$emit('openDocument', continueDocument.id)">
           <span class="document-icon" aria-hidden="true">M</span>
           <span class="document-text">
-            <strong>{{ continueDraft.title }}</strong>
-            <span>{{ continueDraft.details }}</span>
+            <strong>{{ continueDocument.title }}</strong>
+            <span>{{ continueDocument.details }}</span>
           </span>
         </button>
       </section>
 
-      <section v-if="earlierDrafts.length > 0" class="document-group" aria-labelledby="earlier-title">
+      <section v-if="earlierDocuments.length > 0" class="document-group" aria-labelledby="earlier-title">
         <h2 id="earlier-title">Earlier</h2>
         <button
-          v-for="draft in earlierDrafts"
-          :key="draft.id"
+          v-for="document in earlierDocuments"
+          :key="document.id"
           class="document-row"
           type="button"
-          @click="$emit('openDraft', draft.id)"
+          @click="$emit('openDocument', document.id)"
         >
           <span class="document-icon" aria-hidden="true">M</span>
           <span class="document-text">
-            <strong>{{ draft.title }}</strong>
-            <span>{{ draft.details }}</span>
+            <strong>{{ document.title }}</strong>
+            <span>{{ document.details }}</span>
           </span>
         </button>
       </section>
 
       <section
-        v-if="!continueDraft && earlierDrafts.length === 0"
+        v-if="!continueDocument && earlierDocuments.length === 0"
         class="document-group"
         aria-labelledby="recent-title"
       >
