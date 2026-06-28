@@ -18,6 +18,24 @@ Prefer `marktext-android` for GitHub. It is short, lowercase, URL-friendly, and 
 
 Flutter is not the recommended base for this project because it would make MarkText/Muya reuse much harder. The current direction is a WebView-based Android app with native capabilities added through Capacitor plugins when needed.
 
+## Agent Tooling
+
+Installed global Codex skills:
+
+- `android-cli` from `android/skills`
+- `testing-setup` from `android/skills`
+- `edge-to-edge` from `android/skills`
+- `android-intent-security` from `android/skills`
+
+Configured Codex MCP server:
+
+- `android`, using `android-mcp-server@latest`
+- Config path: `C:\Users\25799\.codex\config.toml`
+- SDK path: `E:\Android\Sdk`
+- ADB is available at `E:\platform-tools\adb.exe` and `E:\Android\Sdk\platform-tools\adb.exe`
+
+Restart Codex after this handoff to pick up newly installed skills and the new Android MCP server.
+
 ## Current State
 
 - Vite/Vue starter UI has been replaced with a real editor shell in `src/App.vue`.
