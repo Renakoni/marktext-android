@@ -221,6 +221,7 @@ export function updateDocumentMarkdown(
     markdown,
     title: getDocumentTitle(markdown, documentState.displayName),
     isDirty,
+    trimTrailingNewline: detectTrailingNewline(markdown),
     autosaveState,
     lastSaveError: markDirty ? null : documentState.lastSaveError,
     updatedAt: now,

@@ -48,6 +48,24 @@ describe('documentState', () => {
     expect(saved).toBe('one\r\ntwo\r\n')
   })
 
+  it('preserves a final newline added after opening a document without one', () => {
+    const documentState = createUntitledDocument({ markdown: 'one' })
+    const dirty = updateDocumentMarkdown(documentState, 'one\n')
+    const saved = prepareMarkdownForSave(dirty.markdown, dirty)
+
+    expect(dirty.trimTrailingNewline).toBe(1)
+    expect(saved).toBe('one\n')
+  })
+
+  it('preserves final newline removal after opening a document with one', () => {
+    const documentState = createUntitledDocument({ markdown: 'one\n' })
+    const dirty = updateDocumentMarkdown(documentState, 'one')
+    const saved = prepareMarkdownForSave(dirty.markdown, dirty)
+
+    expect(dirty.trimTrailingNewline).toBe(0)
+    expect(saved).toBe('one')
+  })
+
   it('marks edited local drafts dirty until autosave succeeds', () => {
     const documentState = createUntitledDocument({
       markdown: 'initial',
