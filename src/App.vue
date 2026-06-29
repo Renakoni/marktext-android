@@ -10,8 +10,10 @@ import {
 } from '@muyajs/core'
 import DocumentHome from './components/DocumentHome.vue'
 import {
+  createAndroidMarkdownDocument,
   getAndroidDocumentErrorCode,
   getAndroidDocumentUserMessage,
+  isAndroidDocumentAccessAvailable,
   openAndroidMarkdownDocument,
   readAndroidMarkdownDocument,
   writeAndroidMarkdownDocument,
@@ -19,6 +21,7 @@ import {
 } from './lib/androidDocuments'
 import {
   createUntitledDocument,
+  getSuggestedMarkdownFileName,
   markDocumentSaved,
   markDocumentSaveFailed,
   markDocumentSaving,
@@ -50,6 +53,8 @@ const DRAFTS_STORAGE_KEY = 'marktext-for-android:drafts'
 const RECENT_DOCUMENTS_STORAGE_KEY = 'marktext-for-android:recent-documents'
 const DRAFT_SAVE_DELAY_MS = 800
 const ANDROID_DOCUMENT_SAVE_DELAY_MS = 1200
+const TRANSIENT_ANDROID_DOCUMENT_MESSAGE =
+  'Saved to device. Kept local draft because Android did not grant long-term access.'
 
 const editorPlugins = [
   InlineFormatToolbar,
@@ -66,6 +71,10 @@ const currentAndroidDocumentCanWrite = ref(false)
 const status = ref('Ready')
 const homeNotice = ref<string | null>(null)
 const currentScreen = ref<'home' | 'editor'>('home')
+const draftExitPromptOpen = ref(false)
+const editorMenuOpen = ref(false)
+const promptLocalDraftSaveOnExit = ref(false)
+const savingLocalDraftToAndroid = ref(false)
 
 let editor: Muya | null = null
 let lastContentLogAt = 0
@@ -142,6 +151,22 @@ function getAndroidEditorStatus() {
   return 'Saved'
 }
 
+function isLocalDraftDocument() {
+  return documentState.value.autosaveTarget === 'local-draft'
+}
+
+function hasDraftContent() {
+  return documentState.value.markdown.trim().length > 0
+}
+
+function shouldPromptLocalDraftSaveToDevice() {
+  return promptLocalDraftSaveOnExit.value && isLocalDraftDocument() && hasDraftContent()
+}
+
+function canSaveLocalDraftToAndroidDocument() {
+  return isLocalDraftDocument() && isAndroidDocumentAccessAvailable()
+}
+
 function registerMuyaPlugins() {
   editorLog.debug('register Muya plugins start', { count: editorPlugins.length })
   for (const plugin of editorPlugins) {
@@ -182,6 +207,16 @@ function createDocumentFromAndroidDocument(document: OpenedAndroidDocument) {
 
 function normalizeEditorMarkdown(markdown: string) {
   return markdown === '\n' ? '' : markdown
+}
+
+function syncDocumentFromEditor(markDirty = false) {
+  if (!editor) {
+    return documentState.value
+  }
+
+  const value = normalizeEditorMarkdown(editor.getMarkdown())
+  documentState.value = updateDocumentMarkdown(documentState.value, value, { markDirty })
+  return documentState.value
 }
 
 function syncMarkdown(nextStatus: unknown = 'Edited') {
@@ -390,6 +425,99 @@ async function saveAndroidDocument() {
   }
 }
 
+async function saveLocalDraftToAndroidDocument(options: { returnHomeAfterSave?: boolean } = {}) {
+  editorMenuOpen.value = false
+
+  if (!editor || !isLocalDraftDocument() || savingLocalDraftToAndroid.value) {
+    return false
+  }
+
+  saveDraft()
+  const draftDocument = syncDocumentFromEditor(false)
+  if (!draftDocument.markdown.trim()) {
+    status.value = 'Ready'
+    return false
+  }
+
+  const reopenPromptOnCancel = draftExitPromptOpen.value && options.returnHomeAfterSave === true
+  draftExitPromptOpen.value = false
+  savingLocalDraftToAndroid.value = true
+  status.value = 'Choose a location'
+
+  try {
+    const markdownForSave = prepareMarkdownForSave(draftDocument.markdown, draftDocument)
+    const suggestedName = getSuggestedMarkdownFileName(
+      draftDocument.markdown,
+      draftDocument.displayName,
+    )
+    const document = await createAndroidMarkdownDocument(markdownForSave, suggestedName)
+    if (document.canceled) {
+      status.value = 'Autosaved locally'
+      if (reopenPromptOnCancel) {
+        draftExitPromptOpen.value = true
+      }
+      androidDocumentLog.info('Android document create canceled')
+      return false
+    }
+
+    const savedAt = new Date().toISOString()
+    const createdDocument = {
+      ...document,
+      markdown: draftDocument.markdown,
+    }
+
+    if (!document.persisted) {
+      status.value = TRANSIENT_ANDROID_DOCUMENT_MESSAGE
+      homeNotice.value = TRANSIENT_ANDROID_DOCUMENT_MESSAGE
+      currentAndroidDocumentCanWrite.value = false
+      androidDocumentLog.warn('created Android document without persisted access; kept local draft', {
+        displayName: document.displayName,
+        sourceUri: document.sourceUri,
+        characters: draftDocument.markdown.length,
+      })
+
+      if (options.returnHomeAfterSave) {
+        closeEditorToHome()
+      }
+      return false
+    }
+
+    persistLocalDrafts(removeLocalDraft(localDrafts.value, draftDocument.id))
+    rememberAndroidDocument(createdDocument)
+    currentAndroidDocumentCanWrite.value = document.canWrite
+    promptLocalDraftSaveOnExit.value = false
+    documentState.value = markDocumentSaved(
+      {
+        ...createDocumentFromAndroidDocument(createdDocument),
+        updatedAt: savedAt,
+        lastSavedAt: savedAt,
+      },
+      { autosaveTarget: 'android-document', now: savedAt },
+    )
+    status.value = getAndroidEditorStatus()
+    androidDocumentLog.info('local draft saved as Android document', {
+      displayName: document.displayName,
+      sourceUri: document.sourceUri,
+      characters: draftDocument.markdown.length,
+    })
+
+    if (options.returnHomeAfterSave) {
+      closeEditorToHome()
+    }
+    return true
+  } catch (error) {
+    documentState.value = markDocumentSaveFailed(documentState.value, error)
+    status.value = getAndroidDocumentUserMessage(error)
+    if (reopenPromptOnCancel) {
+      draftExitPromptOpen.value = true
+    }
+    androidDocumentLog.error('local draft save to Android document failed', error)
+    return false
+  } finally {
+    savingLocalDraftToAndroid.value = false
+  }
+}
+
 function saveDraft() {
   if (!editor) {
     return
@@ -520,6 +648,7 @@ function rememberAndroidDocument(document: OpenedAndroidDocument) {
 async function openAndroidDocumentResult(document: OpenedAndroidDocument) {
   homeNotice.value = null
   rememberAndroidDocument(document)
+  promptLocalDraftSaveOnExit.value = false
   currentAndroidDocumentCanWrite.value = document.canWrite
   documentState.value = createDocumentFromAndroidDocument(document)
   androidDocumentLog.info('open Android document in editor', {
@@ -571,6 +700,7 @@ async function openDocument(id: string) {
     }
 
     homeNotice.value = null
+    promptLocalDraftSaveOnExit.value = false
     currentAndroidDocumentCanWrite.value = false
     documentState.value = createDocumentFromDraft(draft)
     appLog.info('open recent local document', { id })
@@ -604,8 +734,13 @@ function newDocument() {
   homeNotice.value = null
   appLog.info('create new local document')
   currentAndroidDocumentCanWrite.value = false
+  promptLocalDraftSaveOnExit.value = true
   documentState.value = createUntitledDocument({ autosaveTarget: 'local-draft' })
   void openEditor('')
+}
+
+function toggleEditorMenu() {
+  editorMenuOpen.value = !editorMenuOpen.value
 }
 
 function destroyEditor() {
@@ -618,15 +753,40 @@ function destroyEditor() {
   editor = null
 }
 
+function closeEditorToHome() {
+  draftExitPromptOpen.value = false
+  editorMenuOpen.value = false
+  destroyEditor()
+  currentScreen.value = 'home'
+}
+
 async function showHome() {
   appLog.info('show recent home')
+  editorMenuOpen.value = false
   if (documentState.value.autosaveTarget === 'android-document') {
     await saveAndroidDocument()
   } else {
     saveDraft()
+    if (shouldPromptLocalDraftSaveToDevice()) {
+      draftExitPromptOpen.value = true
+      return
+    }
   }
-  destroyEditor()
-  currentScreen.value = 'home'
+  closeEditorToHome()
+}
+
+function keepLocalDraftAndShowHome() {
+  appLog.info('keep local draft and show recent home')
+  promptLocalDraftSaveOnExit.value = false
+  saveDraft()
+  closeEditorToHome()
+}
+
+function discardLocalDraftAndShowHome() {
+  appLog.info('discard local draft and show recent home', { id: documentState.value.id })
+  promptLocalDraftSaveOnExit.value = false
+  persistLocalDrafts(removeLocalDraft(localDrafts.value, documentState.value.id))
+  closeEditorToHome()
 }
 
 onMounted(() => {
@@ -705,6 +865,29 @@ onBeforeUnmount(() => {
         <h1>{{ documentTitle }}</h1>
         <p>{{ status }}</p>
       </div>
+      <div v-if="canSaveLocalDraftToAndroidDocument()" class="editor-actions">
+        <button
+          class="menu-button"
+          type="button"
+          aria-label="More actions"
+          :aria-expanded="editorMenuOpen"
+          data-testid="editor-menu-button"
+          @click="toggleEditorMenu"
+        >
+          ...
+        </button>
+        <div v-if="editorMenuOpen" class="editor-menu" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            data-testid="save-to-device-button"
+            :disabled="savingLocalDraftToAndroid"
+            @click="() => saveLocalDraftToAndroidDocument()"
+          >
+            Save to device
+          </button>
+        </div>
+      </div>
     </header>
 
     <section class="editor-pane" aria-label="Markdown editor">
@@ -716,5 +899,48 @@ onBeforeUnmount(() => {
       <span>{{ characterCount }} chars</span>
       <span>{{ lineCount }} lines</span>
     </footer>
+
+    <section
+      v-if="draftExitPromptOpen"
+      class="draft-save-sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="draft-save-title"
+      data-testid="draft-save-prompt"
+    >
+      <div class="draft-save-panel">
+        <h2 id="draft-save-title">Save this draft to your device?</h2>
+        <p>This draft is saved inside MarkText, but it has not been saved as a Markdown file yet.</p>
+        <div class="draft-save-actions">
+          <button
+            v-if="canSaveLocalDraftToAndroidDocument()"
+            class="primary-action"
+            type="button"
+            data-testid="prompt-save-to-device-button"
+            :disabled="savingLocalDraftToAndroid"
+            @click="saveLocalDraftToAndroidDocument({ returnHomeAfterSave: true })"
+          >
+            Save to device
+          </button>
+          <button
+            type="button"
+            data-testid="prompt-keep-draft-button"
+            :disabled="savingLocalDraftToAndroid"
+            @click="keepLocalDraftAndShowHome"
+          >
+            Keep as draft
+          </button>
+          <button
+            class="danger-action"
+            type="button"
+            data-testid="prompt-discard-draft-button"
+            :disabled="savingLocalDraftToAndroid"
+            @click="discardLocalDraftAndShowHome"
+          >
+            Discard
+          </button>
+        </div>
+      </div>
+    </section>
   </main>
 </template>

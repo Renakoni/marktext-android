@@ -27,6 +27,10 @@ interface CanceledAndroidDocumentOpen {
 }
 
 interface AndroidDocumentsPlugin {
+  createMarkdownDocument(options: {
+    markdown: string
+    suggestedName: string
+  }): Promise<OpenedAndroidDocument | CanceledAndroidDocumentOpen>
   openMarkdownDocument(): Promise<OpenedAndroidDocument | CanceledAndroidDocumentOpen>
   readMarkdownDocument(options: { sourceUri: string }): Promise<OpenedAndroidDocument>
   writeMarkdownDocument(options: { sourceUri: string; markdown: string }): Promise<SavedAndroidDocument>
@@ -51,6 +55,19 @@ export function isAndroidDocumentAccessAvailable() {
 export async function openAndroidMarkdownDocument() {
   ensureAndroidDocumentsAvailable()
   const result = await AndroidDocuments.openMarkdownDocument()
+  if (result.canceled) {
+    return result
+  }
+
+  return normalizeOpenedDocument(result)
+}
+
+export async function createAndroidMarkdownDocument(markdown: string, suggestedName: string) {
+  ensureAndroidDocumentsAvailable()
+  const result = await AndroidDocuments.createMarkdownDocument({
+    markdown,
+    suggestedName,
+  })
   if (result.canceled) {
     return result
   }
@@ -110,6 +127,10 @@ export function getAndroidDocumentUserMessage(error: unknown) {
 
   if (code === 'DOCUMENT_WRITE_FAILED') {
     return 'Could not save this Markdown file.'
+  }
+
+  if (code === 'DOCUMENT_CREATOR_UNAVAILABLE') {
+    return 'Could not create a Markdown file on this device.'
   }
 
   return 'Could not open this Markdown file.'
