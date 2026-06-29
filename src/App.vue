@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { App } from '@capacitor/app'
+import type { PluginListenerHandle } from '@capacitor/core'
 import {
   CodeBlockLanguageSelector,
   EmojiSelector,
@@ -82,6 +84,8 @@ let draftSaveTimer: number | null = null
 let androidSaveTimer: number | null = null
 let androidSaveInFlight = false
 let androidSaveRequestedAfterCurrent = false
+let appLifecycleListenerHandles: PluginListenerHandle[] = []
+let browserLifecycleListenersInstalled = false
 
 const appLog = createLogger('app')
 const editorLog = createLogger('editor')
@@ -264,6 +268,13 @@ function scheduleDraftSave() {
   }
 
   draftSaveTimer = window.setTimeout(saveDraft, DRAFT_SAVE_DELAY_MS)
+}
+
+function clearDraftSaveTimer() {
+  if (draftSaveTimer !== null) {
+    window.clearTimeout(draftSaveTimer)
+    draftSaveTimer = null
+  }
 }
 
 function scheduleAndroidDocumentSave() {
@@ -519,6 +530,8 @@ async function saveLocalDraftToAndroidDocument(options: { returnHomeAfterSave?: 
 }
 
 function saveDraft() {
+  clearDraftSaveTimer()
+
   if (!editor) {
     return
   }
@@ -625,6 +638,16 @@ function initEditor(initialMarkdown: string) {
   }
 }
 
+function releaseEditorFocusAfterOpen() {
+  window.requestAnimationFrame(() => {
+    const activeElement = document.activeElement
+    if (activeElement instanceof HTMLElement && editorElement.value?.contains(activeElement)) {
+      activeElement.blur()
+      editorLog.debug('editor focus released after document open')
+    }
+  })
+}
+
 async function openEditor(markdown: string) {
   destroyEditor()
   currentScreen.value = 'editor'
@@ -660,6 +683,7 @@ async function openAndroidDocumentResult(document: OpenedAndroidDocument) {
   })
   await openEditor(document.markdown)
   status.value = getAndroidEditorStatus()
+  releaseEditorFocusAfterOpen()
 }
 
 async function openFileFromAndroid() {
@@ -705,6 +729,7 @@ async function openDocument(id: string) {
     documentState.value = createDocumentFromDraft(draft)
     appLog.info('open recent local document', { id })
     await openEditor(draft.markdown)
+    releaseEditorFocusAfterOpen()
     return
   }
 
@@ -744,10 +769,7 @@ function toggleEditorMenu() {
 }
 
 function destroyEditor() {
-  if (draftSaveTimer !== null) {
-    window.clearTimeout(draftSaveTimer)
-    draftSaveTimer = null
-  }
+  clearDraftSaveTimer()
   clearAndroidDocumentSaveTimer()
   editor?.destroy()
   editor = null
@@ -775,6 +797,112 @@ async function showHome() {
   closeEditorToHome()
 }
 
+async function flushCurrentDocument(reason: string) {
+  if (currentScreen.value !== 'editor' || !editor) {
+    return
+  }
+
+  appLog.info('flush current editor document', {
+    reason,
+    autosaveTarget: documentState.value.autosaveTarget,
+    isDirty: documentState.value.isDirty,
+    autosaveState: documentState.value.autosaveState,
+  })
+
+  if (documentState.value.autosaveTarget === 'android-document') {
+    await saveAndroidDocument()
+  } else {
+    saveDraft()
+  }
+}
+
+function requestLifecycleFlush(reason: string) {
+  void flushCurrentDocument(reason)
+}
+
+function handleDocumentVisibilityChange() {
+  if (document.hidden) {
+    requestLifecycleFlush('document hidden')
+  }
+}
+
+function handlePageHide() {
+  requestLifecycleFlush('page hide')
+}
+
+async function handleAppBackButton() {
+  appLog.info('Android back button pressed', {
+    screen: currentScreen.value,
+    promptOpen: draftExitPromptOpen.value,
+    menuOpen: editorMenuOpen.value,
+  })
+
+  if (draftExitPromptOpen.value) {
+    draftExitPromptOpen.value = false
+    status.value = isLocalDraftDocument() ? 'Autosaved locally' : status.value
+    return
+  }
+
+  if (editorMenuOpen.value) {
+    editorMenuOpen.value = false
+    return
+  }
+
+  if (currentScreen.value === 'editor') {
+    await showHome()
+    return
+  }
+
+  try {
+    await App.exitApp()
+  } catch (error) {
+    appLog.warn('Android back exit unavailable', error)
+  }
+}
+
+function installAppLifecycleListeners() {
+  if (!browserLifecycleListenersInstalled) {
+    browserLifecycleListenersInstalled = true
+    document.addEventListener('visibilitychange', handleDocumentVisibilityChange)
+    window.addEventListener('pagehide', handlePageHide)
+  }
+
+  void Promise.all([
+    App.addListener('backButton', () => {
+      void handleAppBackButton()
+    }),
+    App.addListener('pause', () => {
+      requestLifecycleFlush('app pause')
+    }),
+    App.addListener('appStateChange', ({ isActive }) => {
+      if (!isActive) {
+        requestLifecycleFlush('app inactive')
+      }
+    }),
+  ])
+    .then(handles => {
+      appLifecycleListenerHandles = handles
+      appLog.info('app lifecycle listeners installed')
+    })
+    .catch(error => {
+      appLog.warn('app lifecycle listeners unavailable', error)
+    })
+}
+
+function removeAppLifecycleListeners() {
+  if (browserLifecycleListenersInstalled) {
+    browserLifecycleListenersInstalled = false
+    document.removeEventListener('visibilitychange', handleDocumentVisibilityChange)
+    window.removeEventListener('pagehide', handlePageHide)
+  }
+
+  const handles = appLifecycleListenerHandles
+  appLifecycleListenerHandles = []
+  for (const handle of handles) {
+    void handle.remove()
+  }
+}
+
 function keepLocalDraftAndShowHome() {
   appLog.info('keep local draft and show recent home')
   promptLocalDraftSaveOnExit.value = false
@@ -791,6 +919,7 @@ function discardLocalDraftAndShowHome() {
 
 onMounted(() => {
   appLog.info('app mounted')
+  installAppLifecycleListeners()
   const restoredDrafts = parseLocalDrafts(localStorage.getItem(DRAFTS_STORAGE_KEY))
   const restoredRecentDocuments = parseRecentDocuments(
     localStorage.getItem(RECENT_DOCUMENTS_STORAGE_KEY),
@@ -836,6 +965,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   appLog.info('app before unmount')
+  removeAppLifecycleListeners()
   if (documentState.value.autosaveTarget === 'android-document') {
     void saveAndroidDocument()
   } else {
