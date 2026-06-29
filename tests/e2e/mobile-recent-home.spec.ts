@@ -9,6 +9,7 @@ test('creates a local draft from real editor input and returns it to the recent 
 
   await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
   await expect(page.getByText('No recent Markdown files')).toBeVisible()
+  await expect(page.getByTestId('open-file-button')).toBeVisible()
   await expect(page.getByTestId('new-document-button')).toBeVisible()
 
   await page.getByTestId('new-document-button').click()
@@ -33,5 +34,17 @@ test('creates a local draft from real editor input and returns it to the recent 
   await expect(page.getByText('Continue writing')).toBeVisible()
   await expect(page.getByText('Fresh mobile note')).toBeVisible()
   await expect(page.getByText('No recent Markdown files')).toBeHidden()
+  await expect(page.getByTestId('new-document-button')).toBeVisible()
+})
+
+test('keeps the Android open-file action nonfatal in the browser shell', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+
+  await page.getByTestId('open-file-button').click()
+
+  await expect(page.getByText('Open Markdown files from the Android app build.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
   await expect(page.getByTestId('new-document-button')).toBeVisible()
 })

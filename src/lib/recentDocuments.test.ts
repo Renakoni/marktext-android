@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  createRecentDocumentFromAndroidDocument,
   createRecentDocumentFromLocalDraft,
   getRecentDocumentListItems,
   normalizeRecentDocuments,
@@ -56,6 +57,25 @@ describe('recentDocuments', () => {
     expect(record.providerName).toBe('Local draft')
     expect(record.markdownPreview).toBe(newerDraft.markdown)
     expect(record.canWrite).toBe(true)
+  })
+
+  it('creates recent document records from Android documents without storing markdown content', () => {
+    const record = createRecentDocumentFromAndroidDocument({
+      sourceUri: 'content://provider/android-note.md',
+      displayName: 'android-note.md',
+      providerName: 'Documents',
+      pathHint: 'Documents/android-note.md',
+      markdown: '# Android note\n\nopened from SAF',
+      canWrite: false,
+      openedAt: '2026-06-29T00:06:00.000Z',
+    })
+
+    expect(record.id).toBe('android-document:content://provider/android-note.md')
+    expect(record.kind).toBe('android-document')
+    expect(record.title).toBe('Android note')
+    expect(record.markdownPreview).toBeNull()
+    expect(record.lastOpenedAt).toBe('2026-06-29T00:06:00.000Z')
+    expect(record.canWrite).toBe(false)
   })
 
   it('sorts recent documents newest first by update or open time', () => {

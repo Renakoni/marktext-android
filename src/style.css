@@ -73,7 +73,14 @@ body {
   font-weight: 760;
 }
 
+.home-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .home-new-button,
+.home-open-button,
 .nav-button {
   min-height: 44px;
   border: 1px solid var(--border);
@@ -83,6 +90,11 @@ body {
   font: inherit;
   font-size: 14px;
   font-weight: 700;
+}
+
+.home-open-button {
+  padding: 0 15px;
+  background: var(--surface);
 }
 
 .home-new-button {
@@ -102,9 +114,22 @@ body {
 }
 
 .home-new-button:active,
+.home-open-button:active,
 .nav-button:active,
 .document-row:active {
   transform: translateY(1px);
+}
+
+.home-notice {
+  max-width: 760px;
+  margin: 16px auto 0;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .home-tabs {

@@ -34,6 +34,16 @@ interface LocalDraftSource {
   lastSavedAt: string | null
 }
 
+interface AndroidDocumentSource {
+  sourceUri: string
+  displayName: string
+  providerName: string | null
+  pathHint: string | null
+  markdown: string
+  canWrite: boolean
+  openedAt?: string
+}
+
 const DEFAULT_RECENT_LIMIT = 50
 
 function isRecentDocumentKind(value: unknown): value is RecentDocumentKind {
@@ -98,6 +108,29 @@ export function createRecentDocumentFromLocalDraft(
     lastSavedAt: draft.lastSavedAt,
     autosaveState: 'clean',
     canWrite: true,
+  }
+}
+
+export function createRecentDocumentFromAndroidDocument(
+  document: AndroidDocumentSource,
+): RecentDocumentRecord {
+  const openedAt = document.openedAt ?? new Date().toISOString()
+  const title = getDocumentTitle(document.markdown, document.displayName)
+
+  return {
+    id: `android-document:${document.sourceUri}`,
+    kind: 'android-document',
+    displayName: document.displayName,
+    title,
+    sourceUri: document.sourceUri,
+    providerName: document.providerName,
+    pathHint: document.pathHint,
+    markdownPreview: null,
+    updatedAt: openedAt,
+    lastOpenedAt: openedAt,
+    lastSavedAt: null,
+    autosaveState: 'clean',
+    canWrite: document.canWrite,
   }
 }
 
