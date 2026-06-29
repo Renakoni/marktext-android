@@ -31,6 +31,7 @@ public class AndroidDocumentsPlugin extends Plugin {
     private static final String TAG = "MarkTextAndroid";
     private static final int MAX_MARKDOWN_BYTES = 5 * 1024 * 1024;
     private static final String CALLBACK_OPEN_MARKDOWN_DOCUMENT = "openMarkdownDocumentResult";
+    private static final String CALLBACK_CREATE_MARKDOWN_DOCUMENT = "createMarkdownDocumentResult";
 
     @PluginMethod
     public void openMarkdownDocument(PluginCall call) {
@@ -57,6 +58,48 @@ public class AndroidDocumentsPlugin extends Plugin {
         } catch (ActivityNotFoundException ex) {
             Log.e(TAG, "No Android document picker is available", ex);
             call.reject("No Android document picker is available", "DOCUMENT_PICKER_UNAVAILABLE", ex);
+        }
+    }
+
+    @PluginMethod
+    public void createMarkdownDocument(PluginCall call) {
+        String markdown = call.getString("markdown", null);
+        if (markdown == null) {
+            call.reject("Markdown content is required", "INVALID_MARKDOWN");
+            return;
+        }
+
+        try {
+            validateMarkdownBytes(markdown);
+        } catch (DocumentReadException ex) {
+            Log.w(TAG, "Android document create rejected: " + ex.getMessage());
+            call.reject(ex.getMessage(), ex.code, ex);
+            return;
+        }
+
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("text/markdown");
+        intent.putExtra(
+            Intent.EXTRA_MIME_TYPES,
+            new String[] {
+                "text/markdown",
+                "text/x-markdown",
+                "text/plain"
+            }
+        );
+        intent.putExtra(Intent.EXTRA_TITLE, normalizeSuggestedMarkdownName(call.getString("suggestedName", "")));
+        intent.addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION |
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+        );
+
+        try {
+            startActivityForResult(call, intent, CALLBACK_CREATE_MARKDOWN_DOCUMENT);
+        } catch (ActivityNotFoundException ex) {
+            Log.e(TAG, "No Android document creator is available", ex);
+            call.reject("No Android document creator is available", "DOCUMENT_CREATOR_UNAVAILABLE", ex);
         }
     }
 
@@ -109,6 +152,52 @@ public class AndroidDocumentsPlugin extends Plugin {
         } catch (IOException ex) {
             Log.e(TAG, "Failed to write Android document", ex);
             call.reject("Failed to write Android document", "DOCUMENT_WRITE_FAILED", ex);
+        }
+    }
+
+    @ActivityCallback
+    private void createMarkdownDocumentResult(PluginCall call, ActivityResult result) {
+        if (call == null) {
+            Log.w(TAG, "Missing plugin call for Android document create result");
+            return;
+        }
+
+        if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
+            JSObject canceled = new JSObject();
+            canceled.put("canceled", true);
+            call.resolve(canceled);
+            return;
+        }
+
+        String markdown = call.getString("markdown", null);
+        if (markdown == null) {
+            call.reject("Markdown content is required", "INVALID_MARKDOWN");
+            return;
+        }
+
+        Intent data = result.getData();
+        Uri uri = data.getData();
+        if (uri == null) {
+            call.reject("Android document creator returned no URI", "DOCUMENT_URI_MISSING");
+            return;
+        }
+
+        try {
+            JSObject document = createDocumentResult(uri, data, markdown);
+            persistUriPermission(uri, data);
+            document.put("persisted", hasPersistedReadPermission(uri));
+            document.put("canWrite", canWrite(uri, data));
+            Log.i(TAG, "Created Android document: " + safeForLog(document.getString("displayName")));
+            call.resolve(document);
+        } catch (DocumentReadException ex) {
+            Log.w(TAG, "Android document create rejected: " + ex.getMessage());
+            call.reject(ex.getMessage(), ex.code, ex);
+        } catch (SecurityException ex) {
+            Log.e(TAG, "Missing write permission for created Android document", ex);
+            call.reject("Missing write permission for Android document", "DOCUMENT_WRITE_PERMISSION_MISSING", ex);
+        } catch (IOException ex) {
+            Log.e(TAG, "Failed to create Android document", ex);
+            call.reject("Failed to create Android document", "DOCUMENT_WRITE_FAILED", ex);
         }
     }
 
@@ -173,6 +262,25 @@ public class AndroidDocumentsPlugin extends Plugin {
         return result;
     }
 
+    private JSObject createDocumentResult(Uri uri, Intent grantIntent, String markdown) throws IOException, DocumentReadException {
+        byte[] bytes = validateMarkdownBytes(markdown);
+        writeText(uri, bytes);
+
+        String displayName = getDisplayName(uri);
+        String mimeType = getMimeType(uri);
+        JSObject result = new JSObject();
+        result.put("canceled", false);
+        result.put("sourceUri", uri.toString());
+        result.put("displayName", displayName);
+        result.put("providerName", getProviderName(uri));
+        result.put("pathHint", displayName);
+        result.put("mimeType", mimeType);
+        result.put("markdown", markdown);
+        result.put("canWrite", canWrite(uri, grantIntent));
+        result.put("persisted", hasPersistedReadPermission(uri));
+        return result;
+    }
+
     private JSObject writeDocumentResult(Uri uri, String markdown) throws IOException, DocumentReadException {
         String displayName = getDisplayName(uri);
         String mimeType = getMimeType(uri);
@@ -183,14 +291,7 @@ public class AndroidDocumentsPlugin extends Plugin {
             );
         }
 
-        byte[] bytes = markdown.getBytes(StandardCharsets.UTF_8);
-        if (bytes.length > MAX_MARKDOWN_BYTES) {
-            throw new DocumentReadException(
-                "DOCUMENT_TOO_LARGE",
-                "Markdown document is larger than the current 5 MB limit"
-            );
-        }
-
+        byte[] bytes = validateMarkdownBytes(markdown);
         writeText(uri, bytes);
         JSObject result = new JSObject();
         result.put("sourceUri", uri.toString());
@@ -213,6 +314,38 @@ public class AndroidDocumentsPlugin extends Plugin {
             return null;
         }
         return uri;
+    }
+
+    private byte[] validateMarkdownBytes(String markdown) throws DocumentReadException {
+        byte[] bytes = markdown.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > MAX_MARKDOWN_BYTES) {
+            throw new DocumentReadException(
+                "DOCUMENT_TOO_LARGE",
+                "Markdown document is larger than the current 5 MB limit"
+            );
+        }
+        return bytes;
+    }
+
+    private String normalizeSuggestedMarkdownName(String suggestedName) {
+        String cleaned = suggestedName == null ? "" : suggestedName.trim();
+        cleaned = cleaned.replaceAll("[\\\\/:*?\"<>|\\r\\n]+", " ");
+        cleaned = cleaned.replaceAll("\\s+", " ").trim();
+        if (cleaned.length() == 0) {
+            cleaned = "Untitled";
+        }
+
+        String lowerName = cleaned.toLowerCase(Locale.US);
+        if (
+            lowerName.endsWith(".md") ||
+            lowerName.endsWith(".markdown") ||
+            lowerName.endsWith(".mdown") ||
+            lowerName.endsWith(".mkdn") ||
+            lowerName.endsWith(".mkd")
+        ) {
+            return cleaned;
+        }
+        return cleaned + ".md";
     }
 
     private void persistUriPermission(Uri uri, Intent data) {

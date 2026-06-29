@@ -56,6 +56,7 @@ interface SaveDocumentOptions {
 
 const DEFAULT_UNTITLED_NAME = 'Untitled-1'
 const MARKDOWN_EXTENSION_REGEXP = /\.(markdown|mdown|mkdn|mkd|md)$/i
+const INVALID_FILENAME_CHARS_REGEXP = /[\\/:*?"<>|\r\n]+/g
 const LINE_ENDING_REGEXP = /\r\n|\r|\n/g
 
 function createDocumentId() {
@@ -176,6 +177,17 @@ export function getDocumentTitle(markdown: string, displayName = DEFAULT_UNTITLE
     .find(Boolean)
 
   return heading || stripMarkdownExtension(displayName) || 'Untitled'
+}
+
+export function getSuggestedMarkdownFileName(markdown: string, displayName = DEFAULT_UNTITLED_NAME) {
+  const title = getDocumentTitle(markdown, displayName)
+  const baseName = stripMarkdownExtension(title)
+    .replace(INVALID_FILENAME_CHARS_REGEXP, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const safeName = baseName || 'Untitled'
+  return MARKDOWN_EXTENSION_REGEXP.test(safeName) ? safeName : `${safeName}.md`
 }
 
 export function createUntitledDocument(options: CreateDocumentOptions = {}): MarkdownDocumentState {

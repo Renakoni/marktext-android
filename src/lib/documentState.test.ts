@@ -3,6 +3,7 @@ import {
   createUntitledDocument,
   getDocumentStats,
   getDocumentTitle,
+  getSuggestedMarkdownFileName,
   normalizeMarkdownForEditor,
   prepareMarkdownForSave,
   updateDocumentMarkdown,
@@ -17,6 +18,14 @@ describe('documentState', () => {
 
   it('falls back to the display name without markdown extension', () => {
     expect(getDocumentTitle('plain text', 'notes.md')).toBe('notes')
+  })
+
+  it('suggests a Markdown file name from the first heading', () => {
+    expect(getSuggestedMarkdownFileName('# Trip notes\n\nbody', 'draft.md')).toBe('Trip notes.md')
+  })
+
+  it('sanitizes suggested Markdown file names for Android document creation', () => {
+    expect(getSuggestedMarkdownFileName('# Meeting: A/B?')).toBe('Meeting A B.md')
   })
 
   it('counts latin words and CJK characters for mobile status text', () => {
