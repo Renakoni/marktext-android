@@ -14,6 +14,7 @@ import {
   getAndroidDocumentUserMessage,
   openAndroidMarkdownDocument,
   readAndroidMarkdownDocument,
+  writeAndroidMarkdownDocument,
   type OpenedAndroidDocument,
 } from './lib/androidDocuments'
 import {
@@ -21,6 +22,7 @@ import {
   markDocumentSaved,
   markDocumentSaveFailed,
   markDocumentSaving,
+  prepareMarkdownForSave,
   updateDocumentMarkdown,
 } from './lib/documentState'
 import {
@@ -35,6 +37,7 @@ import {
   createRecentDocumentFromAndroidDocument,
   createRecentDocumentFromLocalDraft,
   getRecentDocumentListItems,
+  markRecentDocumentSaved,
   parseRecentDocuments,
   serializeRecentDocuments,
   upsertRecentDocument,
@@ -46,6 +49,7 @@ const LEGACY_DRAFT_STORAGE_KEY = 'marktext-for-android:draft'
 const DRAFTS_STORAGE_KEY = 'marktext-for-android:drafts'
 const RECENT_DOCUMENTS_STORAGE_KEY = 'marktext-for-android:recent-documents'
 const DRAFT_SAVE_DELAY_MS = 800
+const ANDROID_DOCUMENT_SAVE_DELAY_MS = 1200
 
 const editorPlugins = [
   InlineFormatToolbar,
@@ -58,6 +62,7 @@ const editorElement = ref<HTMLElement | null>(null)
 const documentState = ref(createUntitledDocument())
 const localDrafts = ref<LocalDraftRecord[]>([])
 const androidRecentDocuments = ref<RecentDocumentRecord[]>([])
+const currentAndroidDocumentCanWrite = ref(false)
 const status = ref('Ready')
 const homeNotice = ref<string | null>(null)
 const currentScreen = ref<'home' | 'editor'>('home')
@@ -65,6 +70,9 @@ const currentScreen = ref<'home' | 'editor'>('home')
 let editor: Muya | null = null
 let lastContentLogAt = 0
 let draftSaveTimer: number | null = null
+let androidSaveTimer: number | null = null
+let androidSaveInFlight = false
+let androidSaveRequestedAfterCurrent = false
 
 const appLog = createLogger('app')
 const editorLog = createLogger('editor')
@@ -116,6 +124,22 @@ function formatSavedTime(value: string | null) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date)
+}
+
+function getAndroidEditorStatus() {
+  if (documentState.value.autosaveState === 'save-failed') {
+    return 'Save failed'
+  }
+
+  if (!currentAndroidDocumentCanWrite.value) {
+    return 'Read only'
+  }
+
+  if (documentState.value.autosaveState === 'saving' || documentState.value.isDirty) {
+    return 'Saving'
+  }
+
+  return 'Saved'
 }
 
 function registerMuyaPlugins() {
@@ -170,7 +194,10 @@ function syncMarkdown(nextStatus: unknown = 'Edited') {
   const markDirty = resolvedStatus === 'Edited'
   documentState.value = updateDocumentMarkdown(documentState.value, nextMarkdown, { markDirty })
   if (markDirty && documentState.value.autosaveTarget === 'android-document') {
-    status.value = 'Unsaved changes'
+    status.value = getAndroidEditorStatus()
+    if (currentAndroidDocumentCanWrite.value) {
+      scheduleAndroidDocumentSave()
+    }
   } else {
     status.value = markDirty ? 'Autosaving locally' : resolvedStatus
   }
@@ -204,6 +231,23 @@ function scheduleDraftSave() {
   draftSaveTimer = window.setTimeout(saveDraft, DRAFT_SAVE_DELAY_MS)
 }
 
+function scheduleAndroidDocumentSave() {
+  if (androidSaveTimer !== null) {
+    window.clearTimeout(androidSaveTimer)
+  }
+
+  androidSaveTimer = window.setTimeout(() => {
+    void saveAndroidDocument()
+  }, ANDROID_DOCUMENT_SAVE_DELAY_MS)
+}
+
+function clearAndroidDocumentSaveTimer() {
+  if (androidSaveTimer !== null) {
+    window.clearTimeout(androidSaveTimer)
+    androidSaveTimer = null
+  }
+}
+
 function persistLocalDrafts(nextDrafts: LocalDraftRecord[]) {
   localDrafts.value = nextDrafts
 
@@ -224,6 +268,125 @@ function persistAndroidRecentDocuments(nextDocuments: RecentDocumentRecord[]) {
     localStorage.setItem(RECENT_DOCUMENTS_STORAGE_KEY, serializeRecentDocuments(filteredDocuments))
   } else {
     localStorage.removeItem(RECENT_DOCUMENTS_STORAGE_KEY)
+  }
+}
+
+function markAndroidRecentDocumentSaved(savedAt: string) {
+  const sourceUri = documentState.value.sourceUri
+  if (!sourceUri) {
+    return
+  }
+
+  const existingDocument = androidRecentDocuments.value.find(record => record.sourceUri === sourceUri)
+  if (!existingDocument) {
+    androidDocumentLog.warn('saved Android recent document not found', { sourceUri })
+    return
+  }
+
+  persistAndroidRecentDocuments(
+    upsertRecentDocument(
+      androidRecentDocuments.value,
+      markRecentDocumentSaved(existingDocument, {
+        markdown: documentState.value.markdown,
+        savedAt,
+        canWrite: currentAndroidDocumentCanWrite.value,
+      }),
+    ),
+  )
+}
+
+async function saveAndroidDocument() {
+  clearAndroidDocumentSaveTimer()
+
+  if (!editor || documentState.value.autosaveTarget !== 'android-document') {
+    return
+  }
+
+  const sourceUri = documentState.value.sourceUri
+  if (!sourceUri) {
+    status.value = 'Save failed'
+    androidDocumentLog.error('Android document save missing source URI', {
+      id: documentState.value.id,
+    })
+    return
+  }
+
+  if (!currentAndroidDocumentCanWrite.value) {
+    status.value = 'Read only'
+    androidDocumentLog.debug('skip Android document autosave without write access', {
+      id: documentState.value.id,
+      sourceUri,
+    })
+    return
+  }
+
+  if (!documentState.value.isDirty && documentState.value.autosaveState !== 'save-failed') {
+    return
+  }
+
+  if (androidSaveInFlight) {
+    androidSaveRequestedAfterCurrent = true
+    return
+  }
+
+  const value = normalizeEditorMarkdown(editor.getMarkdown())
+  const nextDocument = updateDocumentMarkdown(documentState.value, value, {
+    markDirty: documentState.value.isDirty,
+  })
+  const markdownForSave = prepareMarkdownForSave(nextDocument.markdown, nextDocument)
+  const saveMarkdown = nextDocument.markdown
+
+  androidSaveInFlight = true
+  documentState.value = markDocumentSaving(nextDocument)
+  status.value = 'Saving'
+
+  try {
+    await writeAndroidMarkdownDocument(sourceUri, markdownForSave)
+    const savedAt = new Date().toISOString()
+
+    if (
+      documentState.value.autosaveTarget === 'android-document' &&
+      documentState.value.sourceUri === sourceUri &&
+      documentState.value.markdown === saveMarkdown
+    ) {
+      documentState.value = markDocumentSaved(
+        updateDocumentMarkdown(documentState.value, saveMarkdown, {
+          markDirty: false,
+          now: savedAt,
+        }),
+        { autosaveTarget: 'android-document', now: savedAt },
+      )
+      markAndroidRecentDocumentSaved(savedAt)
+      status.value = 'Saved'
+      androidDocumentLog.info('Android document autosaved', {
+        sourceUri,
+        characters: saveMarkdown.length,
+      })
+    } else {
+      androidSaveRequestedAfterCurrent = true
+      androidDocumentLog.debug('Android document changed during save; scheduling another save', {
+        sourceUri,
+      })
+    }
+  } catch (error) {
+    documentState.value = markDocumentSaveFailed(documentState.value, error)
+    status.value = 'Save failed'
+    androidDocumentLog.error('Android document autosave failed', {
+      sourceUri,
+      error,
+    })
+  } finally {
+    androidSaveInFlight = false
+    if (androidSaveRequestedAfterCurrent) {
+      androidSaveRequestedAfterCurrent = false
+      if (
+        editor &&
+        documentState.value.autosaveTarget === 'android-document' &&
+        currentAndroidDocumentCanWrite.value
+      ) {
+        scheduleAndroidDocumentSave()
+      }
+    }
   }
 }
 
@@ -308,11 +471,18 @@ function initEditor(initialMarkdown: string) {
     editor.on('content-change', syncMarkdown)
     editor.on('json-change', syncMarkdown)
     editor.on('focus', () => {
-      status.value = 'Editing'
+      status.value =
+        documentState.value.autosaveTarget === 'android-document' &&
+        !currentAndroidDocumentCanWrite.value
+          ? 'Read only'
+          : 'Editing'
       editorLog.debug('editor focused')
     })
     editor.on('blur', () => {
-      status.value = 'Ready'
+      status.value =
+        documentState.value.autosaveTarget === 'android-document'
+          ? getAndroidEditorStatus()
+          : 'Ready'
       editorLog.debug('editor blurred')
     })
     syncMarkdown('Ready')
@@ -350,6 +520,7 @@ function rememberAndroidDocument(document: OpenedAndroidDocument) {
 async function openAndroidDocumentResult(document: OpenedAndroidDocument) {
   homeNotice.value = null
   rememberAndroidDocument(document)
+  currentAndroidDocumentCanWrite.value = document.canWrite
   documentState.value = createDocumentFromAndroidDocument(document)
   androidDocumentLog.info('open Android document in editor', {
     displayName: document.displayName,
@@ -359,7 +530,7 @@ async function openAndroidDocumentResult(document: OpenedAndroidDocument) {
     characters: document.markdown.length,
   })
   await openEditor(document.markdown)
-  status.value = document.canWrite ? 'Opened from Android' : 'Opened read-only'
+  status.value = getAndroidEditorStatus()
 }
 
 async function openFileFromAndroid() {
@@ -400,6 +571,7 @@ async function openDocument(id: string) {
     }
 
     homeNotice.value = null
+    currentAndroidDocumentCanWrite.value = false
     documentState.value = createDocumentFromDraft(draft)
     appLog.info('open recent local document', { id })
     await openEditor(draft.markdown)
@@ -431,6 +603,7 @@ async function openDocument(id: string) {
 function newDocument() {
   homeNotice.value = null
   appLog.info('create new local document')
+  currentAndroidDocumentCanWrite.value = false
   documentState.value = createUntitledDocument({ autosaveTarget: 'local-draft' })
   void openEditor('')
 }
@@ -440,13 +613,18 @@ function destroyEditor() {
     window.clearTimeout(draftSaveTimer)
     draftSaveTimer = null
   }
+  clearAndroidDocumentSaveTimer()
   editor?.destroy()
   editor = null
 }
 
-function showHome() {
+async function showHome() {
   appLog.info('show recent home')
-  saveDraft()
+  if (documentState.value.autosaveTarget === 'android-document') {
+    await saveAndroidDocument()
+  } else {
+    saveDraft()
+  }
   destroyEditor()
   currentScreen.value = 'home'
 }
@@ -498,7 +676,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   appLog.info('app before unmount')
-  saveDraft()
+  if (documentState.value.autosaveTarget === 'android-document') {
+    void saveAndroidDocument()
+  } else {
+    saveDraft()
+  }
   destroyEditor()
 })
 </script>

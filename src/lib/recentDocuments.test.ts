@@ -3,6 +3,7 @@ import {
   createRecentDocumentFromAndroidDocument,
   createRecentDocumentFromLocalDraft,
   getRecentDocumentListItems,
+  markRecentDocumentSaved,
   normalizeRecentDocuments,
   parseRecentDocuments,
   serializeRecentDocuments,
@@ -105,6 +106,20 @@ describe('recentDocuments', () => {
 
     expect(records).toHaveLength(1)
     expect(records[0].id).toBe('android-2')
+  })
+
+  it('updates recent document metadata after a save without storing Android markdown', () => {
+    const saved = markRecentDocumentSaved(androidDocument, {
+      markdown: '# Updated Android title\n\nsaved',
+      savedAt: '2026-06-29T00:07:00.000Z',
+      canWrite: true,
+    })
+
+    expect(saved.title).toBe('Updated Android title')
+    expect(saved.updatedAt).toBe('2026-06-29T00:07:00.000Z')
+    expect(saved.lastSavedAt).toBe('2026-06-29T00:07:00.000Z')
+    expect(saved.markdownPreview).toBeNull()
+    expect(saved.canWrite).toBe(true)
   })
 
   it('deduplicates local drafts by id', () => {
