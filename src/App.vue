@@ -638,6 +638,16 @@ function initEditor(initialMarkdown: string) {
   }
 }
 
+function releaseEditorFocusAfterOpen() {
+  window.requestAnimationFrame(() => {
+    const activeElement = document.activeElement
+    if (activeElement instanceof HTMLElement && editorElement.value?.contains(activeElement)) {
+      activeElement.blur()
+      editorLog.debug('editor focus released after document open')
+    }
+  })
+}
+
 async function openEditor(markdown: string) {
   destroyEditor()
   currentScreen.value = 'editor'
@@ -673,6 +683,7 @@ async function openAndroidDocumentResult(document: OpenedAndroidDocument) {
   })
   await openEditor(document.markdown)
   status.value = getAndroidEditorStatus()
+  releaseEditorFocusAfterOpen()
 }
 
 async function openFileFromAndroid() {
@@ -718,6 +729,7 @@ async function openDocument(id: string) {
     documentState.value = createDocumentFromDraft(draft)
     appLog.info('open recent local document', { id })
     await openEditor(draft.markdown)
+    releaseEditorFocusAfterOpen()
     return
   }
 

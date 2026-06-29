@@ -25,6 +25,12 @@ interface MockCapacitorWindow {
   }
 }
 
+interface MockAndroidDocument {
+  sourceUri: string
+  displayName: string
+  markdown: string
+}
+
 async function installTransientAndroidCreateMock(page: Page) {
   await page.addInitScript(() => {
     const win = window as unknown as MockCapacitorWindow
@@ -93,8 +99,8 @@ async function installTransientAndroidCreateMock(page: Page) {
   })
 }
 
-async function installAndroidAppMock(page: Page) {
-  await page.addInitScript(() => {
+async function installAndroidAppMock(page: Page, androidDocument?: MockAndroidDocument) {
+  await page.addInitScript((documentMock: MockAndroidDocument | null) => {
     const win = window as unknown as MockCapacitorWindow
     const appListeners = new Map<string, Array<(data: unknown) => void>>()
     const emitAppEvent = (eventName: string, data: unknown) => {
@@ -126,6 +132,18 @@ async function installAndroidAppMock(page: Page) {
             { name: 'exitApp', rtype: 'promise' },
           ],
         },
+        ...(documentMock
+          ? [
+              {
+                name: 'AndroidDocuments',
+                methods: [
+                  { name: 'openMarkdownDocument', rtype: 'promise' },
+                  { name: 'readMarkdownDocument', rtype: 'promise' },
+                  { name: 'writeMarkdownDocument', rtype: 'promise' },
+                ],
+              },
+            ]
+          : []),
       ],
       nativeCallback(pluginName, methodName, options, callback) {
         if (pluginName === 'App' && methodName === 'addListener') {
@@ -142,9 +160,44 @@ async function installAndroidAppMock(page: Page) {
           message: `${pluginName}.${methodName} is not mocked`,
         })
       },
-      nativePromise(pluginName, methodName) {
+      nativePromise(pluginName, methodName, options = {}) {
         if (pluginName === 'App' && (methodName === 'removeListener' || methodName === 'exitApp')) {
           return Promise.resolve()
+        }
+
+        if (documentMock && pluginName === 'AndroidDocuments') {
+          const documentResult = {
+            canceled: false,
+            sourceUri: documentMock.sourceUri,
+            displayName: documentMock.displayName,
+            providerName: 'Test Documents',
+            pathHint: documentMock.displayName,
+            mimeType: 'text/markdown',
+            markdown: documentMock.markdown,
+            canWrite: true,
+            persisted: true,
+          }
+
+          if (methodName === 'openMarkdownDocument') {
+            return Promise.resolve(documentResult)
+          }
+
+          if (
+            methodName === 'readMarkdownDocument' &&
+            options.sourceUri === documentMock.sourceUri
+          ) {
+            return Promise.resolve(documentResult)
+          }
+
+          if (
+            methodName === 'writeMarkdownDocument' &&
+            options.sourceUri === documentMock.sourceUri
+          ) {
+            return Promise.resolve({
+              ...documentResult,
+              markdown: undefined,
+            })
+          }
         }
 
         return Promise.reject({
@@ -153,7 +206,7 @@ async function installAndroidAppMock(page: Page) {
         })
       },
     }
-  })
+  }, androidDocument ?? null)
 }
 
 test('creates a local draft from real editor input and returns it to the recent home', async ({
@@ -223,8 +276,23 @@ test('flushes local draft edits when the WebView becomes hidden', async ({ page 
 
   const drafts = await page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
   expect(drafts).toContain('Pause flush note')
+})
 
-  await page.keyboard.type(' pagehide extension')
+test('flushes local draft edits when the WebView page is hidden', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+
+  await page.getByTestId('new-document-button').click()
+  await expect(page.getByTestId('editor-host')).toBeVisible()
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('# Pagehide flush note')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('pagehide extension')
+  await expect(page.getByTestId('editor-host')).toContainText('pagehide extension')
+
   await page.evaluate(() => {
     window.dispatchEvent(new Event('pagehide'))
   })
@@ -236,7 +304,7 @@ test('flushes local draft edits when the WebView becomes hidden', async ({ page 
   expect(draftsAfterPageHide).toContain('pagehide extension')
 })
 
-test('flushes local draft edits on Capacitor app pause and inactive events', async ({ page }) => {
+test('flushes local draft edits on Capacitor app pause', async ({ page }) => {
   await installAndroidAppMock(page)
   await page.goto('/')
   await page.evaluate(() => localStorage.clear())
@@ -263,8 +331,27 @@ test('flushes local draft edits on Capacitor app pause and inactive events', asy
 
   const drafts = await page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
   expect(drafts).toContain('Capacitor pause note')
+})
 
-  await page.keyboard.type(' inactive extension')
+test('flushes local draft edits on Capacitor app inactive', async ({ page }) => {
+  await installAndroidAppMock(page)
+  await page.goto('/')
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.waitForFunction(() => {
+    const win = window as unknown as MockCapacitorWindow
+    return (win.__appListenerCount?.('appStateChange') ?? 0) > 0
+  })
+
+  await page.getByTestId('new-document-button').click()
+  await expect(page.getByTestId('editor-host')).toBeVisible()
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('# Capacitor inactive note')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('inactive should save without waiting for debounce')
+
   await page.evaluate(() => {
     const win = window as unknown as MockCapacitorWindow
     win.__emitCapacitorAppStateChange?.(false)
@@ -274,7 +361,7 @@ test('flushes local draft edits on Capacitor app pause and inactive events', asy
   const draftsAfterInactive = await page.evaluate(
     () => localStorage.getItem('marktext-for-android:drafts') ?? '',
   )
-  expect(draftsAfterInactive).toContain('inactive extension')
+  expect(draftsAfterInactive).toContain('Capacitor inactive note')
 })
 
 test('opens the draft exit prompt from the Android back button', async ({ page }) => {
@@ -306,6 +393,60 @@ test('opens the draft exit prompt from the Android back button', async ({ page }
 
   const drafts = await page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
   expect(drafts).toContain('Android back note')
+})
+
+test('returns a clean Android document to recent home from the Android back button', async ({
+  page,
+}) => {
+  const now = '2026-06-29T06:00:00.000Z'
+  const document = {
+    sourceUri: 'content://test/clean-document',
+    displayName: 'Clean Android Note.md',
+    markdown: '# Clean Android Note\n\nNo edits yet.',
+  }
+
+  await installAndroidAppMock(page, document)
+  await page.goto('/')
+  await page.evaluate(({ now, document }) => {
+    localStorage.clear()
+    localStorage.setItem(
+      'marktext-for-android:recent-documents',
+      JSON.stringify([
+        {
+          id: `android-document:${document.sourceUri}`,
+          kind: 'android-document',
+          displayName: document.displayName,
+          title: 'Clean Android Note',
+          sourceUri: document.sourceUri,
+          providerName: 'Test Documents',
+          pathHint: document.displayName,
+          markdownPreview: null,
+          updatedAt: now,
+          lastOpenedAt: now,
+          lastSavedAt: null,
+          autosaveState: 'clean',
+          canWrite: true,
+        },
+      ]),
+    )
+  }, { now, document })
+  await page.reload()
+  await page.waitForFunction(() => {
+    const win = window as unknown as MockCapacitorWindow
+    return (win.__appListenerCount?.('backButton') ?? 0) > 0
+  })
+
+  await page.getByRole('button', { name: /Clean Android Note/ }).click()
+  await expect(page.getByTestId('editor-host')).toBeVisible()
+
+  await page.evaluate(() => {
+    const win = window as unknown as MockCapacitorWindow
+    win.__emitCapacitorAppBackButton?.()
+  })
+
+  await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
+  await expect(page.getByTestId('editor-host')).toBeHidden()
+  await expect(page.getByText('Clean Android Note')).toBeVisible()
 })
 
 test('keeps the local draft when Android document access is not persisted', async ({ page }) => {
