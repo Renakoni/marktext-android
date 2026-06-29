@@ -102,8 +102,9 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
 
         try {
-            persistUriPermission(uri, data);
             JSObject document = buildDocumentResult(uri, data);
+            persistUriPermission(uri, data);
+            document.put("persisted", hasPersistedReadPermission(uri));
             Log.i(TAG, "Opened Android document: " + safeForLog(document.getString("displayName")));
             call.resolve(document);
         } catch (DocumentReadException ex) {
