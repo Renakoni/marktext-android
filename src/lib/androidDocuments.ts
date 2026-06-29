@@ -12,6 +12,16 @@ export interface OpenedAndroidDocument {
   persisted: boolean
 }
 
+export interface SavedAndroidDocument {
+  sourceUri: string
+  displayName: string
+  providerName: string | null
+  pathHint: string | null
+  mimeType: string | null
+  canWrite: boolean
+  persisted: boolean
+}
+
 interface CanceledAndroidDocumentOpen {
   canceled: true
 }
@@ -19,6 +29,7 @@ interface CanceledAndroidDocumentOpen {
 interface AndroidDocumentsPlugin {
   openMarkdownDocument(): Promise<OpenedAndroidDocument | CanceledAndroidDocumentOpen>
   readMarkdownDocument(options: { sourceUri: string }): Promise<OpenedAndroidDocument>
+  writeMarkdownDocument(options: { sourceUri: string; markdown: string }): Promise<SavedAndroidDocument>
 }
 
 export class AndroidDocumentError extends Error {
@@ -52,6 +63,16 @@ export async function readAndroidMarkdownDocument(sourceUri: string) {
   return normalizeOpenedDocument(await AndroidDocuments.readMarkdownDocument({ sourceUri }))
 }
 
+export async function writeAndroidMarkdownDocument(sourceUri: string, markdown: string) {
+  ensureAndroidDocumentsAvailable()
+  return normalizeSavedDocument(
+    await AndroidDocuments.writeMarkdownDocument({
+      sourceUri,
+      markdown,
+    }),
+  )
+}
+
 export function getAndroidDocumentErrorCode(error: unknown) {
   if (error instanceof AndroidDocumentError) {
     return error.code
@@ -83,6 +104,14 @@ export function getAndroidDocumentUserMessage(error: unknown) {
     return 'This recent file can no longer be opened.'
   }
 
+  if (code === 'DOCUMENT_WRITE_PERMISSION_MISSING') {
+    return 'This file is read-only.'
+  }
+
+  if (code === 'DOCUMENT_WRITE_FAILED') {
+    return 'Could not save this Markdown file.'
+  }
+
   return 'Could not open this Markdown file.'
 }
 
@@ -105,6 +134,22 @@ function normalizeOpenedDocument(value: OpenedAndroidDocument): OpenedAndroidDoc
     pathHint: value.pathHint ?? null,
     mimeType: value.mimeType ?? null,
     markdown: value.markdown,
+    canWrite: Boolean(value.canWrite),
+    persisted: Boolean(value.persisted),
+  }
+}
+
+function normalizeSavedDocument(value: SavedAndroidDocument): SavedAndroidDocument {
+  if (!value.sourceUri || !value.displayName) {
+    throw new AndroidDocumentError('INVALID_DOCUMENT_RESULT', 'Android document plugin returned an invalid result')
+  }
+
+  return {
+    sourceUri: value.sourceUri,
+    displayName: value.displayName,
+    providerName: value.providerName ?? null,
+    pathHint: value.pathHint ?? null,
+    mimeType: value.mimeType ?? null,
     canWrite: Boolean(value.canWrite),
     persisted: Boolean(value.persisted),
   }

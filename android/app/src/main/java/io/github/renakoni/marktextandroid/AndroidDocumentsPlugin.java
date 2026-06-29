@@ -21,6 +21,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
@@ -47,6 +48,7 @@ public class AndroidDocumentsPlugin extends Plugin {
         );
         intent.addFlags(
             Intent.FLAG_GRANT_READ_URI_PERMISSION |
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
             Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
         );
 
@@ -80,6 +82,36 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
     }
 
+    @PluginMethod
+    public void writeMarkdownDocument(PluginCall call) {
+        String sourceUri = call.getString("sourceUri", "");
+        String markdown = call.getString("markdown", null);
+        Uri uri = parseContentUri(sourceUri);
+        if (uri == null) {
+            call.reject("A valid content URI is required", "INVALID_SOURCE_URI");
+            return;
+        }
+        if (markdown == null) {
+            call.reject("Markdown content is required", "INVALID_MARKDOWN");
+            return;
+        }
+
+        try {
+            JSObject result = writeDocumentResult(uri, markdown);
+            Log.i(TAG, "Wrote Android document: " + safeForLog(result.getString("displayName")));
+            call.resolve(result);
+        } catch (DocumentReadException ex) {
+            Log.w(TAG, "Android document write rejected: " + ex.getMessage());
+            call.reject(ex.getMessage(), ex.code, ex);
+        } catch (SecurityException ex) {
+            Log.e(TAG, "Missing write permission for Android document", ex);
+            call.reject("Missing write permission for Android document", "DOCUMENT_WRITE_PERMISSION_MISSING", ex);
+        } catch (IOException ex) {
+            Log.e(TAG, "Failed to write Android document", ex);
+            call.reject("Failed to write Android document", "DOCUMENT_WRITE_FAILED", ex);
+        }
+    }
+
     @ActivityCallback
     private void openMarkdownDocumentResult(PluginCall call, ActivityResult result) {
         if (call == null) {
@@ -105,6 +137,7 @@ public class AndroidDocumentsPlugin extends Plugin {
             JSObject document = buildDocumentResult(uri, data);
             persistUriPermission(uri, data);
             document.put("persisted", hasPersistedReadPermission(uri));
+            document.put("canWrite", canWrite(uri, data));
             Log.i(TAG, "Opened Android document: " + safeForLog(document.getString("displayName")));
             call.resolve(document);
         } catch (DocumentReadException ex) {
@@ -140,6 +173,36 @@ public class AndroidDocumentsPlugin extends Plugin {
         return result;
     }
 
+    private JSObject writeDocumentResult(Uri uri, String markdown) throws IOException, DocumentReadException {
+        String displayName = getDisplayName(uri);
+        String mimeType = getMimeType(uri);
+        if (!isMarkdownCandidate(displayName, mimeType)) {
+            throw new DocumentReadException(
+                "UNSUPPORTED_DOCUMENT",
+                "Choose a Markdown or plain text document"
+            );
+        }
+
+        byte[] bytes = markdown.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > MAX_MARKDOWN_BYTES) {
+            throw new DocumentReadException(
+                "DOCUMENT_TOO_LARGE",
+                "Markdown document is larger than the current 5 MB limit"
+            );
+        }
+
+        writeText(uri, bytes);
+        JSObject result = new JSObject();
+        result.put("sourceUri", uri.toString());
+        result.put("displayName", displayName);
+        result.put("providerName", getProviderName(uri));
+        result.put("pathHint", displayName);
+        result.put("mimeType", mimeType);
+        result.put("canWrite", canWrite(uri, null));
+        result.put("persisted", hasPersistedReadPermission(uri));
+        return result;
+    }
+
     private Uri parseContentUri(String value) {
         if (value == null || value.length() == 0) {
             return null;
@@ -153,7 +216,8 @@ public class AndroidDocumentsPlugin extends Plugin {
     }
 
     private void persistUriPermission(Uri uri, Intent data) {
-        int grantFlags = data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION;
+        int grantFlags = data.getFlags() &
+            (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         if (grantFlags == 0) {
             return;
         }
@@ -162,6 +226,17 @@ public class AndroidDocumentsPlugin extends Plugin {
             getContext().getContentResolver().takePersistableUriPermission(uri, grantFlags);
         } catch (SecurityException ex) {
             Log.w(TAG, "Could not persist Android document URI permission", ex);
+        }
+    }
+
+    private void writeText(Uri uri, byte[] bytes) throws IOException {
+        ContentResolver resolver = getContext().getContentResolver();
+        try (OutputStream output = resolver.openOutputStream(uri, "wt")) {
+            if (output == null) {
+                throw new IOException("Content resolver returned no output stream");
+            }
+            output.write(bytes);
+            output.flush();
         }
     }
 

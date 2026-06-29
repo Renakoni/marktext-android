@@ -44,6 +44,12 @@ interface AndroidDocumentSource {
   openedAt?: string
 }
 
+interface SavedDocumentOptions {
+  markdown: string
+  savedAt?: string
+  canWrite?: boolean
+}
+
 const DEFAULT_RECENT_LIMIT = 50
 
 function isRecentDocumentKind(value: unknown): value is RecentDocumentKind {
@@ -190,6 +196,22 @@ export function upsertRecentDocument(
     [nextRecord, ...records.filter(record => getRecentDocumentKey(record) !== nextKey)],
     limit,
   )
+}
+
+export function markRecentDocumentSaved(
+  record: RecentDocumentRecord,
+  options: SavedDocumentOptions,
+): RecentDocumentRecord {
+  const savedAt = options.savedAt ?? new Date().toISOString()
+
+  return {
+    ...record,
+    title: getDocumentTitle(options.markdown, record.displayName),
+    updatedAt: savedAt,
+    lastSavedAt: savedAt,
+    autosaveState: 'clean',
+    canWrite: options.canWrite ?? record.canWrite,
+  }
 }
 
 export function getRecentDocumentListItems(
