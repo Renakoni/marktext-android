@@ -29,6 +29,15 @@ interface MockAndroidDocument {
   sourceUri: string
   displayName: string
   markdown: string
+  canWrite?: boolean
+  readError?: {
+    code: string
+    message: string
+  }
+  writeError?: {
+    code: string
+    message: string
+  }
 }
 
 async function installTransientAndroidCreateMock(page: Page) {
@@ -174,7 +183,7 @@ async function installAndroidAppMock(page: Page, androidDocument?: MockAndroidDo
             pathHint: documentMock.displayName,
             mimeType: 'text/markdown',
             markdown: documentMock.markdown,
-            canWrite: true,
+            canWrite: documentMock.canWrite ?? true,
             persisted: true,
           }
 
@@ -186,6 +195,9 @@ async function installAndroidAppMock(page: Page, androidDocument?: MockAndroidDo
             methodName === 'readMarkdownDocument' &&
             options.sourceUri === documentMock.sourceUri
           ) {
+            if (documentMock.readError) {
+              return Promise.reject(documentMock.readError)
+            }
             return Promise.resolve(documentResult)
           }
 
@@ -193,6 +205,9 @@ async function installAndroidAppMock(page: Page, androidDocument?: MockAndroidDo
             methodName === 'writeMarkdownDocument' &&
             options.sourceUri === documentMock.sourceUri
           ) {
+            if (documentMock.writeError) {
+              return Promise.reject(documentMock.writeError)
+            }
             return Promise.resolve({
               ...documentResult,
               markdown: undefined,
@@ -447,6 +462,117 @@ test('returns a clean Android document to recent home from the Android back butt
   await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
   await expect(page.getByTestId('editor-host')).toBeHidden()
   await expect(page.getByText('Clean Android Note')).toBeVisible()
+})
+
+test('keeps a stale Android recent file on home with a recovery notice', async ({ page }) => {
+  const now = '2026-06-29T06:10:00.000Z'
+  const document = {
+    sourceUri: 'content://test/missing-document',
+    displayName: 'Missing Android Note.md',
+    markdown: '# Missing Android Note\n\nThis provider will reject reads.',
+    readError: {
+      code: 'DOCUMENT_NOT_FOUND',
+      message: 'missing',
+    },
+  }
+
+  await installAndroidAppMock(page, document)
+  await page.goto('/')
+  await page.evaluate(({ now, document }) => {
+    localStorage.clear()
+    localStorage.setItem(
+      'marktext-for-android:recent-documents',
+      JSON.stringify([
+        {
+          id: `android-document:${document.sourceUri}`,
+          kind: 'android-document',
+          displayName: document.displayName,
+          title: 'Missing Android Note',
+          sourceUri: document.sourceUri,
+          providerName: 'Test Documents',
+          pathHint: document.displayName,
+          markdownPreview: null,
+          updatedAt: now,
+          lastOpenedAt: now,
+          lastSavedAt: null,
+          autosaveState: 'clean',
+          canWrite: true,
+        },
+      ]),
+    )
+  }, { now, document })
+  await page.reload()
+
+  await page.getByRole('button', { name: /Missing Android Note/ }).click()
+
+  await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
+  await expect(page.getByTestId('editor-host')).toBeHidden()
+  await expect(
+    page.getByText('This file was moved or deleted. Open it again from Android.'),
+  ).toBeVisible()
+  await expect(page.getByText('Missing Android Note')).toBeVisible()
+})
+
+test('keeps dirty Android edits in the editor and in a recovery draft when save fails', async ({
+  page,
+}) => {
+  const now = '2026-06-29T06:20:00.000Z'
+  const document = {
+    sourceUri: 'content://test/write-fails',
+    displayName: 'Write Fails.md',
+    markdown: '# Write Fails\n\nInitial text.',
+    writeError: {
+      code: 'DOCUMENT_PERMISSION_LOST',
+      message: 'permission lost',
+    },
+  }
+
+  await installAndroidAppMock(page, document)
+  await page.goto('/')
+  await page.evaluate(({ now, document }) => {
+    localStorage.clear()
+    localStorage.setItem(
+      'marktext-for-android:recent-documents',
+      JSON.stringify([
+        {
+          id: `android-document:${document.sourceUri}`,
+          kind: 'android-document',
+          displayName: document.displayName,
+          title: 'Write Fails',
+          sourceUri: document.sourceUri,
+          providerName: 'Test Documents',
+          pathHint: document.displayName,
+          markdownPreview: null,
+          updatedAt: now,
+          lastOpenedAt: now,
+          lastSavedAt: null,
+          autosaveState: 'clean',
+          canWrite: true,
+        },
+      ]),
+    )
+  }, { now, document })
+  await page.reload()
+
+  await page.getByRole('button', { name: /Write Fails/ }).click()
+  await expect(page.getByTestId('editor-host')).toBeVisible()
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('unsaved recovery line')
+  await expect(page.getByTestId('editor-host')).toContainText('unsaved recovery line')
+
+  await page.getByTestId('back-button').click()
+
+  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expect(
+    page.getByText(/Reopen this file from Android before saving again/),
+  ).toBeVisible()
+
+  const drafts = await page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
+  expect(drafts).toContain('android-recovery:content://test/write-fails')
+  expect(drafts).toContain('unsaved recovery line')
 })
 
 test('keeps the local draft when Android document access is not persisted', async ({ page }) => {

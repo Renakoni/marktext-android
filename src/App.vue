@@ -57,6 +57,8 @@ const DRAFT_SAVE_DELAY_MS = 800
 const ANDROID_DOCUMENT_SAVE_DELAY_MS = 1200
 const TRANSIENT_ANDROID_DOCUMENT_MESSAGE =
   'Saved to device. Kept local draft because Android did not grant long-term access.'
+const ANDROID_RECOVERY_DRAFT_PREFIX = 'android-recovery:'
+const ANDROID_SAVE_RECOVERY_MESSAGE = 'Save failed. A local recovery draft was kept.'
 
 const editorPlugins = [
   InlineFormatToolbar,
@@ -317,6 +319,37 @@ function persistAndroidRecentDocuments(nextDocuments: RecentDocumentRecord[]) {
   }
 }
 
+function getAndroidRecoveryDraftId(sourceUri: string) {
+  return `${ANDROID_RECOVERY_DRAFT_PREFIX}${sourceUri}`
+}
+
+function persistAndroidRecoveryDraft(sourceUri: string, markdown: string) {
+  if (!markdown.trim()) {
+    return
+  }
+
+  const now = new Date().toISOString()
+  persistLocalDrafts(
+    upsertLocalDraft(localDrafts.value, {
+      id: getAndroidRecoveryDraftId(sourceUri),
+      markdown,
+      updatedAt: now,
+      lastSavedAt: null,
+    }),
+  )
+  draftLog.warn('kept Android document edits as a local recovery draft', {
+    sourceUri,
+    characters: markdown.length,
+  })
+}
+
+function removeAndroidRecoveryDraft(sourceUri: string) {
+  const recoveryDraftId = getAndroidRecoveryDraftId(sourceUri)
+  if (localDrafts.value.some(draft => draft.id === recoveryDraftId)) {
+    persistLocalDrafts(removeLocalDraft(localDrafts.value, recoveryDraftId))
+  }
+}
+
 function markAndroidRecentDocumentSaved(savedAt: string) {
   const sourceUri = documentState.value.sourceUri
   if (!sourceUri) {
@@ -339,13 +372,14 @@ function markAndroidRecentDocumentSaved(savedAt: string) {
       }),
     ),
   )
+  removeAndroidRecoveryDraft(sourceUri)
 }
 
 async function saveAndroidDocument() {
   clearAndroidDocumentSaveTimer()
 
   if (!editor || documentState.value.autosaveTarget !== 'android-document') {
-    return
+    return true
   }
 
   const sourceUri = documentState.value.sourceUri
@@ -354,25 +388,25 @@ async function saveAndroidDocument() {
     androidDocumentLog.error('Android document save missing source URI', {
       id: documentState.value.id,
     })
-    return
+    return false
   }
 
   if (!currentAndroidDocumentCanWrite.value) {
-    status.value = 'Read only'
+    status.value = documentState.value.isDirty ? 'This file is read-only.' : 'Read only'
     androidDocumentLog.debug('skip Android document autosave without write access', {
       id: documentState.value.id,
       sourceUri,
     })
-    return
+    return !documentState.value.isDirty
   }
 
   if (!documentState.value.isDirty && documentState.value.autosaveState !== 'save-failed') {
-    return
+    return true
   }
 
   if (androidSaveInFlight) {
     androidSaveRequestedAfterCurrent = true
-    return
+    return false
   }
 
   const value = normalizeEditorMarkdown(editor.getMarkdown())
@@ -408,19 +442,23 @@ async function saveAndroidDocument() {
         sourceUri,
         characters: saveMarkdown.length,
       })
+      return true
     } else {
       androidSaveRequestedAfterCurrent = true
       androidDocumentLog.debug('Android document changed during save; scheduling another save', {
         sourceUri,
       })
+      return false
     }
   } catch (error) {
     documentState.value = markDocumentSaveFailed(documentState.value, error)
-    status.value = 'Save failed'
+    persistAndroidRecoveryDraft(sourceUri, saveMarkdown)
+    status.value = `${getAndroidDocumentUserMessage(error)} ${ANDROID_SAVE_RECOVERY_MESSAGE}`
     androidDocumentLog.error('Android document autosave failed', {
       sourceUri,
       error,
     })
+    return false
   } finally {
     androidSaveInFlight = false
     if (androidSaveRequestedAfterCurrent) {
@@ -786,7 +824,10 @@ async function showHome() {
   appLog.info('show recent home')
   editorMenuOpen.value = false
   if (documentState.value.autosaveTarget === 'android-document') {
-    await saveAndroidDocument()
+    const saved = await saveAndroidDocument()
+    if (!saved) {
+      return
+    }
   } else {
     saveDraft()
     if (shouldPromptLocalDraftSaveToDevice()) {

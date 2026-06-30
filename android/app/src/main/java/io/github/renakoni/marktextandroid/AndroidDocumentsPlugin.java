@@ -19,6 +19,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -119,7 +120,13 @@ public class AndroidDocumentsPlugin extends Plugin {
         } catch (DocumentReadException ex) {
             Log.w(TAG, "Android document read rejected: " + ex.getMessage());
             call.reject(ex.getMessage(), ex.code, ex);
-        } catch (IOException | SecurityException ex) {
+        } catch (FileNotFoundException ex) {
+            Log.w(TAG, "Android document no longer exists", ex);
+            call.reject("This Android document was moved or deleted", "DOCUMENT_NOT_FOUND", ex);
+        } catch (SecurityException ex) {
+            Log.w(TAG, "Android document read permission is no longer available", ex);
+            call.reject("Android document permission is no longer available", "DOCUMENT_PERMISSION_LOST", ex);
+        } catch (IOException ex) {
             Log.e(TAG, "Failed to read Android document", ex);
             call.reject("Failed to read Android document", "DOCUMENT_READ_FAILED", ex);
         }
@@ -146,9 +153,12 @@ public class AndroidDocumentsPlugin extends Plugin {
         } catch (DocumentReadException ex) {
             Log.w(TAG, "Android document write rejected: " + ex.getMessage());
             call.reject(ex.getMessage(), ex.code, ex);
+        } catch (FileNotFoundException ex) {
+            Log.w(TAG, "Android document no longer exists", ex);
+            call.reject("This Android document was moved or deleted", "DOCUMENT_NOT_FOUND", ex);
         } catch (SecurityException ex) {
-            Log.e(TAG, "Missing write permission for Android document", ex);
-            call.reject("Missing write permission for Android document", "DOCUMENT_WRITE_PERMISSION_MISSING", ex);
+            Log.w(TAG, "Android document write permission is no longer available", ex);
+            call.reject("Android document permission is no longer available", "DOCUMENT_PERMISSION_LOST", ex);
         } catch (IOException ex) {
             Log.e(TAG, "Failed to write Android document", ex);
             call.reject("Failed to write Android document", "DOCUMENT_WRITE_FAILED", ex);
@@ -232,7 +242,13 @@ public class AndroidDocumentsPlugin extends Plugin {
         } catch (DocumentReadException ex) {
             Log.w(TAG, "Android document open rejected: " + ex.getMessage());
             call.reject(ex.getMessage(), ex.code, ex);
-        } catch (IOException | SecurityException ex) {
+        } catch (FileNotFoundException ex) {
+            Log.w(TAG, "Android document no longer exists", ex);
+            call.reject("This Android document was moved or deleted", "DOCUMENT_NOT_FOUND", ex);
+        } catch (SecurityException ex) {
+            Log.w(TAG, "Android document read permission is no longer available", ex);
+            call.reject("Android document permission is no longer available", "DOCUMENT_PERMISSION_LOST", ex);
+        } catch (IOException ex) {
             Log.e(TAG, "Failed to open Android document", ex);
             call.reject("Failed to open Android document", "DOCUMENT_READ_FAILED", ex);
         }
