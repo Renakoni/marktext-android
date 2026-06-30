@@ -2,14 +2,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { App } from '@capacitor/app'
 import type { PluginListenerHandle } from '@capacitor/core'
-import {
-  CodeBlockLanguageSelector,
-  EmojiSelector,
-  InlineFormatToolbar,
-  Muya,
-  PreviewToolBar,
-  en,
-} from '@muyajs/core'
 import DocumentHome from './components/DocumentHome.vue'
 import {
   addAndroidOpenWithDocumentListener,
@@ -39,7 +31,7 @@ import {
   upsertLocalDraft,
   type LocalDraftRecord,
 } from './lib/localDrafts'
-import { createLogger, getNativeLogInfo } from './lib/logger'
+import { createLogger, getNativeLogInfo, isNativeLoggerAvailable } from './lib/logger'
 import {
   createRecentDocumentFromAndroidDocument,
   createRecentDocumentFromLocalDraft,
@@ -63,15 +55,13 @@ const OPEN_WITH_TEMPORARY_ACCESS_MESSAGE =
   'Opened with temporary Android access. Save a copy to keep editing later.'
 const ANDROID_RECOVERY_DRAFT_PREFIX = 'android-recovery:'
 const ANDROID_SAVE_RECOVERY_MESSAGE = 'Save failed. A local recovery draft was kept.'
+const ANDROID_EXIT_RECOVERY_MESSAGE = 'Unsaved changes were kept as a recovery draft.'
+const ANDROID_EXIT_DISCARD_MESSAGE = 'Unsaved changes were discarded.'
 const MARKDOWN_FILE_EXTENSION_REGEXP = /\.(markdown|mdown|mkdn|mkd|md)$/i
 const MARKDOWN_COPY_SUFFIX_REGEXP = /\s+copy(?:\s+(\d+))?$/
 
-const editorPlugins = [
-  InlineFormatToolbar,
-  PreviewToolBar,
-  CodeBlockLanguageSelector,
-  EmojiSelector,
-] as const
+type MuyaCoreModule = typeof import('@muyajs/core')
+type MuyaEditor = InstanceType<MuyaCoreModule['Muya']>
 
 const editorElement = ref<HTMLElement | null>(null)
 const documentState = ref(createUntitledDocument())
@@ -81,13 +71,17 @@ const currentAndroidDocumentCanWrite = ref(false)
 const status = ref('Ready')
 const homeNotice = ref<string | null>(null)
 const currentScreen = ref<'home' | 'editor'>('home')
+const editorReady = ref(false)
 const draftExitPromptOpen = ref(false)
+const androidExitPromptOpen = ref(false)
 const editorMenuOpen = ref(false)
 const promptLocalDraftSaveOnExit = ref(false)
 const savingLocalDraftToAndroid = ref(false)
 const savingAndroidDocumentCopy = ref(false)
 
-let editor: Muya | null = null
+let editor: MuyaEditor | null = null
+let muyaCore: MuyaCoreModule | null = null
+let editorInitToken = 0
 let lastContentLogAt = 0
 let draftSaveTimer: number | null = null
 let androidSaveTimer: number | null = null
@@ -189,6 +183,23 @@ function canShowEditorActions() {
   return canSaveLocalDraftToAndroidDocument() || canSaveAndroidDocumentCopy()
 }
 
+function shouldPromptAndroidExitAfterSaveFailure() {
+  return (
+    documentState.value.autosaveTarget === 'android-document' &&
+    documentState.value.isDirty &&
+    hasDraftContent() &&
+    (documentState.value.autosaveState === 'save-failed' || !currentAndroidDocumentCanWrite.value)
+  )
+}
+
+function getAndroidExitPromptMessage() {
+  if (!currentAndroidDocumentCanWrite.value) {
+    return 'This file cannot be saved directly. Save a copy or keep a recovery draft before leaving.'
+  }
+
+  return 'MarkText could not save this file. Save a copy or keep a recovery draft before leaving.'
+}
+
 function getSuggestedMarkdownCopyFileName(
   markdown: string,
   displayName: string,
@@ -215,14 +226,32 @@ function getSuggestedMarkdownCopyFileName(
   return `${copyBaseName} copy ${Date.now()}${extension}`
 }
 
-function registerMuyaPlugins() {
+async function loadMuyaCore() {
+  if (!muyaCore) {
+    await import('@muyajs/core/lib/core.css')
+    muyaCore = await import('@muyajs/core')
+  }
+
+  return muyaCore
+}
+
+async function registerMuyaPlugins() {
+  const core = await loadMuyaCore()
+  const editorPlugins = [
+    core.InlineFormatToolbar,
+    core.PreviewToolBar,
+    core.CodeBlockLanguageSelector,
+    core.EmojiSelector,
+  ] as const
+
   editorLog.debug('register Muya plugins start', { count: editorPlugins.length })
   for (const plugin of editorPlugins) {
-    if (!Muya.plugins.some(entry => entry.plugin === plugin)) {
-      Muya.use(plugin)
+    if (!core.Muya.plugins.some(entry => entry.plugin === plugin)) {
+      core.Muya.use(plugin)
     }
   }
-  editorLog.debug('register Muya plugins complete', { registered: Muya.plugins.length })
+  editorLog.debug('register Muya plugins complete', { registered: core.Muya.plugins.length })
+  return core
 }
 
 function createDocumentFromDraft(draft: LocalDraftRecord) {
@@ -609,7 +638,7 @@ async function saveLocalDraftToAndroidDocument(options: { returnHomeAfterSave?: 
   }
 }
 
-async function saveAndroidDocumentCopy() {
+async function saveAndroidDocumentCopy(options: { returnHomeAfterSave?: boolean } = {}) {
   editorMenuOpen.value = false
 
   if (!editor || !canSaveAndroidDocumentCopy() || savingAndroidDocumentCopy.value) {
@@ -679,6 +708,10 @@ async function saveAndroidDocumentCopy() {
       sourceUri: document.sourceUri,
       characters: copySourceDocument.markdown.length,
     })
+    androidExitPromptOpen.value = false
+    if (options.returnHomeAfterSave) {
+      closeEditorToHome()
+    }
     return true
   } catch (error) {
     if (originalSourceUri && copySourceDocument.isDirty) {
@@ -751,14 +784,18 @@ function saveDraft() {
   }
 }
 
-function initEditor(initialMarkdown: string) {
+async function initEditor(initialMarkdown: string) {
   if (!editorElement.value) {
     return
   }
 
-  registerMuyaPlugins()
-
   try {
+    const token = ++editorInitToken
+    const { Muya, en } = await registerMuyaPlugins()
+    if (token !== editorInitToken || !editorElement.value) {
+      return
+    }
+
     editorLog.info('Muya init start', {
       initialCharacters: initialMarkdown.length,
     })
@@ -794,6 +831,7 @@ function initEditor(initialMarkdown: string) {
       editorLog.debug('editor blurred')
     })
     syncMarkdown('Ready')
+    editorReady.value = true
     editorLog.info('Muya init complete', {
       characters: characterCount.value,
       words: wordCount.value,
@@ -816,6 +854,7 @@ function releaseEditorFocusAfterOpen() {
 }
 
 async function openEditor(markdown: string) {
+  editorReady.value = false
   const wasEditorOpen = currentScreen.value === 'editor'
   destroyEditor()
   if (wasEditorOpen) {
@@ -825,7 +864,7 @@ async function openEditor(markdown: string) {
 
   currentScreen.value = 'editor'
   await nextTick()
-  initEditor(markdown)
+  await initEditor(markdown)
 }
 
 function rememberAndroidDocument(document: OpenedAndroidDocument) {
@@ -930,6 +969,7 @@ async function handleAndroidOpenWithDocumentEvent(event: AndroidOpenWithDocument
 
   await preserveCurrentDocumentBeforeIncomingOpen()
   draftExitPromptOpen.value = false
+  androidExitPromptOpen.value = false
   editorMenuOpen.value = false
   await openAndroidDocumentResult(event.document, {
     source: 'open-with',
@@ -952,6 +992,7 @@ async function openDocument(id: string) {
     }
 
     homeNotice.value = null
+    androidExitPromptOpen.value = false
     promptLocalDraftSaveOnExit.value = false
     currentAndroidDocumentCanWrite.value = false
     documentState.value = createDocumentFromDraft(draft)
@@ -963,6 +1004,7 @@ async function openDocument(id: string) {
 
   if (recentDocument.kind === 'android-document' && recentDocument.sourceUri) {
     homeNotice.value = null
+    androidExitPromptOpen.value = false
     try {
       const document = await readAndroidMarkdownDocument(recentDocument.sourceUri)
       await openAndroidDocumentResult(document)
@@ -985,6 +1027,7 @@ async function openDocument(id: string) {
 
 function newDocument() {
   homeNotice.value = null
+  androidExitPromptOpen.value = false
   appLog.info('create new local document')
   currentAndroidDocumentCanWrite.value = false
   promptLocalDraftSaveOnExit.value = true
@@ -997,6 +1040,8 @@ function toggleEditorMenu() {
 }
 
 function destroyEditor() {
+  editorInitToken += 1
+  editorReady.value = false
   clearDraftSaveTimer()
   clearAndroidDocumentSaveTimer()
   editor?.destroy()
@@ -1005,6 +1050,7 @@ function destroyEditor() {
 
 function closeEditorToHome() {
   draftExitPromptOpen.value = false
+  androidExitPromptOpen.value = false
   editorMenuOpen.value = false
   destroyEditor()
   currentScreen.value = 'home'
@@ -1016,6 +1062,9 @@ async function showHome() {
   if (documentState.value.autosaveTarget === 'android-document') {
     const saved = await saveAndroidDocument()
     if (!saved) {
+      if (shouldPromptAndroidExitAfterSaveFailure()) {
+        androidExitPromptOpen.value = true
+      }
       return
     }
   } else {
@@ -1025,6 +1074,27 @@ async function showHome() {
       return
     }
   }
+  closeEditorToHome()
+}
+
+function keepAndroidRecoveryAndShowHome() {
+  const sourceUri = documentState.value.sourceUri
+  const currentDocument = syncDocumentFromEditor(documentState.value.isDirty)
+  if (sourceUri && currentDocument.markdown.trim()) {
+    persistAndroidRecoveryDraft(sourceUri, currentDocument.markdown)
+  }
+
+  homeNotice.value = ANDROID_EXIT_RECOVERY_MESSAGE
+  closeEditorToHome()
+}
+
+function discardAndroidChangesAndShowHome() {
+  const sourceUri = documentState.value.sourceUri
+  if (sourceUri) {
+    removeAndroidRecoveryDraft(sourceUri)
+  }
+
+  homeNotice.value = ANDROID_EXIT_DISCARD_MESSAGE
   closeEditorToHome()
 }
 
@@ -1065,8 +1135,15 @@ async function handleAppBackButton() {
   appLog.info('Android back button pressed', {
     screen: currentScreen.value,
     promptOpen: draftExitPromptOpen.value,
+    androidExitPromptOpen: androidExitPromptOpen.value,
     menuOpen: editorMenuOpen.value,
   })
+
+  if (androidExitPromptOpen.value) {
+    androidExitPromptOpen.value = false
+    status.value = getAndroidEditorStatus()
+    return
+  }
 
   if (draftExitPromptOpen.value) {
     draftExitPromptOpen.value = false
@@ -1210,13 +1287,15 @@ onMounted(() => {
 
   installAndroidDocumentIntentListeners()
 
-  getNativeLogInfo().then(info => {
-    if (info) {
-      loggingLog.info('native logging ready', info)
-    } else {
-      loggingLog.warn('native logging unavailable')
-    }
-  })
+  if (isNativeLoggerAvailable()) {
+    getNativeLogInfo().then(info => {
+      if (info) {
+        loggingLog.info('native logging ready', info)
+      } else {
+        loggingLog.warn('native logging unavailable')
+      }
+    })
+  }
 })
 
 onBeforeUnmount(() => {
@@ -1279,7 +1358,7 @@ onBeforeUnmount(() => {
             role="menuitem"
             data-testid="save-copy-button"
             :disabled="savingAndroidDocumentCopy"
-            @click="saveAndroidDocumentCopy"
+            @click="() => saveAndroidDocumentCopy()"
           >
             Save a copy
           </button>
@@ -1288,7 +1367,13 @@ onBeforeUnmount(() => {
     </header>
 
     <section class="editor-pane" aria-label="Markdown editor">
-      <div ref="editorElement" class="muya-host" data-testid="editor-host" />
+      <div
+        class="editor-host-shell"
+        :aria-busy="!editorReady"
+        :data-testid="editorReady ? 'editor-host' : 'editor-loading-host'"
+      >
+        <div ref="editorElement" class="muya-host" />
+      </div>
     </section>
 
     <footer class="status-bar">
@@ -1335,6 +1420,49 @@ onBeforeUnmount(() => {
             @click="discardLocalDraftAndShowHome"
           >
             Discard
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section
+      v-if="androidExitPromptOpen"
+      class="draft-save-sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="android-exit-title"
+      data-testid="android-exit-prompt"
+    >
+      <div class="draft-save-panel">
+        <h2 id="android-exit-title">Save changes before leaving?</h2>
+        <p>{{ getAndroidExitPromptMessage() }}</p>
+        <div class="draft-save-actions">
+          <button
+            v-if="canSaveAndroidDocumentCopy()"
+            class="primary-action"
+            type="button"
+            data-testid="prompt-save-copy-button"
+            :disabled="savingAndroidDocumentCopy"
+            @click="saveAndroidDocumentCopy({ returnHomeAfterSave: true })"
+          >
+            Save a copy
+          </button>
+          <button
+            type="button"
+            data-testid="prompt-keep-recovery-button"
+            :disabled="savingAndroidDocumentCopy"
+            @click="keepAndroidRecoveryAndShowHome"
+          >
+            Keep recovery draft
+          </button>
+          <button
+            class="danger-action"
+            type="button"
+            data-testid="prompt-discard-android-changes-button"
+            :disabled="savingAndroidDocumentCopy"
+            @click="discardAndroidChangesAndShowHome"
+          >
+            Discard changes
           </button>
         </div>
       </div>

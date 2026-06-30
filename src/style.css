@@ -364,7 +364,7 @@ body {
   overflow: hidden;
 }
 
-.muya-host {
+.editor-host-shell {
   width: min(100%, 980px);
   height: 100%;
   margin: 0 auto;
@@ -376,7 +376,11 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
-.muya-host .mu-editor {
+.editor-host-shell .muya-host {
+  min-height: 100%;
+}
+
+.editor-host-shell .mu-editor {
   min-height: 100%;
   padding: 42px 56px 56px;
 }
@@ -483,14 +487,14 @@ body {
     padding: 0;
   }
 
-  .muya-host {
+  .editor-host-shell {
     width: 100%;
     border-width: 0;
     border-radius: 0;
     box-shadow: none;
   }
 
-  .muya-host .mu-editor {
+  .editor-host-shell .mu-editor {
     padding: 24px 18px 48px;
   }
 
