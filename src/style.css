@@ -250,6 +250,8 @@ body {
 }
 
 .top-bar {
+  position: relative;
+  z-index: 20;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -290,10 +292,12 @@ body {
 
 .editor-menu {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   right: 0;
-  z-index: 10;
-  width: 180px;
+  z-index: 30;
+  min-width: 124px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 8px;
