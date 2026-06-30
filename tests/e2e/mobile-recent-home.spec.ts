@@ -5,7 +5,9 @@ interface MockCapacitorWindow {
   __emitCapacitorAppBackButton?: () => void
   __emitCapacitorAppPause?: () => void
   __emitCapacitorAppStateChange?: (isActive: boolean) => void
+  __emitAndroidOpenWithDocument?: (event: MockAndroidOpenWithEvent) => void
   __appListenerCount?: (eventName: string) => number
+  __androidDocumentListenerCount?: (eventName: string) => number
   __lastAndroidCreateOptions?: Record<string, unknown>
   Capacitor?: {
     PluginHeaders?: Array<{
@@ -24,6 +26,21 @@ interface MockCapacitorWindow {
       options?: Record<string, unknown>,
     ) => Promise<unknown>
   }
+}
+
+interface MockAndroidOpenWithEvent {
+  document?: {
+    sourceUri: string
+    displayName: string
+    providerName?: string
+    pathHint?: string
+    mimeType?: string
+    markdown: string
+    canWrite?: boolean
+    persisted?: boolean
+  }
+  errorCode?: string
+  message?: string
 }
 
 interface MockAndroidDocument {
@@ -51,6 +68,10 @@ interface MockAndroidDocument {
   }
 }
 
+interface MockAndroidAppOptions {
+  pendingOpenWithEvent?: MockAndroidOpenWithEvent
+}
+
 async function installTransientAndroidCreateMock(page: Page) {
   await page.addInitScript(() => {
     const win = window as unknown as MockCapacitorWindow
@@ -71,6 +92,8 @@ async function installTransientAndroidCreateMock(page: Page) {
         {
           name: 'AndroidDocuments',
           methods: [
+            { name: 'addListener', rtype: 'callback' },
+            { name: 'removeListener', rtype: 'promise' },
             { name: 'createMarkdownDocument', rtype: 'promise' },
             { name: 'openMarkdownDocument', rtype: 'promise' },
             { name: 'readMarkdownDocument', rtype: 'promise' },
@@ -81,6 +104,10 @@ async function installTransientAndroidCreateMock(page: Page) {
       nativeCallback(pluginName, methodName, options) {
         if (pluginName === 'App' && methodName === 'addListener') {
           return Promise.resolve(`app-listener-${String(options.eventName)}`)
+        }
+
+        if (pluginName === 'AndroidDocuments' && methodName === 'addListener') {
+          return Promise.resolve(`android-documents-listener-${String(options.eventName)}`)
         }
 
         return Promise.reject({
@@ -110,6 +137,10 @@ async function installTransientAndroidCreateMock(page: Page) {
           return Promise.resolve()
         }
 
+        if (pluginName === 'AndroidDocuments' && methodName === 'removeListener') {
+          return Promise.resolve()
+        }
+
         return Promise.reject({
           code: 'UNIMPLEMENTED',
           message: `${pluginName}.${methodName} is not mocked`,
@@ -119,12 +150,23 @@ async function installTransientAndroidCreateMock(page: Page) {
   })
 }
 
-async function installAndroidAppMock(page: Page, androidDocument?: MockAndroidDocument) {
-  await page.addInitScript((documentMock: MockAndroidDocument | null) => {
+async function installAndroidAppMock(
+  page: Page,
+  androidDocument?: MockAndroidDocument,
+  options: MockAndroidAppOptions = {},
+) {
+  await page.addInitScript(({ documentMock, mockOptions }) => {
     const win = window as unknown as MockCapacitorWindow
     const appListeners = new Map<string, Array<(data: unknown) => void>>()
+    const androidDocumentListeners = new Map<string, Array<(data: unknown) => void>>()
+    let pendingOpenWithEvent = mockOptions.pendingOpenWithEvent ?? null
     const emitAppEvent = (eventName: string, data: unknown) => {
       for (const listener of appListeners.get(eventName) ?? []) {
+        listener(data)
+      }
+    }
+    const emitAndroidDocumentEvent = (eventName: string, data: unknown) => {
+      for (const listener of androidDocumentListeners.get(eventName) ?? []) {
         listener(data)
       }
     }
@@ -139,7 +181,12 @@ async function installAndroidAppMock(page: Page, androidDocument?: MockAndroidDo
     win.__emitCapacitorAppStateChange = (isActive: boolean) => {
       emitAppEvent('appStateChange', { isActive })
     }
+    win.__emitAndroidOpenWithDocument = (event: MockAndroidOpenWithEvent) => {
+      emitAndroidDocumentEvent('openWithDocument', event)
+    }
     win.__appListenerCount = (eventName: string) => appListeners.get(eventName)?.length ?? 0
+    win.__androidDocumentListenerCount = (eventName: string) =>
+      androidDocumentListeners.get(eventName)?.length ?? 0
     win.Capacitor = {
       ...(win.Capacitor ?? {}),
       PluginHeaders: [
@@ -152,19 +199,17 @@ async function installAndroidAppMock(page: Page, androidDocument?: MockAndroidDo
             { name: 'exitApp', rtype: 'promise' },
           ],
         },
-        ...(documentMock
-          ? [
-              {
-                name: 'AndroidDocuments',
-                methods: [
-                  { name: 'createMarkdownDocument', rtype: 'promise' },
-                  { name: 'openMarkdownDocument', rtype: 'promise' },
-                  { name: 'readMarkdownDocument', rtype: 'promise' },
-                  { name: 'writeMarkdownDocument', rtype: 'promise' },
-                ],
-              },
-            ]
-          : []),
+        {
+          name: 'AndroidDocuments',
+          methods: [
+            { name: 'addListener', rtype: 'callback' },
+            { name: 'removeListener', rtype: 'promise' },
+            { name: 'createMarkdownDocument', rtype: 'promise' },
+            { name: 'openMarkdownDocument', rtype: 'promise' },
+            { name: 'readMarkdownDocument', rtype: 'promise' },
+            { name: 'writeMarkdownDocument', rtype: 'promise' },
+          ],
+        },
       ],
       nativeCallback(pluginName, methodName, options, callback) {
         if (pluginName === 'App' && methodName === 'addListener') {
@@ -176,6 +221,23 @@ async function installAndroidAppMock(page: Page, androidDocument?: MockAndroidDo
           return Promise.resolve(`app-listener-${String(options.eventName)}`)
         }
 
+        if (pluginName === 'AndroidDocuments' && methodName === 'addListener') {
+          if (typeof options.eventName === 'string' && callback) {
+            const listeners = androidDocumentListeners.get(options.eventName) ?? []
+            listeners.push(callback)
+            androidDocumentListeners.set(options.eventName, listeners)
+            if (options.eventName === 'openWithDocument' && pendingOpenWithEvent) {
+              window.setTimeout(() => {
+                if (pendingOpenWithEvent) {
+                  callback(pendingOpenWithEvent)
+                  pendingOpenWithEvent = null
+                }
+              }, 0)
+            }
+          }
+          return Promise.resolve(`android-documents-listener-${String(options.eventName)}`)
+        }
+
         return Promise.reject({
           code: 'UNIMPLEMENTED',
           message: `${pluginName}.${methodName} is not mocked`,
@@ -183,6 +245,10 @@ async function installAndroidAppMock(page: Page, androidDocument?: MockAndroidDo
       },
       nativePromise(pluginName, methodName, options = {}) {
         if (pluginName === 'App' && (methodName === 'removeListener' || methodName === 'exitApp')) {
+          return Promise.resolve()
+        }
+
+        if (pluginName === 'AndroidDocuments' && methodName === 'removeListener') {
           return Promise.resolve()
         }
 
@@ -257,7 +323,7 @@ async function installAndroidAppMock(page: Page, androidDocument?: MockAndroidDo
         })
       },
     }
-  }, androidDocument ?? null)
+  }, { documentMock: androidDocument ?? null, mockOptions: options })
 }
 
 test('creates a local draft from real editor input and returns it to the recent home', async ({
@@ -343,6 +409,12 @@ test('flushes local draft edits when the WebView page is hidden', async ({ page 
   await page.keyboard.press('Enter')
   await page.keyboard.type('pagehide extension')
   await expect(page.getByTestId('editor-host')).toContainText('pagehide extension')
+  await page.waitForFunction(
+    () =>
+      new Promise(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve))
+      }),
+  )
 
   await page.evaluate(() => {
     window.dispatchEvent(new Event('pagehide'))
@@ -547,6 +619,100 @@ test('keeps a stale Android recent file on home with a recovery notice', async (
     page.getByText('This file was moved or deleted. Open it again from Android.'),
   ).toBeVisible()
   await expect(page.getByText('Missing Android Note')).toBeVisible()
+})
+
+test('opens a Markdown document delivered by Android open-with on app launch', async ({
+  page,
+}) => {
+  await installAndroidAppMock(page, undefined, {
+    pendingOpenWithEvent: {
+      document: {
+        sourceUri: 'content://test/open-with-cold',
+        displayName: 'Open With Cold.md',
+        providerName: 'Test Documents',
+        pathHint: 'Open With Cold.md',
+        mimeType: 'text/markdown',
+        markdown: '# Open With Cold\n\nfrom Android chooser',
+        canWrite: false,
+        persisted: true,
+      },
+    },
+  })
+  await page.addInitScript(() => localStorage.clear())
+  await page.goto('/')
+
+  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expect(page.getByTestId('editor-host')).toContainText('Open With Cold')
+  await expect(page.getByText('Read only', { exact: true })).toBeVisible()
+
+  const recentDocuments = await page.evaluate(
+    () => localStorage.getItem('marktext-for-android:recent-documents') ?? '',
+  )
+  expect(recentDocuments).toContain('content://test/open-with-cold')
+  expect(recentDocuments).toContain('Open With Cold.md')
+})
+
+test('opens a warm Android open-with document after preserving the current draft', async ({
+  page,
+}) => {
+  await installAndroidAppMock(page)
+  await page.addInitScript(() => localStorage.clear())
+  await page.goto('/')
+  await page.waitForFunction(() => {
+    const win = window as unknown as MockCapacitorWindow
+    return (win.__androidDocumentListenerCount?.('openWithDocument') ?? 0) > 0
+  })
+
+  await page.getByTestId('new-document-button').click()
+  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('# Draft Before Open With')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('preserve this local draft before switching')
+
+  await page.evaluate(() => {
+    const win = window as unknown as MockCapacitorWindow
+    win.__emitAndroidOpenWithDocument?.({
+      document: {
+        sourceUri: 'content://test/open-with-warm-transient',
+        displayName: 'Open With Warm.md',
+        providerName: 'Test Documents',
+        pathHint: 'Open With Warm.md',
+        mimeType: 'text/markdown',
+        markdown: '# Open With Warm\n\nopened while app was alive',
+        canWrite: false,
+        persisted: false,
+      },
+    })
+  })
+
+  await expect(page.getByTestId('editor-host')).toContainText('Open With Warm')
+  await expect(page.getByText('Opened temporarily')).toBeVisible()
+
+  const storage = await page.evaluate(() => ({
+    drafts: localStorage.getItem('marktext-for-android:drafts') ?? '',
+    recentDocuments: localStorage.getItem('marktext-for-android:recent-documents') ?? '',
+  }))
+  expect(storage.drafts).toContain('Draft Before Open With')
+  expect(storage.recentDocuments).not.toContain('content://test/open-with-warm-transient')
+})
+
+test('shows a safe home notice when Android open-with rejects a non-Markdown file', async ({
+  page,
+}) => {
+  await installAndroidAppMock(page, undefined, {
+    pendingOpenWithEvent: {
+      errorCode: 'UNSUPPORTED_OPEN_WITH_DOCUMENT',
+      message: 'Open a Markdown document',
+    },
+  })
+  await page.addInitScript(() => localStorage.clear())
+  await page.goto('/')
+
+  await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
+  await expect(page.getByTestId('editor-host')).toBeHidden()
+  await expect(page.getByText('Open a Markdown file.')).toBeVisible()
 })
 
 test('keeps dirty Android edits in the editor and in a recovery draft when save fails', async ({

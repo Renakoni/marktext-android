@@ -1,4 +1,4 @@
-import { Capacitor, registerPlugin } from '@capacitor/core'
+import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core'
 
 export interface OpenedAndroidDocument {
   canceled?: false
@@ -22,11 +22,31 @@ export interface SavedAndroidDocument {
   persisted: boolean
 }
 
+export type AndroidOpenWithDocumentEvent =
+  | {
+      document: OpenedAndroidDocument
+      error: null
+    }
+  | {
+      document: null
+      error: AndroidDocumentError
+    }
+
 interface CanceledAndroidDocumentOpen {
   canceled: true
 }
 
+interface AndroidOpenWithDocumentPluginEvent {
+  document?: OpenedAndroidDocument
+  errorCode?: string
+  message?: string
+}
+
 interface AndroidDocumentsPlugin {
+  addListener(
+    eventName: 'openWithDocument',
+    listenerFunc: (event: AndroidOpenWithDocumentPluginEvent) => void,
+  ): Promise<PluginListenerHandle>
   createMarkdownDocument(options: {
     markdown: string
     suggestedName: string
@@ -90,6 +110,15 @@ export async function writeAndroidMarkdownDocument(sourceUri: string, markdown: 
   )
 }
 
+export async function addAndroidOpenWithDocumentListener(
+  listener: (event: AndroidOpenWithDocumentEvent) => void,
+) {
+  ensureAndroidDocumentsAvailable()
+  return AndroidDocuments.addListener('openWithDocument', event => {
+    listener(normalizeOpenWithDocumentEvent(event))
+  })
+}
+
 export function getAndroidDocumentErrorCode(error: unknown) {
   if (error instanceof AndroidDocumentError) {
     return error.code
@@ -111,6 +140,14 @@ export function getAndroidDocumentUserMessage(error: unknown) {
 
   if (code === 'UNSUPPORTED_DOCUMENT') {
     return 'Choose a Markdown or plain text file.'
+  }
+
+  if (code === 'UNSUPPORTED_OPEN_WITH_DOCUMENT') {
+    return 'Open a Markdown file.'
+  }
+
+  if (code === 'INVALID_OPEN_WITH_INTENT') {
+    return 'This Android open-with request is not supported.'
   }
 
   if (code === 'DOCUMENT_TOO_LARGE') {
@@ -185,5 +222,24 @@ function normalizeSavedDocument(value: SavedAndroidDocument): SavedAndroidDocume
     mimeType: value.mimeType ?? null,
     canWrite: Boolean(value.canWrite),
     persisted: Boolean(value.persisted),
+  }
+}
+
+function normalizeOpenWithDocumentEvent(
+  value: AndroidOpenWithDocumentPluginEvent,
+): AndroidOpenWithDocumentEvent {
+  if (value.document) {
+    return {
+      document: normalizeOpenedDocument(value.document),
+      error: null,
+    }
+  }
+
+  const code = typeof value.errorCode === 'string' ? value.errorCode : 'DOCUMENT_READ_FAILED'
+  const message = typeof value.message === 'string' ? value.message : 'Could not open this Markdown file'
+
+  return {
+    document: null,
+    error: new AndroidDocumentError(code, message),
   }
 }
