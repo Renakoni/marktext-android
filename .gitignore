@@ -10,6 +10,7 @@ lerna-debug.log*
 # Local agent handoff notes
 HANDOFF.md
 todolist.md
+AGENTS.md
 
 # Environment
 .env

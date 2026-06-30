@@ -121,6 +121,18 @@ export function getAndroidDocumentUserMessage(error: unknown) {
     return 'This recent file can no longer be opened.'
   }
 
+  if (code === 'DOCUMENT_NOT_FOUND') {
+    return 'This file was moved or deleted. Open it again from Android.'
+  }
+
+  if (code === 'DOCUMENT_PERMISSION_LOST') {
+    return 'Reopen this file from Android before saving again.'
+  }
+
+  if (code === 'DOCUMENT_READ_FAILED') {
+    return 'Could not read this Markdown file.'
+  }
+
   if (code === 'DOCUMENT_WRITE_PERMISSION_MISSING') {
     return 'This file is read-only.'
   }
