@@ -12,6 +12,19 @@ export interface OpenedAndroidDocument {
   persisted: boolean
 }
 
+export interface SharedAndroidDocument {
+  canceled?: false
+  sourceUri: string | null
+  displayName: string
+  providerName: string | null
+  pathHint: string | null
+  mimeType: string | null
+  markdown: string
+  canWrite: boolean
+  persisted: boolean
+  shareKind: 'text' | 'stream'
+}
+
 export interface SavedAndroidDocument {
   sourceUri: string
   displayName: string
@@ -32,6 +45,22 @@ export type AndroidOpenWithDocumentEvent =
       error: AndroidDocumentError
     }
 
+export type AndroidShareDocumentEvent =
+  | {
+      document: SharedAndroidDocument
+      error: null
+    }
+  | {
+      document: null
+      error: AndroidDocumentError
+    }
+
+export interface AndroidShareResult {
+  displayName: string
+  mimeType: string
+  bytes: number
+}
+
 interface CanceledAndroidDocumentOpen {
   canceled: true
 }
@@ -42,10 +71,20 @@ interface AndroidOpenWithDocumentPluginEvent {
   message?: string
 }
 
+interface AndroidShareDocumentPluginEvent {
+  document?: SharedAndroidDocument
+  errorCode?: string
+  message?: string
+}
+
 interface AndroidDocumentsPlugin {
   addListener(
     eventName: 'openWithDocument',
     listenerFunc: (event: AndroidOpenWithDocumentPluginEvent) => void,
+  ): Promise<PluginListenerHandle>
+  addListener(
+    eventName: 'shareDocument',
+    listenerFunc: (event: AndroidShareDocumentPluginEvent) => void,
   ): Promise<PluginListenerHandle>
   createMarkdownDocument(options: {
     markdown: string
@@ -53,6 +92,10 @@ interface AndroidDocumentsPlugin {
   }): Promise<OpenedAndroidDocument | CanceledAndroidDocumentOpen>
   openMarkdownDocument(): Promise<OpenedAndroidDocument | CanceledAndroidDocumentOpen>
   readMarkdownDocument(options: { sourceUri: string }): Promise<OpenedAndroidDocument>
+  shareMarkdownDocument(options: {
+    markdown: string
+    suggestedName: string
+  }): Promise<AndroidShareResult>
   writeMarkdownDocument(options: { sourceUri: string; markdown: string }): Promise<SavedAndroidDocument>
 }
 
@@ -110,12 +153,31 @@ export async function writeAndroidMarkdownDocument(sourceUri: string, markdown: 
   )
 }
 
+export async function shareAndroidMarkdownDocument(markdown: string, suggestedName: string) {
+  ensureAndroidDocumentsAvailable()
+  return normalizeShareResult(
+    await AndroidDocuments.shareMarkdownDocument({
+      markdown,
+      suggestedName,
+    }),
+  )
+}
+
 export async function addAndroidOpenWithDocumentListener(
   listener: (event: AndroidOpenWithDocumentEvent) => void,
 ) {
   ensureAndroidDocumentsAvailable()
   return AndroidDocuments.addListener('openWithDocument', event => {
     listener(normalizeOpenWithDocumentEvent(event))
+  })
+}
+
+export async function addAndroidShareDocumentListener(
+  listener: (event: AndroidShareDocumentEvent) => void,
+) {
+  ensureAndroidDocumentsAvailable()
+  return AndroidDocuments.addListener('shareDocument', event => {
+    listener(normalizeShareDocumentEvent(event))
   })
 }
 
@@ -148,6 +210,30 @@ export function getAndroidDocumentUserMessage(error: unknown) {
 
   if (code === 'INVALID_OPEN_WITH_INTENT') {
     return 'This Android open-with request is not supported.'
+  }
+
+  if (code === 'UNSUPPORTED_SHARE_DOCUMENT') {
+    return 'Share Markdown text or a Markdown file.'
+  }
+
+  if (code === 'INVALID_SHARE_INTENT') {
+    return 'This Android share request is not supported.'
+  }
+
+  if (code === 'INVALID_SHARE_SOURCE_URI') {
+    return 'This Android share did not provide a supported file URI.'
+  }
+
+  if (code === 'SHARE_CONTENT_MISSING') {
+    return 'This Android share did not include Markdown content.'
+  }
+
+  if (code === 'SHARE_TARGET_UNAVAILABLE') {
+    return 'No Android share target is available.'
+  }
+
+  if (code === 'SHARE_WRITE_FAILED') {
+    return 'Could not prepare this Markdown file for sharing.'
   }
 
   if (code === 'DOCUMENT_TOO_LARGE') {
@@ -209,6 +295,31 @@ function normalizeOpenedDocument(value: OpenedAndroidDocument): OpenedAndroidDoc
   }
 }
 
+function normalizeSharedDocument(value: SharedAndroidDocument): SharedAndroidDocument {
+  if (!value.displayName || typeof value.markdown !== 'string') {
+    throw new AndroidDocumentError('INVALID_DOCUMENT_RESULT', 'Android document plugin returned an invalid result')
+  }
+
+  const sourceUri = typeof value.sourceUri === 'string' && value.sourceUri ? value.sourceUri : null
+  const shareKind = value.shareKind === 'stream' ? 'stream' : 'text'
+  if (shareKind === 'stream' && !sourceUri) {
+    throw new AndroidDocumentError('INVALID_DOCUMENT_RESULT', 'Android document plugin returned an invalid result')
+  }
+
+  return {
+    canceled: false,
+    sourceUri,
+    displayName: value.displayName,
+    providerName: value.providerName ?? null,
+    pathHint: value.pathHint ?? null,
+    mimeType: value.mimeType ?? null,
+    markdown: value.markdown,
+    canWrite: Boolean(value.canWrite),
+    persisted: Boolean(value.persisted),
+    shareKind,
+  }
+}
+
 function normalizeSavedDocument(value: SavedAndroidDocument): SavedAndroidDocument {
   if (!value.sourceUri || !value.displayName) {
     throw new AndroidDocumentError('INVALID_DOCUMENT_RESULT', 'Android document plugin returned an invalid result')
@@ -225,6 +336,18 @@ function normalizeSavedDocument(value: SavedAndroidDocument): SavedAndroidDocume
   }
 }
 
+function normalizeShareResult(value: AndroidShareResult): AndroidShareResult {
+  if (!value.displayName || !value.mimeType || typeof value.bytes !== 'number') {
+    throw new AndroidDocumentError('INVALID_DOCUMENT_RESULT', 'Android document plugin returned an invalid result')
+  }
+
+  return {
+    displayName: value.displayName,
+    mimeType: value.mimeType,
+    bytes: value.bytes,
+  }
+}
+
 function normalizeOpenWithDocumentEvent(
   value: AndroidOpenWithDocumentPluginEvent,
 ): AndroidOpenWithDocumentEvent {
@@ -237,6 +360,23 @@ function normalizeOpenWithDocumentEvent(
 
   const code = typeof value.errorCode === 'string' ? value.errorCode : 'DOCUMENT_READ_FAILED'
   const message = typeof value.message === 'string' ? value.message : 'Could not open this Markdown file'
+
+  return {
+    document: null,
+    error: new AndroidDocumentError(code, message),
+  }
+}
+
+function normalizeShareDocumentEvent(value: AndroidShareDocumentPluginEvent): AndroidShareDocumentEvent {
+  if (value.document) {
+    return {
+      document: normalizeSharedDocument(value.document),
+      error: null,
+    }
+  }
+
+  const code = typeof value.errorCode === 'string' ? value.errorCode : 'DOCUMENT_READ_FAILED'
+  const message = typeof value.message === 'string' ? value.message : 'Could not import this Android share'
 
   return {
     document: null,

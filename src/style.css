@@ -296,7 +296,7 @@ body {
   right: 0;
   z-index: 30;
   min-width: 124px;
-  width: max-content;
+  width: 144px;
   max-width: calc(100vw - 32px);
   overflow: hidden;
   border: 1px solid var(--border);

@@ -5,15 +5,19 @@ import type { PluginListenerHandle } from '@capacitor/core'
 import DocumentHome from './components/DocumentHome.vue'
 import {
   addAndroidOpenWithDocumentListener,
+  addAndroidShareDocumentListener,
   createAndroidMarkdownDocument,
   getAndroidDocumentErrorCode,
   getAndroidDocumentUserMessage,
   isAndroidDocumentAccessAvailable,
   openAndroidMarkdownDocument,
   readAndroidMarkdownDocument,
+  shareAndroidMarkdownDocument,
   writeAndroidMarkdownDocument,
   type AndroidOpenWithDocumentEvent,
+  type AndroidShareDocumentEvent,
   type OpenedAndroidDocument,
+  type SharedAndroidDocument,
 } from './lib/androidDocuments'
 import {
   createUntitledDocument,
@@ -53,6 +57,9 @@ const TRANSIENT_ANDROID_DOCUMENT_MESSAGE =
   'Saved to device. Kept local draft because Android did not grant long-term access.'
 const OPEN_WITH_TEMPORARY_ACCESS_MESSAGE =
   'Opened with temporary Android access. Save a copy to keep editing later.'
+const SHARE_TEMPORARY_ACCESS_MESSAGE =
+  'Opened from Android share with temporary access. Save a copy to keep editing later.'
+const SHARED_TEXT_IMPORTED_MESSAGE = 'Imported shared text as a local draft.'
 const ANDROID_RECOVERY_DRAFT_PREFIX = 'android-recovery:'
 const ANDROID_SAVE_RECOVERY_MESSAGE = 'Save failed. A local recovery draft was kept.'
 const ANDROID_EXIT_RECOVERY_MESSAGE = 'Unsaved changes were kept as a recovery draft.'
@@ -78,6 +85,7 @@ const editorMenuOpen = ref(false)
 const promptLocalDraftSaveOnExit = ref(false)
 const savingLocalDraftToAndroid = ref(false)
 const savingAndroidDocumentCopy = ref(false)
+const sharingCurrentDocument = ref(false)
 
 let editor: MuyaEditor | null = null
 let muyaCore: MuyaCoreModule | null = null
@@ -179,8 +187,12 @@ function canSaveAndroidDocumentCopy() {
   return documentState.value.autosaveTarget === 'android-document' && isAndroidDocumentAccessAvailable()
 }
 
+function canShareCurrentDocument() {
+  return isAndroidDocumentAccessAvailable()
+}
+
 function canShowEditorActions() {
-  return canSaveLocalDraftToAndroidDocument() || canSaveAndroidDocumentCopy()
+  return canShareCurrentDocument() || canSaveLocalDraftToAndroidDocument() || canSaveAndroidDocumentCopy()
 }
 
 function shouldPromptAndroidExitAfterSaveFailure() {
@@ -729,6 +741,45 @@ async function saveAndroidDocumentCopy(options: { returnHomeAfterSave?: boolean 
   }
 }
 
+async function shareCurrentMarkdownDocument() {
+  editorMenuOpen.value = false
+
+  if (!editor || !canShareCurrentDocument() || sharingCurrentDocument.value) {
+    return false
+  }
+
+  const currentDocument = syncDocumentFromEditor(documentState.value.isDirty)
+  if (currentDocument.autosaveTarget === 'local-draft') {
+    saveDraft()
+  }
+
+  const markdownForShare = prepareMarkdownForSave(currentDocument.markdown, currentDocument)
+  const suggestedName = getSuggestedMarkdownFileName(
+    currentDocument.markdown,
+    currentDocument.displayName,
+  )
+
+  sharingCurrentDocument.value = true
+  status.value = 'Sharing'
+
+  try {
+    const result = await shareAndroidMarkdownDocument(markdownForShare, suggestedName)
+    status.value = 'Share sheet opened'
+    androidDocumentLog.info('Android share sheet opened', {
+      displayName: result.displayName,
+      bytes: result.bytes,
+      autosaveTarget: currentDocument.autosaveTarget,
+    })
+    return true
+  } catch (error) {
+    status.value = getAndroidDocumentUserMessage(error)
+    androidDocumentLog.error('Android share failed', error)
+    return false
+  } finally {
+    sharingCurrentDocument.value = false
+  }
+}
+
 function saveDraft() {
   clearDraftSaveTimer()
 
@@ -882,12 +933,17 @@ function rememberAndroidDocument(document: OpenedAndroidDocument) {
 
 async function openAndroidDocumentResult(
   document: OpenedAndroidDocument,
-  options: { source?: 'picker' | 'recent' | 'open-with'; remember?: boolean } = {},
+  options: { source?: 'picker' | 'recent' | 'open-with' | 'share'; remember?: boolean } = {},
 ) {
   const source = options.source ?? 'picker'
   const shouldRemember = options.remember ?? true
-  homeNotice.value =
-    source === 'open-with' && !document.persisted ? OPEN_WITH_TEMPORARY_ACCESS_MESSAGE : null
+  const temporaryAccessMessage =
+    source === 'open-with'
+      ? OPEN_WITH_TEMPORARY_ACCESS_MESSAGE
+      : source === 'share'
+        ? SHARE_TEMPORARY_ACCESS_MESSAGE
+        : null
+  homeNotice.value = temporaryAccessMessage && !document.persisted ? temporaryAccessMessage : null
   if (shouldRemember) {
     rememberAndroidDocument(document)
   } else {
@@ -909,9 +965,38 @@ async function openAndroidDocumentResult(
     characters: document.markdown.length,
   })
   await openEditor(document.markdown)
-  status.value = source === 'open-with' && !document.persisted
+  status.value = temporaryAccessMessage && !document.persisted
     ? 'Opened temporarily'
     : getAndroidEditorStatus()
+  releaseEditorFocusAfterOpen()
+}
+
+async function openSharedTextDocument(document: SharedAndroidDocument) {
+  const draftDocument = createUntitledDocument({
+    markdown: document.markdown,
+    displayName: document.displayName,
+    autosaveTarget: 'local-draft',
+  })
+
+  persistLocalDrafts(
+    upsertLocalDraft(localDrafts.value, {
+      id: draftDocument.id,
+      markdown: draftDocument.markdown,
+      updatedAt: draftDocument.updatedAt,
+      lastSavedAt: draftDocument.lastSavedAt,
+    }),
+  )
+
+  homeNotice.value = null
+  promptLocalDraftSaveOnExit.value = true
+  currentAndroidDocumentCanWrite.value = false
+  documentState.value = draftDocument
+  androidDocumentLog.info('open Android shared text as local draft', {
+    displayName: document.displayName,
+    characters: document.markdown.length,
+  })
+  await openEditor(document.markdown)
+  status.value = SHARED_TEXT_IMPORTED_MESSAGE
   releaseEditorFocusAfterOpen()
 }
 
@@ -943,7 +1028,7 @@ async function preserveCurrentDocumentBeforeIncomingOpen() {
     return
   }
 
-  appLog.info('preserve current document before Android open-with')
+  appLog.info('preserve current document before incoming Android document')
 
   if (documentState.value.autosaveTarget === 'android-document') {
     syncDocumentFromEditor(documentState.value.isDirty)
@@ -975,6 +1060,37 @@ async function handleAndroidOpenWithDocumentEvent(event: AndroidOpenWithDocument
     source: 'open-with',
     remember: event.document.persisted,
   })
+}
+
+async function handleAndroidShareDocumentEvent(event: AndroidShareDocumentEvent) {
+  if (event.error) {
+    const message = getAndroidDocumentUserMessage(event.error)
+    homeNotice.value = message
+    status.value = message
+    androidDocumentLog.warn('Android shared document rejected', event.error)
+    return
+  }
+
+  await preserveCurrentDocumentBeforeIncomingOpen()
+  draftExitPromptOpen.value = false
+  androidExitPromptOpen.value = false
+  editorMenuOpen.value = false
+
+  if (event.document.sourceUri) {
+    await openAndroidDocumentResult(
+      {
+        ...event.document,
+        sourceUri: event.document.sourceUri,
+      },
+      {
+        source: 'share',
+        remember: event.document.persisted,
+      },
+    )
+    return
+  }
+
+  await openSharedTextDocument(event.document)
 }
 
 async function openDocument(id: string) {
@@ -1202,15 +1318,20 @@ function installAndroidDocumentIntentListeners() {
     return
   }
 
-  addAndroidOpenWithDocumentListener(event => {
-    void handleAndroidOpenWithDocumentEvent(event)
-  })
-    .then(handle => {
-      androidDocumentListenerHandles = [handle]
-      androidDocumentLog.info('Android open-with listener installed')
+  Promise.all([
+    addAndroidOpenWithDocumentListener(event => {
+      void handleAndroidOpenWithDocumentEvent(event)
+    }),
+    addAndroidShareDocumentListener(event => {
+      void handleAndroidShareDocumentEvent(event)
+    }),
+  ])
+    .then(handles => {
+      androidDocumentListenerHandles = handles
+      androidDocumentLog.info('Android document intent listeners installed')
     })
     .catch(error => {
-      androidDocumentLog.warn('Android open-with listener unavailable', error)
+      androidDocumentLog.warn('Android document intent listeners unavailable', error)
     })
 }
 
@@ -1342,6 +1463,16 @@ onBeforeUnmount(() => {
           ...
         </button>
         <div v-if="editorMenuOpen" class="editor-menu" role="menu">
+          <button
+            v-if="canShareCurrentDocument()"
+            type="button"
+            role="menuitem"
+            data-testid="share-document-button"
+            :disabled="sharingCurrentDocument || !editorReady"
+            @click="shareCurrentMarkdownDocument"
+          >
+            Share
+          </button>
           <button
             v-if="canSaveLocalDraftToAndroidDocument()"
             type="button"
