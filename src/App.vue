@@ -59,6 +59,8 @@ const TRANSIENT_ANDROID_DOCUMENT_MESSAGE =
   'Saved to device. Kept local draft because Android did not grant long-term access.'
 const ANDROID_RECOVERY_DRAFT_PREFIX = 'android-recovery:'
 const ANDROID_SAVE_RECOVERY_MESSAGE = 'Save failed. A local recovery draft was kept.'
+const MARKDOWN_FILE_EXTENSION_REGEXP = /\.(markdown|mdown|mkdn|mkd|md)$/i
+const MARKDOWN_COPY_SUFFIX_REGEXP = /\s+copy(?:\s+(\d+))?$/
 
 const editorPlugins = [
   InlineFormatToolbar,
@@ -79,6 +81,7 @@ const draftExitPromptOpen = ref(false)
 const editorMenuOpen = ref(false)
 const promptLocalDraftSaveOnExit = ref(false)
 const savingLocalDraftToAndroid = ref(false)
+const savingAndroidDocumentCopy = ref(false)
 
 let editor: Muya | null = null
 let lastContentLogAt = 0
@@ -171,6 +174,40 @@ function shouldPromptLocalDraftSaveToDevice() {
 
 function canSaveLocalDraftToAndroidDocument() {
   return isLocalDraftDocument() && isAndroidDocumentAccessAvailable()
+}
+
+function canSaveAndroidDocumentCopy() {
+  return documentState.value.autosaveTarget === 'android-document' && isAndroidDocumentAccessAvailable()
+}
+
+function canShowEditorActions() {
+  return canSaveLocalDraftToAndroidDocument() || canSaveAndroidDocumentCopy()
+}
+
+function getSuggestedMarkdownCopyFileName(
+  markdown: string,
+  displayName: string,
+  reservedNames: string[] = [],
+) {
+  const suggestedName = getSuggestedMarkdownFileName(markdown, displayName)
+  const extension = suggestedName.match(MARKDOWN_FILE_EXTENSION_REGEXP)?.[0] ?? '.md'
+  const baseName = suggestedName.slice(0, -extension.length) || 'Untitled'
+  const copySuffix = baseName.match(MARKDOWN_COPY_SUFFIX_REGEXP)
+  const copyBaseName = copySuffix
+    ? baseName.slice(0, copySuffix.index).trim() || 'Untitled'
+    : baseName
+  const firstCopyIndex = copySuffix ? Number(copySuffix[1] ?? '1') + 1 : 1
+  const normalizedReservedNames = new Set(reservedNames.map(name => name.toLocaleLowerCase()))
+
+  for (let index = firstCopyIndex; index < firstCopyIndex + 100; index += 1) {
+    const suffix = index === 1 ? 'copy' : `copy ${index}`
+    const candidate = `${copyBaseName} ${suffix}${extension}`
+    if (!normalizedReservedNames.has(candidate.toLocaleLowerCase())) {
+      return candidate
+    }
+  }
+
+  return `${copyBaseName} copy ${Date.now()}${extension}`
 }
 
 function registerMuyaPlugins() {
@@ -564,6 +601,93 @@ async function saveLocalDraftToAndroidDocument(options: { returnHomeAfterSave?: 
     return false
   } finally {
     savingLocalDraftToAndroid.value = false
+  }
+}
+
+async function saveAndroidDocumentCopy() {
+  editorMenuOpen.value = false
+
+  if (!editor || !canSaveAndroidDocumentCopy() || savingAndroidDocumentCopy.value) {
+    return false
+  }
+
+  const originalSourceUri = documentState.value.sourceUri
+  const copySourceDocument = syncDocumentFromEditor(documentState.value.isDirty)
+  const markdownForSave = prepareMarkdownForSave(copySourceDocument.markdown, copySourceDocument)
+  const suggestedName = getSuggestedMarkdownCopyFileName(
+    copySourceDocument.markdown,
+    copySourceDocument.displayName,
+    androidRecentDocuments.value.map(document => document.displayName),
+  )
+
+  savingAndroidDocumentCopy.value = true
+  status.value = 'Choose a location'
+
+  try {
+    const document = await createAndroidMarkdownDocument(markdownForSave, suggestedName)
+    if (document.canceled) {
+      status.value = getAndroidEditorStatus()
+      androidDocumentLog.info('Android document save copy canceled', {
+        sourceUri: originalSourceUri,
+      })
+      return false
+    }
+
+    const savedAt = new Date().toISOString()
+    const createdDocument = {
+      ...document,
+      markdown: copySourceDocument.markdown,
+    }
+
+    if (!document.persisted) {
+      if (originalSourceUri && copySourceDocument.isDirty) {
+        persistAndroidRecoveryDraft(originalSourceUri, copySourceDocument.markdown)
+      }
+      status.value = TRANSIENT_ANDROID_DOCUMENT_MESSAGE
+      androidDocumentLog.warn('saved Android document copy without persisted access', {
+        originalSourceUri,
+        displayName: document.displayName,
+        sourceUri: document.sourceUri,
+        characters: copySourceDocument.markdown.length,
+      })
+      return false
+    }
+
+    if (originalSourceUri) {
+      removeAndroidRecoveryDraft(originalSourceUri)
+    }
+    rememberAndroidDocument(createdDocument)
+    currentAndroidDocumentCanWrite.value = document.canWrite
+    promptLocalDraftSaveOnExit.value = false
+    documentState.value = markDocumentSaved(
+      {
+        ...createDocumentFromAndroidDocument(createdDocument),
+        updatedAt: savedAt,
+        lastSavedAt: savedAt,
+      },
+      { autosaveTarget: 'android-document', now: savedAt },
+    )
+    status.value = getAndroidEditorStatus()
+    androidDocumentLog.info('Android document saved as copy', {
+      originalSourceUri,
+      displayName: document.displayName,
+      sourceUri: document.sourceUri,
+      characters: copySourceDocument.markdown.length,
+    })
+    return true
+  } catch (error) {
+    if (originalSourceUri && copySourceDocument.isDirty) {
+      persistAndroidRecoveryDraft(originalSourceUri, copySourceDocument.markdown)
+    }
+    documentState.value = markDocumentSaveFailed(documentState.value, error)
+    status.value = getAndroidDocumentUserMessage(error)
+    androidDocumentLog.error('Android document save copy failed', {
+      originalSourceUri,
+      error,
+    })
+    return false
+  } finally {
+    savingAndroidDocumentCopy.value = false
   }
 }
 
@@ -1036,7 +1160,7 @@ onBeforeUnmount(() => {
         <h1>{{ documentTitle }}</h1>
         <p>{{ status }}</p>
       </div>
-      <div v-if="canSaveLocalDraftToAndroidDocument()" class="editor-actions">
+      <div v-if="canShowEditorActions()" class="editor-actions">
         <button
           class="menu-button"
           type="button"
@@ -1049,6 +1173,7 @@ onBeforeUnmount(() => {
         </button>
         <div v-if="editorMenuOpen" class="editor-menu" role="menu">
           <button
+            v-if="canSaveLocalDraftToAndroidDocument()"
             type="button"
             role="menuitem"
             data-testid="save-to-device-button"
@@ -1056,6 +1181,16 @@ onBeforeUnmount(() => {
             @click="() => saveLocalDraftToAndroidDocument()"
           >
             Save to device
+          </button>
+          <button
+            v-if="canSaveAndroidDocumentCopy()"
+            type="button"
+            role="menuitem"
+            data-testid="save-copy-button"
+            :disabled="savingAndroidDocumentCopy"
+            @click="saveAndroidDocumentCopy"
+          >
+            Save a copy
           </button>
         </div>
       </div>
