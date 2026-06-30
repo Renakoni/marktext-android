@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.Set;
 
 @CapacitorPlugin(name = "AndroidDocuments")
 public class AndroidDocumentsPlugin extends Plugin {
@@ -33,6 +34,13 @@ public class AndroidDocumentsPlugin extends Plugin {
     private static final int MAX_MARKDOWN_BYTES = 5 * 1024 * 1024;
     private static final String CALLBACK_OPEN_MARKDOWN_DOCUMENT = "openMarkdownDocumentResult";
     private static final String CALLBACK_CREATE_MARKDOWN_DOCUMENT = "createMarkdownDocumentResult";
+    private static final String EVENT_OPEN_WITH_DOCUMENT = "openWithDocument";
+
+    @Override
+    protected void handleOnNewIntent(Intent intent) {
+        super.handleOnNewIntent(intent);
+        handleOpenWithIntent(intent);
+    }
 
     @PluginMethod
     public void openMarkdownDocument(PluginCall call) {
@@ -165,6 +173,56 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
     }
 
+    private void handleOpenWithIntent(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) {
+            return;
+        }
+
+        Uri uri = intent.getData();
+        if (uri == null) {
+            notifyOpenWithRejected("DOCUMENT_URI_MISSING", "Android open-with intent returned no URI");
+            return;
+        }
+
+        if (!hasOnlyAllowedViewCategories(intent)) {
+            Log.w(TAG, "Rejected Android open-with intent with unsupported categories");
+            notifyOpenWithRejected("INVALID_OPEN_WITH_INTENT", "This Android open-with request is not supported");
+            return;
+        }
+
+        if (!"content".equals(uri.getScheme())) {
+            Log.w(TAG, "Rejected Android open-with URI with unsupported scheme: " + safeForLog(uri.getScheme()));
+            notifyOpenWithRejected("INVALID_SOURCE_URI", "A valid content URI is required");
+            return;
+        }
+
+        try {
+            JSObject document = buildOpenWithDocumentResult(uri, intent);
+            if ((intent.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
+                persistUriPermission(uri, intent);
+            }
+            document.put("persisted", hasPersistedReadPermission(uri));
+            document.put("canWrite", canWrite(uri, intent));
+            JSObject event = new JSObject();
+            event.put("document", document);
+            event.put("source", "open-with");
+            Log.i(TAG, "Received Android open-with Markdown document: " + safeForLog(document.getString("displayName")));
+            notifyListeners(EVENT_OPEN_WITH_DOCUMENT, event, true);
+        } catch (DocumentReadException ex) {
+            Log.w(TAG, "Android open-with document rejected: " + ex.getMessage());
+            notifyOpenWithRejected(ex.code, ex.getMessage());
+        } catch (FileNotFoundException ex) {
+            Log.w(TAG, "Android open-with document no longer exists", ex);
+            notifyOpenWithRejected("DOCUMENT_NOT_FOUND", "This Android document was moved or deleted");
+        } catch (SecurityException ex) {
+            Log.w(TAG, "Android open-with document permission is not available", ex);
+            notifyOpenWithRejected("DOCUMENT_PERMISSION_LOST", "Android document permission is no longer available");
+        } catch (IOException ex) {
+            Log.e(TAG, "Failed to open Android open-with document", ex);
+            notifyOpenWithRejected("DOCUMENT_READ_FAILED", "Failed to read Android document");
+        }
+    }
+
     @ActivityCallback
     private void createMarkdownDocumentResult(PluginCall call, ActivityResult result) {
         if (call == null) {
@@ -278,6 +336,30 @@ public class AndroidDocumentsPlugin extends Plugin {
         return result;
     }
 
+    private JSObject buildOpenWithDocumentResult(Uri uri, Intent grantIntent) throws IOException, DocumentReadException {
+        String displayName = getDisplayName(uri);
+        String mimeType = getMimeType(uri, grantIntent);
+        if (!isOpenWithMarkdownCandidate(uri, displayName, mimeType)) {
+            throw new DocumentReadException(
+                "UNSUPPORTED_OPEN_WITH_DOCUMENT",
+                "Open a Markdown document"
+            );
+        }
+
+        String markdown = readText(uri);
+        JSObject result = new JSObject();
+        result.put("canceled", false);
+        result.put("sourceUri", uri.toString());
+        result.put("displayName", displayName);
+        result.put("providerName", getProviderName(uri));
+        result.put("pathHint", displayName);
+        result.put("mimeType", mimeType);
+        result.put("markdown", markdown);
+        result.put("canWrite", canWrite(uri, grantIntent));
+        result.put("persisted", hasPersistedReadPermission(uri));
+        return result;
+    }
+
     private JSObject createDocumentResult(Uri uri, Intent grantIntent, String markdown) throws IOException, DocumentReadException {
         byte[] bytes = validateMarkdownBytes(markdown);
         writeText(uri, bytes);
@@ -365,6 +447,10 @@ public class AndroidDocumentsPlugin extends Plugin {
     }
 
     private void persistUriPermission(Uri uri, Intent data) {
+        if (data == null) {
+            return;
+        }
+
         int grantFlags = data.getFlags() &
             (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         if (grantFlags == 0) {
@@ -450,6 +536,21 @@ public class AndroidDocumentsPlugin extends Plugin {
         return type == null ? "" : type.toLowerCase(Locale.US);
     }
 
+    private String getMimeType(Uri uri, Intent grantIntent) {
+        String resolverType = getMimeType(uri);
+        String intentType = grantIntent == null ? null : grantIntent.getType();
+        String normalizedIntentType = intentType == null ? "" : intentType.toLowerCase(Locale.US);
+        if (isMarkdownMimeType(normalizedIntentType)) {
+            return normalizedIntentType;
+        }
+
+        if (resolverType.length() > 0) {
+            return resolverType;
+        }
+
+        return normalizedIntentType;
+    }
+
     private String getProviderName(Uri uri) {
         String authority = uri.getAuthority();
         if (authority == null || authority.length() == 0) {
@@ -468,23 +569,67 @@ public class AndroidDocumentsPlugin extends Plugin {
     }
 
     private boolean isMarkdownCandidate(String displayName, String mimeType) {
-        String lowerName = displayName == null ? "" : displayName.toLowerCase(Locale.US);
-        boolean markdownExtension =
-            lowerName.endsWith(".md") ||
-            lowerName.endsWith(".markdown") ||
-            lowerName.endsWith(".mdown") ||
-            lowerName.endsWith(".mkdn") ||
-            lowerName.endsWith(".mkd");
-
-        if (markdownExtension) {
+        if (hasMarkdownExtension(displayName)) {
             return true;
         }
 
         return (
-            "text/markdown".equals(mimeType) ||
-            "text/x-markdown".equals(mimeType) ||
+            isMarkdownMimeType(mimeType) ||
             "text/plain".equals(mimeType)
         );
+    }
+
+    private boolean isOpenWithMarkdownCandidate(Uri uri, String displayName, String mimeType) {
+        return (
+            hasMarkdownExtension(displayName) ||
+            hasMarkdownExtension(uri.getLastPathSegment()) ||
+            isMarkdownMimeType(mimeType)
+        );
+    }
+
+    private boolean hasMarkdownExtension(String value) {
+        String lowerName = value == null ? "" : value.toLowerCase(Locale.US);
+        return (
+            lowerName.endsWith(".md") ||
+            lowerName.endsWith(".markdown") ||
+            lowerName.endsWith(".mdown") ||
+            lowerName.endsWith(".mkdn") ||
+            lowerName.endsWith(".mkd")
+        );
+    }
+
+    private boolean isMarkdownMimeType(String mimeType) {
+        return (
+            "text/markdown".equals(mimeType) ||
+            "text/x-markdown".equals(mimeType) ||
+            "text/vnd.daringfireball.markdown".equals(mimeType)
+        );
+    }
+
+    private boolean hasOnlyAllowedViewCategories(Intent intent) {
+        Set<String> categories = intent.getCategories();
+        if (categories == null) {
+            return true;
+        }
+
+        for (String category : categories) {
+            if (
+                !Intent.CATEGORY_DEFAULT.equals(category) &&
+                !Intent.CATEGORY_BROWSABLE.equals(category) &&
+                !Intent.CATEGORY_OPENABLE.equals(category)
+            ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void notifyOpenWithRejected(String code, String message) {
+        JSObject event = new JSObject();
+        event.put("source", "open-with");
+        event.put("errorCode", code);
+        event.put("message", message);
+        notifyListeners(EVENT_OPEN_WITH_DOCUMENT, event, true);
     }
 
     private boolean canWrite(Uri uri, Intent grantIntent) {

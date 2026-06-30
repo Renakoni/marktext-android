@@ -12,6 +12,7 @@ import {
 } from '@muyajs/core'
 import DocumentHome from './components/DocumentHome.vue'
 import {
+  addAndroidOpenWithDocumentListener,
   createAndroidMarkdownDocument,
   getAndroidDocumentErrorCode,
   getAndroidDocumentUserMessage,
@@ -19,6 +20,7 @@ import {
   openAndroidMarkdownDocument,
   readAndroidMarkdownDocument,
   writeAndroidMarkdownDocument,
+  type AndroidOpenWithDocumentEvent,
   type OpenedAndroidDocument,
 } from './lib/androidDocuments'
 import {
@@ -57,6 +59,8 @@ const DRAFT_SAVE_DELAY_MS = 800
 const ANDROID_DOCUMENT_SAVE_DELAY_MS = 1200
 const TRANSIENT_ANDROID_DOCUMENT_MESSAGE =
   'Saved to device. Kept local draft because Android did not grant long-term access.'
+const OPEN_WITH_TEMPORARY_ACCESS_MESSAGE =
+  'Opened with temporary Android access. Save a copy to keep editing later.'
 const ANDROID_RECOVERY_DRAFT_PREFIX = 'android-recovery:'
 const ANDROID_SAVE_RECOVERY_MESSAGE = 'Save failed. A local recovery draft was kept.'
 const MARKDOWN_FILE_EXTENSION_REGEXP = /\.(markdown|mdown|mkdn|mkd|md)$/i
@@ -90,6 +94,7 @@ let androidSaveTimer: number | null = null
 let androidSaveInFlight = false
 let androidSaveRequestedAfterCurrent = false
 let appLifecycleListenerHandles: PluginListenerHandle[] = []
+let androidDocumentListenerHandles: PluginListenerHandle[] = []
 let browserLifecycleListenersInstalled = false
 
 const appLog = createLogger('app')
@@ -811,7 +816,13 @@ function releaseEditorFocusAfterOpen() {
 }
 
 async function openEditor(markdown: string) {
+  const wasEditorOpen = currentScreen.value === 'editor'
   destroyEditor()
+  if (wasEditorOpen) {
+    currentScreen.value = 'home'
+    await nextTick()
+  }
+
   currentScreen.value = 'editor'
   await nextTick()
   initEditor(markdown)
@@ -830,9 +841,23 @@ function rememberAndroidDocument(document: OpenedAndroidDocument) {
   persistAndroidRecentDocuments(upsertRecentDocument(androidRecentDocuments.value, recentDocument))
 }
 
-async function openAndroidDocumentResult(document: OpenedAndroidDocument) {
-  homeNotice.value = null
-  rememberAndroidDocument(document)
+async function openAndroidDocumentResult(
+  document: OpenedAndroidDocument,
+  options: { source?: 'picker' | 'recent' | 'open-with'; remember?: boolean } = {},
+) {
+  const source = options.source ?? 'picker'
+  const shouldRemember = options.remember ?? true
+  homeNotice.value =
+    source === 'open-with' && !document.persisted ? OPEN_WITH_TEMPORARY_ACCESS_MESSAGE : null
+  if (shouldRemember) {
+    rememberAndroidDocument(document)
+  } else {
+    androidDocumentLog.warn('opened Android document without durable recent access', {
+      displayName: document.displayName,
+      sourceUri: document.sourceUri,
+      source,
+    })
+  }
   promptLocalDraftSaveOnExit.value = false
   currentAndroidDocumentCanWrite.value = document.canWrite
   documentState.value = createDocumentFromAndroidDocument(document)
@@ -841,10 +866,13 @@ async function openAndroidDocumentResult(document: OpenedAndroidDocument) {
     sourceUri: document.sourceUri,
     canWrite: document.canWrite,
     persisted: document.persisted,
+    source,
     characters: document.markdown.length,
   })
   await openEditor(document.markdown)
-  status.value = getAndroidEditorStatus()
+  status.value = source === 'open-with' && !document.persisted
+    ? 'Opened temporarily'
+    : getAndroidEditorStatus()
   releaseEditorFocusAfterOpen()
 }
 
@@ -869,6 +897,44 @@ async function openFileFromAndroid() {
       androidDocumentLog.error('Android document picker failed', error)
     }
   }
+}
+
+async function preserveCurrentDocumentBeforeIncomingOpen() {
+  if (currentScreen.value !== 'editor' || !editor) {
+    return
+  }
+
+  appLog.info('preserve current document before Android open-with')
+
+  if (documentState.value.autosaveTarget === 'android-document') {
+    syncDocumentFromEditor(documentState.value.isDirty)
+    const sourceUri = documentState.value.sourceUri
+    const saved = await saveAndroidDocument()
+    if (!saved && sourceUri && documentState.value.markdown.trim()) {
+      persistAndroidRecoveryDraft(sourceUri, documentState.value.markdown)
+    }
+    return
+  }
+
+  saveDraft()
+}
+
+async function handleAndroidOpenWithDocumentEvent(event: AndroidOpenWithDocumentEvent) {
+  if (event.error) {
+    const message = getAndroidDocumentUserMessage(event.error)
+    homeNotice.value = message
+    status.value = message
+    androidDocumentLog.warn('Android open-with document rejected', event.error)
+    return
+  }
+
+  await preserveCurrentDocumentBeforeIncomingOpen()
+  draftExitPromptOpen.value = false
+  editorMenuOpen.value = false
+  await openAndroidDocumentResult(event.document, {
+    source: 'open-with',
+    remember: event.document.persisted,
+  })
 }
 
 async function openDocument(id: string) {
@@ -1054,6 +1120,23 @@ function installAppLifecycleListeners() {
     })
 }
 
+function installAndroidDocumentIntentListeners() {
+  if (!isAndroidDocumentAccessAvailable()) {
+    return
+  }
+
+  addAndroidOpenWithDocumentListener(event => {
+    void handleAndroidOpenWithDocumentEvent(event)
+  })
+    .then(handle => {
+      androidDocumentListenerHandles = [handle]
+      androidDocumentLog.info('Android open-with listener installed')
+    })
+    .catch(error => {
+      androidDocumentLog.warn('Android open-with listener unavailable', error)
+    })
+}
+
 function removeAppLifecycleListeners() {
   if (browserLifecycleListenersInstalled) {
     browserLifecycleListenersInstalled = false
@@ -1064,6 +1147,12 @@ function removeAppLifecycleListeners() {
   const handles = appLifecycleListenerHandles
   appLifecycleListenerHandles = []
   for (const handle of handles) {
+    void handle.remove()
+  }
+
+  const documentHandles = androidDocumentListenerHandles
+  androidDocumentListenerHandles = []
+  for (const handle of documentHandles) {
     void handle.remove()
   }
 }
@@ -1118,6 +1207,8 @@ onMounted(() => {
     restoredAndroidDocuments: androidRecentDocuments.value.length,
     characters: characterCount.value,
   })
+
+  installAndroidDocumentIntentListeners()
 
   getNativeLogInfo().then(info => {
     if (info) {
