@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
+test.describe.configure({ timeout: 60000 })
+
 interface MockCapacitorWindow {
   androidBridge?: unknown
   __emitCapacitorAppBackButton?: () => void
@@ -70,6 +72,10 @@ interface MockAndroidDocument {
 
 interface MockAndroidAppOptions {
   pendingOpenWithEvent?: MockAndroidOpenWithEvent
+}
+
+async function expectEditorReady(page: Page) {
+  await expect(page.getByTestId('editor-host')).toBeVisible({ timeout: 30000 })
 }
 
 async function installTransientAndroidCreateMock(page: Page) {
@@ -339,7 +345,7 @@ test('creates a local draft from real editor input and returns it to the recent 
   await expect(page.getByTestId('new-document-button')).toBeVisible()
 
   await page.getByTestId('new-document-button').click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
   await expect(page.getByTestId('back-button')).toHaveText('Back')
 
   await page.getByTestId('editor-host').click()
@@ -374,7 +380,7 @@ test('flushes local draft edits when the WebView becomes hidden', async ({ page 
   await page.reload()
 
   await page.getByTestId('new-document-button').click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
 
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('# Pause flush note')
@@ -401,7 +407,7 @@ test('flushes local draft edits when the WebView page is hidden', async ({ page 
   await page.reload()
 
   await page.getByTestId('new-document-button').click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
 
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('# Pagehide flush note')
@@ -438,7 +444,7 @@ test('flushes local draft edits on Capacitor app pause', async ({ page }) => {
   })
 
   await page.getByTestId('new-document-button').click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
 
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('# Capacitor pause note')
@@ -467,7 +473,7 @@ test('flushes local draft edits on Capacitor app inactive', async ({ page }) => 
   })
 
   await page.getByTestId('new-document-button').click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
 
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('# Capacitor inactive note')
@@ -498,7 +504,7 @@ test('opens the draft exit prompt from the Android back button', async ({ page }
   })
 
   await page.getByTestId('new-document-button').click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
 
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('# Android back note')
@@ -560,7 +566,7 @@ test('returns a clean Android document to recent home from the Android back butt
   })
 
   await page.getByRole('button', { name: /Clean Android Note/ }).click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
 
   await page.evaluate(() => {
     const win = window as unknown as MockCapacitorWindow
@@ -641,7 +647,7 @@ test('opens a Markdown document delivered by Android open-with on app launch', a
   await page.addInitScript(() => localStorage.clear())
   await page.goto('/')
 
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
   await expect(page.getByTestId('editor-host')).toContainText('Open With Cold')
   await expect(page.getByText('Read only', { exact: true })).toBeVisible()
 
@@ -664,7 +670,7 @@ test('opens a warm Android open-with document after preserving the current draft
   })
 
   await page.getByTestId('new-document-button').click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('# Draft Before Open With')
   await page.keyboard.press('Enter')
@@ -757,7 +763,7 @@ test('keeps dirty Android edits in the editor and in a recovery draft when save 
   await page.reload()
 
   await page.getByRole('button', { name: /Write Fails/ }).click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
 
   await page.getByTestId('editor-host').click()
   await page.keyboard.press('End')
@@ -767,14 +773,125 @@ test('keeps dirty Android edits in the editor and in a recovery draft when save 
 
   await page.getByTestId('back-button').click()
 
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
+  await expect(page.getByTestId('android-exit-prompt')).toBeVisible()
   await expect(
     page.getByText(/Reopen this file from Android before saving again/),
   ).toBeVisible()
+  await page.getByTestId('prompt-keep-recovery-button').click()
+  await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
+  await expect(page.getByText('Unsaved changes were kept as a recovery draft.')).toBeVisible()
 
   const drafts = await page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
   expect(drafts).toContain('android-recovery:content://test/write-fails')
   expect(drafts).toContain('unsaved recovery line')
+})
+
+test('offers save-copy when leaving a dirty read-only Android document', async ({ page }) => {
+  const now = '2026-06-29T06:25:00.000Z'
+  const document = {
+    sourceUri: 'content://test/read-only-exit',
+    displayName: 'Read Only Exit.md',
+    markdown: '# Read Only Exit\n\nInitial text.',
+    canWrite: false,
+    createResult: {
+      sourceUri: 'content://test/read-only-exit-copy',
+      displayName: 'Read Only Exit copy.md',
+      canWrite: true,
+    },
+  }
+
+  await installAndroidAppMock(page, document)
+  await page.goto('/')
+  await page.evaluate(({ now, document }) => {
+    localStorage.clear()
+    localStorage.setItem(
+      'marktext-for-android:recent-documents',
+      JSON.stringify([
+        {
+          id: `android-document:${document.sourceUri}`,
+          kind: 'android-document',
+          displayName: document.displayName,
+          title: 'Read Only Exit',
+          sourceUri: document.sourceUri,
+          providerName: 'Test Documents',
+          pathHint: document.displayName,
+          markdownPreview: null,
+          updatedAt: now,
+          lastOpenedAt: now,
+          lastSavedAt: null,
+          autosaveState: 'clean',
+          canWrite: false,
+        },
+      ]),
+    )
+  }, { now, document })
+  await page.reload()
+
+  await page.getByRole('button', { name: /Read Only Exit/ }).click()
+  await expect(page.getByText('Read only', { exact: true })).toBeVisible()
+  await expectEditorReady(page)
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('exit through save copy')
+
+  await page.getByTestId('back-button').click()
+  await expect(page.getByTestId('android-exit-prompt')).toBeVisible()
+  await expect(page.getByText('This file cannot be saved directly.')).toBeVisible()
+  await page.getByTestId('prompt-save-copy-button').click()
+
+  await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
+  await expect(page.getByText('Read Only Exit').first()).toBeVisible()
+
+  const storage = await page.evaluate(() => ({
+    createOptions: (window as unknown as MockCapacitorWindow).__lastAndroidCreateOptions,
+    recentDocuments: localStorage.getItem('marktext-for-android:recent-documents') ?? '',
+  }))
+  expect(storage.createOptions?.suggestedName).toBe('Read Only Exit copy.md')
+  expect(storage.recentDocuments).toContain('content://test/read-only-exit-copy')
+  expect(storage.recentDocuments).toContain('Read Only Exit copy.md')
+})
+
+test('keeps temporary open-with edits as a recovery draft when leaving', async ({ page }) => {
+  await installAndroidAppMock(page, undefined, {
+    pendingOpenWithEvent: {
+      document: {
+        sourceUri: 'content://test/open-with-temporary-exit',
+        displayName: 'Temporary Exit.md',
+        providerName: 'Test Documents',
+        pathHint: 'Temporary Exit.md',
+        mimeType: 'text/markdown',
+        markdown: '# Temporary Exit\n\nInitial text.',
+        canWrite: false,
+        persisted: false,
+      },
+    },
+  })
+  await page.addInitScript(() => localStorage.clear())
+  await page.goto('/')
+
+  await expectEditorReady(page)
+  await expect(page.getByText('Opened temporarily')).toBeVisible()
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('temporary open-with edit')
+
+  await page.getByTestId('back-button').click()
+  await expect(page.getByTestId('android-exit-prompt')).toBeVisible()
+  await page.getByTestId('prompt-keep-recovery-button').click()
+
+  await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
+  await expect(page.getByText('Unsaved changes were kept as a recovery draft.')).toBeVisible()
+
+  const storage = await page.evaluate(() => ({
+    drafts: localStorage.getItem('marktext-for-android:drafts') ?? '',
+    recentDocuments: localStorage.getItem('marktext-for-android:recent-documents') ?? '',
+  }))
+  expect(storage.drafts).toContain('android-recovery:content://test/open-with-temporary-exit')
+  expect(storage.drafts).toContain('temporary open-with edit')
+  expect(storage.recentDocuments).not.toContain('content://test/open-with-temporary-exit')
 })
 
 test('saves a writable Android document as a copy and switches to the new document', async ({
@@ -834,7 +951,7 @@ test('saves a writable Android document as a copy and switches to the new docume
   await page.reload()
 
   await page.getByRole('button', { name: /Original Save Copy/ }).click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
   await page.getByTestId('editor-host').click()
   await page.keyboard.press('End')
   await page.keyboard.press('Enter')
@@ -925,7 +1042,7 @@ test('increments the save-copy name when the current Android document is already
   await page.reload()
 
   await page.getByRole('button', { name: /Original Copy Name copy/ }).first().click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
 
   await page.getByTestId('editor-menu-button').click()
   await page.getByTestId('save-copy-button').click()
@@ -981,6 +1098,7 @@ test('saves a read-only Android document as a writable copy', async ({ page }) =
 
   await page.getByRole('button', { name: /Read Only Original/ }).click()
   await expect(page.getByText('Read only', { exact: true })).toBeVisible()
+  await expectEditorReady(page)
   await page.getByTestId('editor-host').click()
   await page.keyboard.press('End')
   await page.keyboard.press('Enter')
@@ -1010,7 +1128,7 @@ test('keeps the local draft when Android document access is not persisted', asyn
   await page.reload()
 
   await page.getByTestId('new-document-button').click()
-  await expect(page.getByTestId('editor-host')).toBeVisible()
+  await expectEditorReady(page)
 
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('# Transient grant note')

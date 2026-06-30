@@ -25,6 +25,12 @@ interface NativeLoggerPlugin {
   getInfo(): Promise<NativeLogInfo>
 }
 
+interface CapacitorWindow {
+  Capacitor?: {
+    PluginHeaders?: Array<{ name: string }>
+  }
+}
+
 const NativeLogger = registerPlugin<NativeLoggerPlugin>('NativeLogger')
 
 const STORAGE_KEY = 'marktext-for-android:debug-logs:v2'
@@ -33,9 +39,22 @@ const MAX_CONTEXT_LENGTH = 2400
 const REDACTED_CONTEXT_KEYS = new Set(['blocks', 'content', 'doc', 'markdown', 'prevdoc', 'text'])
 const sessionId = createSessionId()
 const platform = Capacitor.getPlatform()
+const nativeLoggingSupported = platform === 'android' && Capacitor.isNativePlatform()
 
 let globalLoggingInstalled = false
 let nativeLoggingUnavailable = false
+
+function hasNativeLoggerPlugin() {
+  const capacitor = (window as unknown as CapacitorWindow).Capacitor
+  return (
+    Array.isArray(capacitor?.PluginHeaders) &&
+    capacitor.PluginHeaders.some(header => header.name === 'NativeLogger')
+  )
+}
+
+export function isNativeLoggerAvailable() {
+  return nativeLoggingSupported && hasNativeLoggerPlugin()
+}
 
 function createSessionId() {
   const random = Math.random().toString(36).slice(2, 8)
@@ -158,6 +177,10 @@ function writeConsole(entry: NativeLogEntry) {
 }
 
 function writeNative(entry: NativeLogEntry) {
+  if (!isNativeLoggerAvailable()) {
+    return
+  }
+
   if (nativeLoggingUnavailable) {
     return
   }
@@ -265,6 +288,10 @@ export function downloadLocalLogs() {
 export async function clearLogs() {
   localStorage.removeItem(STORAGE_KEY)
   nativeLoggingUnavailable = false
+  if (!isNativeLoggerAvailable()) {
+    return
+  }
+
   try {
     await NativeLogger.clear()
   } catch {
@@ -273,6 +300,10 @@ export async function clearLogs() {
 }
 
 export async function getNativeLogInfo() {
+  if (!isNativeLoggerAvailable()) {
+    return null
+  }
+
   try {
     return await NativeLogger.getInfo()
   } catch {
