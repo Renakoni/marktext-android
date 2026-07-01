@@ -250,7 +250,6 @@ function getSuggestedMarkdownCopyFileName(
 
 async function loadMuyaCore() {
   if (!muyaCore) {
-    await import('@muyajs/core/lib/core.css')
     muyaCore = await import('@muyajs/core')
   }
 

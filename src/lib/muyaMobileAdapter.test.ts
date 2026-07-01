@@ -2,61 +2,48 @@ import { describe, expect, it } from 'vitest'
 import { createMuyaMobileEditorCommandTarget } from './muyaMobileAdapter'
 
 describe('muyaMobileAdapter', () => {
-  it('uses upstream Muya command methods when they are available', () => {
+  it('uses upstream Muya public command methods', () => {
     const calls: string[] = []
-    const target = createMuyaMobileEditorCommandTarget({
+    const editor = {
+      undo: () => {
+        calls.push('undo')
+      },
+      redo: () => {
+        calls.push('redo')
+      },
       format: (type: string) => {
         calls.push(`format:${type}`)
       },
       updateParagraph: (type: string) => {
         calls.push(`paragraph:${type}`)
       },
-    })
+    }
+    const target = createMuyaMobileEditorCommandTarget(editor)
 
+    target.undo()
+    target.redo()
     target.format('strong')
     target.updateParagraph('heading 1')
 
-    expect(calls).toEqual(['format:strong', 'paragraph:heading 1'])
+    expect(calls).toEqual(['undo', 'redo', 'format:strong', 'paragraph:heading 1'])
   })
 
-  it('falls back to legacy active content block formatting', () => {
-    const calls: string[] = []
-    const target = createMuyaMobileEditorCommandTarget({
-      editor: {
-        activeContentBlock: {
-          format: (type: string) => {
-            calls.push(`format:${type}`)
-          },
-        },
+  it('preserves the upstream Muya instance as command context', () => {
+    const editor = {
+      format(this: { marker: string }, type: string) {
+        return `${this.marker}:${type}`
       },
-    })
-
-    expect(target.format('em')).toBe(true)
-    expect(calls).toEqual(['format:em'])
-  })
-
-  it('keeps the cursor inside a legacy block before converting it', () => {
-    const calls: string[] = []
-    const block = {
-      text: 'Mobile heading',
-      getCursor: () => null,
-      setCursor: (begin: number, end: number, needUpdate?: boolean) => {
-        calls.push(`cursor:${begin}:${end}:${String(needUpdate)}`)
-      },
-      _convertToAtxHeading: (marker: string) => {
-        calls.push(`heading:${marker}:${block.text}`)
-      },
+      marker: 'muya',
     }
-    const target = createMuyaMobileEditorCommandTarget({
-      editor: {
-        activeContentBlock: block,
-      },
-    })
+    const target = createMuyaMobileEditorCommandTarget(editor)
 
-    expect(target.updateParagraph('heading 2')).toBe(true)
-    expect(calls).toEqual([
-      'cursor:14:14:true',
-      'heading:##:## Mobile heading',
-    ])
+    expect(target.format('strong')).toBe('muya:strong')
+  })
+
+  it('reports missing upstream command methods as unsupported', () => {
+    const target = createMuyaMobileEditorCommandTarget({})
+
+    expect(target.format('em')).toBe(false)
+    expect(target.updateParagraph('heading 2')).toBe(false)
   })
 })
