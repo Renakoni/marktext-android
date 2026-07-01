@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { App } from '@capacitor/app'
 import type { PluginListenerHandle } from '@capacitor/core'
 import DocumentHome from './components/DocumentHome.vue'
+import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import {
   addAndroidOpenWithDocumentListener,
   addAndroidShareDocumentListener,
@@ -37,6 +38,12 @@ import {
 } from './lib/localDrafts'
 import { createLogger, getNativeLogInfo, isNativeLoggerAvailable } from './lib/logger'
 import {
+  runMobileEditorCommand,
+  type MobileCommandId,
+  type MobileEditorCommandTarget,
+} from './lib/mobileCommands'
+import { createMuyaMobileEditorCommandTarget } from './lib/muyaMobileAdapter'
+import {
   createRecentDocumentFromAndroidDocument,
   createRecentDocumentFromLocalDraft,
   getRecentDocumentListItems,
@@ -69,6 +76,7 @@ const MARKDOWN_COPY_SUFFIX_REGEXP = /\s+copy(?:\s+(\d+))?$/
 
 type MuyaCoreModule = typeof import('@muyajs/core')
 type MuyaEditor = InstanceType<MuyaCoreModule['Muya']>
+type MobileEditorToolbarPanel = 'format' | 'block' | 'list'
 
 const editorElement = ref<HTMLElement | null>(null)
 const documentState = ref(createUntitledDocument())
@@ -82,6 +90,8 @@ const editorReady = ref(false)
 const draftExitPromptOpen = ref(false)
 const androidExitPromptOpen = ref(false)
 const editorMenuOpen = ref(false)
+const editorToolbarExpanded = ref(false)
+const editorToolbarPanel = ref<MobileEditorToolbarPanel>('format')
 const promptLocalDraftSaveOnExit = ref(false)
 const savingLocalDraftToAndroid = ref(false)
 const savingAndroidDocumentCopy = ref(false)
@@ -240,7 +250,6 @@ function getSuggestedMarkdownCopyFileName(
 
 async function loadMuyaCore() {
   if (!muyaCore) {
-    await import('@muyajs/core/lib/core.css')
     muyaCore = await import('@muyajs/core')
   }
 
@@ -330,6 +339,56 @@ function syncMarkdown(nextStatus: unknown = 'Edited') {
   if (markDirty && documentState.value.autosaveTarget === 'local-draft') {
     scheduleDraftSave()
   }
+}
+
+function getEditorCommandTarget(): MobileEditorCommandTarget | null {
+  if (!editor) {
+    return null
+  }
+
+  return createMuyaMobileEditorCommandTarget(editor)
+}
+
+function syncAfterToolbarCommand(beforeMarkdown: string) {
+  window.requestAnimationFrame(() => {
+    if (!editor) {
+      return
+    }
+
+    const nextMarkdown = normalizeEditorMarkdown(editor.getMarkdown())
+    if (nextMarkdown !== normalizeEditorMarkdown(beforeMarkdown)) {
+      syncMarkdown('Edited')
+      return
+    }
+
+    syncDocumentFromEditor(documentState.value.isDirty)
+  })
+}
+
+function runEditorToolbarCommand(commandId: MobileCommandId) {
+  if (!editorReady.value || !editor) {
+    editorLog.warn('mobile toolbar command skipped because editor is not ready', { commandId })
+    return
+  }
+
+  const target = getEditorCommandTarget()
+  const beforeMarkdown = editor.getMarkdown()
+  let result
+
+  try {
+    result = runMobileEditorCommand(target, commandId)
+  } catch (error) {
+    editorLog.error('mobile toolbar command failed', { commandId, error })
+    return
+  }
+
+  if (!result.handled) {
+    editorLog.warn('mobile toolbar command was not handled', result)
+    return
+  }
+
+  editorLog.info('mobile toolbar command handled', { commandId })
+  syncAfterToolbarCommand(beforeMarkdown)
 }
 
 function logContentSnapshot(reason: string) {
@@ -906,6 +965,7 @@ function releaseEditorFocusAfterOpen() {
 
 async function openEditor(markdown: string) {
   editorReady.value = false
+  closeEditorToolbar()
   const wasEditorOpen = currentScreen.value === 'editor'
   destroyEditor()
   if (wasEditorOpen) {
@@ -1056,6 +1116,7 @@ async function handleAndroidOpenWithDocumentEvent(event: AndroidOpenWithDocument
   draftExitPromptOpen.value = false
   androidExitPromptOpen.value = false
   editorMenuOpen.value = false
+  closeEditorToolbar()
   await openAndroidDocumentResult(event.document, {
     source: 'open-with',
     remember: event.document.persisted,
@@ -1075,6 +1136,7 @@ async function handleAndroidShareDocumentEvent(event: AndroidShareDocumentEvent)
   draftExitPromptOpen.value = false
   androidExitPromptOpen.value = false
   editorMenuOpen.value = false
+  closeEditorToolbar()
 
   if (event.document.sourceUri) {
     await openAndroidDocumentResult(
@@ -1153,6 +1215,24 @@ function newDocument() {
 
 function toggleEditorMenu() {
   editorMenuOpen.value = !editorMenuOpen.value
+  if (editorMenuOpen.value) {
+    editorToolbarExpanded.value = false
+  }
+}
+
+function toggleEditorToolbar() {
+  editorToolbarExpanded.value = !editorToolbarExpanded.value
+  if (editorToolbarExpanded.value) {
+    editorMenuOpen.value = false
+  }
+}
+
+function setEditorToolbarPanel(panel: MobileEditorToolbarPanel) {
+  editorToolbarPanel.value = panel
+}
+
+function closeEditorToolbar() {
+  editorToolbarExpanded.value = false
 }
 
 function destroyEditor() {
@@ -1168,6 +1248,7 @@ function closeEditorToHome() {
   draftExitPromptOpen.value = false
   androidExitPromptOpen.value = false
   editorMenuOpen.value = false
+  closeEditorToolbar()
   destroyEditor()
   currentScreen.value = 'home'
 }
@@ -1175,6 +1256,7 @@ function closeEditorToHome() {
 async function showHome() {
   appLog.info('show recent home')
   editorMenuOpen.value = false
+  closeEditorToolbar()
   if (documentState.value.autosaveTarget === 'android-document') {
     const saved = await saveAndroidDocument()
     if (!saved) {
@@ -1253,6 +1335,7 @@ async function handleAppBackButton() {
     promptOpen: draftExitPromptOpen.value,
     androidExitPromptOpen: androidExitPromptOpen.value,
     menuOpen: editorMenuOpen.value,
+    toolbarOpen: editorToolbarExpanded.value,
   })
 
   if (androidExitPromptOpen.value) {
@@ -1269,6 +1352,11 @@ async function handleAppBackButton() {
 
   if (editorMenuOpen.value) {
     editorMenuOpen.value = false
+    return
+  }
+
+  if (editorToolbarExpanded.value) {
+    closeEditorToolbar()
     return
   }
 
@@ -1507,11 +1595,17 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <footer class="status-bar">
-      <span>{{ wordCount }} words</span>
-      <span>{{ characterCount }} chars</span>
-      <span>{{ lineCount }} lines</span>
-    </footer>
+    <MobileEditorToolbar
+      :expanded="editorToolbarExpanded"
+      :active-panel="editorToolbarPanel"
+      :editor-ready="editorReady"
+      :word-count="wordCount"
+      :character-count="characterCount"
+      :line-count="lineCount"
+      @run-command="runEditorToolbarCommand"
+      @toggle-expanded="toggleEditorToolbar"
+      @set-panel="setEditorToolbarPanel"
+    />
 
     <section
       v-if="draftExitPromptOpen"

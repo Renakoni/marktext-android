@@ -10,6 +10,7 @@ export default [
       'dist/**',
       'logs/**',
       'node_modules/**',
+      'third_party/**',
       'vite-dev.*.log',
     ],
   },

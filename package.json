@@ -20,7 +20,7 @@
     "@capacitor/android": "^8.4.1",
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.4.1",
-    "@muyajs/core": "^0.2.0",
+    "@muyajs/core": "file:third_party/muya",
     "vue": "^3.5.38"
   },
   "devDependencies": {

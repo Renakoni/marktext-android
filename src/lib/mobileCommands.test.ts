@@ -9,10 +9,18 @@ import {
 function createEditorTarget() {
   const calls: string[] = []
   const editor: MobileEditorCommandTarget = {
-    undo: () => calls.push('undo'),
-    redo: () => calls.push('redo'),
-    format: type => calls.push(`format:${type}`),
-    updateParagraph: type => calls.push(`paragraph:${type}`),
+    undo: () => {
+      calls.push('undo')
+    },
+    redo: () => {
+      calls.push('redo')
+    },
+    format: type => {
+      calls.push(`format:${type}`)
+    },
+    updateParagraph: type => {
+      calls.push(`paragraph:${type}`)
+    },
   }
 
   return { editor, calls }
@@ -45,12 +53,20 @@ describe('mobileCommands', () => {
     expect(calls).toEqual(['paragraph:ul-task'])
   })
 
-  it('classifies frequent touch actions for a selection toolbar', () => {
+  it('reports unsupported editor adapters without crashing command dispatch', () => {
+    const { editor } = createEditorTarget()
+    editor.updateParagraph = () => false
+    const result = runMobileEditorCommand(editor, MOBILE_COMMANDS.PARAGRAPH_CODE_FENCE)
+
+    expect(result.handled).toBe(false)
+  })
+
+  it('classifies frequent touch actions for the mobile editor toolbar', () => {
     expect(getMobileCommandDefinition(MOBILE_COMMANDS.FORMAT_EMPHASIS)?.surface).toBe(
-      'selection-toolbar',
+      'quick-toolbar',
     )
     expect(getMobileCommandDefinition(MOBILE_COMMANDS.PARAGRAPH_HEADING_1)?.surface).toBe(
-      'bottom-sheet',
+      'toolbar-panel',
     )
   })
 })

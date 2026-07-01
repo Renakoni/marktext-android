@@ -24,7 +24,7 @@ export const MOBILE_COMMANDS = Object.freeze({
 
 export type MobileCommandId = (typeof MOBILE_COMMANDS)[keyof typeof MOBILE_COMMANDS]
 export type MobileCommandGroup = 'document' | 'edit' | 'format' | 'paragraph'
-export type MobileCommandSurface = 'android-file-entry' | 'selection-toolbar' | 'bottom-sheet'
+export type MobileCommandSurface = 'android-file-entry' | 'quick-toolbar' | 'toolbar-panel'
 
 export interface MobileCommandDefinition {
   id: MobileCommandId
@@ -36,8 +36,8 @@ export interface MobileCommandDefinition {
 export interface MobileEditorCommandTarget {
   undo(): void
   redo(): void
-  format(type: string): void
-  updateParagraph(type: string): void
+  format(type: string): boolean | void
+  updateParagraph(type: string): boolean | void
 }
 
 export interface MobileCommandResult {
@@ -102,103 +102,103 @@ export const MOBILE_COMMAND_DEFINITIONS: readonly MobileCommandDefinition[] = [
   {
     id: MOBILE_COMMANDS.EDIT_UNDO,
     group: 'edit',
-    surface: 'selection-toolbar',
+    surface: 'quick-toolbar',
     label: 'Undo',
   },
   {
     id: MOBILE_COMMANDS.EDIT_REDO,
     group: 'edit',
-    surface: 'selection-toolbar',
+    surface: 'quick-toolbar',
     label: 'Redo',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_STRONG,
     group: 'format',
-    surface: 'selection-toolbar',
+    surface: 'quick-toolbar',
     label: 'Bold',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_EMPHASIS,
     group: 'format',
-    surface: 'selection-toolbar',
+    surface: 'quick-toolbar',
     label: 'Italic',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_INLINE_CODE,
     group: 'format',
-    surface: 'selection-toolbar',
+    surface: 'quick-toolbar',
     label: 'Inline code',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_HYPERLINK,
     group: 'format',
-    surface: 'selection-toolbar',
+    surface: 'quick-toolbar',
     label: 'Link',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_IMAGE,
     group: 'format',
-    surface: 'bottom-sheet',
+    surface: 'toolbar-panel',
     label: 'Image',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_CLEAR,
     group: 'format',
-    surface: 'bottom-sheet',
+    surface: 'toolbar-panel',
     label: 'Clear format',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_PARAGRAPH,
     group: 'paragraph',
-    surface: 'bottom-sheet',
+    surface: 'toolbar-panel',
     label: 'Paragraph',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_HEADING_1,
     group: 'paragraph',
-    surface: 'bottom-sheet',
+    surface: 'toolbar-panel',
     label: 'Heading 1',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_HEADING_2,
     group: 'paragraph',
-    surface: 'bottom-sheet',
+    surface: 'toolbar-panel',
     label: 'Heading 2',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_HEADING_3,
     group: 'paragraph',
-    surface: 'bottom-sheet',
+    surface: 'toolbar-panel',
     label: 'Heading 3',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_BULLET_LIST,
     group: 'paragraph',
-    surface: 'selection-toolbar',
+    surface: 'quick-toolbar',
     label: 'Bullet list',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_ORDERED_LIST,
     group: 'paragraph',
-    surface: 'selection-toolbar',
+    surface: 'quick-toolbar',
     label: 'Ordered list',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_TASK_LIST,
     group: 'paragraph',
-    surface: 'selection-toolbar',
+    surface: 'quick-toolbar',
     label: 'Task list',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_QUOTE_BLOCK,
     group: 'paragraph',
-    surface: 'bottom-sheet',
+    surface: 'toolbar-panel',
     label: 'Quote block',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_CODE_FENCE,
     group: 'paragraph',
-    surface: 'bottom-sheet',
+    surface: 'toolbar-panel',
     label: 'Code block',
   },
 ]
@@ -231,14 +231,14 @@ export function runMobileEditorCommand(
 
   const formatAction = FORMAT_ACTIONS[commandId]
   if (formatAction) {
-    editor.format(formatAction)
-    return { handled: true, commandId }
+    const handled = editor.format(formatAction)
+    return { handled: handled !== false, commandId }
   }
 
   const paragraphAction = PARAGRAPH_ACTIONS[commandId]
   if (paragraphAction) {
-    editor.updateParagraph(paragraphAction)
-    return { handled: true, commandId }
+    const handled = editor.updateParagraph(paragraphAction)
+    return { handled: handled !== false, commandId }
   }
 
   return { handled: false, commandId, reason: 'editor-unavailable' }
