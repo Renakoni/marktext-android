@@ -42,6 +42,10 @@ import {
   type MobileCommandId,
   type MobileEditorCommandTarget,
 } from './lib/mobileCommands'
+import {
+  DEFAULT_MOBILE_TOOLBAR_PANEL,
+  type MobileEditorToolbarPanel,
+} from './lib/mobileToolbarConfig'
 import { createMuyaMobileEditorCommandTarget } from './lib/muyaMobileAdapter'
 import {
   createRecentDocumentFromAndroidDocument,
@@ -76,7 +80,6 @@ const MARKDOWN_COPY_SUFFIX_REGEXP = /\s+copy(?:\s+(\d+))?$/
 
 type MuyaCoreModule = typeof import('@muyajs/core')
 type MuyaEditor = InstanceType<MuyaCoreModule['Muya']>
-type MobileEditorToolbarPanel = 'format' | 'block' | 'list'
 
 const editorElement = ref<HTMLElement | null>(null)
 const documentState = ref(createUntitledDocument())
@@ -91,7 +94,7 @@ const draftExitPromptOpen = ref(false)
 const androidExitPromptOpen = ref(false)
 const editorMenuOpen = ref(false)
 const editorToolbarExpanded = ref(false)
-const editorToolbarPanel = ref<MobileEditorToolbarPanel>('format')
+const editorToolbarPanel = ref<MobileEditorToolbarPanel>(DEFAULT_MOBILE_TOOLBAR_PANEL)
 const promptLocalDraftSaveOnExit = ref(false)
 const savingLocalDraftToAndroid = ref(false)
 const savingAndroidDocumentCopy = ref(false)
