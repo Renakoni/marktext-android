@@ -38,6 +38,7 @@ import {
 } from './lib/localDrafts'
 import { createLogger, getNativeLogInfo, isNativeLoggerAvailable } from './lib/logger'
 import {
+  MOBILE_COMMANDS,
   runMobileEditorCommand,
   type MobileCommandId,
   type MobileEditorCommandTarget,
@@ -95,6 +96,10 @@ const androidExitPromptOpen = ref(false)
 const editorMenuOpen = ref(false)
 const editorToolbarExpanded = ref(false)
 const editorToolbarPanel = ref<MobileEditorToolbarPanel>(DEFAULT_MOBILE_TOOLBAR_PANEL)
+const linkSheetOpen = ref(false)
+const linkText = ref('')
+const linkUrl = ref('')
+const linkUrlInput = ref<HTMLInputElement | null>(null)
 const promptLocalDraftSaveOnExit = ref(false)
 const savingLocalDraftToAndroid = ref(false)
 const savingAndroidDocumentCopy = ref(false)
@@ -111,6 +116,7 @@ let androidSaveRequestedAfterCurrent = false
 let appLifecycleListenerHandles: PluginListenerHandle[] = []
 let androidDocumentListenerHandles: PluginListenerHandle[] = []
 let browserLifecycleListenersInstalled = false
+let pendingLinkRange: Range | null = null
 
 const appLog = createLogger('app')
 const editorLog = createLogger('editor')
@@ -352,6 +358,101 @@ function getEditorCommandTarget(): MobileEditorCommandTarget | null {
   return createMuyaMobileEditorCommandTarget(editor)
 }
 
+function getEditorDomNode() {
+  return (editor as { domNode?: HTMLElement } | null)?.domNode ?? editorElement.value
+}
+
+function captureEditorSelection() {
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0) {
+    return null
+  }
+
+  const range = selection.getRangeAt(0).cloneRange()
+  const editorDomNode = getEditorDomNode()
+  if (editorDomNode && !editorDomNode.contains(range.commonAncestorContainer)) {
+    return null
+  }
+
+  return range
+}
+
+function normalizeLinkField(value: string) {
+  return value.trim().replace(/\s+/g, ' ')
+}
+
+function escapeMarkdownLinkText(value: string) {
+  return normalizeLinkField(value).replace(/([\\[\]])/g, '\\$1')
+}
+
+function escapeMarkdownLinkUrl(value: string) {
+  return value.trim().replace(/\)/g, '\\)')
+}
+
+function buildMarkdownLink(text: string, url: string) {
+  const normalizedUrl = escapeMarkdownLinkUrl(url)
+  const normalizedText = escapeMarkdownLinkText(text || normalizedUrl)
+  return `[${normalizedText}](${normalizedUrl})`
+}
+
+function restorePendingLinkRange() {
+  const selection = window.getSelection()
+  if (!selection || !pendingLinkRange) {
+    return false
+  }
+
+  selection.removeAllRanges()
+  selection.addRange(pendingLinkRange)
+  return true
+}
+
+function insertMarkdownAtPendingSelection(markdown: string) {
+  editor?.focus()
+  restorePendingLinkRange()
+  return document.execCommand('insertText', false, markdown)
+}
+
+function openLinkSheet() {
+  if (!editorReady.value || !editor) {
+    return
+  }
+
+  pendingLinkRange = captureEditorSelection()
+  linkText.value = normalizeLinkField(pendingLinkRange?.toString() ?? '')
+  linkUrl.value = ''
+  editorMenuOpen.value = false
+  closeEditorToolbar()
+  linkSheetOpen.value = true
+
+  void nextTick(() => {
+    linkUrlInput.value?.focus()
+  })
+}
+
+function closeLinkSheet() {
+  linkSheetOpen.value = false
+  linkText.value = ''
+  linkUrl.value = ''
+  pendingLinkRange = null
+}
+
+function insertLinkFromSheet() {
+  if (!editor || !linkUrl.value.trim()) {
+    return
+  }
+
+  const beforeMarkdown = editor.getMarkdown()
+  const markdownLink = buildMarkdownLink(linkText.value, linkUrl.value)
+
+  if (!insertMarkdownAtPendingSelection(markdownLink)) {
+    editorLog.warn('mobile link insert failed because text insertion was not handled')
+    return
+  }
+
+  closeLinkSheet()
+  syncAfterToolbarCommand(beforeMarkdown)
+}
+
 function syncAfterToolbarCommand(beforeMarkdown: string) {
   window.requestAnimationFrame(() => {
     if (!editor) {
@@ -371,6 +472,11 @@ function syncAfterToolbarCommand(beforeMarkdown: string) {
 function runEditorToolbarCommand(commandId: MobileCommandId) {
   if (!editorReady.value || !editor) {
     editorLog.warn('mobile toolbar command skipped because editor is not ready', { commandId })
+    return
+  }
+
+  if (commandId === MOBILE_COMMANDS.FORMAT_HYPERLINK) {
+    openLinkSheet()
     return
   }
 
@@ -1251,6 +1357,7 @@ function closeEditorToHome() {
   draftExitPromptOpen.value = false
   androidExitPromptOpen.value = false
   editorMenuOpen.value = false
+  closeLinkSheet()
   closeEditorToolbar()
   destroyEditor()
   currentScreen.value = 'home'
@@ -1350,6 +1457,11 @@ async function handleAppBackButton() {
   if (draftExitPromptOpen.value) {
     draftExitPromptOpen.value = false
     status.value = isLocalDraftDocument() ? 'Autosaved locally' : status.value
+    return
+  }
+
+  if (linkSheetOpen.value) {
+    closeLinkSheet()
     return
   }
 
@@ -1609,6 +1721,56 @@ onBeforeUnmount(() => {
       @toggle-expanded="toggleEditorToolbar"
       @set-panel="setEditorToolbarPanel"
     />
+
+    <section
+      v-if="linkSheetOpen"
+      class="draft-save-sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="link-sheet-title"
+      data-testid="link-insert-sheet"
+      @keydown.esc="closeLinkSheet"
+    >
+      <form class="draft-save-panel link-insert-panel" @submit.prevent="insertLinkFromSheet">
+        <h2 id="link-sheet-title">Insert link</h2>
+        <label class="link-field">
+          <span>Text</span>
+          <input
+            v-model="linkText"
+            type="text"
+            autocomplete="off"
+            autocapitalize="sentences"
+            data-testid="link-text-input"
+          >
+        </label>
+        <label class="link-field">
+          <span>URL</span>
+          <input
+            ref="linkUrlInput"
+            v-model="linkUrl"
+            type="text"
+            inputmode="url"
+            autocomplete="url"
+            autocapitalize="none"
+            spellcheck="false"
+            data-testid="link-url-input"
+          >
+        </label>
+        <div class="draft-save-actions">
+          <button
+            class="primary-action"
+            type="submit"
+            data-testid="link-insert-button"
+            :disabled="!linkUrl.trim()"
+          >
+            Insert
+          </button>
+          <button type="button" data-testid="link-cancel-button" @click="closeLinkSheet">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
 
     <section
       v-if="draftExitPromptOpen"
