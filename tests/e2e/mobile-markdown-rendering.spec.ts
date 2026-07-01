@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 
 test.describe.configure({ timeout: 60000 })
 
+const DRAFTS_STORAGE_KEY = 'marktext-for-android:drafts'
+
 async function expectEditorReady(page: Page) {
   await expect(page.getByTestId('editor-host')).toBeVisible({ timeout: 30000 })
 }
@@ -30,6 +32,17 @@ async function openLocalDraft(page: Page, markdown: string, title: RegExp) {
 
   await page.getByRole('button', { name: title }).click()
   await expectEditorReady(page)
+}
+
+async function getStoredMarkdown(page: Page) {
+  return page.evaluate((key) => {
+    const raw = localStorage.getItem(key)
+    if (!raw) {
+      return ''
+    }
+    const [draft] = JSON.parse(raw) as Array<{ markdown: string }>
+    return draft?.markdown ?? ''
+  }, DRAFTS_STORAGE_KEY)
 }
 
 test('renders loaded CommonMark and GFM blocks as Muya editor structures', async ({ page }) => {
@@ -104,6 +117,64 @@ graph TD
   await expect
     .poll(() => editor.locator('.mu-diagram-preview svg').count(), { timeout: 30000 })
     .toBeGreaterThan(0)
+})
+
+test('renders all supported diagram previews without rewriting the Markdown source', async ({ page }) => {
+  await page.route('https://www.plantuml.com/plantuml/svg/**', route =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"><text x="4" y="24">PlantUML</text></svg>',
+    }),
+  )
+
+  const markdown = `# Diagram Matrix
+
+\`\`\`mermaid
+graph TD
+  A[Start] --> B[Done]
+\`\`\`
+
+\`\`\`plantuml
+@startuml
+Alice -> Bob: Hello
+@enduml
+\`\`\`
+
+\`\`\`vega-lite
+{
+  "data": { "values": [{ "category": "A", "value": 1 }, { "category": "B", "value": 2 }] },
+  "mark": "bar",
+  "encoding": {
+    "x": { "field": "category", "type": "nominal" },
+    "y": { "field": "value", "type": "quantitative" }
+  }
+}
+\`\`\`
+
+\`\`\`flowchart
+st=>start: Start
+op=>operation: Process
+e=>end: End
+st->op->e
+\`\`\`
+
+\`\`\`sequence
+Alice->Bob: Hello Bob
+Bob-->Alice: Hello Alice
+\`\`\`
+`
+
+  await openLocalDraft(page, markdown, /Diagram Matrix/)
+
+  const editor = page.getByTestId('editor-host')
+  await expect(editor.locator('.mu-diagram-block')).toHaveCount(5)
+  await expect(editor.locator('.mu-code-block')).toHaveCount(0)
+  await expect(editor.locator('.mu-diagram-error')).toHaveCount(0)
+  await expect(editor.locator('.mu-diagram-preview img[src^="https://www.plantuml.com/plantuml/svg/"]')).toHaveCount(1)
+  await expect
+    .poll(() => editor.locator('.mu-diagram-preview svg').count(), { timeout: 45000 })
+    .toBeGreaterThanOrEqual(4)
+  await expect.poll(() => getStoredMarkdown(page)).toBe(markdown)
 })
 
 test('renders loaded front matter, footnotes, HTML blocks, and inline images', async ({ page }) => {

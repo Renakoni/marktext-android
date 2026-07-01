@@ -27,14 +27,20 @@ const optimizedMuyaDependencies = [
   'dayjs',
   ...optimizedDayjsPlugins,
   'fast-diff',
+  'flowchart.js',
   'mermaid',
   'ot-json1',
   'ot-text-unicode',
+  'plantuml-encoder',
   'prismjs',
   'prismjs/components.js',
   'prismjs/dependencies',
   'prismjs/plugins/keep-markup/prism-keep-markup',
+  'snapsvg-cjs',
   'snabbdom-to-html',
+  'underscore',
+  'vega-embed',
+  'webfontloader',
 ]
 
 // https://vite.dev/config/
@@ -46,6 +52,30 @@ export default defineConfig({
       {
         find: /^mermaid$/,
         replacement: resolve(mermaidPackagePath, 'dist', 'mermaid.core.mjs'),
+      },
+      {
+        find: /^flowchart\.js$/,
+        replacement: resolveMuyaDependency('flowchart.js', 'index.js'),
+      },
+      {
+        find: /^plantuml-encoder$/,
+        replacement: resolveMuyaDependency('plantuml-encoder', 'browser-index.js'),
+      },
+      {
+        find: /^snapsvg-cjs$/,
+        replacement: resolveMuyaDependency('snapsvg-cjs', 'dist', 'snap.svg-cjs.js'),
+      },
+      {
+        find: /^underscore$/,
+        replacement: resolveMuyaDependency('underscore', 'underscore-esm.js'),
+      },
+      {
+        find: /^vega-embed$/,
+        replacement: resolveMuyaDependency('vega-embed', 'build', 'embed.js'),
+      },
+      {
+        find: /^webfontloader$/,
+        replacement: resolveMuyaDependency('webfontloader', 'webfontloader.js'),
       },
       {
         find: /^dayjs$/,
