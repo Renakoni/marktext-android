@@ -10,6 +10,8 @@ export default [
       'dist/**',
       'logs/**',
       'node_modules/**',
+      'playwright-report/**',
+      'test-results/**',
       'third_party/**',
       'vite-dev.*.log',
     ],

@@ -1,19 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { MOBILE_COMMANDS, type MobileCommandId } from '../lib/mobileCommands'
-
-type MobileEditorToolbarPanel = 'format' | 'block' | 'list'
-
-interface ToolbarCommandButton {
-  commandId: MobileCommandId
-  label: string
-  title: string
-}
-
-interface PanelTab {
-  id: MobileEditorToolbarPanel
-  label: string
-}
+import type { MobileCommandId } from '../lib/mobileCommands'
+import {
+  MOBILE_TOOLBAR_PANELS,
+  MOBILE_TOOLBAR_QUICK_GROUPS,
+  getMobileToolbarPanel,
+  getMobileToolbarPanelCommands,
+  type MobileEditorToolbarPanel,
+} from '../lib/mobileToolbarConfig'
 
 const props = defineProps<{
   expanded: boolean
@@ -30,48 +24,10 @@ const emit = defineEmits<{
   setPanel: [panel: MobileEditorToolbarPanel]
 }>()
 
-const quickCommands: ToolbarCommandButton[] = [
-  { commandId: MOBILE_COMMANDS.EDIT_UNDO, label: '↶', title: 'Undo' },
-  { commandId: MOBILE_COMMANDS.EDIT_REDO, label: '↷', title: 'Redo' },
-  { commandId: MOBILE_COMMANDS.FORMAT_STRONG, label: 'B', title: 'Bold' },
-  { commandId: MOBILE_COMMANDS.FORMAT_EMPHASIS, label: 'I', title: 'Italic' },
-  { commandId: MOBILE_COMMANDS.FORMAT_INLINE_CODE, label: '`', title: 'Inline code' },
-  { commandId: MOBILE_COMMANDS.FORMAT_HYPERLINK, label: '[]', title: 'Link' },
-  { commandId: MOBILE_COMMANDS.PARAGRAPH_BULLET_LIST, label: '•', title: 'Bullet list' },
-  { commandId: MOBILE_COMMANDS.PARAGRAPH_ORDERED_LIST, label: '1.', title: 'Ordered list' },
-  { commandId: MOBILE_COMMANDS.PARAGRAPH_TASK_LIST, label: '[ ]', title: 'Task list' },
-]
-
-const panelTabs: PanelTab[] = [
-  { id: 'format', label: 'Format' },
-  { id: 'block', label: 'Block' },
-  { id: 'list', label: 'List' },
-]
-
-const panelCommands: Record<MobileEditorToolbarPanel, ToolbarCommandButton[]> = {
-  format: [
-    { commandId: MOBILE_COMMANDS.FORMAT_STRONG, label: 'Bold', title: 'Bold' },
-    { commandId: MOBILE_COMMANDS.FORMAT_EMPHASIS, label: 'Italic', title: 'Italic' },
-    { commandId: MOBILE_COMMANDS.FORMAT_INLINE_CODE, label: 'Inline code', title: 'Inline code' },
-    { commandId: MOBILE_COMMANDS.FORMAT_HYPERLINK, label: 'Link', title: 'Link' },
-    { commandId: MOBILE_COMMANDS.FORMAT_CLEAR, label: 'Clear', title: 'Clear format' },
-  ],
-  block: [
-    { commandId: MOBILE_COMMANDS.PARAGRAPH_PARAGRAPH, label: 'Paragraph', title: 'Paragraph' },
-    { commandId: MOBILE_COMMANDS.PARAGRAPH_HEADING_1, label: 'Heading 1', title: 'Heading 1' },
-    { commandId: MOBILE_COMMANDS.PARAGRAPH_HEADING_2, label: 'Heading 2', title: 'Heading 2' },
-    { commandId: MOBILE_COMMANDS.PARAGRAPH_HEADING_3, label: 'Heading 3', title: 'Heading 3' },
-    { commandId: MOBILE_COMMANDS.PARAGRAPH_QUOTE_BLOCK, label: 'Quote', title: 'Quote block' },
-    { commandId: MOBILE_COMMANDS.PARAGRAPH_CODE_FENCE, label: 'Code block', title: 'Code block' },
-  ],
-  list: [
-    { commandId: MOBILE_COMMANDS.PARAGRAPH_BULLET_LIST, label: 'Bullet list', title: 'Bullet list' },
-    { commandId: MOBILE_COMMANDS.PARAGRAPH_ORDERED_LIST, label: 'Ordered list', title: 'Ordered list' },
-    { commandId: MOBILE_COMMANDS.PARAGRAPH_TASK_LIST, label: 'Task list', title: 'Task list' },
-  ],
-}
-
-const activePanelCommands = computed(() => panelCommands[props.activePanel])
+const quickCommandGroups = MOBILE_TOOLBAR_QUICK_GROUPS
+const panelTabs = MOBILE_TOOLBAR_PANELS
+const activePanel = computed(() => getMobileToolbarPanel(props.activePanel))
+const activePanelCommands = computed(() => getMobileToolbarPanelCommands(props.activePanel))
 const statsText = computed(
   () => `${props.wordCount} words - ${props.characterCount} chars - ${props.lineCount} lines`,
 )
@@ -94,26 +50,35 @@ function runCommand(commandId: MobileCommandId) {
   >
     <div class="toolbar-row">
       <div class="quick-command-strip" role="toolbar" aria-label="Quick Markdown commands">
-        <button
-          v-for="command in quickCommands"
-          :key="command.commandId"
-          class="toolbar-button"
-          type="button"
-          :aria-label="command.title"
-          :title="command.title"
-          :disabled="!editorReady"
-          :data-testid="`toolbar-command-${command.commandId}`"
-          @pointerdown.prevent
-          @mousedown.prevent
-          @click="runCommand(command.commandId)"
+        <div
+          v-for="group in quickCommandGroups"
+          :key="group.id"
+          class="quick-command-group"
+          role="group"
+          :aria-label="group.title"
         >
-          {{ command.label }}
-        </button>
+          <button
+            v-for="command in group.commands"
+            :key="command.commandId"
+            class="toolbar-button"
+            type="button"
+            :aria-label="command.title"
+            :title="command.title"
+            :disabled="!editorReady"
+            :data-testid="`toolbar-command-${command.commandId}`"
+            @pointerdown.prevent
+            @mousedown.prevent
+            @click="runCommand(command.commandId)"
+          >
+            <span class="toolbar-button-label">{{ command.label }}</span>
+          </button>
+        </div>
       </div>
 
       <button
         class="toolbar-expand-button"
         type="button"
+        :aria-label="expanded ? 'Collapse editing toolbar' : 'Expand editing toolbar'"
         :aria-expanded="expanded"
         aria-controls="mobile-editor-toolbar-panel"
         data-testid="toolbar-expand-button"
@@ -136,10 +101,10 @@ function runCommand(commandId: MobileCommandId) {
           v-for="tab in panelTabs"
           :key="tab.id"
           class="toolbar-tab"
-          :class="{ 'is-active': activePanel === tab.id }"
+          :class="{ 'is-active': activePanel.id === tab.id }"
           type="button"
           role="tab"
-          :aria-selected="activePanel === tab.id"
+          :aria-selected="activePanel.id === tab.id"
           :data-testid="`toolbar-panel-tab-${tab.id}`"
           @pointerdown.prevent
           @mousedown.prevent
@@ -149,7 +114,7 @@ function runCommand(commandId: MobileCommandId) {
         </button>
       </div>
 
-      <div class="panel-command-grid" role="toolbar" :aria-label="`${activePanel} commands`">
+      <div class="panel-command-grid" role="toolbar" :aria-label="activePanel.title">
         <button
           v-for="command in activePanelCommands"
           :key="command.commandId"
@@ -202,6 +167,10 @@ function runCommand(commandId: MobileCommandId) {
 
 .quick-command-strip::-webkit-scrollbar {
   display: none;
+}
+
+.quick-command-group {
+  display: contents;
 }
 
 .toolbar-button,
