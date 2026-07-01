@@ -8,6 +8,12 @@ export interface IImageInfo {
     imageId: string;
 }
 
+declare global {
+    interface Window {
+        MarkTextAndroidImageResolver?: (source: string) => string | null;
+    }
+}
+
 export function getImageInfo(image: HTMLElement): IImageInfo {
     const paragraph = findContentDOM(image)!;
     const raw = image.getAttribute('data-raw')!;
@@ -68,6 +74,24 @@ function resolveRelativePath(base: string, relative: string): string {
 }
 
 export function getImageSrc(src: string) {
+    try {
+        const resolvedSrc = typeof window === 'undefined'
+            ? null
+            : window.MarkTextAndroidImageResolver?.(src);
+        if (resolvedSrc) {
+            return {
+                isUnknownType: false,
+                src: resolvedSrc,
+            };
+        }
+    }
+    catch {
+        return {
+            isUnknownType: false,
+            src: '',
+        };
+    }
+
     const EXT_REG = /\.(?:jpeg|jpg|png|gif|svg|webp)(?=\?|$)/i;
     // http[s] (domain or IPv4 or localhost or IPv6) [port] /not-white-space
     const URL_REG

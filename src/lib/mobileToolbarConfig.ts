@@ -74,6 +74,7 @@ export const MOBILE_TOOLBAR_PANEL_COMMANDS: Record<
     { commandId: MOBILE_COMMANDS.FORMAT_EMPHASIS, label: 'Italic', title: 'Italic' },
     { commandId: MOBILE_COMMANDS.FORMAT_INLINE_CODE, label: 'Inline code', title: 'Inline code' },
     { commandId: MOBILE_COMMANDS.FORMAT_HYPERLINK, label: 'Link', title: 'Link' },
+    { commandId: MOBILE_COMMANDS.FORMAT_IMAGE, label: 'Image', title: 'Image' },
     { commandId: MOBILE_COMMANDS.FORMAT_CLEAR, label: 'Clear', title: 'Clear format' },
   ],
   block: [
