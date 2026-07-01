@@ -566,6 +566,7 @@ export default class ExportMarkdown {
             itemMarker = marker ? `${marker} ` : '- ';
         }
         else if ('start' in listInfo) {
+            const sourceMarker = state.name === 'list-item' ? state.meta?.orderMarker : undefined;
             // NOTE: GitHub and Bitbucket limit the list count to 99 but this is nowhere defined.
             //  We limit the number to 99 for Daring Fireball Markdown to prevent indentation issues.
             let n = listInfo.start;
@@ -574,7 +575,7 @@ export default class ExportMarkdown {
 
             listInfo.start++;
 
-            itemMarker = `${n}${delimiter || '.'} `;
+            itemMarker = sourceMarker ? `${sourceMarker} ` : `${n}${delimiter || '.'} `;
         }
         else {
             itemMarker = '- ';

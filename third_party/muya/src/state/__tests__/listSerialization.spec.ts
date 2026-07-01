@@ -559,11 +559,9 @@ describe('stateToMarkdown — list looseness (preferLooseListItem)', () => {
     });
 });
 
-// Ordered-list start number is preserved through the markdown round-trip, and
-// the per-item number is computed by incrementing `meta.start` (see
-// stateToMarkdown.ts `serializeListItem`). The delimiter (`.` or `)`) likewise
-// comes from `meta.delimiter`, which a real boot seeds from
-// `muya.options.orderListDelimiter`.
+// Ordered-list source markers are preserved when parsed from Markdown. States
+// without item-level marker metadata still fall back to generated markers from
+// `meta.start` and `meta.delimiter`.
 describe('stateToMarkdown — ordered list start + delimiter', () => {
     function serialize(states: TState[]): string {
         return new ExportMarkdown({ listIndentation: 1 }).generate(states);
@@ -572,6 +570,21 @@ describe('stateToMarkdown — ordered list start + delimiter', () => {
     it('keeps a non-1 start number through the round-trip', () => {
         // The parser stores start=3; the serializer renders 3., 4. (start + i).
         expect(roundTrip('3. one\n4. two\n')).toBe('3. one\n4. two\n');
+    });
+
+    it('preserves repeated ordered-list source markers', () => {
+        const md = '1. one\n1. two\n1. three\n';
+        expect(roundTrip(md)).toBe(md);
+    });
+
+    it('preserves non-canonical ordered-list item markers', () => {
+        const md = '10) one\n20) two\n';
+        expect(roundTrip(md)).toBe(md);
+    });
+
+    it('preserves nested repeated ordered-list markers', () => {
+        const md = '1. one\n  1. nested one\n  1. nested two\n1. two\n';
+        expect(roundTrip(md)).toBe(md);
     });
 
     it('parses the start number into order-list meta.start', () => {
@@ -586,6 +599,8 @@ describe('stateToMarkdown — ordered list start + delimiter', () => {
         expect(list.name).toBe('order-list');
         expect(list.meta.start).toBe(3);
         expect(list.meta.delimiter).toBe('.');
+        expect(list.children[0].meta?.orderMarker).toBe('3.');
+        expect(list.children[1].meta?.orderMarker).toBe('4.');
     });
 
     it('emits the configured delimiter (")") for an ordered list', () => {

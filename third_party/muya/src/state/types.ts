@@ -58,8 +58,13 @@ export interface IBlockQuoteState {
     children: TState[];
 }
 
+export interface IListItemMeta {
+    orderMarker?: string;
+}
+
 export interface IListItemState {
     name: 'list-item';
+    meta?: IListItemMeta;
     children: TState[];
 }
 
