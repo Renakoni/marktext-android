@@ -39,6 +39,13 @@ async function getDraftStorage(page: Page) {
   return page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
 }
 
+async function selectToolbarPanel(page: Page, panelId: string) {
+  await page.getByTestId('toolbar-expand-button').click()
+  await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeVisible()
+  await page.getByTestId(`toolbar-section-option-${panelId}`).click()
+  await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeHidden()
+}
+
 async function installAndroidImagePickerMock(page: Page) {
   await page.addInitScript(() => {
     const win = window as unknown as MockCapacitorWindow
@@ -130,12 +137,103 @@ test('applies quick toolbar inline formatting to selected editor text', async ({
   await expect.poll(() => getDraftStorage(page)).toContain('**bold from mobile toolbar**')
 })
 
+test('applies expanded desktop format commands to selected editor text', async ({ page }) => {
+  const cases = [
+    {
+      commandId: 'format.underline',
+      text: 'underlined from mobile toolbar',
+      expected: '<u>underlined from mobile toolbar</u>',
+    },
+    {
+      commandId: 'format.strike',
+      text: 'struck from mobile toolbar',
+      expected: '~~struck from mobile toolbar~~',
+    },
+    {
+      commandId: 'format.highlight',
+      text: 'highlighted from mobile toolbar',
+      expected: '<mark>highlighted from mobile toolbar</mark>',
+    },
+    {
+      commandId: 'format.superscript',
+      text: 'sup from mobile toolbar',
+      expected: '<sup>sup from mobile toolbar</sup>',
+      panelId: 'inline',
+    },
+    {
+      commandId: 'format.subscript',
+      text: 'sub from mobile toolbar',
+      expected: '<sub>sub from mobile toolbar</sub>',
+      panelId: 'inline',
+    },
+    {
+      commandId: 'format.inline-math',
+      text: 'x + y',
+      expected: '$x + y$',
+      panelId: 'inline',
+    },
+  ] as const
+
+  for (const testCase of cases) {
+    const { commandId, text, expected } = testCase
+    const panelId = 'panelId' in testCase ? testCase.panelId : null
+
+    await test.step(commandId, async () => {
+      await newBlankDocument(page)
+
+      await page.getByTestId('editor-host').click()
+      await page.keyboard.type(text)
+      await page.keyboard.press('Control+A')
+      if (panelId) {
+        await selectToolbarPanel(page, panelId)
+      }
+      await page.getByTestId(`toolbar-command-${commandId}`).scrollIntoViewIfNeeded()
+      await page.getByTestId(`toolbar-command-${commandId}`).click()
+
+      await expect.poll(() => getDraftStorage(page)).toContain(expected)
+    })
+  }
+})
+
+test('exposes mobile syntax sections without collapsing everything into paragraph', async ({
+  page,
+}) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('toolbar-expand-button').click()
+  await expect(page.getByTestId('toolbar-section-option-text')).toBeVisible()
+  await expect(page.getByTestId('toolbar-section-option-inline')).toBeVisible()
+  await expect(page.getByTestId('toolbar-section-option-heading')).toBeVisible()
+  await expect(page.getByTestId('toolbar-section-option-block')).toBeVisible()
+  await expect(page.getByTestId('toolbar-section-option-list')).toBeVisible()
+})
+
+test('applies expanded heading and block commands from their mobile sections', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('Mobile subheading')
+  await selectToolbarPanel(page, 'heading')
+  await page.getByTestId('toolbar-command-paragraph.heading-4').click()
+
+  await expect.poll(() => getDraftStorage(page)).toContain('#### Mobile subheading')
+
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Quoted from toolbar')
+  await selectToolbarPanel(page, 'block')
+  await page.getByTestId('toolbar-command-paragraph.quote-block').click()
+
+  await expect.poll(() => getDraftStorage(page)).toContain('> Quoted from toolbar')
+})
+
 test('inserts a link from selected editor text through the mobile link sheet', async ({ page }) => {
   await newBlankDocument(page)
 
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('MarkText for Android')
   await page.keyboard.press('Control+A')
+  await selectToolbarPanel(page, 'inline')
   await page.getByTestId('toolbar-command-format.hyperlink').click()
 
   await expect(page.getByTestId('link-insert-sheet')).toBeVisible()
@@ -153,6 +251,7 @@ test('inserts a link at a collapsed cursor through the mobile link sheet', async
   await newBlankDocument(page)
 
   await page.getByTestId('editor-host').click()
+  await selectToolbarPanel(page, 'inline')
   await page.getByTestId('toolbar-command-format.hyperlink').click()
 
   await expect(page.getByTestId('link-insert-sheet')).toBeVisible()
@@ -165,13 +264,14 @@ test('inserts a link at a collapsed cursor through the mobile link sheet', async
   await expect.poll(() => getDraftStorage(page)).toContain('[Project repo](example.com)')
 })
 
-test('inserts an Android-picked image from selected text through the format section', async ({ page }) => {
+test('inserts an Android-picked image from selected text through the inline section', async ({ page }) => {
   await installAndroidImagePickerMock(page)
   await newBlankDocument(page)
 
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('Picked icon')
   await page.keyboard.press('Control+A')
+  await selectToolbarPanel(page, 'inline')
   await page.getByTestId('toolbar-command-format.image').scrollIntoViewIfNeeded()
   await page.getByTestId('toolbar-command-format.image').click()
 
@@ -192,11 +292,7 @@ test('switches toolbar sections and applies paragraph commands to the current pa
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('Toolbar heading')
 
-  await page.getByTestId('toolbar-expand-button').click()
-  await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeVisible()
-  await expect(page.getByTestId('toolbar-section-option-list')).toHaveCount(0)
-  await page.getByTestId('toolbar-section-option-paragraph').click()
-  await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeHidden()
+  await selectToolbarPanel(page, 'heading')
   await page.getByTestId('toolbar-command-paragraph.heading-1').click()
 
   await expect.poll(() => getDraftStorage(page)).toContain('# Toolbar heading')
@@ -204,6 +300,7 @@ test('switches toolbar sections and applies paragraph commands to the current pa
   await page.keyboard.press('End')
   await page.keyboard.press('Enter')
   await page.keyboard.type('next action')
+  await selectToolbarPanel(page, 'list')
   await page.getByTestId('toolbar-command-paragraph.task-list').click()
 
   await expect.poll(() => getDraftStorage(page)).toContain('- [ ] next action')
