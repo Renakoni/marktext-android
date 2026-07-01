@@ -245,6 +245,37 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
   font-weight: 860;
 }
 
+.toolbar-command-button[data-command-id='format.underline'] {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.toolbar-command-button[data-command-id='format.strike'] {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.toolbar-command-button[data-command-id='format.highlight'] {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent-strong);
+}
+
+.toolbar-command-button[data-command-id='format.superscript'],
+.toolbar-command-button[data-command-id='format.subscript'],
+.toolbar-command-button[data-command-id='format.inline-math'],
+.toolbar-command-button[data-command-id='format.clear-format'] {
+  font-size: 12px;
+}
+
+.toolbar-command-button[data-command-id='format.inline-code'] {
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+}
+
+.toolbar-command-button[data-command-id='format.clear-format'] {
+  color: var(--text-muted);
+}
+
 .toolbar-section-button:active,
 .toolbar-history-button:active,
 .toolbar-command-button:active,
@@ -260,10 +291,13 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
 .toolbar-section-menu {
   position: absolute;
   bottom: calc(100% + 8px);
-  left: 8px;
+  right: 8px;
   display: grid;
   gap: 4px;
   width: min(268px, calc(100vw - 16px));
+  max-height: min(70vh, 388px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -325,6 +359,7 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
 
   .toolbar-section-menu {
     left: max(24px, calc((100vw - 980px) / 2));
+    right: auto;
     width: 300px;
   }
 }

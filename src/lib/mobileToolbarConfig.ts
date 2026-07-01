@@ -1,6 +1,6 @@
 import { MOBILE_COMMANDS, type MobileCommandId } from './mobileCommands'
 
-export type MobileEditorToolbarPanel = 'format' | 'paragraph'
+export type MobileEditorToolbarPanel = 'text' | 'inline' | 'heading' | 'block' | 'list'
 
 export interface MobileToolbarCommandButton {
   commandId: MobileCommandId
@@ -15,7 +15,7 @@ export interface MobileToolbarPanelDefinition {
   commands: readonly MobileToolbarCommandButton[]
 }
 
-export const DEFAULT_MOBILE_TOOLBAR_PANEL: MobileEditorToolbarPanel = 'format'
+export const DEFAULT_MOBILE_TOOLBAR_PANEL: MobileEditorToolbarPanel = 'text'
 
 export const MOBILE_TOOLBAR_EDIT_COMMANDS = [
   { commandId: MOBILE_COMMANDS.EDIT_UNDO, label: '↶', title: 'Undo' },
@@ -26,39 +26,92 @@ export const MOBILE_TOOLBAR_PANEL_COMMANDS: Record<
   MobileEditorToolbarPanel,
   readonly MobileToolbarCommandButton[]
 > = {
-  format: [
+  text: [
     { commandId: MOBILE_COMMANDS.FORMAT_STRONG, label: 'B', title: 'Bold' },
     { commandId: MOBILE_COMMANDS.FORMAT_EMPHASIS, label: 'I', title: 'Italic' },
-    { commandId: MOBILE_COMMANDS.FORMAT_INLINE_CODE, label: '`', title: 'Inline code' },
-    { commandId: MOBILE_COMMANDS.FORMAT_HYPERLINK, label: '[]', title: 'Link' },
-    { commandId: MOBILE_COMMANDS.FORMAT_IMAGE, label: 'Image', title: 'Image' },
-    { commandId: MOBILE_COMMANDS.FORMAT_CLEAR, label: 'Clear', title: 'Clear format' },
+    { commandId: MOBILE_COMMANDS.FORMAT_UNDERLINE, label: 'U', title: 'Underline' },
+    { commandId: MOBILE_COMMANDS.FORMAT_STRIKE, label: 'S', title: 'Strikethrough' },
+    { commandId: MOBILE_COMMANDS.FORMAT_HIGHLIGHT, label: 'HL', title: 'Highlight' },
+    { commandId: MOBILE_COMMANDS.FORMAT_CLEAR, label: 'Clr', title: 'Clear format' },
   ],
-  paragraph: [
-    { commandId: MOBILE_COMMANDS.PARAGRAPH_PARAGRAPH, label: '¶', title: 'Paragraph' },
+  inline: [
+    { commandId: MOBILE_COMMANDS.FORMAT_INLINE_CODE, label: '`', title: 'Inline code' },
+    { commandId: MOBILE_COMMANDS.FORMAT_INLINE_MATH, label: '$x$', title: 'Inline math' },
+    { commandId: MOBILE_COMMANDS.FORMAT_SUPERSCRIPT, label: 'Sup', title: 'Superscript' },
+    { commandId: MOBILE_COMMANDS.FORMAT_SUBSCRIPT, label: 'Sub', title: 'Subscript' },
+    { commandId: MOBILE_COMMANDS.FORMAT_HYPERLINK, label: '[]', title: 'Link' },
+    { commandId: MOBILE_COMMANDS.FORMAT_IMAGE, label: 'Img', title: 'Image' },
+  ],
+  heading: [
+    { commandId: MOBILE_COMMANDS.PARAGRAPH_PARAGRAPH, label: 'P', title: 'Paragraph' },
     { commandId: MOBILE_COMMANDS.PARAGRAPH_HEADING_1, label: 'H1', title: 'Heading 1' },
     { commandId: MOBILE_COMMANDS.PARAGRAPH_HEADING_2, label: 'H2', title: 'Heading 2' },
     { commandId: MOBILE_COMMANDS.PARAGRAPH_HEADING_3, label: 'H3', title: 'Heading 3' },
+    { commandId: MOBILE_COMMANDS.PARAGRAPH_HEADING_4, label: 'H4', title: 'Heading 4' },
+    { commandId: MOBILE_COMMANDS.PARAGRAPH_HEADING_5, label: 'H5', title: 'Heading 5' },
+    { commandId: MOBILE_COMMANDS.PARAGRAPH_HEADING_6, label: 'H6', title: 'Heading 6' },
+    {
+      commandId: MOBILE_COMMANDS.PARAGRAPH_UPGRADE_HEADING,
+      label: 'Up',
+      title: 'Promote heading',
+    },
+    {
+      commandId: MOBILE_COMMANDS.PARAGRAPH_DEGRADE_HEADING,
+      label: 'Down',
+      title: 'Demote heading',
+    },
+  ],
+  block: [
     { commandId: MOBILE_COMMANDS.PARAGRAPH_QUOTE_BLOCK, label: '>', title: 'Quote block' },
     { commandId: MOBILE_COMMANDS.PARAGRAPH_CODE_FENCE, label: 'Code', title: 'Code block' },
+    { commandId: MOBILE_COMMANDS.PARAGRAPH_MATH_FORMULA, label: 'Math', title: 'Math block' },
+    { commandId: MOBILE_COMMANDS.PARAGRAPH_HTML_BLOCK, label: 'HTML', title: 'HTML block' },
+    { commandId: MOBILE_COMMANDS.PARAGRAPH_TABLE, label: 'Table', title: 'Table' },
+    { commandId: MOBILE_COMMANDS.PARAGRAPH_HORIZONTAL_LINE, label: 'HR', title: 'Horizontal rule' },
+    { commandId: MOBILE_COMMANDS.PARAGRAPH_FRONT_MATTER, label: 'FM', title: 'Front matter' },
+  ],
+  list: [
     { commandId: MOBILE_COMMANDS.PARAGRAPH_BULLET_LIST, label: '•', title: 'Bullet list' },
     { commandId: MOBILE_COMMANDS.PARAGRAPH_ORDERED_LIST, label: '1.', title: 'Ordered list' },
     { commandId: MOBILE_COMMANDS.PARAGRAPH_TASK_LIST, label: '[ ]', title: 'Task list' },
+    {
+      commandId: MOBILE_COMMANDS.PARAGRAPH_LOOSE_LIST_ITEM,
+      label: 'Loose',
+      title: 'Loose list item',
+    },
   ],
 }
 
 export const MOBILE_TOOLBAR_PANELS = [
   {
-    id: 'format',
-    label: 'Format',
-    title: 'Inline formatting',
-    commands: MOBILE_TOOLBAR_PANEL_COMMANDS.format,
+    id: 'text',
+    label: 'Text',
+    title: 'Emphasis and text marks',
+    commands: MOBILE_TOOLBAR_PANEL_COMMANDS.text,
   },
   {
-    id: 'paragraph',
-    label: 'Paragraph',
-    title: 'Paragraph blocks and lists',
-    commands: MOBILE_TOOLBAR_PANEL_COMMANDS.paragraph,
+    id: 'inline',
+    label: 'Inline',
+    title: 'Inline code, math, links, images',
+    commands: MOBILE_TOOLBAR_PANEL_COMMANDS.inline,
+  },
+  {
+    id: 'heading',
+    label: 'Heading',
+    title: 'Paragraph and heading levels',
+    commands: MOBILE_TOOLBAR_PANEL_COMMANDS.heading,
+  },
+  {
+    id: 'block',
+    label: 'Block',
+    title: 'Block syntax and structure',
+    commands: MOBILE_TOOLBAR_PANEL_COMMANDS.block,
+  },
+  {
+    id: 'list',
+    label: 'List',
+    title: 'List types and spacing',
+    commands: MOBILE_TOOLBAR_PANEL_COMMANDS.list,
   },
 ] as const satisfies readonly MobileToolbarPanelDefinition[]
 
