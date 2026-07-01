@@ -151,6 +151,8 @@ async function installAndroidShareAppMock(
             displayName,
             mimeType: 'text/markdown',
             bytes: new TextEncoder().encode(markdown).length,
+            imageCount: 0,
+            sharedFileCount: 1,
           })
         }
 

@@ -59,6 +59,8 @@ export interface AndroidShareResult {
   displayName: string
   mimeType: string
   bytes: number
+  imageCount: number
+  sharedFileCount: number
 }
 
 interface CanceledAndroidDocumentOpen {
@@ -77,7 +79,7 @@ interface AndroidShareDocumentPluginEvent {
   message?: string
 }
 
-interface AndroidDocumentsPlugin {
+export interface AndroidDocumentsPlugin {
   addListener(
     eventName: 'openWithDocument',
     listenerFunc: (event: AndroidOpenWithDocumentPluginEvent) => void,
@@ -97,6 +99,16 @@ interface AndroidDocumentsPlugin {
     suggestedName: string
   }): Promise<AndroidShareResult>
   writeMarkdownDocument(options: { sourceUri: string; markdown: string }): Promise<SavedAndroidDocument>
+  getImportedImageDirectory(): Promise<{ fileUri: string; webBaseUri?: string }>
+  pickImageDocument(): Promise<{
+    canceled?: false
+    sourceUri: string
+    displayName: string
+    mimeType: string | null
+    markdownSrc: string
+    fileUri: string
+    bytes: number
+  } | { canceled: true }>
 }
 
 export class AndroidDocumentError extends Error {
@@ -109,7 +121,7 @@ export class AndroidDocumentError extends Error {
   }
 }
 
-const AndroidDocuments = registerPlugin<AndroidDocumentsPlugin>('AndroidDocuments')
+export const AndroidDocuments = registerPlugin<AndroidDocumentsPlugin>('AndroidDocuments')
 
 export function isAndroidDocumentAccessAvailable() {
   return Capacitor.getPlatform() === 'android' && Capacitor.isNativePlatform()
@@ -345,6 +357,8 @@ function normalizeShareResult(value: AndroidShareResult): AndroidShareResult {
     displayName: value.displayName,
     mimeType: value.mimeType,
     bytes: value.bytes,
+    imageCount: typeof value.imageCount === 'number' ? value.imageCount : 0,
+    sharedFileCount: typeof value.sharedFileCount === 'number' ? value.sharedFileCount : 1,
   }
 }
 

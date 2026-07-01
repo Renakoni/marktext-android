@@ -30,19 +30,32 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @CapacitorPlugin(name = "AndroidDocuments")
 public class AndroidDocumentsPlugin extends Plugin {
 
     private static final String TAG = "MarkTextAndroid";
     private static final int MAX_MARKDOWN_BYTES = 5 * 1024 * 1024;
+    private static final int MAX_IMAGE_BYTES = 15 * 1024 * 1024;
     private static final String CALLBACK_OPEN_MARKDOWN_DOCUMENT = "openMarkdownDocumentResult";
     private static final String CALLBACK_CREATE_MARKDOWN_DOCUMENT = "createMarkdownDocumentResult";
+    private static final String CALLBACK_PICK_IMAGE_DOCUMENT = "pickImageDocumentResult";
     private static final String EVENT_OPEN_WITH_DOCUMENT = "openWithDocument";
     private static final String EVENT_SHARE_DOCUMENT = "shareDocument";
+    private static final String IMPORTED_IMAGE_DIRECTORY = "images";
     private static final String SHARE_CACHE_DIRECTORY = "shared-markdown";
+    private static final Pattern MARKTEXT_IMAGE_SOURCE_PATTERN = Pattern.compile(
+        "marktext-image://local/([^\\s)]+)",
+        Pattern.CASE_INSENSITIVE
+    );
     private String lastHandledIncomingIntentId = "";
 
     @Override
@@ -145,9 +158,10 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
 
         String suggestedName = normalizeSuggestedMarkdownName(call.getString("suggestedName", ""));
+        ShareMarkdownPayload sharePayload = buildShareMarkdownPayload(markdown);
         byte[] bytes;
         try {
-            bytes = validateMarkdownBytes(markdown);
+            bytes = validateMarkdownBytes(sharePayload.markdown);
         } catch (DocumentReadException ex) {
             Log.w(TAG, "Android share rejected: " + ex.getMessage());
             call.reject(ex.getMessage(), ex.code, ex);
@@ -155,14 +169,34 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
 
         try {
-            Uri uri = writeShareCacheFile(suggestedName, bytes);
-            Intent shareIntent = new Intent(Intent.ACTION_SEND);
-            shareIntent.setType("text/markdown");
-            shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
+            File shareDirectory = getShareCacheDirectory();
+            Uri markdownUri = writeShareCacheFile(shareDirectory, suggestedName, bytes);
+            ArrayList<Uri> streamUris = new ArrayList<>();
+            streamUris.add(markdownUri);
+
+            for (Map.Entry<String, File> imageEntry : sharePayload.images.entrySet()) {
+                File sharedImage = copyShareImageFile(shareDirectory, imageEntry.getKey(), imageEntry.getValue());
+                streamUris.add(
+                    FileProvider.getUriForFile(
+                        getContext(),
+                        getContext().getPackageName() + ".fileprovider",
+                        sharedImage
+                    )
+                );
+            }
+
+            boolean sharesImages = streamUris.size() > 1;
+            Intent shareIntent = new Intent(sharesImages ? Intent.ACTION_SEND_MULTIPLE : Intent.ACTION_SEND);
+            shareIntent.setType(sharesImages ? "*/*" : "text/markdown");
+            if (sharesImages) {
+                shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, streamUris);
+            } else {
+                shareIntent.putExtra(Intent.EXTRA_STREAM, markdownUri);
+            }
             shareIntent.putExtra(Intent.EXTRA_TITLE, suggestedName);
             shareIntent.putExtra(Intent.EXTRA_SUBJECT, suggestedName);
             shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            shareIntent.setClipData(ClipData.newUri(getContext().getContentResolver(), suggestedName, uri));
+            shareIntent.setClipData(buildShareClipData(suggestedName, streamUris));
 
             Intent chooser = Intent.createChooser(shareIntent, "Share Markdown");
             chooser.putExtra(
@@ -176,7 +210,15 @@ public class AndroidDocumentsPlugin extends Plugin {
             result.put("displayName", suggestedName);
             result.put("mimeType", "text/markdown");
             result.put("bytes", bytes.length);
-            Log.i(TAG, "Opened Android share sheet for Markdown document: " + safeForLog(suggestedName));
+            result.put("imageCount", sharePayload.images.size());
+            result.put("sharedFileCount", streamUris.size());
+            Log.i(
+                TAG,
+                "Opened Android share sheet for Markdown document: " +
+                safeForLog(suggestedName) +
+                ", images=" +
+                sharePayload.images.size()
+            );
             call.resolve(result);
         } catch (ActivityNotFoundException ex) {
             Log.w(TAG, "No Android share target is available", ex);
@@ -184,6 +226,38 @@ public class AndroidDocumentsPlugin extends Plugin {
         } catch (IOException | SecurityException ex) {
             Log.e(TAG, "Failed to prepare Markdown document for sharing", ex);
             call.reject("Could not prepare Markdown document for sharing", "SHARE_WRITE_FAILED", ex);
+        }
+    }
+
+    @PluginMethod
+    public void getImportedImageDirectory(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("fileUri", getFileUri(getImportedImageDirectoryFile()));
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void pickImageDocument(PluginCall call) {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        intent.putExtra(
+            Intent.EXTRA_MIME_TYPES,
+            new String[] {
+                "image/jpeg",
+                "image/png",
+                "image/gif",
+                "image/webp",
+                "image/svg+xml"
+            }
+        );
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        try {
+            startActivityForResult(call, intent, CALLBACK_PICK_IMAGE_DOCUMENT);
+        } catch (ActivityNotFoundException ex) {
+            Log.e(TAG, "No Android image picker is available", ex);
+            call.reject("No Android image picker is available", "IMAGE_PICKER_UNAVAILABLE", ex);
         }
     }
 
@@ -545,6 +619,46 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
     }
 
+    @ActivityCallback
+    private void pickImageDocumentResult(PluginCall call, ActivityResult result) {
+        if (call == null) {
+            Log.w(TAG, "Missing plugin call for Android image picker result");
+            return;
+        }
+
+        if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
+            JSObject canceled = new JSObject();
+            canceled.put("canceled", true);
+            call.resolve(canceled);
+            return;
+        }
+
+        Intent data = result.getData();
+        Uri uri = data.getData();
+        if (uri == null) {
+            call.reject("Android image picker returned no URI", "IMAGE_URI_MISSING");
+            return;
+        }
+
+        try {
+            JSObject importedImage = importImageResult(uri, data);
+            Log.i(TAG, "Imported Android image: " + safeForLog(importedImage.getString("displayName")));
+            call.resolve(importedImage);
+        } catch (DocumentReadException ex) {
+            Log.w(TAG, "Android image import rejected: " + ex.getMessage());
+            call.reject(ex.getMessage(), ex.code, ex);
+        } catch (FileNotFoundException ex) {
+            Log.w(TAG, "Android image no longer exists", ex);
+            call.reject("This Android image was moved or deleted", "IMAGE_NOT_FOUND", ex);
+        } catch (SecurityException ex) {
+            Log.w(TAG, "Android image read permission is no longer available", ex);
+            call.reject("Android image permission is no longer available", "IMAGE_PERMISSION_LOST", ex);
+        } catch (IOException ex) {
+            Log.e(TAG, "Failed to import Android image", ex);
+            call.reject("Failed to import Android image", "IMAGE_IMPORT_FAILED", ex);
+        }
+    }
+
     private JSObject buildDocumentResult(Uri uri, Intent grantIntent) throws IOException, DocumentReadException {
         String displayName = getDisplayName(uri);
         String mimeType = getMimeType(uri);
@@ -566,6 +680,34 @@ public class AndroidDocumentsPlugin extends Plugin {
         result.put("markdown", markdown);
         result.put("canWrite", canWrite(uri, grantIntent));
         result.put("persisted", hasPersistedReadPermission(uri));
+        return result;
+    }
+
+    private JSObject importImageResult(Uri uri, Intent grantIntent) throws IOException, DocumentReadException {
+        String mimeType = getMimeType(uri, grantIntent);
+        String displayName = normalizeImageDisplayName(getDisplayName(uri), mimeType);
+        if (!isSupportedImage(displayName, mimeType)) {
+            throw new DocumentReadException(
+                "UNSUPPORTED_IMAGE",
+                "Choose a JPEG, PNG, GIF, WebP, or SVG image"
+            );
+        }
+
+        File outputDirectory = getImportedImageDirectoryFile();
+        if (!outputDirectory.exists() && !outputDirectory.mkdirs()) {
+            throw new IOException("Could not create image import directory");
+        }
+
+        File outputFile = new File(outputDirectory, createStoredImageName(displayName, mimeType));
+        int bytes = copyImage(uri, outputFile);
+        JSObject result = new JSObject();
+        result.put("canceled", false);
+        result.put("sourceUri", uri.toString());
+        result.put("displayName", displayName);
+        result.put("mimeType", mimeType);
+        result.put("markdownSrc", "marktext-image://local/" + Uri.encode(outputFile.getName()));
+        result.put("fileUri", getFileUri(outputFile));
+        result.put("bytes", bytes);
         return result;
     }
 
@@ -704,16 +846,50 @@ public class AndroidDocumentsPlugin extends Plugin {
         return cleaned + ".md";
     }
 
-    private Uri writeShareCacheFile(String displayName, byte[] bytes) throws IOException {
+    private ShareMarkdownPayload buildShareMarkdownPayload(String markdown) {
+        Map<String, File> images = new LinkedHashMap<>();
+        Matcher matcher = MARKTEXT_IMAGE_SOURCE_PATTERN.matcher(markdown);
+        StringBuffer rewrittenMarkdown = new StringBuffer();
+
+        while (matcher.find()) {
+            String fileName = normalizeImportedImageFileName(Uri.decode(matcher.group(1)));
+            if (fileName.length() == 0) {
+                continue;
+            }
+
+            File importedImage = new File(getImportedImageDirectoryFile(), fileName);
+            if (!isFileInDirectory(importedImage, getImportedImageDirectoryFile()) || !importedImage.isFile()) {
+                Log.w(TAG, "Skipping missing Android image during share: " + safeForLog(fileName));
+                continue;
+            }
+
+            images.put(fileName, importedImage);
+            matcher.appendReplacement(rewrittenMarkdown, Matcher.quoteReplacement(fileName));
+        }
+        matcher.appendTail(rewrittenMarkdown);
+
+        return new ShareMarkdownPayload(rewrittenMarkdown.toString(), images);
+    }
+
+    private ClipData buildShareClipData(String suggestedName, ArrayList<Uri> streamUris) {
+        ClipData clipData = ClipData.newUri(getContext().getContentResolver(), suggestedName, streamUris.get(0));
+        for (int index = 1; index < streamUris.size(); index++) {
+            clipData.addItem(new ClipData.Item(streamUris.get(index)));
+        }
+        return clipData;
+    }
+
+    private File getShareCacheDirectory() throws IOException {
         File directory = new File(getContext().getCacheDir(), SHARE_CACHE_DIRECTORY);
         if (!directory.exists() && !directory.mkdirs()) {
             throw new IOException("Could not create share cache directory");
         }
+        return directory;
+    }
 
+    private Uri writeShareCacheFile(File directory, String displayName, byte[] bytes) throws IOException {
         File outputFile = new File(directory, normalizeSuggestedMarkdownName(displayName));
-        String directoryPath = directory.getCanonicalPath();
-        String outputPath = outputFile.getCanonicalPath();
-        if (!outputPath.startsWith(directoryPath + File.separator)) {
+        if (!isFileInDirectory(outputFile, directory)) {
             throw new SecurityException("Share cache path escaped the expected directory");
         }
 
@@ -727,6 +903,87 @@ public class AndroidDocumentsPlugin extends Plugin {
             getContext().getPackageName() + ".fileprovider",
             outputFile
         );
+    }
+
+    private File copyShareImageFile(File directory, String displayName, File sourceFile) throws IOException {
+        String normalizedName = normalizeImportedImageFileName(displayName);
+        if (normalizedName.length() == 0) {
+            throw new SecurityException("Invalid shared image file name");
+        }
+
+        File outputFile = new File(directory, normalizedName);
+        if (!isFileInDirectory(outputFile, directory)) {
+            throw new SecurityException("Shared image path escaped the expected directory");
+        }
+
+        try (
+            InputStream input = new java.io.FileInputStream(sourceFile);
+            OutputStream output = new FileOutputStream(outputFile, false)
+        ) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+            output.flush();
+        }
+
+        return outputFile;
+    }
+
+    private boolean isFileInDirectory(File file, File directory) {
+        try {
+            String directoryPath = directory.getCanonicalPath();
+            String filePath = file.getCanonicalPath();
+            return filePath.startsWith(directoryPath + File.separator);
+        } catch (IOException ex) {
+            Log.w(TAG, "Could not validate file path", ex);
+            return false;
+        }
+    }
+
+    private File getImportedImageDirectoryFile() {
+        return new File(getContext().getFilesDir(), IMPORTED_IMAGE_DIRECTORY);
+    }
+
+    private String getFileUri(File file) {
+        return "file://" + file.getAbsolutePath();
+    }
+
+    private int copyImage(Uri uri, File outputFile) throws IOException, DocumentReadException {
+        ContentResolver resolver = getContext().getContentResolver();
+        boolean copied = false;
+        try {
+            try (
+                InputStream input = resolver.openInputStream(uri);
+                OutputStream output = new FileOutputStream(outputFile)
+            ) {
+                if (input == null) {
+                    throw new IOException("Content resolver returned no image stream");
+                }
+
+                byte[] buffer = new byte[8192];
+                int totalBytes = 0;
+                int read;
+                while ((read = input.read(buffer)) != -1) {
+                    totalBytes += read;
+                    if (totalBytes > MAX_IMAGE_BYTES) {
+                        throw new DocumentReadException(
+                            "IMAGE_TOO_LARGE",
+                            "Image is larger than the current 15 MB limit"
+                        );
+                    }
+                    output.write(buffer, 0, read);
+                }
+                output.flush();
+                copied = true;
+                return totalBytes;
+            }
+        } finally {
+            if (!copied && outputFile.exists() && !outputFile.delete()) {
+                Log.w(TAG, "Could not delete incomplete imported image: " + safeForLog(outputFile.getName()));
+            }
+        }
     }
 
     private void persistUriPermission(Uri uri, Intent data) {
@@ -906,6 +1163,125 @@ public class AndroidDocumentsPlugin extends Plugin {
         );
     }
 
+    private boolean isSupportedImage(String displayName, String mimeType) {
+        if (isSupportedImageMimeType(mimeType)) {
+            return true;
+        }
+
+        return (
+            mimeType.length() == 0 ||
+            "application/octet-stream".equals(mimeType)
+        ) && hasSupportedImageExtension(displayName);
+    }
+
+    private boolean isSupportedImageMimeType(String mimeType) {
+        return (
+            "image/*".equals(mimeType) ||
+            "image/jpeg".equals(mimeType) ||
+            "image/png".equals(mimeType) ||
+            "image/gif".equals(mimeType) ||
+            "image/webp".equals(mimeType) ||
+            "image/svg+xml".equals(mimeType)
+        );
+    }
+
+    private boolean hasSupportedImageExtension(String value) {
+        String lowerName = value == null ? "" : value.toLowerCase(Locale.US);
+        return (
+            lowerName.endsWith(".jpg") ||
+            lowerName.endsWith(".jpeg") ||
+            lowerName.endsWith(".png") ||
+            lowerName.endsWith(".gif") ||
+            lowerName.endsWith(".webp") ||
+            lowerName.endsWith(".svg")
+        );
+    }
+
+    private String normalizeImageDisplayName(String displayName, String mimeType) {
+        String cleaned = displayName == null ? "" : displayName.trim();
+        cleaned = cleaned.replaceAll("[\\\\/:*?\"<>|\\r\\n]+", " ");
+        cleaned = cleaned.replaceAll("\\s+", " ").trim();
+        if (cleaned.length() == 0) {
+            cleaned = "Image";
+        }
+
+        if (hasSupportedImageExtension(cleaned)) {
+            return cleaned;
+        }
+        return cleaned + extensionForImageMimeType(mimeType);
+    }
+
+    private String createStoredImageName(String displayName, String mimeType) {
+        String normalized = normalizeImageDisplayName(displayName, mimeType);
+        String extension = extensionFromImageName(normalized);
+        String baseName = extension.length() == 0
+            ? normalized
+            : normalized.substring(0, normalized.length() - extension.length());
+        baseName = baseName.replaceAll("[^A-Za-z0-9._-]+", "-");
+        baseName = baseName.replaceAll("-+", "-").replaceAll("^-|-$", "");
+        if (baseName.length() == 0) {
+            baseName = "image";
+        }
+        if (baseName.length() > 48) {
+            baseName = baseName.substring(0, 48);
+        }
+
+        String unique = UUID.randomUUID().toString().substring(0, 8);
+        return System.currentTimeMillis() + "-" + unique + "-" + baseName + extension;
+    }
+
+    private String normalizeImportedImageFileName(String fileName) {
+        String normalized = fileName == null ? "" : fileName.trim();
+        if (
+            normalized.length() == 0 ||
+            normalized.contains("/") ||
+            normalized.contains("\\") ||
+            !hasSupportedImageExtension(normalized)
+        ) {
+            return "";
+        }
+        return normalized;
+    }
+
+    private String extensionFromImageName(String displayName) {
+        String lowerName = displayName == null ? "" : displayName.toLowerCase(Locale.US);
+        if (lowerName.endsWith(".jpeg")) {
+            return ".jpeg";
+        }
+        if (lowerName.endsWith(".jpg")) {
+            return ".jpg";
+        }
+        if (lowerName.endsWith(".png")) {
+            return ".png";
+        }
+        if (lowerName.endsWith(".gif")) {
+            return ".gif";
+        }
+        if (lowerName.endsWith(".webp")) {
+            return ".webp";
+        }
+        if (lowerName.endsWith(".svg")) {
+            return ".svg";
+        }
+        return "";
+    }
+
+    private String extensionForImageMimeType(String mimeType) {
+        if ("image/jpeg".equals(mimeType)) {
+            return ".jpg";
+        }
+        if ("image/gif".equals(mimeType)) {
+            return ".gif";
+        }
+        if ("image/webp".equals(mimeType)) {
+            return ".webp";
+        }
+        if ("image/svg+xml".equals(mimeType)) {
+            return ".svg";
+        }
+        return ".png";
+    }
+
     private boolean isMarkdownMimeType(String mimeType) {
         return (
             "text/markdown".equals(mimeType) ||
@@ -1042,6 +1418,17 @@ public class AndroidDocumentsPlugin extends Plugin {
         DocumentReadException(String code, String message) {
             super(message);
             this.code = code;
+        }
+    }
+
+    private static class ShareMarkdownPayload {
+
+        final String markdown;
+        final Map<String, File> images;
+
+        ShareMarkdownPayload(String markdown, Map<String, File> images) {
+            this.markdown = markdown;
+            this.images = images;
         }
     }
 }

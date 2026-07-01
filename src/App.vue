@@ -21,6 +21,12 @@ import {
   type SharedAndroidDocument,
 } from './lib/androidDocuments'
 import {
+  ensureAndroidImageResolver,
+  getAndroidImageUserMessage,
+  isAndroidImageImportAvailable,
+  pickAndroidImageDocument,
+} from './lib/androidImages'
+import {
   createUntitledDocument,
   getSuggestedMarkdownFileName,
   markDocumentSaved,
@@ -104,6 +110,7 @@ const promptLocalDraftSaveOnExit = ref(false)
 const savingLocalDraftToAndroid = ref(false)
 const savingAndroidDocumentCopy = ref(false)
 const sharingCurrentDocument = ref(false)
+const importingAndroidImage = ref(false)
 
 let editor: MuyaEditor | null = null
 let muyaCore: MuyaCoreModule | null = null
@@ -116,7 +123,7 @@ let androidSaveRequestedAfterCurrent = false
 let appLifecycleListenerHandles: PluginListenerHandle[] = []
 let androidDocumentListenerHandles: PluginListenerHandle[] = []
 let browserLifecycleListenersInstalled = false
-let pendingLinkRange: Range | null = null
+let pendingInlineInsertRange: Range | null = null
 
 const appLog = createLogger('app')
 const editorLog = createLogger('editor')
@@ -397,12 +404,12 @@ function buildMarkdownLink(text: string, url: string) {
 
 function restorePendingLinkRange() {
   const selection = window.getSelection()
-  if (!selection || !pendingLinkRange) {
+  if (!selection || !pendingInlineInsertRange) {
     return false
   }
 
   selection.removeAllRanges()
-  selection.addRange(pendingLinkRange)
+  selection.addRange(pendingInlineInsertRange)
   return true
 }
 
@@ -417,8 +424,8 @@ function openLinkSheet() {
     return
   }
 
-  pendingLinkRange = captureEditorSelection()
-  linkText.value = normalizeLinkField(pendingLinkRange?.toString() ?? '')
+  pendingInlineInsertRange = captureEditorSelection()
+  linkText.value = normalizeLinkField(pendingInlineInsertRange?.toString() ?? '')
   linkUrl.value = ''
   editorMenuOpen.value = false
   closeEditorToolbar()
@@ -433,7 +440,7 @@ function closeLinkSheet() {
   linkSheetOpen.value = false
   linkText.value = ''
   linkUrl.value = ''
-  pendingLinkRange = null
+  pendingInlineInsertRange = null
 }
 
 function insertLinkFromSheet() {
@@ -451,6 +458,65 @@ function insertLinkFromSheet() {
 
   closeLinkSheet()
   syncAfterToolbarCommand(beforeMarkdown)
+}
+
+function escapeMarkdownImageAlt(value: string) {
+  return value.replace(/[\r\n]+/g, ' ').replace(/]/g, '\\]').trim()
+}
+
+function buildMarkdownImage(alt: string, source: string) {
+  return `![${escapeMarkdownImageAlt(alt)}](${source})`
+}
+
+async function insertImageFromAndroidPicker() {
+  if (!editorReady.value || !editor || importingAndroidImage.value) {
+    return
+  }
+
+  if (!isAndroidImageImportAvailable()) {
+    status.value = getAndroidImageUserMessage({ code: 'UNAVAILABLE' })
+    editorLog.warn('mobile image insert skipped because Android image import is unavailable')
+    return
+  }
+
+  const beforeMarkdown = editor.getMarkdown()
+  pendingInlineInsertRange = captureEditorSelection()
+  const selectedText = normalizeLinkField(pendingInlineInsertRange?.toString() ?? '')
+  editorMenuOpen.value = false
+  closeEditorToolbar()
+  importingAndroidImage.value = true
+  status.value = 'Choose an image'
+
+  try {
+    await ensureAndroidImageResolver()
+    const image = await pickAndroidImageDocument()
+    if (image.canceled) {
+      status.value = 'Ready'
+      return
+    }
+
+    const alt = selectedText || image.displayName
+    const markdownImage = buildMarkdownImage(alt, image.markdownSrc)
+    if (!insertMarkdownAtPendingSelection(markdownImage)) {
+      status.value = 'Image insert failed'
+      editorLog.warn('mobile image insert failed because text insertion was not handled')
+      return
+    }
+
+    status.value = 'Image inserted'
+    editorLog.info('mobile image inserted', {
+      displayName: image.displayName,
+      mimeType: image.mimeType,
+      bytes: image.bytes,
+    })
+    syncAfterToolbarCommand(beforeMarkdown)
+  } catch (error) {
+    status.value = getAndroidImageUserMessage(error)
+    editorLog.error('mobile image insert failed', error)
+  } finally {
+    importingAndroidImage.value = false
+    pendingInlineInsertRange = null
+  }
 }
 
 function syncAfterToolbarCommand(beforeMarkdown: string) {
@@ -477,6 +543,11 @@ function runEditorToolbarCommand(commandId: MobileCommandId) {
 
   if (commandId === MOBILE_COMMANDS.FORMAT_HYPERLINK) {
     openLinkSheet()
+    return
+  }
+
+  if (commandId === MOBILE_COMMANDS.FORMAT_IMAGE) {
+    void insertImageFromAndroidPicker()
     return
   }
 
@@ -936,6 +1007,8 @@ async function shareCurrentMarkdownDocument() {
     androidDocumentLog.info('Android share sheet opened', {
       displayName: result.displayName,
       bytes: result.bytes,
+      imageCount: result.imageCount,
+      sharedFileCount: result.sharedFileCount,
       autosaveTarget: currentDocument.autosaveTarget,
     })
     return true
@@ -1010,6 +1083,11 @@ async function initEditor(initialMarkdown: string) {
 
   try {
     const token = ++editorInitToken
+    try {
+      await ensureAndroidImageResolver()
+    } catch (error) {
+      editorLog.warn('Android image resolver unavailable during editor init', error)
+    }
     const { Muya, en } = await registerMuyaPlugins()
     if (token !== editorInitToken || !editorElement.value) {
       return
