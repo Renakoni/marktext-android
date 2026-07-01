@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import type { MobileCommandId } from '../lib/mobileCommands'
 import {
+  MOBILE_TOOLBAR_EDIT_COMMANDS,
   MOBILE_TOOLBAR_PANELS,
-  MOBILE_TOOLBAR_QUICK_GROUPS,
   getMobileToolbarPanel,
   getMobileToolbarPanelCommands,
   type MobileEditorToolbarPanel,
@@ -24,8 +24,8 @@ const emit = defineEmits<{
   setPanel: [panel: MobileEditorToolbarPanel]
 }>()
 
-const quickCommandGroups = MOBILE_TOOLBAR_QUICK_GROUPS
-const panelTabs = MOBILE_TOOLBAR_PANELS
+const editCommands = MOBILE_TOOLBAR_EDIT_COMMANDS
+const panels = MOBILE_TOOLBAR_PANELS
 const activePanel = computed(() => getMobileToolbarPanel(props.activePanel))
 const activePanelCommands = computed(() => getMobileToolbarPanelCommands(props.activePanel))
 const statsText = computed(
@@ -39,6 +39,14 @@ function runCommand(commandId: MobileCommandId) {
 
   emit('runCommand', commandId)
 }
+
+function selectPanel(panel: MobileEditorToolbarPanel) {
+  emit('setPanel', panel)
+
+  if (props.expanded) {
+    emit('toggleExpanded')
+  }
+}
 </script>
 
 <template>
@@ -48,37 +56,39 @@ function runCommand(commandId: MobileCommandId) {
     aria-label="Markdown editing tools"
     data-testid="mobile-editor-toolbar"
   >
-    <div class="toolbar-row">
-      <div class="quick-command-strip" role="toolbar" aria-label="Quick Markdown commands">
-        <div
-          v-for="group in quickCommandGroups"
-          :key="group.id"
-          class="quick-command-group"
-          role="group"
-          :aria-label="group.title"
-        >
-          <button
-            v-for="command in group.commands"
-            :key="command.commandId"
-            class="toolbar-button"
-            type="button"
-            :aria-label="command.title"
-            :title="command.title"
-            :disabled="!editorReady"
-            :data-testid="`toolbar-command-${command.commandId}`"
-            @pointerdown.prevent
-            @mousedown.prevent
-            @click="runCommand(command.commandId)"
-          >
-            <span class="toolbar-button-label">{{ command.label }}</span>
-          </button>
-        </div>
-      </div>
-
+    <section
+      v-if="expanded"
+      id="mobile-editor-toolbar-panel"
+      class="toolbar-section-menu"
+      role="menu"
+      aria-label="Toolbar sections"
+      data-testid="mobile-editor-toolbar-panel"
+      @pointerdown.prevent
+      @mousedown.prevent
+    >
       <button
-        class="toolbar-expand-button"
+        v-for="panel in panels"
+        :key="panel.id"
+        class="toolbar-section-option"
+        :class="{ 'is-active': activePanel.id === panel.id }"
         type="button"
-        :aria-label="expanded ? 'Collapse editing toolbar' : 'Expand editing toolbar'"
+        role="menuitemradio"
+        :aria-checked="activePanel.id === panel.id"
+        :data-testid="`toolbar-section-option-${panel.id}`"
+        @click="selectPanel(panel.id)"
+      >
+        <span class="section-option-label">{{ panel.label }}</span>
+        <span class="section-option-title">{{ panel.title }}</span>
+      </button>
+
+      <p class="toolbar-stats" data-testid="toolbar-document-stats">{{ statsText }}</p>
+    </section>
+
+    <div class="toolbar-row">
+      <button
+        class="toolbar-section-button"
+        type="button"
+        :aria-label="expanded ? 'Close toolbar sections' : 'Open toolbar sections'"
         :aria-expanded="expanded"
         aria-controls="mobile-editor-toolbar-panel"
         data-testid="toolbar-expand-button"
@@ -86,44 +96,20 @@ function runCommand(commandId: MobileCommandId) {
         @mousedown.prevent
         @click="$emit('toggleExpanded')"
       >
-        {{ expanded ? 'v' : '^' }}
+        <span class="toolbar-section-label">{{ activePanel.label }}</span>
+        <span class="toolbar-section-caret" aria-hidden="true">{{ expanded ? 'v' : '^' }}</span>
       </button>
-    </div>
 
-    <section
-      v-if="expanded"
-      id="mobile-editor-toolbar-panel"
-      class="toolbar-panel"
-      data-testid="mobile-editor-toolbar-panel"
-    >
-      <div class="toolbar-tabs" role="tablist" aria-label="Toolbar sections">
+      <div class="toolbar-edit-strip" role="toolbar" aria-label="Edit history">
         <button
-          v-for="tab in panelTabs"
-          :key="tab.id"
-          class="toolbar-tab"
-          :class="{ 'is-active': activePanel.id === tab.id }"
-          type="button"
-          role="tab"
-          :aria-selected="activePanel.id === tab.id"
-          :data-testid="`toolbar-panel-tab-${tab.id}`"
-          @pointerdown.prevent
-          @mousedown.prevent
-          @click="$emit('setPanel', tab.id)"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
-
-      <div class="panel-command-grid" role="toolbar" :aria-label="activePanel.title">
-        <button
-          v-for="command in activePanelCommands"
+          v-for="command in editCommands"
           :key="command.commandId"
-          class="panel-command-button"
+          class="toolbar-history-button"
           type="button"
           :aria-label="command.title"
           :title="command.title"
           :disabled="!editorReady"
-          :data-testid="`toolbar-panel-command-${command.commandId}`"
+          :data-testid="`toolbar-command-${command.commandId}`"
           @pointerdown.prevent
           @mousedown.prevent
           @click="runCommand(command.commandId)"
@@ -132,8 +118,25 @@ function runCommand(commandId: MobileCommandId) {
         </button>
       </div>
 
-      <p class="toolbar-stats" data-testid="toolbar-document-stats">{{ statsText }}</p>
-    </section>
+      <div class="toolbar-command-strip" role="toolbar" :aria-label="activePanel.title">
+        <button
+          v-for="command in activePanelCommands"
+          :key="command.commandId"
+          class="toolbar-command-button"
+          type="button"
+          :aria-label="command.title"
+          :title="command.title"
+          :disabled="!editorReady"
+          :data-command-id="command.commandId"
+          :data-testid="`toolbar-command-${command.commandId}`"
+          @pointerdown.prevent
+          @mousedown.prevent
+          @click="runCommand(command.commandId)"
+        >
+          <span class="toolbar-command-label">{{ command.label }}</span>
+        </button>
+      </div>
+    </div>
   </footer>
 </template>
 
@@ -148,35 +151,17 @@ function runCommand(commandId: MobileCommandId) {
 
 .toolbar-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px;
-  align-items: stretch;
-  min-height: 58px;
-  padding: 6px 0 calc(env(safe-area-inset-bottom, 0px) + 6px);
-}
-
-.quick-command-strip {
-  display: flex;
+  grid-template-columns: 104px 92px minmax(0, 1fr);
   gap: 4px;
-  min-width: 0;
-  overflow-x: auto;
-  padding: 0 8px;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+  align-items: center;
+  min-height: 58px;
+  padding: 6px 8px calc(env(safe-area-inset-bottom, 0px) + 6px);
 }
 
-.quick-command-strip::-webkit-scrollbar {
-  display: none;
-}
-
-.quick-command-group {
-  display: contents;
-}
-
-.toolbar-button,
-.toolbar-expand-button,
-.toolbar-tab,
-.panel-command-button {
+.toolbar-section-button,
+.toolbar-history-button,
+.toolbar-command-button,
+.toolbar-section-option {
   min-width: 44px;
   min-height: 44px;
   border: 0;
@@ -188,91 +173,139 @@ function runCommand(commandId: MobileCommandId) {
   touch-action: manipulation;
 }
 
-.toolbar-button {
+.toolbar-section-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.toolbar-section-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-section-caret {
   flex: 0 0 auto;
-  padding: 0 12px;
-  font-size: 15px;
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 860;
+}
+
+.toolbar-edit-strip {
+  display: grid;
+  grid-template-columns: repeat(2, 44px);
+  gap: 4px;
+  min-width: 0;
+}
+
+.toolbar-history-button {
+  background: color-mix(in srgb, var(--surface) 84%, var(--surface-muted) 16%);
+  color: var(--accent-strong);
+  font-size: 18px;
+  font-weight: 780;
+}
+
+.toolbar-command-strip {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.toolbar-command-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.toolbar-command-button {
+  flex: 0 0 auto;
+  padding: 0 11px;
+  background: transparent;
+  font-size: 14px;
   font-weight: 760;
   white-space: nowrap;
 }
 
-.toolbar-button[aria-label='Italic'] {
+.toolbar-command-button[data-command-id='format.emphasis'] {
   font-style: italic;
 }
 
-.toolbar-button[aria-label='Bold'] {
+.toolbar-command-button[data-command-id='format.strong'] {
   font-weight: 860;
 }
 
-.toolbar-expand-button {
-  width: 52px;
-  border-left: 1px solid var(--border);
-  border-radius: 0;
-  color: var(--accent-strong);
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.toolbar-button:active,
-.toolbar-expand-button:active,
-.toolbar-tab:active,
-.panel-command-button:active {
+.toolbar-section-button:active,
+.toolbar-history-button:active,
+.toolbar-command-button:active,
+.toolbar-section-option:active {
   background: color-mix(in srgb, var(--accent) 11%, transparent);
 }
 
-.toolbar-button:disabled,
-.panel-command-button:disabled {
+.toolbar-history-button:disabled,
+.toolbar-command-button:disabled {
   color: var(--text-muted);
 }
 
-.toolbar-panel {
+.toolbar-section-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 8px;
   display: grid;
-  gap: 10px;
-  max-height: min(42vh, 280px);
-  overflow: auto;
-  padding: 0 12px calc(env(safe-area-inset-bottom, 0px) + 12px);
-  border-top: 1px solid var(--border);
-  background: var(--surface);
-  -webkit-overflow-scrolling: touch;
-}
-
-.toolbar-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
-  padding-top: 10px;
+  width: min(268px, calc(100vw - 16px));
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 14px 36px rgba(26, 44, 50, 0.14);
 }
 
-.toolbar-tab {
-  min-height: 40px;
-  color: var(--text-muted);
-  font-size: 14px;
-  font-weight: 760;
+.toolbar-section-option {
+  display: grid;
+  gap: 2px;
+  min-height: 52px;
+  padding: 7px 10px;
+  text-align: left;
 }
 
-.toolbar-tab.is-active {
+.toolbar-section-option.is-active {
   background: color-mix(in srgb, var(--accent) 13%, var(--surface));
   color: var(--accent-strong);
 }
 
-.panel-command-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+.section-option-label {
+  font-size: 14px;
+  font-weight: 780;
+  line-height: 1.1;
 }
 
-.panel-command-button {
-  min-height: 46px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  font-size: 14px;
-  font-weight: 740;
-  text-align: left;
+.section-option-title {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 620;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-section-option.is-active .section-option-title {
+  color: var(--accent-strong);
 }
 
 .toolbar-stats {
-  margin: 0;
+  margin: 4px 2px 0;
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.3;
@@ -280,22 +313,19 @@ function runCommand(commandId: MobileCommandId) {
 }
 
 @media (min-width: 720px) {
-  .toolbar-row,
-  .toolbar-panel {
+  .toolbar-row {
+    grid-template-columns: 120px 100px minmax(0, 1fr);
     padding-right: max(24px, calc((100vw - 980px) / 2));
     padding-left: max(24px, calc((100vw - 980px) / 2));
   }
 
-  .toolbar-row {
-    grid-template-columns: minmax(0, 1fr) 56px;
+  .toolbar-edit-strip {
+    grid-template-columns: repeat(2, 48px);
   }
 
-  .toolbar-expand-button {
-    width: 56px;
-  }
-
-  .panel-command-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .toolbar-section-menu {
+    left: max(24px, calc((100vw - 980px) / 2));
+    width: 300px;
   }
 }
 </style>
