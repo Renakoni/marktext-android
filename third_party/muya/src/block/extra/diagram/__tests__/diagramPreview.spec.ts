@@ -57,6 +57,14 @@ function makePreview(text: string, type: IDiagramMeta['type'] = 'mermaid', local
     return { preview, muya, i18n };
 }
 
+function deferred() {
+    let resolve!: () => void;
+    const promise = new Promise<void>((done) => {
+        resolve = done;
+    });
+    return { promise, resolve };
+}
+
 describe('diagramPreview — empty state', () => {
     it('renders the empty-state class + localized "Empty Diagram" for empty code', async () => {
         const { preview } = makePreview('');
@@ -113,6 +121,48 @@ describe('diagramPreview — invalid / error state', () => {
         const html = preview.domNode!.innerHTML;
         expect(html).toContain('class="mu-diagram-error"');
         expect(html).toContain('图表渲染失败');
+    });
+});
+
+describe('diagramPreview — async update ordering', () => {
+    it('keeps the latest render when an older renderer finishes later', async () => {
+        const first = deferred();
+        const second = deferred();
+        const render = vi.fn(async (target: HTMLElement, spec: { mark: string }) => {
+            await (spec.mark === 'bar' ? first.promise : second.promise);
+            target.textContent = spec.mark;
+        });
+        loadRendererMock.mockResolvedValue(render);
+
+        const { preview } = makePreview('', 'vega-lite');
+        const firstUpdate = preview.update('{"mark":"bar"}');
+        const secondUpdate = preview.update('{"mark":"line"}');
+
+        second.resolve();
+        await secondUpdate;
+        expect(preview.domNode!.textContent).toBe('line');
+
+        first.resolve();
+        await firstUpdate;
+        expect(preview.domNode!.textContent).toBe('line');
+    });
+
+    it('does not replace an empty-state update with a late renderer error', async () => {
+        const first = deferred();
+        loadRendererMock.mockResolvedValue(async () => {
+            await first.promise;
+            throw new Error('late failure');
+        });
+
+        const { preview } = makePreview('', 'vega-lite');
+        const pendingUpdate = preview.update('{"mark":"bar"}');
+        await preview.update('');
+
+        first.resolve();
+        await pendingUpdate;
+
+        expect(preview.domNode!.innerHTML).toContain(`class="${CLASS_NAMES.MU_EMPTY}"`);
+        expect(preview.domNode!.innerHTML).not.toContain('late failure');
     });
 });
 

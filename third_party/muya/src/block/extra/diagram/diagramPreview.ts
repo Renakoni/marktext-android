@@ -116,6 +116,7 @@ async function renderDiagram({
 class DiagramPreview extends Parent {
     private _code: string;
     private _type: string;
+    private _renderId = 0;
     static override blockName = 'diagram-preview';
 
     static create(muya: Muya, state: IDiagramState) {
@@ -170,14 +171,19 @@ class DiagramPreview extends Parent {
         if (this._code !== code)
             this._code = code;
 
+        const renderId = ++this._renderId;
+
         if (code) {
-            this.domNode!.innerHTML = i18n.t('Loading...');
+            this.domNode!.innerHTML = '';
+            const renderTarget = document.createElement('div');
+            renderTarget.innerHTML = i18n.t('Loading...');
+            this.domNode!.appendChild(renderTarget);
             const { mermaidTheme, vegaTheme, plantumlServer, sequenceTheme } = this.muya.options;
             const { _type: type } = this;
 
             try {
                 await renderDiagram({
-                    target: this.domNode!,
+                    target: renderTarget,
                     code,
                     type,
                     mermaidTheme,
@@ -187,6 +193,8 @@ class DiagramPreview extends Parent {
                 });
             }
             catch (error) {
+                if (renderId !== this._renderId)
+                    return;
                 const detail
                     = error instanceof Error ? error.message : String(error);
                 debug.error(`render ${type} diagram failed: ${detail}`);
