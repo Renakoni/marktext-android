@@ -433,6 +433,42 @@ body {
   line-height: 1.42;
 }
 
+.link-insert-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.link-field {
+  display: grid;
+  gap: 6px;
+}
+
+.link-field span {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
+.link-field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.link-field input:focus {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  outline-offset: 1px;
+}
+
 .draft-save-actions {
   display: grid;
   gap: 8px;
