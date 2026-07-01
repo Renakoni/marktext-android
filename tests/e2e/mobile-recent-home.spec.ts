@@ -374,6 +374,66 @@ test('creates a local draft from real editor input and returns it to the recent 
   await expect(page.getByTestId('new-document-button')).toBeVisible()
 })
 
+test('preserves repeated ordered-list markers when a draft is opened and saved', async ({ page }) => {
+  const now = '2026-07-01T08:00:00.000Z'
+  const markdown = '# List marker note\n\n1. one\n1. two\n1. three\n'
+
+  await page.goto('/')
+  await page.evaluate(({ markdown, now }) => {
+    localStorage.clear()
+    localStorage.setItem(
+      'marktext-for-android:drafts',
+      JSON.stringify([
+        {
+          id: 'doc-repeated-list-marker',
+          markdown,
+          updatedAt: now,
+          lastSavedAt: now,
+        },
+      ]),
+    )
+  }, { markdown, now })
+  await page.reload()
+
+  await page.getByRole('button', { name: /List marker note/ }).click()
+  await expectEditorReady(page)
+  await page.getByTestId('back-button').click()
+
+  const drafts = await page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
+  expect(drafts).toContain('1. one\\n1. two\\n1. three')
+  expect(drafts).not.toContain('1. one\\n2. two\\n3. three')
+})
+
+test('preserves leading whitespace inside front matter when a draft is opened and saved', async ({ page }) => {
+  const now = '2026-07-01T08:00:00.000Z'
+  const markdown = '---\n  title: indented\n---\n\n# Front matter note\n'
+
+  await page.goto('/')
+  await page.evaluate(({ markdown, now }) => {
+    localStorage.clear()
+    localStorage.setItem(
+      'marktext-for-android:drafts',
+      JSON.stringify([
+        {
+          id: 'doc-indented-frontmatter',
+          markdown,
+          updatedAt: now,
+          lastSavedAt: now,
+        },
+      ]),
+    )
+  }, { markdown, now })
+  await page.reload()
+
+  await page.getByRole('button', { name: /Front matter note/ }).click()
+  await expectEditorReady(page)
+  await page.getByTestId('back-button').click()
+
+  const drafts = await page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
+  expect(drafts).toContain('---\\n  title: indented\\n---')
+  expect(drafts).not.toContain('---\\ntitle: indented\\n---')
+})
+
 test('flushes local draft edits when the WebView becomes hidden', async ({ page }) => {
   await page.goto('/')
   await page.evaluate(() => localStorage.clear())

@@ -104,6 +104,15 @@ after
     });
 });
 
+describe('Muya block tree — ordered list source markers', () => {
+    it('preserves repeated ordered-list markers after editor boot', () => {
+        const md = '1. one\n1. two\n1. three\n';
+        const muya = bootMuya(md);
+
+        expect(muya.getMarkdown()).toBe(md);
+    });
+});
+
 describe('stateToMarkdown — code block round-trip', () => {
     it('round-trips a fenced code block with a language tag', () => {
         const md = `\`\`\`js
@@ -318,6 +327,27 @@ describe('stateToMarkdown — frontmatter round-trip', () => {
         const md = `---
 title: hello
 author: world
+---
+
+# body
+`;
+        expect(roundTrip(md)).toBe(md);
+    });
+
+    it('preserves leading whitespace inside YAML frontmatter', () => {
+        const md = `---
+  title: indented
+---
+
+# body
+`;
+        expect(roundTrip(md)).toBe(md);
+    });
+
+    it('preserves a leading blank line inside YAML frontmatter', () => {
+        const md = `---
+
+title: after blank
 ---
 
 # body

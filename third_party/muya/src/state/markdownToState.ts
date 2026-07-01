@@ -20,6 +20,13 @@ function restoreTableEscapeCharacters(text: string) {
     return text.replace(/\|/g, '\\|');
 }
 
+function getOrderedListItemMarker(token: TBlockToken) {
+    if (token.type !== 'list_item')
+        return undefined;
+
+    return /^ {0,3}(\d+[.)])/.exec(token.raw)?.[1];
+}
+
 interface IMarkdownToStateOptions {
     footnote: boolean;
     math: boolean;
@@ -174,6 +181,7 @@ export class MarkdownToState {
 
             case 'list_item': {
                 const { listItemType, checked } = token;
+                const orderMarker = listItemType === 'order' ? getOrderedListItemMarker(token) : undefined;
                 let itemState: IListItemState | ITaskListItemState;
                 if (listItemType === 'task') {
                     itemState = {
@@ -185,6 +193,7 @@ export class MarkdownToState {
                 else {
                     itemState = {
                         name: 'list-item',
+                        ...(orderMarker ? { meta: { orderMarker } } : {}),
                         children: [],
                     };
                 }
@@ -228,7 +237,7 @@ export class MarkdownToState {
         switch (token.type) {
             case 'frontmatter': {
                 const { lang, style, text } = token;
-                value = text.replace(/^\s+/, '').replace(/\s$/, '');
+                value = text.replace(/\n$/, '');
 
                 state = {
                     name: 'frontmatter' as const,
