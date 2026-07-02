@@ -2,7 +2,10 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { App } from '@capacitor/app'
 import type { PluginListenerHandle } from '@capacitor/core'
+import AndroidExitPrompt from './components/editor/AndroidExitPrompt.vue'
+import EditorActionSheet from './components/editor/EditorActionSheet.vue'
 import LinkInsertSheet from './components/editor/LinkInsertSheet.vue'
+import LocalDraftExitPrompt from './components/editor/LocalDraftExitPrompt.vue'
 import HomeShell from './components/HomeShell.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import {
@@ -1747,80 +1750,19 @@ onBeforeUnmount(() => {
     />
 
     <Transition name="editor-sheet">
-      <section
+      <EditorActionSheet
         v-if="editorMenuOpen"
-        class="editor-action-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Document actions"
-        data-testid="editor-action-sheet"
-        @click="closeEditorMenu"
-        @keydown.esc="closeEditorMenu"
-      >
-        <div class="editor-action-panel" @click.stop>
-          <div class="editor-action-grabber" aria-hidden="true" />
-          <h2 class="editor-action-title">Document</h2>
-          <div class="editor-action-list" role="menu">
-            <button
-              v-if="canShareCurrentDocument()"
-              class="editor-action-row"
-              type="button"
-              role="menuitem"
-              data-testid="share-document-button"
-              :disabled="sharingCurrentDocument"
-              @click="shareCurrentMarkdownDocument"
-            >
-              <span class="editor-action-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <circle cx="6" cy="12" r="2.4" fill="currentColor" stroke="none" />
-                  <circle cx="18" cy="6" r="2.4" fill="currentColor" stroke="none" />
-                  <circle cx="18" cy="18" r="2.4" fill="currentColor" stroke="none" />
-                  <path d="M8.1 10.9l7.8-3.6M8.1 13.1l7.8 3.6" />
-                </svg>
-              </span>
-              <span class="editor-action-label">Share</span>
-            </button>
-            <button
-              v-if="canSaveLocalDraftToAndroidDocument()"
-              class="editor-action-row"
-              type="button"
-              role="menuitem"
-              data-testid="save-to-device-button"
-              :disabled="savingLocalDraftToAndroid"
-              @click="() => saveLocalDraftToAndroidDocument()"
-            >
-              <span class="editor-action-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M6 4h9l3 3v13H6z" />
-                  <path d="M9 4v5h6" />
-                  <rect x="9" y="14" width="6" height="5" rx="0.6" />
-                </svg>
-              </span>
-              <span class="editor-action-label">Save to device</span>
-            </button>
-            <button
-              v-if="canSaveAndroidDocumentCopy()"
-              class="editor-action-row"
-              type="button"
-              role="menuitem"
-              data-testid="save-copy-button"
-              :disabled="savingAndroidDocumentCopy"
-              @click="() => saveAndroidDocumentCopy()"
-            >
-              <span class="editor-action-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M6 4h9l3 3v13H6z" />
-                  <path d="M9 4v5h6" />
-                  <rect x="9" y="14" width="6" height="5" rx="0.6" />
-                  <circle cx="18" cy="17.5" r="3.4" fill="var(--surface)" stroke="none" />
-                  <path d="M18 15.6v3.8M16.1 17.5h3.8" />
-                </svg>
-              </span>
-              <span class="editor-action-label">Save a copy</span>
-            </button>
-          </div>
-        </div>
-      </section>
+        :can-share="canShareCurrentDocument()"
+        :can-save-to-device="canSaveLocalDraftToAndroidDocument()"
+        :can-save-copy="canSaveAndroidDocumentCopy()"
+        :sharing="sharingCurrentDocument"
+        :saving-to-device="savingLocalDraftToAndroid"
+        :saving-copy="savingAndroidDocumentCopy"
+        @close="closeEditorMenu"
+        @share="shareCurrentMarkdownDocument"
+        @save-to-device="() => saveLocalDraftToAndroidDocument()"
+        @save-copy="() => saveAndroidDocumentCopy()"
+      />
     </Transition>
 
     <LinkInsertSheet
@@ -1831,90 +1773,23 @@ onBeforeUnmount(() => {
       @insert="insertLinkFromSheet"
     />
 
-    <section
+    <LocalDraftExitPrompt
       v-if="draftExitPromptOpen"
-      class="draft-save-sheet"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="draft-save-title"
-      data-testid="draft-save-prompt"
-    >
-      <div class="draft-save-panel">
-        <h2 id="draft-save-title">Save this draft to your device?</h2>
-        <p>This draft is saved inside MarkText, but it has not been saved as a Markdown file yet.</p>
-        <div class="draft-save-actions">
-          <button
-            v-if="canSaveLocalDraftToAndroidDocument()"
-            class="primary-action"
-            type="button"
-            data-testid="prompt-save-to-device-button"
-            :disabled="savingLocalDraftToAndroid"
-            @click="saveLocalDraftToAndroidDocument({ returnHomeAfterSave: true })"
-          >
-            Save to device
-          </button>
-          <button
-            type="button"
-            data-testid="prompt-keep-draft-button"
-            :disabled="savingLocalDraftToAndroid"
-            @click="keepLocalDraftAndShowHome"
-          >
-            Keep as draft
-          </button>
-          <button
-            class="danger-action"
-            type="button"
-            data-testid="prompt-discard-draft-button"
-            :disabled="savingLocalDraftToAndroid"
-            @click="discardLocalDraftAndShowHome"
-          >
-            Discard
-          </button>
-        </div>
-      </div>
-    </section>
+      :can-save-to-device="canSaveLocalDraftToAndroidDocument()"
+      :saving="savingLocalDraftToAndroid"
+      @save-to-device="saveLocalDraftToAndroidDocument({ returnHomeAfterSave: true })"
+      @keep="keepLocalDraftAndShowHome"
+      @discard="discardLocalDraftAndShowHome"
+    />
 
-    <section
+    <AndroidExitPrompt
       v-if="androidExitPromptOpen"
-      class="draft-save-sheet"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="android-exit-title"
-      data-testid="android-exit-prompt"
-    >
-      <div class="draft-save-panel">
-        <h2 id="android-exit-title">Save changes before leaving?</h2>
-        <p>{{ getAndroidExitPromptMessage() }}</p>
-        <div class="draft-save-actions">
-          <button
-            v-if="canSaveAndroidDocumentCopy()"
-            class="primary-action"
-            type="button"
-            data-testid="prompt-save-copy-button"
-            :disabled="savingAndroidDocumentCopy"
-            @click="saveAndroidDocumentCopy({ returnHomeAfterSave: true })"
-          >
-            Save a copy
-          </button>
-          <button
-            type="button"
-            data-testid="prompt-keep-recovery-button"
-            :disabled="savingAndroidDocumentCopy"
-            @click="keepAndroidRecoveryAndShowHome"
-          >
-            Keep recovery draft
-          </button>
-          <button
-            class="danger-action"
-            type="button"
-            data-testid="prompt-discard-android-changes-button"
-            :disabled="savingAndroidDocumentCopy"
-            @click="discardAndroidChangesAndShowHome"
-          >
-            Discard changes
-          </button>
-        </div>
-      </div>
-    </section>
+      :message="getAndroidExitPromptMessage()"
+      :can-save-copy="canSaveAndroidDocumentCopy()"
+      :saving="savingAndroidDocumentCopy"
+      @save-copy="saveAndroidDocumentCopy({ returnHomeAfterSave: true })"
+      @keep-recovery="keepAndroidRecoveryAndShowHome"
+      @discard="discardAndroidChangesAndShowHome"
+    />
   </main>
 </template>
