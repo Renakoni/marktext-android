@@ -41,12 +41,16 @@ export const MOBILE_COMMANDS = Object.freeze({
 
 export type MobileCommandId = (typeof MOBILE_COMMANDS)[keyof typeof MOBILE_COMMANDS]
 export type MobileCommandGroup = 'document' | 'edit' | 'format' | 'paragraph'
-export type MobileCommandSurface = 'android-file-entry' | 'quick-toolbar' | 'toolbar-panel'
+export type MobileCommandSurface =
+  | 'android-file-entry'
+  | 'quick-toolbar'
+  | 'toolbar-header'
+  | 'toolbar-panel'
 
 export interface MobileCommandDefinition {
   id: MobileCommandId
   group: MobileCommandGroup
-  surface: MobileCommandSurface
+  surfaces: readonly MobileCommandSurface[]
   label: string
 }
 
@@ -112,229 +116,229 @@ export const MOBILE_COMMAND_DEFINITIONS: readonly MobileCommandDefinition[] = [
   {
     id: MOBILE_COMMANDS.FILE_NEW,
     group: 'document',
-    surface: 'android-file-entry',
+    surfaces: ['android-file-entry'],
     label: 'New document',
   },
   {
     id: MOBILE_COMMANDS.FILE_OPEN,
     group: 'document',
-    surface: 'android-file-entry',
+    surfaces: ['android-file-entry'],
     label: 'Open document',
   },
   {
     id: MOBILE_COMMANDS.FILE_SAVE,
     group: 'document',
-    surface: 'android-file-entry',
+    surfaces: ['android-file-entry'],
     label: 'Autosave current document',
   },
   {
     id: MOBILE_COMMANDS.FILE_SAVE_AS,
     group: 'document',
-    surface: 'android-file-entry',
+    surfaces: ['android-file-entry'],
     label: 'Save a copy',
   },
   {
     id: MOBILE_COMMANDS.EDIT_UNDO,
     group: 'edit',
-    surface: 'quick-toolbar',
+    surfaces: ['quick-toolbar', 'toolbar-header'],
     label: 'Undo',
   },
   {
     id: MOBILE_COMMANDS.EDIT_REDO,
     group: 'edit',
-    surface: 'quick-toolbar',
+    surfaces: ['toolbar-header'],
     label: 'Redo',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_STRONG,
     group: 'format',
-    surface: 'quick-toolbar',
+    surfaces: ['quick-toolbar', 'toolbar-panel'],
     label: 'Bold',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_EMPHASIS,
     group: 'format',
-    surface: 'quick-toolbar',
+    surfaces: ['quick-toolbar', 'toolbar-panel'],
     label: 'Italic',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_UNDERLINE,
     group: 'format',
-    surface: 'quick-toolbar',
+    surfaces: ['quick-toolbar', 'toolbar-panel'],
     label: 'Underline',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_SUPERSCRIPT,
     group: 'format',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Superscript',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_SUBSCRIPT,
     group: 'format',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Subscript',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_STRIKE,
     group: 'format',
-    surface: 'quick-toolbar',
+    surfaces: ['toolbar-panel'],
     label: 'Strikethrough',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_HIGHLIGHT,
     group: 'format',
-    surface: 'quick-toolbar',
+    surfaces: ['toolbar-panel'],
     label: 'Highlight',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_INLINE_CODE,
     group: 'format',
-    surface: 'quick-toolbar',
+    surfaces: ['toolbar-panel'],
     label: 'Inline code',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_INLINE_MATH,
     group: 'format',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Inline math',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_HYPERLINK,
     group: 'format',
-    surface: 'quick-toolbar',
+    surfaces: ['toolbar-panel'],
     label: 'Link',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_IMAGE,
     group: 'format',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Image',
   },
   {
     id: MOBILE_COMMANDS.FORMAT_CLEAR,
     group: 'format',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Clear format',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_PARAGRAPH,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Paragraph',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_HEADING_1,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Heading 1',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_HEADING_2,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Heading 2',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_HEADING_3,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Heading 3',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_HEADING_4,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Heading 4',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_HEADING_5,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Heading 5',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_HEADING_6,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Heading 6',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_UPGRADE_HEADING,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Promote heading',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_DEGRADE_HEADING,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Demote heading',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_BULLET_LIST,
     group: 'paragraph',
-    surface: 'quick-toolbar',
+    surfaces: ['quick-toolbar', 'toolbar-panel'],
     label: 'Bullet list',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_ORDERED_LIST,
     group: 'paragraph',
-    surface: 'quick-toolbar',
+    surfaces: ['quick-toolbar', 'toolbar-panel'],
     label: 'Ordered list',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_TASK_LIST,
     group: 'paragraph',
-    surface: 'quick-toolbar',
+    surfaces: ['toolbar-panel'],
     label: 'Task list',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_LOOSE_LIST_ITEM,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Loose list item',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_QUOTE_BLOCK,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Quote block',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_CODE_FENCE,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Code block',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_MATH_FORMULA,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Math block',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_HTML_BLOCK,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'HTML block',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_TABLE,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Table',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_HORIZONTAL_LINE,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Horizontal rule',
   },
   {
     id: MOBILE_COMMANDS.PARAGRAPH_FRONT_MATTER,
     group: 'paragraph',
-    surface: 'toolbar-panel',
+    surfaces: ['toolbar-panel'],
     label: 'Front matter',
   },
 ]

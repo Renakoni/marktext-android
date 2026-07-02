@@ -104,11 +104,17 @@ describe('mobileCommands', () => {
   })
 
   it('classifies frequent touch actions for the mobile editor toolbar', () => {
-    expect(getMobileCommandDefinition(MOBILE_COMMANDS.FORMAT_EMPHASIS)?.surface).toBe(
+    expect(getMobileCommandDefinition(MOBILE_COMMANDS.FORMAT_EMPHASIS)?.surfaces).toContain(
       'quick-toolbar',
     )
-    expect(getMobileCommandDefinition(MOBILE_COMMANDS.PARAGRAPH_HEADING_1)?.surface).toBe(
+    expect(getMobileCommandDefinition(MOBILE_COMMANDS.PARAGRAPH_HEADING_1)?.surfaces).toEqual([
       'toolbar-panel',
-    )
+    ])
+    expect(getMobileCommandDefinition(MOBILE_COMMANDS.EDIT_REDO)?.surfaces).toEqual([
+      'toolbar-header',
+    ])
+    expect(getMobileCommandDefinition(MOBILE_COMMANDS.FORMAT_HYPERLINK)?.surfaces).toEqual([
+      'toolbar-panel',
+    ])
   })
 })
