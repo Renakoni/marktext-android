@@ -43,16 +43,15 @@ body {
 }
 
 .app-shell.is-home {
-  display: block;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: var(--surface);
 }
 
 .home-screen {
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px
-    calc(env(safe-area-inset-bottom, 0px) + 28px);
+  min-height: 100%;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px 28px;
   background: var(--surface);
 }
 
