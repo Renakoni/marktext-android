@@ -1,31 +1,88 @@
+import type { I18nKey } from './i18n'
+
 export const SETTINGS_PAGES = Object.freeze({
   INDEX: 'index',
+  APPEARANCE: 'appearance',
+  EDITING: 'editing',
+  MARKDOWN: 'markdown',
+  FILES_MEDIA: 'files-media',
+  ADVANCED: 'advanced',
   ABOUT: 'about',
-  REFERENCES: 'references',
 } as const)
 
 export type SettingsPage = (typeof SETTINGS_PAGES)[keyof typeof SETTINGS_PAGES]
 
 export interface SettingsHomeItem {
   id: Exclude<SettingsPage, typeof SETTINGS_PAGES.INDEX>
-  label: string
-  value: string
+  labelKey: I18nKey
+  valueKey: I18nKey
   testId: string
 }
 
-export const SETTINGS_HOME_ITEMS = [
+export interface SettingsHomeSection {
+  titleKey: I18nKey
+  items: readonly SettingsHomeItem[]
+}
+
+export const SETTINGS_HOME_SECTIONS = [
   {
-    id: SETTINGS_PAGES.ABOUT,
-    label: 'About MarkText',
-    value: 'Version and updates',
-    testId: 'settings-entry-about',
+    titleKey: 'settings.display',
+    items: [
+      {
+        id: SETTINGS_PAGES.APPEARANCE,
+        labelKey: 'settings.appearance',
+        valueKey: 'settings.entry.appearance',
+        testId: 'settings-entry-appearance',
+      },
+    ],
   },
   {
-    id: SETTINGS_PAGES.REFERENCES,
-    label: 'References',
-    value: 'Repository and upstream',
-    testId: 'settings-entry-references',
+    titleKey: 'settings.editor',
+    items: [
+      {
+        id: SETTINGS_PAGES.EDITING,
+        labelKey: 'settings.editing',
+        valueKey: 'settings.entry.editing',
+        testId: 'settings-entry-editing',
+      },
+      {
+        id: SETTINGS_PAGES.MARKDOWN,
+        labelKey: 'settings.markdown',
+        valueKey: 'settings.entry.markdown',
+        testId: 'settings-entry-markdown',
+      },
+    ],
   },
-] as const satisfies readonly SettingsHomeItem[]
+  {
+    titleKey: 'settings.files',
+    items: [
+      {
+        id: SETTINGS_PAGES.FILES_MEDIA,
+        labelKey: 'settings.filesMedia',
+        valueKey: 'settings.entry.filesMedia',
+        testId: 'settings-entry-files-media',
+      },
+    ],
+  },
+  {
+    titleKey: 'settings.more',
+    items: [
+      {
+        id: SETTINGS_PAGES.ADVANCED,
+        labelKey: 'settings.advanced',
+        valueKey: 'settings.entry.advanced',
+        testId: 'settings-entry-advanced',
+      },
+      {
+        id: SETTINGS_PAGES.ABOUT,
+        labelKey: 'settings.about',
+        valueKey: 'settings.entry.about',
+        testId: 'settings-entry-about',
+      },
+    ],
+  },
+] as const satisfies readonly SettingsHomeSection[]
+
+export const SETTINGS_HOME_ITEMS = SETTINGS_HOME_SECTIONS.flatMap(section => [...section.items])
 
 export const DEFAULT_SETTINGS_PAGE: SettingsPage = SETTINGS_PAGES.INDEX

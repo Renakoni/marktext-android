@@ -1,9 +1,12 @@
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue'
+
+const props = defineProps<{
   label: string
   value?: string
   href?: string
   button?: boolean
+  chevron?: boolean
   disabled?: boolean
   busy?: boolean
   testId?: string
@@ -12,12 +15,15 @@ defineProps<{
 defineEmits<{
   activate: []
 }>()
+
+const hasChevron = computed(() => Boolean(props.chevron || props.href))
 </script>
 
 <template>
   <button
     v-if="button"
     class="settings-row is-action"
+    :class="{ 'has-chevron': hasChevron }"
     type="button"
     :disabled="disabled"
     :aria-busy="busy ? 'true' : undefined"
@@ -29,7 +35,7 @@ defineEmits<{
   </button>
   <a
     v-else-if="href"
-    class="settings-row is-link"
+    class="settings-row is-link has-chevron"
     :href="href"
     target="_blank"
     rel="noreferrer"
@@ -66,13 +72,11 @@ defineEmits<{
   border-bottom: 0;
 }
 
-.settings-row.is-link,
-.settings-row.is-action {
+.settings-row.has-chevron {
   padding-right: 48px;
 }
 
-.settings-row.is-link::after,
-.settings-row.is-action::after {
+.settings-row.has-chevron::after {
   position: absolute;
   top: 50%;
   right: 24px;
@@ -101,6 +105,17 @@ defineEmits<{
 
 .settings-row.is-action:disabled {
   color: var(--text-muted);
+}
+
+.settings-row.has-chevron {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: 3px;
+}
+
+.settings-row.has-chevron .settings-row-value {
+  max-width: none;
+  text-align: left;
 }
 
 .settings-row-label,

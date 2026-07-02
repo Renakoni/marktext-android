@@ -1,3 +1,5 @@
+import type { I18nKey } from './i18n'
+
 export const HOME_TABS = Object.freeze({
   DOCUMENTS: 'documents',
   SETTINGS: 'settings',
@@ -8,19 +10,19 @@ export type HomeTabIcon = 'document' | 'settings'
 
 export interface HomeTabItem {
   id: HomeTab
-  label: string
+  labelKey: I18nKey
   icon: HomeTabIcon
 }
 
 export const HOME_TAB_ITEMS = [
   {
     id: HOME_TABS.DOCUMENTS,
-    label: 'Documents',
+    labelKey: 'nav.documents',
     icon: 'document',
   },
   {
     id: HOME_TABS.SETTINGS,
-    label: 'Settings',
+    labelKey: 'nav.settings',
     icon: 'settings',
   },
 ] as const satisfies readonly HomeTabItem[]
