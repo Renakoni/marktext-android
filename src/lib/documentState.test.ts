@@ -3,6 +3,7 @@ import {
   createUntitledDocument,
   getDocumentStats,
   getDocumentTitle,
+  getSuggestedMarkdownCopyFileName,
   getSuggestedMarkdownFileName,
   normalizeMarkdownForEditor,
   prepareMarkdownForSave,
@@ -26,6 +27,20 @@ describe('documentState', () => {
 
   it('sanitizes suggested Markdown file names for Android document creation', () => {
     expect(getSuggestedMarkdownFileName('# Meeting: A/B?')).toBe('Meeting A B.md')
+  })
+
+  it('suggests a copy file name without changing the source Markdown title', () => {
+    expect(getSuggestedMarkdownCopyFileName('# Trip notes\n\nbody', 'draft.md')).toBe(
+      'Trip notes copy.md',
+    )
+  })
+
+  it('increments copy file names around reserved Android document names', () => {
+    expect(
+      getSuggestedMarkdownCopyFileName('plain text', 'Trip notes copy.md', [
+        'Trip notes copy 2.md',
+      ]),
+    ).toBe('Trip notes copy 3.md')
   })
 
   it('counts latin words and CJK characters for mobile status text', () => {
