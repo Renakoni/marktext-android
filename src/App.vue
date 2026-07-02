@@ -36,15 +36,16 @@ import {
   type AndroidDocumentIntentListeners,
 } from './lib/androidDocumentIntentListeners'
 import {
+  getAppBackButtonAction,
+  getShowHomeAfterAndroidSaveAction,
+  getShowHomeAfterLocalDraftSaveAction,
+  getShowHomeDocumentSaveAction,
+  type AppScreen,
+} from './lib/appExitDecisions'
+import {
   createAndroidRecoveryDraft,
   getAndroidRecoveryDraftId,
 } from './lib/androidRecoveryDrafts'
-import {
-  applyAndroidDocumentAutosaveFailure,
-  applyAndroidDocumentAutosaveSuccess,
-  canApplyAndroidDocumentAutosaveSuccess,
-  createAndroidDocumentAutosaveRequest,
-} from './lib/androidDocumentAutosave'
 import {
   markSavedAndroidRecentDocument,
   rememberAndroidRecentDocument,
@@ -67,14 +68,22 @@ import {
   shouldKeepAndroidRecoveryAfterPreserveFailure,
   type AndroidDocumentOpenSource,
 } from './lib/androidDocumentOpenWorkflow'
+import {
+  createSaveAndroidDocumentWorkflowStart,
+  saveAndroidDocumentWorkflow,
+} from './lib/saveAndroidDocumentWorkflow'
 import { saveAndroidDocumentCopyWorkflow } from './lib/saveAndroidDocumentCopyWorkflow'
 import { saveLocalDraftToAndroidDocumentWorkflow } from './lib/saveLocalDraftToAndroidDocumentWorkflow'
 import { shareAndroidMarkdownDocumentWorkflow } from './lib/shareAndroidMarkdownDocumentWorkflow'
 import {
-  buildMarkdownImage,
-  buildMarkdownLink,
-  normalizeLinkField,
-} from './lib/editorMarkdownInsert'
+  createAndroidImageInsertStart,
+  createLinkInsertSheetWorkflow,
+  insertAndroidImageWorkflow,
+  insertLinkFromSheetWorkflow,
+  normalizeToolbarSelectionText,
+  runEditorToolbarCommandWorkflow,
+  scheduleEditorToolbarSync,
+} from './lib/editorToolbarWorkflow'
 import {
   captureSelectionWithin,
   insertTextAtRestoredSelection,
@@ -96,8 +105,6 @@ import {
 } from './lib/documentStorage'
 import { createLogger, getNativeLogInfo, isNativeLoggerAvailable } from './lib/logger'
 import {
-  MOBILE_COMMANDS,
-  runMobileEditorCommand,
   type MobileCommandId,
   type MobileEditorCommandTarget,
 } from './lib/mobileCommands'
@@ -139,7 +146,7 @@ const androidRecentDocuments = ref<RecentDocumentRecord[]>([])
 const currentAndroidDocumentCanWrite = ref(false)
 const status = ref('Ready')
 const homeNotice = ref<string | null>(null)
-const currentScreen = ref<'home' | 'editor'>('home')
+const currentScreen = ref<AppScreen>('home')
 const homeTab = ref<HomeTab>(DEFAULT_HOME_TAB)
 const settingsPage = ref<SettingsPage>(DEFAULT_SETTINGS_PAGE)
 const editorReady = ref(false)
@@ -309,13 +316,20 @@ function insertMarkdownAtPendingSelection(markdown: string) {
 }
 
 function openLinkSheet() {
-  if (!editorReady.value || !editor) {
+  const hasEditor = Boolean(editor)
+  const capturedRange = editorReady.value && hasEditor ? captureEditorSelection() : null
+  const nextLinkSheet = createLinkInsertSheetWorkflow({
+    editorReady: editorReady.value,
+    hasEditor,
+    selectedText: capturedRange?.toString() ?? '',
+  })
+  if (nextLinkSheet.kind !== 'open') {
     return
   }
 
-  pendingInlineInsertRange = captureEditorSelection()
-  linkText.value = normalizeLinkField(pendingInlineInsertRange?.toString() ?? '')
-  linkUrl.value = ''
+  pendingInlineInsertRange = capturedRange
+  linkText.value = nextLinkSheet.linkText
+  linkUrl.value = nextLinkSheet.linkUrl
   editorMenuOpen.value = false
   closeEditorToolbar()
   linkSheetOpen.value = true
@@ -329,67 +343,67 @@ function closeLinkSheet() {
 }
 
 function insertLinkFromSheet() {
-  if (!editor || !linkUrl.value.trim()) {
-    return
-  }
+  const beforeMarkdown = editor?.getMarkdown() ?? ''
+  const result = insertLinkFromSheetWorkflow({
+    hasEditor: Boolean(editor),
+    linkText: linkText.value,
+    linkUrl: linkUrl.value,
+    beforeMarkdown,
+    insertMarkdown: insertMarkdownAtPendingSelection,
+    logger: editorLog,
+  })
 
-  const beforeMarkdown = editor.getMarkdown()
-  const markdownLink = buildMarkdownLink(linkText.value, linkUrl.value)
-
-  if (!insertMarkdownAtPendingSelection(markdownLink)) {
-    editorLog.warn('mobile link insert failed because text insertion was not handled')
+  if (result.kind !== 'inserted') {
     return
   }
 
   closeLinkSheet()
-  syncAfterToolbarCommand(beforeMarkdown)
+  syncAfterToolbarCommand(result.beforeMarkdown)
 }
 
 async function insertImageFromAndroidPicker() {
-  if (!editorReady.value || !editor || importingAndroidImage.value) {
+  const startResult = createAndroidImageInsertStart({
+    editorReady: editorReady.value,
+    hasEditor: Boolean(editor),
+    importing: importingAndroidImage.value,
+    isAvailable: isAndroidImageImportAvailable(),
+    unavailableStatus: getAndroidImageUserMessage({ code: 'UNAVAILABLE' }),
+    logger: editorLog,
+  })
+  if (startResult.kind === 'not-ready') {
     return
   }
 
-  if (!isAndroidImageImportAvailable()) {
-    status.value = getAndroidImageUserMessage({ code: 'UNAVAILABLE' })
-    editorLog.warn('mobile image insert skipped because Android image import is unavailable')
+  if (startResult.kind === 'unavailable') {
+    status.value = startResult.status
+    return
+  }
+
+  if (!editor) {
     return
   }
 
   const beforeMarkdown = editor.getMarkdown()
   pendingInlineInsertRange = captureEditorSelection()
-  const selectedText = normalizeLinkField(pendingInlineInsertRange?.toString() ?? '')
+  const selectedText = normalizeToolbarSelectionText(pendingInlineInsertRange?.toString() ?? '')
   editorMenuOpen.value = false
   closeEditorToolbar()
   importingAndroidImage.value = true
-  status.value = 'Choose an image'
+  status.value = startResult.status
 
   try {
-    await ensureAndroidImageResolver()
-    const image = await pickAndroidImageDocument()
-    if (image.canceled) {
-      status.value = 'Ready'
-      return
-    }
-
-    const alt = selectedText || image.displayName
-    const markdownImage = buildMarkdownImage(alt, image.markdownSrc)
-    if (!insertMarkdownAtPendingSelection(markdownImage)) {
-      status.value = 'Image insert failed'
-      editorLog.warn('mobile image insert failed because text insertion was not handled')
-      return
-    }
-
-    status.value = 'Image inserted'
-    editorLog.info('mobile image inserted', {
-      displayName: image.displayName,
-      mimeType: image.mimeType,
-      bytes: image.bytes,
+    const result = await insertAndroidImageWorkflow({
+      selectedText,
+      ensureAndroidImageResolver,
+      pickAndroidImageDocument,
+      insertMarkdown: insertMarkdownAtPendingSelection,
+      getAndroidImageUserMessage,
+      logger: editorLog,
     })
-    syncAfterToolbarCommand(beforeMarkdown)
-  } catch (error) {
-    status.value = getAndroidImageUserMessage(error)
-    editorLog.error('mobile image insert failed', error)
+    status.value = result.status
+    if (result.kind === 'inserted') {
+      syncAfterToolbarCommand(beforeMarkdown)
+    }
   } finally {
     importingAndroidImage.value = false
     pendingInlineInsertRange = null
@@ -397,55 +411,40 @@ async function insertImageFromAndroidPicker() {
 }
 
 function syncAfterToolbarCommand(beforeMarkdown: string) {
-  window.requestAnimationFrame(() => {
-    if (!editor) {
-      return
-    }
-
-    const nextMarkdown = normalizeEditorMarkdown(editor.getMarkdown())
-    if (nextMarkdown !== normalizeEditorMarkdown(beforeMarkdown)) {
-      syncMarkdown('Edited')
-      return
-    }
-
-    syncDocumentFromEditor(documentState.value.isDirty)
+  scheduleEditorToolbarSync({
+    beforeMarkdown,
+    requestFrame: callback => window.requestAnimationFrame(callback),
+    getMarkdown: () => editor?.getMarkdown() ?? null,
+    normalizeMarkdown: normalizeEditorMarkdown,
+    onEdited: () => syncMarkdown('Edited'),
+    onUnchanged: () => syncDocumentFromEditor(documentState.value.isDirty),
   })
 }
 
 function runEditorToolbarCommand(commandId: MobileCommandId) {
-  if (!editorReady.value || !editor) {
-    editorLog.warn('mobile toolbar command skipped because editor is not ready', { commandId })
-    return
-  }
+  const activeEditor = editorReady.value ? editor : null
+  const result = runEditorToolbarCommandWorkflow({
+    commandId,
+    editorReady: editorReady.value,
+    hasEditor: Boolean(activeEditor),
+    commandTarget: activeEditor ? getEditorCommandTarget() : null,
+    beforeMarkdown: activeEditor ? activeEditor.getMarkdown() : '',
+    logger: editorLog,
+  })
 
-  if (commandId === MOBILE_COMMANDS.FORMAT_HYPERLINK) {
+  if (result.kind === 'open-link-sheet') {
     openLinkSheet()
     return
   }
 
-  if (commandId === MOBILE_COMMANDS.FORMAT_IMAGE) {
+  if (result.kind === 'insert-image') {
     void insertImageFromAndroidPicker()
     return
   }
 
-  const target = getEditorCommandTarget()
-  const beforeMarkdown = editor.getMarkdown()
-  let result
-
-  try {
-    result = runMobileEditorCommand(target, commandId)
-  } catch (error) {
-    editorLog.error('mobile toolbar command failed', { commandId, error })
-    return
+  if (result.kind === 'handled') {
+    syncAfterToolbarCommand(result.beforeMarkdown)
   }
-
-  if (!result.handled) {
-    editorLog.warn('mobile toolbar command was not handled', result)
-    return
-  }
-
-  editorLog.info('mobile toolbar command handled', { commandId })
-  syncAfterToolbarCommand(beforeMarkdown)
 }
 
 function logContentSnapshot(reason: string) {
@@ -548,30 +547,36 @@ function markAndroidRecentDocumentSaved(savedAt: string) {
 async function saveAndroidDocument() {
   clearAndroidDocumentSaveTimer()
 
-  if (!editor || documentState.value.autosaveTarget !== 'android-document') {
+  if (!editor) {
     return true
   }
 
-  const sourceUri = documentState.value.sourceUri
-  if (!sourceUri) {
-    status.value = 'Save failed'
+  const value = normalizeEditorMarkdown(editor.getMarkdown())
+  const startResult = createSaveAndroidDocumentWorkflowStart({
+    documentState: documentState.value,
+    markdown: value,
+    canWrite: currentAndroidDocumentCanWrite.value,
+  })
+
+  if (startResult.kind === 'not-android-document' || startResult.kind === 'clean') {
+    return true
+  }
+
+  if (startResult.kind === 'missing-source') {
+    status.value = startResult.status
     androidDocumentLog.error('Android document save missing source URI', {
-      id: documentState.value.id,
+      id: startResult.documentId,
     })
     return false
   }
 
-  if (!currentAndroidDocumentCanWrite.value) {
-    status.value = documentState.value.isDirty ? 'This file is read-only.' : 'Read only'
+  if (startResult.kind === 'read-only') {
+    status.value = startResult.status
     androidDocumentLog.debug('skip Android document autosave without write access', {
-      id: documentState.value.id,
-      sourceUri,
+      id: startResult.documentId,
+      sourceUri: startResult.sourceUri,
     })
-    return !documentState.value.isDirty
-  }
-
-  if (!documentState.value.isDirty && documentState.value.autosaveState !== 'save-failed') {
-    return true
+    return startResult.saved
   }
 
   if (androidSaveInFlight) {
@@ -579,49 +584,35 @@ async function saveAndroidDocument() {
     return false
   }
 
-  const value = normalizeEditorMarkdown(editor.getMarkdown())
-  const autosaveRequest = createAndroidDocumentAutosaveRequest(documentState.value, value)
-
   androidSaveInFlight = true
-  documentState.value = autosaveRequest.savingDocument
-  status.value = 'Saving'
+  documentState.value = startResult.request.savingDocument
+  status.value = startResult.status
 
   try {
-    await writeAndroidMarkdownDocument(sourceUri, autosaveRequest.markdownForSave)
-    const savedAt = new Date().toISOString()
+    const result = await saveAndroidDocumentWorkflow({
+      request: startResult.request,
+      getCurrentDocumentState: () => documentState.value,
+      writeAndroidMarkdownDocument,
+      getAndroidDocumentUserMessage,
+      recoveryMessage: ANDROID_SAVE_RECOVERY_MESSAGE,
+      logger: androidDocumentLog,
+    })
 
-    if (canApplyAndroidDocumentAutosaveSuccess(
-      documentState.value,
-      sourceUri,
-      autosaveRequest.saveMarkdown,
-    )) {
-      documentState.value = applyAndroidDocumentAutosaveSuccess(
-        documentState.value,
-        autosaveRequest.saveMarkdown,
-        savedAt,
-      )
-      markAndroidRecentDocumentSaved(savedAt)
-      status.value = 'Saved'
-      androidDocumentLog.info('Android document autosaved', {
-        sourceUri,
-        characters: autosaveRequest.saveMarkdown.length,
-      })
+    if (result.kind === 'saved') {
+      documentState.value = result.savedDocument
+      markAndroidRecentDocumentSaved(result.savedAt)
+      status.value = result.status
       return true
-    } else {
+    }
+
+    if (result.kind === 'changed-during-save') {
       androidSaveRequestedAfterCurrent = true
-      androidDocumentLog.debug('Android document changed during save; scheduling another save', {
-        sourceUri,
-      })
       return false
     }
-  } catch (error) {
-    documentState.value = applyAndroidDocumentAutosaveFailure(documentState.value, error)
-    persistAndroidRecoveryDraft(sourceUri, autosaveRequest.saveMarkdown)
-    status.value = `${getAndroidDocumentUserMessage(error)} ${ANDROID_SAVE_RECOVERY_MESSAGE}`
-    androidDocumentLog.error('Android document autosave failed', {
-      sourceUri,
-      error,
-    })
+
+    documentState.value = result.failedDocument
+    persistAndroidRecoveryDraft(result.recoveryDraft.sourceUri, result.recoveryDraft.markdown)
+    status.value = result.status
     return false
   } finally {
     androidSaveInFlight = false
@@ -1186,21 +1177,35 @@ async function showHome() {
   appLog.info('show recent home')
   editorMenuOpen.value = false
   closeEditorToolbar()
-  if (documentState.value.autosaveTarget === 'android-document') {
+
+  const saveAction = getShowHomeDocumentSaveAction(documentState.value.autosaveTarget)
+  if (saveAction === 'save-android-document') {
     const saved = await saveAndroidDocument()
-    if (!saved) {
-      if (shouldPromptAndroidExitAfterSaveFailure()) {
-        androidExitPromptOpen.value = true
-      }
+    const afterSaveAction = getShowHomeAfterAndroidSaveAction({
+      saved,
+      shouldPromptAndroidExitAfterSaveFailure: shouldPromptAndroidExitAfterSaveFailure(),
+    })
+
+    if (afterSaveAction === 'open-android-exit-prompt') {
+      androidExitPromptOpen.value = true
+      return
+    }
+
+    if (afterSaveAction === 'stay-editor') {
       return
     }
   } else {
     saveDraft()
-    if (shouldPromptLocalDraftSaveToDevice()) {
+    const afterSaveAction = getShowHomeAfterLocalDraftSaveAction({
+      shouldPromptLocalDraftSaveToDevice: shouldPromptLocalDraftSaveToDevice(),
+    })
+
+    if (afterSaveAction === 'open-local-draft-exit-prompt') {
       draftExitPromptOpen.value = true
       return
     }
   }
+
   closeEditorToHome()
 }
 
@@ -1259,57 +1264,51 @@ async function handleAppBackButton() {
     toolbarOpen: editorToolbarExpanded.value,
   })
 
-  if (androidExitPromptOpen.value) {
-    androidExitPromptOpen.value = false
-    status.value = getAndroidEditorStatus()
-    return
-  }
+  const action = getAppBackButtonAction({
+    currentScreen: currentScreen.value,
+    homeTab: homeTab.value,
+    settingsPage: settingsPage.value,
+    androidExitPromptOpen: androidExitPromptOpen.value,
+    draftExitPromptOpen: draftExitPromptOpen.value,
+    linkSheetOpen: linkSheetOpen.value,
+    editorMenuOpen: editorMenuOpen.value,
+    editorToolbarExpanded: editorToolbarExpanded.value,
+  })
 
-  if (draftExitPromptOpen.value) {
-    draftExitPromptOpen.value = false
-    status.value = isLocalDraftDocument() ? 'Autosaved locally' : status.value
-    return
-  }
-
-  if (linkSheetOpen.value) {
-    closeLinkSheet()
-    return
-  }
-
-  if (editorMenuOpen.value) {
-    editorMenuOpen.value = false
-    return
-  }
-
-  if (editorToolbarExpanded.value) {
-    closeEditorToolbar()
-    return
-  }
-
-  if (currentScreen.value === 'editor') {
-    await showHome()
-    return
-  }
-
-  if (
-    currentScreen.value === 'home' &&
-    homeTab.value === HOME_TABS.SETTINGS &&
-    settingsPage.value !== SETTINGS_PAGES.INDEX
-  ) {
-    settingsPage.value = SETTINGS_PAGES.INDEX
-    return
-  }
-
-  if (currentScreen.value === 'home' && homeTab.value !== HOME_TABS.DOCUMENTS) {
-    homeTab.value = HOME_TABS.DOCUMENTS
-    settingsPage.value = DEFAULT_SETTINGS_PAGE
-    return
-  }
-
-  try {
-    await App.exitApp()
-  } catch (error) {
-    appLog.warn('Android back exit unavailable', error)
+  switch (action) {
+    case 'close-android-exit-prompt':
+      androidExitPromptOpen.value = false
+      status.value = getAndroidEditorStatus()
+      return
+    case 'close-local-draft-exit-prompt':
+      draftExitPromptOpen.value = false
+      status.value = isLocalDraftDocument() ? 'Autosaved locally' : status.value
+      return
+    case 'close-link-sheet':
+      closeLinkSheet()
+      return
+    case 'close-editor-menu':
+      editorMenuOpen.value = false
+      return
+    case 'close-editor-toolbar':
+      closeEditorToolbar()
+      return
+    case 'show-home':
+      await showHome()
+      return
+    case 'show-settings-index':
+      settingsPage.value = SETTINGS_PAGES.INDEX
+      return
+    case 'show-documents-tab':
+      homeTab.value = HOME_TABS.DOCUMENTS
+      settingsPage.value = DEFAULT_SETTINGS_PAGE
+      return
+    case 'exit-app':
+      try {
+        await App.exitApp()
+      } catch (error) {
+        appLog.warn('Android back exit unavailable', error)
+      }
   }
 }
 

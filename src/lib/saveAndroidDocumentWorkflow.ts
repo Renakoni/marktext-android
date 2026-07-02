@@ -1,0 +1,214 @@
+import {
+  applyAndroidDocumentAutosaveFailure,
+  applyAndroidDocumentAutosaveSuccess,
+  canApplyAndroidDocumentAutosaveSuccess,
+  createAndroidDocumentAutosaveRequest,
+  type AndroidDocumentAutosaveRequest,
+} from './androidDocumentAutosave'
+import type { MarkdownDocumentState } from './documentState'
+
+interface WorkflowLogger {
+  debug(message: string, data?: unknown): void
+  info(message: string, data?: unknown): void
+  error(message: string, data?: unknown): void
+}
+
+interface AndroidRecoveryDraftRequest {
+  sourceUri: string
+  markdown: string
+}
+
+export interface SaveAndroidDocumentWorkflowRequest extends AndroidDocumentAutosaveRequest {
+  sourceUri: string
+}
+
+export type SaveAndroidDocumentWorkflowStartResult =
+  | {
+      kind: 'not-android-document'
+      saved: true
+    }
+  | {
+      kind: 'missing-source'
+      saved: false
+      status: 'Save failed'
+      documentId: string
+    }
+  | {
+      kind: 'read-only'
+      saved: boolean
+      status: string
+      documentId: string
+      sourceUri: string
+    }
+  | {
+      kind: 'clean'
+      saved: true
+    }
+  | {
+      kind: 'ready'
+      saved: false
+      status: 'Saving'
+      request: SaveAndroidDocumentWorkflowRequest
+    }
+
+export type SaveAndroidDocumentWorkflowResult =
+  | {
+      kind: 'saved'
+      saved: true
+      savedDocument: MarkdownDocumentState
+      savedAt: string
+      sourceUri: string
+      saveMarkdown: string
+      status: 'Saved'
+    }
+  | {
+      kind: 'changed-during-save'
+      saved: false
+      sourceUri: string
+      scheduleAnotherSave: true
+    }
+  | {
+      kind: 'failed'
+      saved: false
+      failedDocument: MarkdownDocumentState
+      sourceUri: string
+      recoveryDraft: AndroidRecoveryDraftRequest
+      status: string
+      error: unknown
+    }
+
+interface CreateSaveAndroidDocumentWorkflowStartOptions {
+  documentState: MarkdownDocumentState
+  markdown: string
+  canWrite: boolean
+}
+
+interface SaveAndroidDocumentWorkflowOptions {
+  request: SaveAndroidDocumentWorkflowRequest
+  getCurrentDocumentState: () => MarkdownDocumentState
+  writeAndroidMarkdownDocument: (sourceUri: string, markdown: string) => Promise<unknown>
+  getAndroidDocumentUserMessage: (error: unknown) => string
+  recoveryMessage: string
+  now?: () => string
+  logger?: WorkflowLogger
+}
+
+export function createSaveAndroidDocumentWorkflowStart({
+  documentState,
+  markdown,
+  canWrite,
+}: CreateSaveAndroidDocumentWorkflowStartOptions): SaveAndroidDocumentWorkflowStartResult {
+  if (documentState.autosaveTarget !== 'android-document') {
+    return {
+      kind: 'not-android-document',
+      saved: true,
+    }
+  }
+
+  const sourceUri = documentState.sourceUri
+  if (!sourceUri) {
+    return {
+      kind: 'missing-source',
+      saved: false,
+      status: 'Save failed',
+      documentId: documentState.id,
+    }
+  }
+
+  if (!canWrite) {
+    return {
+      kind: 'read-only',
+      saved: !documentState.isDirty,
+      status: documentState.isDirty ? 'This file is read-only.' : 'Read only',
+      documentId: documentState.id,
+      sourceUri,
+    }
+  }
+
+  if (!documentState.isDirty && documentState.autosaveState !== 'save-failed') {
+    return {
+      kind: 'clean',
+      saved: true,
+    }
+  }
+
+  return {
+    kind: 'ready',
+    saved: false,
+    status: 'Saving',
+    request: {
+      ...createAndroidDocumentAutosaveRequest(documentState, markdown),
+      sourceUri,
+    },
+  }
+}
+
+export async function saveAndroidDocumentWorkflow({
+  request,
+  getCurrentDocumentState,
+  writeAndroidMarkdownDocument,
+  getAndroidDocumentUserMessage,
+  recoveryMessage,
+  now = () => new Date().toISOString(),
+  logger,
+}: SaveAndroidDocumentWorkflowOptions): Promise<SaveAndroidDocumentWorkflowResult> {
+  try {
+    await writeAndroidMarkdownDocument(request.sourceUri, request.markdownForSave)
+    const savedAt = now()
+    const currentDocument = getCurrentDocumentState()
+
+    if (canApplyAndroidDocumentAutosaveSuccess(
+      currentDocument,
+      request.sourceUri,
+      request.saveMarkdown,
+    )) {
+      logger?.info('Android document autosaved', {
+        sourceUri: request.sourceUri,
+        characters: request.saveMarkdown.length,
+      })
+
+      return {
+        kind: 'saved',
+        saved: true,
+        savedDocument: applyAndroidDocumentAutosaveSuccess(
+          currentDocument,
+          request.saveMarkdown,
+          savedAt,
+        ),
+        savedAt,
+        sourceUri: request.sourceUri,
+        saveMarkdown: request.saveMarkdown,
+        status: 'Saved',
+      }
+    }
+
+    logger?.debug('Android document changed during save; scheduling another save', {
+      sourceUri: request.sourceUri,
+    })
+
+    return {
+      kind: 'changed-during-save',
+      saved: false,
+      sourceUri: request.sourceUri,
+      scheduleAnotherSave: true,
+    }
+  } catch (error) {
+    logger?.error('Android document autosave failed', {
+      sourceUri: request.sourceUri,
+      error,
+    })
+
+    return {
+      kind: 'failed',
+      saved: false,
+      failedDocument: applyAndroidDocumentAutosaveFailure(getCurrentDocumentState(), error),
+      sourceUri: request.sourceUri,
+      recoveryDraft: {
+        sourceUri: request.sourceUri,
+        markdown: request.saveMarkdown,
+      },
+      status: `${getAndroidDocumentUserMessage(error)} ${recoveryMessage}`,
+      error,
+    }
+  }
+}
