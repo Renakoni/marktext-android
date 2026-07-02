@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import AboutSettings from './settings/AboutSettings.vue'
-import ReferenceSettings from './settings/ReferenceSettings.vue'
+import SettingsDetailPage from './settings/SettingsDetailPage.vue'
 import SettingsRow from './settings/SettingsRow.vue'
 import SettingsSection from './settings/SettingsSection.vue'
+import { useI18n } from '../lib/i18n'
+import { SETTINGS_PAGE_TITLE_KEYS } from '../lib/settingsContent'
 import {
-  SETTINGS_HOME_ITEMS,
+  SETTINGS_HOME_SECTIONS,
   SETTINGS_PAGES,
   type SettingsPage,
 } from '../lib/settingsNavigation'
@@ -17,42 +19,37 @@ const emit = defineEmits<{
   setPage: [page: SettingsPage]
 }>()
 
-function getPageTitle(page: SettingsPage) {
-  if (page === SETTINGS_PAGES.ABOUT) {
-    return 'About MarkText'
-  }
-
-  if (page === SETTINGS_PAGES.REFERENCES) {
-    return 'References'
-  }
-
-  return 'Settings'
-}
+const { t } = useI18n()
 </script>
 
 <template>
-  <section class="settings-screen" aria-label="Settings" data-testid="settings-screen">
+  <section class="settings-screen" :aria-label="t('settings.title')" data-testid="settings-screen">
     <header class="settings-top" :class="{ 'is-detail': activePage !== SETTINGS_PAGES.INDEX }">
       <button
         v-if="activePage !== SETTINGS_PAGES.INDEX"
         class="settings-back-button"
         type="button"
-        aria-label="Back to settings"
+        :aria-label="t('settings.back')"
         data-testid="settings-detail-back"
         @click="emit('setPage', SETTINGS_PAGES.INDEX)"
       />
-      <h1 data-testid="settings-title">{{ getPageTitle(activePage) }}</h1>
+      <h1 data-testid="settings-title">{{ t(SETTINGS_PAGE_TITLE_KEYS[activePage]) }}</h1>
     </header>
     <div class="settings-content">
       <template v-if="activePage === SETTINGS_PAGES.INDEX">
         <div class="settings-index" data-testid="settings-index">
-          <SettingsSection title="App">
+          <SettingsSection
+            v-for="section in SETTINGS_HOME_SECTIONS"
+            :key="section.titleKey"
+            :title="t(section.titleKey)"
+          >
             <SettingsRow
-              v-for="item in SETTINGS_HOME_ITEMS"
+              v-for="item in section.items"
               :key="item.id"
-              :label="item.label"
-              :value="item.value"
+              :label="t(item.labelKey)"
+              :value="t(item.valueKey)"
               button
+              chevron
               :test-id="item.testId"
               @activate="emit('setPage', item.id)"
             />
@@ -60,7 +57,7 @@ function getPageTitle(page: SettingsPage) {
         </div>
       </template>
       <AboutSettings v-else-if="activePage === SETTINGS_PAGES.ABOUT" />
-      <ReferenceSettings v-else />
+      <SettingsDetailPage v-else :page="activePage" />
     </div>
   </section>
 </template>

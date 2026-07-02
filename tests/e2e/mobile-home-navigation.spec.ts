@@ -108,11 +108,78 @@ test('switches between document home and the settings about screen', async ({ pa
   await expect(page.getByTestId('settings-index')).toBeVisible()
   await expect(page.getByTestId('new-document-button')).toBeHidden()
   await expect(page.getByTestId('bottom-nav-settings')).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByTestId('settings-entry-appearance')).toBeVisible()
+  await expect(page.getByTestId('settings-entry-editing')).toBeVisible()
+  await expect(page.getByTestId('settings-entry-markdown')).toBeVisible()
+  await expect(page.getByTestId('settings-entry-files-media')).toBeVisible()
+  await expect(page.getByTestId('settings-entry-advanced')).toBeVisible()
+
+  await page.getByTestId('settings-entry-appearance').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Appearance')
+  await expect(page.getByTestId('settings-language-app')).toContainText('English')
+  await expect(page.getByTestId('settings-appearance-system-theme')).toContainText('On')
+  await expect(page.getByTestId('settings-appearance-font-size')).toContainText('Medium')
+
+  await page.getByTestId('settings-language-option-zh-cn').click()
+  await expect(page.getByTestId('settings-title')).toContainText('外观')
+  await expect(page.getByTestId('settings-language-app')).toContainText('中文')
+  await expect(page.getByTestId('settings-appearance-system-theme')).toContainText('开')
+
+  await page.getByTestId('settings-language-option-en').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Appearance')
+
+  await page.getByTestId('settings-detail-back').click()
+  await expect(page.getByTestId('settings-index')).toBeVisible()
+
+  await page.getByTestId('settings-entry-editing').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Editing')
+  await expect(page.getByTestId('settings-editing-toolbar-keyboard')).toContainText('Docked')
+
+  await page.getByTestId('settings-detail-back').click()
+  await expect(page.getByTestId('settings-index')).toBeVisible()
+
+  await page.getByTestId('settings-entry-markdown').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Markdown')
+  await expect(page.getByTestId('settings-markdown-heading-style')).toContainText('ATX (#)')
+
+  await page.getByTestId('settings-detail-back').click()
+  await expect(page.getByTestId('settings-index')).toBeVisible()
+
+  await page.getByTestId('settings-entry-files-media').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Files & Media')
+  await expect(page.getByTestId('settings-files-image-folder')).toContainText('Picker')
+
+  await page.getByTestId('settings-detail-back').click()
+  await expect(page.getByTestId('settings-index')).toBeVisible()
+
+  await page.getByTestId('settings-entry-advanced').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Advanced')
+  await expect(page.getByTestId('settings-advanced-diagrams')).toContainText('Advanced')
+
+  await page.getByTestId('settings-detail-back').click()
+  await expect(page.getByTestId('settings-index')).toBeVisible()
 
   await page.getByTestId('settings-entry-about').click()
   await expect(page.getByTestId('settings-title')).toContainText('About MarkText')
   await expect(page.getByTestId('settings-about-app')).toBeVisible()
   await expect(page.getByTestId('settings-about-version')).toBeVisible()
+  await expect(page.getByTestId('settings-reference-repository')).toHaveAttribute(
+    'href',
+    'https://github.com/Renakoni/marktext-android',
+  )
+  await expect(page.getByTestId('settings-reference-issues')).toHaveAttribute(
+    'href',
+    'https://github.com/Renakoni/marktext-android/issues',
+  )
+  await expect(page.getByTestId('settings-reference-upstream-marktext')).toHaveAttribute(
+    'href',
+    'https://github.com/marktext/marktext',
+  )
+  await expect(page.getByTestId('settings-reference-muya')).toHaveAttribute(
+    'href',
+    'https://github.com/marktext/muya',
+  )
+  await expect(page.getByTestId('settings-about-notices')).toContainText('Licenses')
 
   await page.getByTestId('settings-check-updates').click()
   await expect(page.getByTestId('settings-check-updates')).toContainText(
@@ -125,17 +192,6 @@ test('switches between document home and the settings about screen', async ({ pa
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
-
-  await page.getByTestId('settings-entry-references').click()
-  await expect(page.getByTestId('settings-title')).toContainText('References')
-  await expect(page.getByTestId('settings-reference-repository')).toHaveAttribute(
-    'href',
-    'https://github.com/Renakoni/marktext-android',
-  )
-  await expect(page.getByTestId('settings-reference-issues')).toHaveAttribute(
-    'href',
-    'https://github.com/Renakoni/marktext-android/issues',
-  )
 
   await page.getByTestId('bottom-nav-documents').click()
 

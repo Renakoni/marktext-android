@@ -1,3 +1,5 @@
+import type { I18nKey } from './i18n'
+
 export const APP_INFO = Object.freeze({
   name: 'MarkText for Android',
   version: '0.0.0',
@@ -12,59 +14,67 @@ export const APP_INFO = Object.freeze({
 } as const)
 
 export interface AppReferenceLink {
-  label: string
+  labelKey: I18nKey
   value: string
+  valueKey?: I18nKey
   href: string
   testId: string
 }
 
 export interface AppReferenceSection {
-  title: string
+  titleKey: I18nKey
   links: readonly AppReferenceLink[]
 }
 
-export const APP_REFERENCE_SECTIONS = [
+export const APP_REFERENCE_SECTIONS: readonly AppReferenceSection[] = [
   {
-    title: 'Project',
+    titleKey: 'about.section.project',
     links: [
       {
-        label: 'GitHub repository',
+        labelKey: 'about.githubRepository',
         value: 'Renakoni/marktext-android',
         href: APP_INFO.repositoryUrl,
         testId: 'settings-reference-repository',
       },
       {
-        label: 'Report an issue',
-        value: 'GitHub issues',
-        href: APP_INFO.issuesUrl,
-        testId: 'settings-reference-issues',
-      },
-      {
-        label: 'All releases',
+        labelKey: 'about.allReleases',
         value: 'GitHub releases',
+        valueKey: 'about.githubReleases',
         href: APP_INFO.releasesUrl,
         testId: 'settings-reference-releases',
       },
     ],
   },
   {
-    title: 'Upstream',
+    titleKey: 'about.section.upstream',
     links: [
       {
-        label: 'MarkText desktop',
+        labelKey: 'about.upstreamMarkText',
         value: 'marktext/marktext',
         href: APP_INFO.upstreamMarkTextUrl,
         testId: 'settings-reference-upstream-marktext',
       },
       {
-        label: 'Editor core',
+        labelKey: 'about.muyaAttribution',
         value: 'marktext/muya',
         href: APP_INFO.upstreamMuyaUrl,
         testId: 'settings-reference-muya',
       },
     ],
   },
-] as const satisfies readonly AppReferenceSection[]
+  {
+    titleKey: 'about.section.support',
+    links: [
+      {
+        labelKey: 'about.reportIssue',
+        value: 'GitHub issues',
+        valueKey: 'about.githubIssues',
+        href: APP_INFO.issuesUrl,
+        testId: 'settings-reference-issues',
+      },
+    ],
+  },
+]
 
 export const APP_REFERENCE_LINKS: readonly AppReferenceLink[] = APP_REFERENCE_SECTIONS.flatMap(section =>
   [...section.links],

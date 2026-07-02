@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HomeDocumentItem } from '../lib/homeDocuments'
+import { useI18n } from '../lib/i18n'
 
 interface Props {
   continueDocument: HomeDocumentItem | null
@@ -14,10 +15,12 @@ defineEmits<{
   openFile: []
   newDocument: []
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
-  <section class="home-screen" aria-label="Recent documents" data-testid="documents-screen">
+  <section class="home-screen" :aria-label="t('home.documents.aria')" data-testid="documents-screen">
     <header class="home-top">
       <div>
         <h1>MarkText</h1>
@@ -29,14 +32,14 @@ defineEmits<{
           data-testid="open-file-button"
           @click="$emit('openFile')"
         >
-          Open
+          {{ t('home.open') }}
         </button>
         <button
           class="home-new-button"
           type="button"
-          aria-label="New document"
+          :aria-label="t('home.newDocument')"
           data-testid="new-document-button"
-          title="New document"
+          :title="t('home.newDocument')"
           @click="$emit('newDocument')"
         >
           +
@@ -46,13 +49,13 @@ defineEmits<{
 
     <p v-if="notice" class="home-notice" role="status">{{ notice }}</p>
 
-    <nav class="home-tabs" aria-label="Document sections">
-      <button class="home-tab is-active" type="button">Recent</button>
+    <nav class="home-tabs" :aria-label="t('home.documentSections')">
+      <button class="home-tab is-active" type="button">{{ t('home.recent') }}</button>
     </nav>
 
     <div class="home-content">
       <section v-if="continueDocument" class="document-group" aria-labelledby="continue-title">
-        <h2 id="continue-title">Continue writing</h2>
+        <h2 id="continue-title">{{ t('home.continueWriting') }}</h2>
         <button class="document-row" type="button" @click="$emit('openDocument', continueDocument.id)">
           <span class="document-icon" aria-hidden="true">M</span>
           <span class="document-text">
@@ -63,7 +66,7 @@ defineEmits<{
       </section>
 
       <section v-if="earlierDocuments.length > 0" class="document-group" aria-labelledby="earlier-title">
-        <h2 id="earlier-title">Earlier</h2>
+        <h2 id="earlier-title">{{ t('home.earlier') }}</h2>
         <button
           v-for="document in earlierDocuments"
           :key="document.id"
@@ -85,8 +88,8 @@ defineEmits<{
         aria-labelledby="recent-title"
       >
         <div class="empty-recent">
-          <h2 id="recent-title">No recent Markdown files</h2>
-          <p>Start a local draft or open a Markdown file from this device.</p>
+          <h2 id="recent-title">{{ t('home.emptyTitle') }}</h2>
+          <p>{{ t('home.emptyBody') }}</p>
         </div>
       </section>
     </div>

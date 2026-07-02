@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppBottomNavigationIcon from './AppBottomNavigationIcon.vue'
 import { HOME_TAB_ITEMS, type HomeTab } from '../lib/homeNavigation'
+import { useI18n } from '../lib/i18n'
 
 defineProps<{
   activeTab: HomeTab
@@ -10,6 +11,7 @@ const emit = defineEmits<{
   setTab: [tab: HomeTab]
 }>()
 
+const { t } = useI18n()
 const tabs = HOME_TAB_ITEMS
 
 function selectTab(tab: HomeTab) {
@@ -25,7 +27,7 @@ function selectTab(tab: HomeTab) {
       class="bottom-nav-button"
       :class="{ 'is-active': activeTab === tab.id }"
       type="button"
-      :aria-label="tab.label"
+      :aria-label="t(tab.labelKey)"
       :aria-current="activeTab === tab.id ? 'page' : undefined"
       :data-testid="`bottom-nav-${tab.id}`"
       @click="selectTab(tab.id)"
