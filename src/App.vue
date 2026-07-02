@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { App } from '@capacitor/app'
 import type { PluginListenerHandle } from '@capacitor/core'
-import DocumentHome from './components/DocumentHome.vue'
+import HomeShell from './components/HomeShell.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import {
   addAndroidOpenWithDocumentListener,
@@ -53,6 +53,13 @@ import {
   DEFAULT_MOBILE_TOOLBAR_PANEL,
   type MobileEditorToolbarPanel,
 } from './lib/mobileToolbarConfig'
+import { DEFAULT_HOME_TAB, HOME_TABS, type HomeTab } from './lib/homeNavigation'
+import type { HomeDocumentItem } from './lib/homeDocuments'
+import {
+  DEFAULT_SETTINGS_PAGE,
+  SETTINGS_PAGES,
+  type SettingsPage,
+} from './lib/settingsNavigation'
 import { createMuyaMobileEditorCommandTarget } from './lib/muyaMobileAdapter'
 import {
   createRecentDocumentFromAndroidDocument,
@@ -96,6 +103,8 @@ const currentAndroidDocumentCanWrite = ref(false)
 const status = ref('Ready')
 const homeNotice = ref<string | null>(null)
 const currentScreen = ref<'home' | 'editor'>('home')
+const homeTab = ref<HomeTab>(DEFAULT_HOME_TAB)
+const settingsPage = ref<SettingsPage>(DEFAULT_SETTINGS_PAGE)
 const editorReady = ref(false)
 const draftExitPromptOpen = ref(false)
 const androidExitPromptOpen = ref(false)
@@ -149,7 +158,7 @@ const continueDocument = computed(() =>
 )
 const earlierDocuments = computed(() => earlierDocumentItems.value.map(toHomeDocumentItem))
 
-function toHomeDocumentItem(item: RecentDocumentListItem) {
+function toHomeDocumentItem(item: RecentDocumentListItem): HomeDocumentItem {
   const savedAt = formatSavedTime(item.lastSavedAt ?? item.updatedAt)
   const count = item.stats ? `${item.stats.words} ${item.stats.words === 1 ? 'word' : 'words'}` : ''
   const source = item.providerName ?? 'Markdown document'
@@ -1438,7 +1447,18 @@ function closeEditorToHome() {
   closeLinkSheet()
   closeEditorToolbar()
   destroyEditor()
+  homeTab.value = HOME_TABS.DOCUMENTS
+  settingsPage.value = DEFAULT_SETTINGS_PAGE
   currentScreen.value = 'home'
+}
+
+function setHomeTab(tab: HomeTab) {
+  homeTab.value = tab
+  settingsPage.value = DEFAULT_SETTINGS_PAGE
+}
+
+function setSettingsPage(page: SettingsPage) {
+  settingsPage.value = page
 }
 
 async function showHome() {
@@ -1520,6 +1540,8 @@ function handlePageHide() {
 async function handleAppBackButton() {
   appLog.info('Android back button pressed', {
     screen: currentScreen.value,
+    homeTab: homeTab.value,
+    settingsPage: settingsPage.value,
     promptOpen: draftExitPromptOpen.value,
     androidExitPromptOpen: androidExitPromptOpen.value,
     menuOpen: editorMenuOpen.value,
@@ -1555,6 +1577,21 @@ async function handleAppBackButton() {
 
   if (currentScreen.value === 'editor') {
     await showHome()
+    return
+  }
+
+  if (
+    currentScreen.value === 'home' &&
+    homeTab.value === HOME_TABS.SETTINGS &&
+    settingsPage.value !== SETTINGS_PAGES.INDEX
+  ) {
+    settingsPage.value = SETTINGS_PAGES.INDEX
+    return
+  }
+
+  if (currentScreen.value === 'home' && homeTab.value !== HOME_TABS.DOCUMENTS) {
+    homeTab.value = HOME_TABS.DOCUMENTS
+    settingsPage.value = DEFAULT_SETTINGS_PAGE
     return
   }
 
@@ -1713,16 +1750,19 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main v-if="currentScreen === 'home'" class="app-shell is-home">
-    <DocumentHome
-      :continue-document="continueDocument"
-      :earlier-documents="earlierDocuments"
-      :notice="homeNotice"
-      @new-document="newDocument"
-      @open-document="openDocument"
-      @open-file="openFileFromAndroid"
-    />
-  </main>
+  <HomeShell
+    v-if="currentScreen === 'home'"
+    :active-tab="homeTab"
+    :settings-page="settingsPage"
+    :continue-document="continueDocument"
+    :earlier-documents="earlierDocuments"
+    :notice="homeNotice"
+    @new-document="newDocument"
+    @open-document="openDocument"
+    @open-file="openFileFromAndroid"
+    @set-tab="setHomeTab"
+    @set-settings-page="setSettingsPage"
+  />
 
   <main v-else class="app-shell">
     <header class="top-bar">

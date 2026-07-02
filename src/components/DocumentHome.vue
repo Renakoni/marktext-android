@@ -1,13 +1,9 @@
 <script setup lang="ts">
-interface DocumentListItem {
-  id: string
-  title: string
-  details: string
-}
+import type { HomeDocumentItem } from '../lib/homeDocuments'
 
 interface Props {
-  continueDocument: DocumentListItem | null
-  earlierDocuments: DocumentListItem[]
+  continueDocument: HomeDocumentItem | null
+  earlierDocuments: HomeDocumentItem[]
   notice: string | null
 }
 
@@ -21,7 +17,7 @@ defineEmits<{
 </script>
 
 <template>
-  <section class="home-screen" aria-label="Recent documents">
+  <section class="home-screen" aria-label="Recent documents" data-testid="documents-screen">
     <header class="home-top">
       <div>
         <h1>MarkText</h1>
