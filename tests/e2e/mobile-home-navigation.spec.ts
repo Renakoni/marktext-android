@@ -120,13 +120,35 @@ test('switches between document home and the settings about screen', async ({ pa
   await page.getByTestId('settings-entry-appearance').click()
   await expect(page.getByTestId('settings-title')).toContainText('Appearance')
   await expect(page.getByTestId('settings-language-app')).toContainText('English')
-  await expect(page.getByTestId('settings-appearance-system-theme')).toContainText('On')
-  await expect(page.getByTestId('settings-appearance-font-size')).toContainText('Medium')
+  await expect(page.getByTestId('settings-appearance-system-theme')).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await page.getByTestId('settings-appearance-system-theme').click()
+  await expect(page.getByTestId('settings-appearance-system-theme')).toHaveAttribute(
+    'aria-checked',
+    'false',
+  )
+  await page.getByTestId('settings-appearance-system-theme').click()
+  await expect(page.getByTestId('settings-appearance-font-size')).toContainText('16px')
+  await page.getByTestId('settings-appearance-font-size').getByRole('slider').fill('18')
+  await expect(page.getByTestId('settings-appearance-font-size')).toContainText('18px')
+  await page
+    .getByTestId('settings-appearance-light-theme')
+    .locator('select')
+    .selectOption('ayu-light')
+  await expect(page.getByTestId('settings-appearance-light-theme').locator('select')).toHaveValue(
+    'ayu-light',
+  )
+  await page.getByTestId('settings-appearance-line-width').getByRole('textbox').fill('72ch')
+  await expect(page.getByTestId('settings-appearance-line-width').getByRole('textbox')).toHaveValue(
+    '72ch',
+  )
 
   await page.getByTestId('settings-language-option-zh-cn').click()
   await expect(page.getByTestId('settings-title')).toContainText('外观')
   await expect(page.getByTestId('settings-language-app')).toContainText('中文')
-  await expect(page.getByTestId('settings-appearance-system-theme')).toContainText('开')
+  await expect(page.getByTestId('settings-appearance-system-theme')).toContainText('系统主题')
 
   await page.getByTestId('settings-language-option-en').click()
   await expect(page.getByTestId('settings-title')).toContainText('Appearance')
@@ -137,27 +159,38 @@ test('switches between document home and the settings about screen', async ({ pa
   await page.getByTestId('settings-entry-editing').click()
   await expect(page.getByTestId('settings-title')).toContainText('Editing')
   await expect(page.getByTestId('settings-editing-toolbar-keyboard')).toContainText('Docked')
+  await page.getByTestId('settings-editing-toolbar-keyboard-option-floating').click()
+  await expect(page.getByTestId('settings-editing-toolbar-keyboard-option-floating')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
 
   await page.getByTestId('settings-entry-code').click()
   await expect(page.getByTestId('settings-title')).toContainText('Code')
-  await expect(page.getByTestId('settings-code-wrap-lines')).toContainText('On')
+  await expect(page.getByTestId('settings-code-wrap-lines')).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
 
   await page.getByTestId('settings-entry-markdown').click()
   await expect(page.getByTestId('settings-title')).toContainText('Markdown')
-  await expect(page.getByTestId('settings-markdown-heading-style')).toContainText('ATX (#)')
+  await expect(page.getByTestId('settings-markdown-heading-style')).toContainText('ATX')
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
 
   await page.getByTestId('settings-entry-spelling').click()
   await expect(page.getByTestId('settings-title')).toContainText('Spelling')
-  await expect(page.getByTestId('settings-spelling-enabled')).toContainText('Off')
+  await expect(page.getByTestId('settings-spelling-enabled')).toHaveAttribute(
+    'aria-checked',
+    'false',
+  )
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
@@ -165,20 +198,27 @@ test('switches between document home and the settings about screen', async ({ pa
   await page.getByTestId('settings-entry-documents').click()
   await expect(page.getByTestId('settings-title')).toContainText('Documents')
   await expect(page.getByTestId('settings-documents-local-drafts')).toContainText('Recent')
+  await expect(page.getByTestId('settings-documents-folder-excludes')).toBeVisible()
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
 
   await page.getByTestId('settings-entry-images-sharing').click()
   await expect(page.getByTestId('settings-title')).toContainText('Images & Sharing')
-  await expect(page.getByTestId('settings-images-folder')).toContainText('Picker')
+  await expect(page.getByTestId('settings-images-folder')).toContainText('Choose')
+  await page.getByTestId('settings-images-relative-folder').getByRole('textbox').fill('media')
+  await expect(page.getByTestId('settings-images-relative-folder').getByRole('textbox')).toHaveValue(
+    'media',
+  )
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
 
   await page.getByTestId('settings-entry-advanced').click()
   await expect(page.getByTestId('settings-title')).toContainText('Advanced')
-  await expect(page.getByTestId('settings-advanced-line-endings')).toContainText('System')
+  await expect(page.getByTestId('settings-advanced-line-endings')).toContainText('Default')
+  await expect(page.getByTestId('settings-advanced-search-exclusions')).toBeVisible()
+  await expect(page.getByTestId('settings-advanced-keybindings')).toContainText('Open')
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()

@@ -94,6 +94,12 @@ const hasChevron = computed(() => Boolean(props.chevron || props.href))
   background: var(--surface-muted);
 }
 
+.settings-row.is-link:focus-visible,
+.settings-row.is-action:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  outline-offset: -2px;
+}
+
 .settings-row.is-action {
   width: 100%;
   max-width: 760px;
