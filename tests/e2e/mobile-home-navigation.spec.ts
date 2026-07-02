@@ -110,8 +110,11 @@ test('switches between document home and the settings about screen', async ({ pa
   await expect(page.getByTestId('bottom-nav-settings')).toHaveAttribute('aria-current', 'page')
   await expect(page.getByTestId('settings-entry-appearance')).toBeVisible()
   await expect(page.getByTestId('settings-entry-editing')).toBeVisible()
+  await expect(page.getByTestId('settings-entry-code')).toBeVisible()
   await expect(page.getByTestId('settings-entry-markdown')).toBeVisible()
-  await expect(page.getByTestId('settings-entry-files-media')).toBeVisible()
+  await expect(page.getByTestId('settings-entry-spelling')).toBeVisible()
+  await expect(page.getByTestId('settings-entry-documents')).toBeVisible()
+  await expect(page.getByTestId('settings-entry-images-sharing')).toBeVisible()
   await expect(page.getByTestId('settings-entry-advanced')).toBeVisible()
 
   await page.getByTestId('settings-entry-appearance').click()
@@ -138,6 +141,13 @@ test('switches between document home and the settings about screen', async ({ pa
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
 
+  await page.getByTestId('settings-entry-code').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Code')
+  await expect(page.getByTestId('settings-code-wrap-lines')).toContainText('On')
+
+  await page.getByTestId('settings-detail-back').click()
+  await expect(page.getByTestId('settings-index')).toBeVisible()
+
   await page.getByTestId('settings-entry-markdown').click()
   await expect(page.getByTestId('settings-title')).toContainText('Markdown')
   await expect(page.getByTestId('settings-markdown-heading-style')).toContainText('ATX (#)')
@@ -145,16 +155,30 @@ test('switches between document home and the settings about screen', async ({ pa
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
 
-  await page.getByTestId('settings-entry-files-media').click()
-  await expect(page.getByTestId('settings-title')).toContainText('Files & Media')
-  await expect(page.getByTestId('settings-files-image-folder')).toContainText('Picker')
+  await page.getByTestId('settings-entry-spelling').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Spelling')
+  await expect(page.getByTestId('settings-spelling-enabled')).toContainText('Off')
+
+  await page.getByTestId('settings-detail-back').click()
+  await expect(page.getByTestId('settings-index')).toBeVisible()
+
+  await page.getByTestId('settings-entry-documents').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Documents')
+  await expect(page.getByTestId('settings-documents-local-drafts')).toContainText('Recent')
+
+  await page.getByTestId('settings-detail-back').click()
+  await expect(page.getByTestId('settings-index')).toBeVisible()
+
+  await page.getByTestId('settings-entry-images-sharing').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Images & Sharing')
+  await expect(page.getByTestId('settings-images-folder')).toContainText('Picker')
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
 
   await page.getByTestId('settings-entry-advanced').click()
   await expect(page.getByTestId('settings-title')).toContainText('Advanced')
-  await expect(page.getByTestId('settings-advanced-diagrams')).toContainText('Advanced')
+  await expect(page.getByTestId('settings-advanced-line-endings')).toContainText('System')
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
