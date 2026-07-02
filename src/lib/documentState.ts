@@ -56,6 +56,7 @@ interface SaveDocumentOptions {
 
 const DEFAULT_UNTITLED_NAME = 'Untitled-1'
 const MARKDOWN_EXTENSION_REGEXP = /\.(markdown|mdown|mkdn|mkd|md)$/i
+const MARKDOWN_COPY_SUFFIX_REGEXP = /\s+copy(?:\s+(\d+))?$/
 const INVALID_FILENAME_CHARS_REGEXP = /[\\/:*?"<>|\r\n]+/g
 const LINE_ENDING_REGEXP = /\r\n|\r|\n/g
 
@@ -188,6 +189,32 @@ export function getSuggestedMarkdownFileName(markdown: string, displayName = DEF
 
   const safeName = baseName || 'Untitled'
   return MARKDOWN_EXTENSION_REGEXP.test(safeName) ? safeName : `${safeName}.md`
+}
+
+export function getSuggestedMarkdownCopyFileName(
+  markdown: string,
+  displayName = DEFAULT_UNTITLED_NAME,
+  reservedNames: string[] = [],
+) {
+  const suggestedName = getSuggestedMarkdownFileName(markdown, displayName)
+  const extension = suggestedName.match(MARKDOWN_EXTENSION_REGEXP)?.[0] ?? '.md'
+  const baseName = suggestedName.slice(0, -extension.length) || 'Untitled'
+  const copySuffix = baseName.match(MARKDOWN_COPY_SUFFIX_REGEXP)
+  const copyBaseName = copySuffix
+    ? baseName.slice(0, copySuffix.index).trim() || 'Untitled'
+    : baseName
+  const firstCopyIndex = copySuffix ? Number(copySuffix[1] ?? '1') + 1 : 1
+  const normalizedReservedNames = new Set(reservedNames.map(name => name.toLocaleLowerCase()))
+
+  for (let index = firstCopyIndex; index < firstCopyIndex + 100; index += 1) {
+    const suffix = index === 1 ? 'copy' : `copy ${index}`
+    const candidate = `${copyBaseName} ${suffix}${extension}`
+    if (!normalizedReservedNames.has(candidate.toLocaleLowerCase())) {
+      return candidate
+    }
+  }
+
+  return `${copyBaseName} copy ${Date.now()}${extension}`
 }
 
 export function createUntitledDocument(options: CreateDocumentOptions = {}): MarkdownDocumentState {

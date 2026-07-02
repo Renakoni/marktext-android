@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { App } from '@capacitor/app'
 import type { PluginListenerHandle } from '@capacitor/core'
+import LinkInsertSheet from './components/editor/LinkInsertSheet.vue'
 import HomeShell from './components/HomeShell.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import {
@@ -28,6 +29,7 @@ import {
 } from './lib/androidImages'
 import {
   createUntitledDocument,
+  getSuggestedMarkdownCopyFileName,
   getSuggestedMarkdownFileName,
   markDocumentSaved,
   markDocumentSaveFailed,
@@ -36,12 +38,22 @@ import {
   updateDocumentMarkdown,
 } from './lib/documentState'
 import {
-  parseLocalDrafts,
+  buildMarkdownImage,
+  buildMarkdownLink,
+  normalizeLinkField,
+} from './lib/editorMarkdownInsert'
+import {
   removeLocalDraft,
-  serializeLocalDrafts,
   upsertLocalDraft,
   type LocalDraftRecord,
 } from './lib/localDrafts'
+import {
+  readLegacyDraft,
+  readStoredAndroidRecentDocuments,
+  readStoredLocalDrafts,
+  writeStoredAndroidRecentDocuments,
+  writeStoredLocalDrafts,
+} from './lib/documentStorage'
 import { createLogger, getNativeLogInfo, isNativeLoggerAvailable } from './lib/logger'
 import {
   MOBILE_COMMANDS,
@@ -54,7 +66,7 @@ import {
   type MobileEditorToolbarPanel,
 } from './lib/mobileToolbarConfig'
 import { DEFAULT_HOME_TAB, HOME_TABS, type HomeTab } from './lib/homeNavigation'
-import type { HomeDocumentItem } from './lib/homeDocuments'
+import { toHomeDocumentItem } from './lib/homeDocuments'
 import {
   DEFAULT_SETTINGS_PAGE,
   SETTINGS_PAGES,
@@ -66,16 +78,10 @@ import {
   createRecentDocumentFromLocalDraft,
   getRecentDocumentListItems,
   markRecentDocumentSaved,
-  parseRecentDocuments,
-  serializeRecentDocuments,
   upsertRecentDocument,
-  type RecentDocumentListItem,
   type RecentDocumentRecord,
 } from './lib/recentDocuments'
 
-const LEGACY_DRAFT_STORAGE_KEY = 'marktext-for-android:draft'
-const DRAFTS_STORAGE_KEY = 'marktext-for-android:drafts'
-const RECENT_DOCUMENTS_STORAGE_KEY = 'marktext-for-android:recent-documents'
 const DRAFT_SAVE_DELAY_MS = 800
 const ANDROID_DOCUMENT_SAVE_DELAY_MS = 1200
 const TRANSIENT_ANDROID_DOCUMENT_MESSAGE =
@@ -89,8 +95,6 @@ const ANDROID_RECOVERY_DRAFT_PREFIX = 'android-recovery:'
 const ANDROID_SAVE_RECOVERY_MESSAGE = 'Save failed. A local recovery draft was kept.'
 const ANDROID_EXIT_RECOVERY_MESSAGE = 'Unsaved changes were kept as a recovery draft.'
 const ANDROID_EXIT_DISCARD_MESSAGE = 'Unsaved changes were discarded.'
-const MARKDOWN_FILE_EXTENSION_REGEXP = /\.(markdown|mdown|mkdn|mkd|md)$/i
-const MARKDOWN_COPY_SUFFIX_REGEXP = /\s+copy(?:\s+(\d+))?$/
 
 type MuyaCoreModule = typeof import('@muyajs/core')
 type MuyaEditor = InstanceType<MuyaCoreModule['Muya']>
@@ -114,7 +118,6 @@ const editorToolbarPanel = ref<MobileEditorToolbarPanel>(DEFAULT_MOBILE_TOOLBAR_
 const linkSheetOpen = ref(false)
 const linkText = ref('')
 const linkUrl = ref('')
-const linkUrlInput = ref<HTMLInputElement | null>(null)
 const promptLocalDraftSaveOnExit = ref(false)
 const savingLocalDraftToAndroid = ref(false)
 const savingAndroidDocumentCopy = ref(false)
@@ -157,34 +160,6 @@ const continueDocument = computed(() =>
   continueDocumentItem.value ? toHomeDocumentItem(continueDocumentItem.value) : null,
 )
 const earlierDocuments = computed(() => earlierDocumentItems.value.map(toHomeDocumentItem))
-
-function toHomeDocumentItem(item: RecentDocumentListItem): HomeDocumentItem {
-  const savedAt = formatSavedTime(item.lastSavedAt ?? item.updatedAt)
-  const count = item.stats ? `${item.stats.words} ${item.stats.words === 1 ? 'word' : 'words'}` : ''
-  const source = item.providerName ?? 'Markdown document'
-
-  return {
-    id: item.id,
-    title: item.title,
-    details: [source, savedAt, count].filter(Boolean).join(' - '),
-  }
-}
-
-function formatSavedTime(value: string | null) {
-  if (!value) {
-    return ''
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
-}
 
 function getAndroidEditorStatus() {
   if (documentState.value.autosaveState === 'save-failed') {
@@ -245,32 +220,6 @@ function getAndroidExitPromptMessage() {
   }
 
   return 'MarkText could not save this file. Save a copy or keep a recovery draft before leaving.'
-}
-
-function getSuggestedMarkdownCopyFileName(
-  markdown: string,
-  displayName: string,
-  reservedNames: string[] = [],
-) {
-  const suggestedName = getSuggestedMarkdownFileName(markdown, displayName)
-  const extension = suggestedName.match(MARKDOWN_FILE_EXTENSION_REGEXP)?.[0] ?? '.md'
-  const baseName = suggestedName.slice(0, -extension.length) || 'Untitled'
-  const copySuffix = baseName.match(MARKDOWN_COPY_SUFFIX_REGEXP)
-  const copyBaseName = copySuffix
-    ? baseName.slice(0, copySuffix.index).trim() || 'Untitled'
-    : baseName
-  const firstCopyIndex = copySuffix ? Number(copySuffix[1] ?? '1') + 1 : 1
-  const normalizedReservedNames = new Set(reservedNames.map(name => name.toLocaleLowerCase()))
-
-  for (let index = firstCopyIndex; index < firstCopyIndex + 100; index += 1) {
-    const suffix = index === 1 ? 'copy' : `copy ${index}`
-    const candidate = `${copyBaseName} ${suffix}${extension}`
-    if (!normalizedReservedNames.has(candidate.toLocaleLowerCase())) {
-      return candidate
-    }
-  }
-
-  return `${copyBaseName} copy ${Date.now()}${extension}`
 }
 
 async function loadMuyaCore() {
@@ -393,24 +342,6 @@ function captureEditorSelection() {
   return range
 }
 
-function normalizeLinkField(value: string) {
-  return value.trim().replace(/\s+/g, ' ')
-}
-
-function escapeMarkdownLinkText(value: string) {
-  return normalizeLinkField(value).replace(/([\\[\]])/g, '\\$1')
-}
-
-function escapeMarkdownLinkUrl(value: string) {
-  return value.trim().replace(/\)/g, '\\)')
-}
-
-function buildMarkdownLink(text: string, url: string) {
-  const normalizedUrl = escapeMarkdownLinkUrl(url)
-  const normalizedText = escapeMarkdownLinkText(text || normalizedUrl)
-  return `[${normalizedText}](${normalizedUrl})`
-}
-
 function restorePendingLinkRange() {
   const selection = window.getSelection()
   if (!selection || !pendingInlineInsertRange) {
@@ -439,10 +370,6 @@ function openLinkSheet() {
   editorMenuOpen.value = false
   closeEditorToolbar()
   linkSheetOpen.value = true
-
-  void nextTick(() => {
-    linkUrlInput.value?.focus()
-  })
 }
 
 function closeLinkSheet() {
@@ -467,14 +394,6 @@ function insertLinkFromSheet() {
 
   closeLinkSheet()
   syncAfterToolbarCommand(beforeMarkdown)
-}
-
-function escapeMarkdownImageAlt(value: string) {
-  return value.replace(/[\r\n]+/g, ' ').replace(/]/g, '\\]').trim()
-}
-
-function buildMarkdownImage(alt: string, source: string) {
-  return `![${escapeMarkdownImageAlt(alt)}](${source})`
 }
 
 async function insertImageFromAndroidPicker() {
@@ -629,25 +548,12 @@ function clearAndroidDocumentSaveTimer() {
 
 function persistLocalDrafts(nextDrafts: LocalDraftRecord[]) {
   localDrafts.value = nextDrafts
-
-  if (nextDrafts.length > 0) {
-    localStorage.setItem(DRAFTS_STORAGE_KEY, serializeLocalDrafts(nextDrafts))
-  } else {
-    localStorage.removeItem(DRAFTS_STORAGE_KEY)
-  }
-
-  localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY)
+  writeStoredLocalDrafts(nextDrafts)
 }
 
 function persistAndroidRecentDocuments(nextDocuments: RecentDocumentRecord[]) {
-  const filteredDocuments = nextDocuments.filter(record => record.kind === 'android-document')
+  const filteredDocuments = writeStoredAndroidRecentDocuments(nextDocuments)
   androidRecentDocuments.value = filteredDocuments
-
-  if (filteredDocuments.length > 0) {
-    localStorage.setItem(RECENT_DOCUMENTS_STORAGE_KEY, serializeRecentDocuments(filteredDocuments))
-  } else {
-    localStorage.removeItem(RECENT_DOCUMENTS_STORAGE_KEY)
-  }
 }
 
 function getAndroidRecoveryDraftId(sourceUri: string) {
@@ -1698,11 +1604,9 @@ function discardLocalDraftAndShowHome() {
 onMounted(() => {
   appLog.info('app mounted')
   installAppLifecycleListeners()
-  const restoredDrafts = parseLocalDrafts(localStorage.getItem(DRAFTS_STORAGE_KEY))
-  const restoredRecentDocuments = parseRecentDocuments(
-    localStorage.getItem(RECENT_DOCUMENTS_STORAGE_KEY),
-  ).filter(record => record.kind === 'android-document')
-  const legacyDraft = localStorage.getItem(LEGACY_DRAFT_STORAGE_KEY)
+  const restoredDrafts = readStoredLocalDrafts()
+  const restoredRecentDocuments = readStoredAndroidRecentDocuments()
+  const legacyDraft = readLegacyDraft()
 
   androidRecentDocuments.value = restoredRecentDocuments
 
@@ -1919,55 +1823,13 @@ onBeforeUnmount(() => {
       </section>
     </Transition>
 
-    <section
+    <LinkInsertSheet
       v-if="linkSheetOpen"
-      class="draft-save-sheet"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="link-sheet-title"
-      data-testid="link-insert-sheet"
-      @keydown.esc="closeLinkSheet"
-    >
-      <form class="draft-save-panel link-insert-panel" @submit.prevent="insertLinkFromSheet">
-        <h2 id="link-sheet-title">Insert link</h2>
-        <label class="link-field">
-          <span>Text</span>
-          <input
-            v-model="linkText"
-            type="text"
-            autocomplete="off"
-            autocapitalize="sentences"
-            data-testid="link-text-input"
-          >
-        </label>
-        <label class="link-field">
-          <span>URL</span>
-          <input
-            ref="linkUrlInput"
-            v-model="linkUrl"
-            type="text"
-            inputmode="url"
-            autocomplete="url"
-            autocapitalize="none"
-            spellcheck="false"
-            data-testid="link-url-input"
-          >
-        </label>
-        <div class="draft-save-actions">
-          <button
-            class="primary-action"
-            type="submit"
-            data-testid="link-insert-button"
-            :disabled="!linkUrl.trim()"
-          >
-            Insert
-          </button>
-          <button type="button" data-testid="link-cancel-button" @click="closeLinkSheet">
-            Cancel
-          </button>
-        </div>
-      </form>
-    </section>
+      v-model:text="linkText"
+      v-model:url="linkUrl"
+      @cancel="closeLinkSheet"
+      @insert="insertLinkFromSheet"
+    />
 
     <section
       v-if="draftExitPromptOpen"
