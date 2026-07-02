@@ -143,9 +143,9 @@ const codeFontOptions = [
 
 const toolbarTabOptions = [
   { id: 'format', labelKey: 'settings.option.toolbar.format' },
+  { id: 'paragraph', labelKey: 'settings.option.toolbar.paragraph' },
   { id: 'insert', labelKey: 'settings.option.toolbar.insert' },
-  { id: 'block', labelKey: 'settings.option.toolbar.block' },
-  { id: 'more', labelKey: 'settings.option.toolbar.more' },
+  { id: 'markdown', labelKey: 'settings.option.toolbar.markdown' },
 ] as const satisfies readonly SettingsOption[]
 
 const keyboardToolbarOptions = [
