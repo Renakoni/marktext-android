@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import AppBottomNavigation from './AppBottomNavigation.vue'
 import DocumentHome from './DocumentHome.vue'
 import SettingsHome from './SettingsHome.vue'
@@ -14,7 +15,7 @@ interface Props {
   notice: string | null
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   setTab: [tab: HomeTab]
@@ -23,11 +24,21 @@ const emit = defineEmits<{
   newDocument: []
   setSettingsPage: [page: SettingsPage]
 }>()
+
+const homeMain = ref<HTMLElement | null>(null)
+
+watch(
+  () => [props.activeTab, props.settingsPage] as const,
+  () => {
+    homeMain.value?.scrollTo({ top: 0, left: 0 })
+  },
+  { flush: 'post' },
+)
 </script>
 
 <template>
   <main class="app-shell is-home">
-    <div class="home-main">
+    <div ref="homeMain" class="home-main">
       <DocumentHome
         v-if="activeTab === HOME_TABS.DOCUMENTS"
         :continue-document="continueDocument"

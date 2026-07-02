@@ -69,7 +69,7 @@ defineEmits<{
 
 .settings-choice-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 6px;
   width: 100%;
 }
@@ -97,5 +97,10 @@ defineEmits<{
 
 .settings-choice-option:active {
   transform: translateY(1px);
+}
+
+.settings-choice-option:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  outline-offset: 1px;
 }
 </style>
