@@ -36,6 +36,7 @@ defineEmits<{
 
 <style scoped>
 .settings-text-row {
+  position: relative;
   display: grid;
   gap: 10px;
   width: 100%;
@@ -43,12 +44,7 @@ defineEmits<{
   min-height: 76px;
   padding: 12px 20px 14px;
   border: 0;
-  border-bottom: 1px solid var(--border);
   color: var(--text);
-}
-
-.settings-text-row:last-child {
-  border-bottom: 0;
 }
 
 .settings-text-label {

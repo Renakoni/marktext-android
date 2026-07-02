@@ -33,21 +33,17 @@ defineEmits<{
 
 <style scoped>
 .settings-select-row {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(132px, 46%);
   align-items: center;
   gap: 14px;
   width: 100%;
   min-width: 0;
-  min-height: 58px;
+  min-height: 60px;
   padding: 12px 20px;
   border: 0;
-  border-bottom: 1px solid var(--border);
   color: var(--text);
-}
-
-.settings-select-row:last-child {
-  border-bottom: 0;
 }
 
 .settings-select-label {

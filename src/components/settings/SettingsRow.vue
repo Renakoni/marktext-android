@@ -59,18 +59,14 @@ const hasChevron = computed(() => Boolean(props.chevron || props.href))
   gap: 14px;
   width: 100%;
   min-width: 0;
-  min-height: 58px;
+  min-height: 60px;
   padding: 12px 20px;
   border: 0;
-  border-bottom: 1px solid var(--border);
   background: transparent;
   color: var(--text);
   font: inherit;
+  text-align: left;
   text-decoration: none;
-}
-
-.settings-row:last-child {
-  border-bottom: 0;
 }
 
 .settings-row.has-chevron {
@@ -84,8 +80,8 @@ const hasChevron = computed(() => Boolean(props.chevron || props.href))
   right: 20px;
   width: 9px;
   height: 9px;
-  border-top: 1.6px solid var(--text-faint);
-  border-right: 1.6px solid var(--text-faint);
+  border-top: 1.4px solid color-mix(in srgb, var(--text-faint) 70%, var(--surface));
+  border-right: 1.4px solid color-mix(in srgb, var(--text-faint) 70%, var(--surface));
   content: '';
   transform: translateY(-50%) rotate(45deg);
   pointer-events: none;
@@ -116,8 +112,8 @@ const hasChevron = computed(() => Boolean(props.chevron || props.href))
 
 .settings-row-label {
   font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.008em;
+  font-weight: 560;
+  letter-spacing: -0.006em;
 }
 
 .settings-row-value {

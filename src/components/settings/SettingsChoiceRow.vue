@@ -40,6 +40,7 @@ defineEmits<{
 
 <style scoped>
 .settings-choice-row {
+  position: relative;
   display: grid;
   gap: 10px;
   width: 100%;
@@ -47,12 +48,7 @@ defineEmits<{
   min-height: 72px;
   padding: 12px 20px 14px;
   border: 0;
-  border-bottom: 1px solid var(--border);
   color: var(--text);
-}
-
-.settings-choice-row:last-child {
-  border-bottom: 0;
 }
 
 .settings-choice-row.is-label-hidden {
