@@ -35,12 +35,12 @@ defineProps<{
 
 <style scoped>
 .bottom-nav-icon {
-  width: 25px;
-  height: 25px;
+  width: 23px;
+  height: 23px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 1.9;
+  stroke-width: 1.8;
 }
 </style>

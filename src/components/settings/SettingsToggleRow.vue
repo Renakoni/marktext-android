@@ -32,9 +32,9 @@ defineEmits<{
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  width: min(100%, 760px);
-  min-height: 64px;
-  margin: 0 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
   padding: 12px 20px;
   border: 0;
   border-bottom: 1px solid var(--border);
@@ -54,44 +54,45 @@ defineEmits<{
 }
 
 .settings-toggle-row:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
   outline-offset: -2px;
 }
 
 .settings-toggle-label {
   min-width: 0;
   font-size: 16px;
-  font-weight: 720;
-  line-height: 1.25;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.008em;
   overflow-wrap: anywhere;
 }
 
 .settings-toggle-track {
   position: relative;
-  width: 52px;
-  height: 32px;
-  border: 1px solid var(--border);
+  width: 50px;
+  height: 30px;
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--text-muted) 15%, var(--surface));
+  background: var(--surface-sunken);
   transition:
-    background 160ms ease-out,
-    border-color 160ms ease-out;
+    background 160ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color 160ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .settings-toggle-thumb {
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
   background: var(--surface);
-  box-shadow: 0 2px 8px rgba(26, 44, 50, 0.18);
-  transition: transform 180ms ease-out;
+  box-shadow: 0 2px 6px oklch(0.25 0.02 255 / 0.18);
+  transition: transform 180ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .settings-toggle-row[aria-checked='true'] .settings-toggle-track {
-  border-color: color-mix(in srgb, var(--accent) 54%, var(--border));
+  border-color: var(--accent);
   background: var(--accent);
 }
 

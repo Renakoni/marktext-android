@@ -32,7 +32,11 @@ const { t } = useI18n()
         :aria-label="t('settings.back')"
         data-testid="settings-detail-back"
         @click="emit('setPage', SETTINGS_PAGES.INDEX)"
-      />
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+      </button>
       <h1 data-testid="settings-title">{{ t(SETTINGS_PAGE_TITLE_KEYS[activePage]) }}</h1>
     </header>
     <div class="settings-content">
@@ -65,70 +69,68 @@ const { t } = useI18n()
 <style scoped>
 .settings-screen {
   min-height: 100%;
-  padding: calc(env(safe-area-inset-top, 0px) + 18px) 0 28px;
-  background: var(--surface);
+  padding: calc(env(safe-area-inset-top, 0px) + 26px) 0 40px;
+  background: var(--app-bg);
 }
 
 .settings-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  display: flex;
   align-items: center;
-  max-width: 760px;
+  gap: 10px;
+  max-width: 720px;
   margin: 0 auto;
   padding: 0 20px;
 }
 
-.settings-top.is-detail {
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
-}
-
 .settings-back-button {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  margin-left: -10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 10px 0 6px;
+  margin-left: -6px;
   border: 0;
+  border-radius: 999px;
   background: transparent;
-  color: var(--text);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.006em;
 }
 
-.settings-back-button::before {
-  position: absolute;
-  top: 50%;
-  left: 16px;
-  width: 13px;
-  height: 13px;
-  border-bottom: 2.5px solid currentColor;
-  border-left: 2.5px solid currentColor;
-  content: '';
-  transform: translateY(-50%) rotate(45deg);
+.settings-back-button svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .settings-back-button:active {
-  transform: translateY(1px);
+  background: var(--surface-muted);
 }
 
 .settings-top h1 {
   margin: 0;
   color: var(--text);
   font-size: 28px;
-  line-height: 1.08;
-  font-weight: 760;
-}
-
-.settings-top.is-detail h1 {
-  text-align: center;
+  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: -0.022em;
 }
 
 .settings-content {
   display: grid;
-  max-width: 760px;
-  margin: 30px auto 0;
-  gap: 24px;
+  max-width: 720px;
+  margin: 22px auto 0;
+  gap: 22px;
 }
 
 .settings-index {
   display: grid;
-  gap: 24px;
+  gap: 22px;
 }
 </style>

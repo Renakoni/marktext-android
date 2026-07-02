@@ -1416,6 +1416,14 @@ function toggleEditorMenu() {
   }
 }
 
+function closeEditorMenu() {
+  editorMenuOpen.value = false
+}
+
+function openEditorSearch() {
+  appLog.info('editor search requested')
+}
+
 function toggleEditorToolbar() {
   editorToolbarExpanded.value = !editorToolbarExpanded.value
   if (editorToolbarExpanded.value) {
@@ -1766,55 +1774,49 @@ onBeforeUnmount(() => {
 
   <main v-else class="app-shell">
     <header class="top-bar">
-      <button class="nav-button" type="button" data-testid="back-button" @click="showHome">Back</button>
+      <button
+        class="nav-button"
+        type="button"
+        aria-label="Back"
+        data-testid="back-button"
+        @click="showHome"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+      </button>
       <div class="document-heading">
-        <span>MarkText Android</span>
         <h1>{{ documentTitle }}</h1>
         <p>{{ status }}</p>
       </div>
-      <div v-if="canShowEditorActions()" class="editor-actions">
+      <div v-if="editorReady" class="editor-actions">
         <button
-          class="menu-button"
+          class="icon-button"
+          type="button"
+          aria-label="Search"
+          title="Search"
+          @click="openEditorSearch"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="11" cy="11" r="6" />
+            <path d="M16 16l4.5 4.5" />
+          </svg>
+        </button>
+        <button
+          v-if="canShowEditorActions()"
+          class="icon-button"
           type="button"
           aria-label="More actions"
           :aria-expanded="editorMenuOpen"
           data-testid="editor-menu-button"
           @click="toggleEditorMenu"
         >
-          ...
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="5" r="1.6" />
+            <circle cx="12" cy="12" r="1.6" />
+            <circle cx="12" cy="19" r="1.6" />
+          </svg>
         </button>
-        <div v-if="editorMenuOpen" class="editor-menu" role="menu">
-          <button
-            v-if="canShareCurrentDocument()"
-            type="button"
-            role="menuitem"
-            data-testid="share-document-button"
-            :disabled="sharingCurrentDocument || !editorReady"
-            @click="shareCurrentMarkdownDocument"
-          >
-            Share
-          </button>
-          <button
-            v-if="canSaveLocalDraftToAndroidDocument()"
-            type="button"
-            role="menuitem"
-            data-testid="save-to-device-button"
-            :disabled="savingLocalDraftToAndroid"
-            @click="() => saveLocalDraftToAndroidDocument()"
-          >
-            Save to device
-          </button>
-          <button
-            v-if="canSaveAndroidDocumentCopy()"
-            type="button"
-            role="menuitem"
-            data-testid="save-copy-button"
-            :disabled="savingAndroidDocumentCopy"
-            @click="() => saveAndroidDocumentCopy()"
-          >
-            Save a copy
-          </button>
-        </div>
       </div>
     </header>
 
@@ -1839,6 +1841,83 @@ onBeforeUnmount(() => {
       @toggle-expanded="toggleEditorToolbar"
       @set-panel="setEditorToolbarPanel"
     />
+
+    <Transition name="editor-sheet">
+      <section
+        v-if="editorMenuOpen"
+        class="editor-action-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Document actions"
+        data-testid="editor-action-sheet"
+        @click="closeEditorMenu"
+        @keydown.esc="closeEditorMenu"
+      >
+        <div class="editor-action-panel" @click.stop>
+          <div class="editor-action-grabber" aria-hidden="true" />
+          <h2 class="editor-action-title">Document</h2>
+          <div class="editor-action-list" role="menu">
+            <button
+              v-if="canShareCurrentDocument()"
+              class="editor-action-row"
+              type="button"
+              role="menuitem"
+              data-testid="share-document-button"
+              :disabled="sharingCurrentDocument"
+              @click="shareCurrentMarkdownDocument"
+            >
+              <span class="editor-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <circle cx="6" cy="12" r="2.4" fill="currentColor" stroke="none" />
+                  <circle cx="18" cy="6" r="2.4" fill="currentColor" stroke="none" />
+                  <circle cx="18" cy="18" r="2.4" fill="currentColor" stroke="none" />
+                  <path d="M8.1 10.9l7.8-3.6M8.1 13.1l7.8 3.6" />
+                </svg>
+              </span>
+              <span class="editor-action-label">Share</span>
+            </button>
+            <button
+              v-if="canSaveLocalDraftToAndroidDocument()"
+              class="editor-action-row"
+              type="button"
+              role="menuitem"
+              data-testid="save-to-device-button"
+              :disabled="savingLocalDraftToAndroid"
+              @click="() => saveLocalDraftToAndroidDocument()"
+            >
+              <span class="editor-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M6 4h9l3 3v13H6z" />
+                  <path d="M9 4v5h6" />
+                  <rect x="9" y="14" width="6" height="5" rx="0.6" />
+                </svg>
+              </span>
+              <span class="editor-action-label">Save to device</span>
+            </button>
+            <button
+              v-if="canSaveAndroidDocumentCopy()"
+              class="editor-action-row"
+              type="button"
+              role="menuitem"
+              data-testid="save-copy-button"
+              :disabled="savingAndroidDocumentCopy"
+              @click="() => saveAndroidDocumentCopy()"
+            >
+              <span class="editor-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M6 4h9l3 3v13H6z" />
+                  <path d="M9 4v5h6" />
+                  <rect x="9" y="14" width="6" height="5" rx="0.6" />
+                  <circle cx="18" cy="17.5" r="3.4" fill="var(--surface)" stroke="none" />
+                  <path d="M18 15.6v3.8M16.1 17.5h3.8" />
+                </svg>
+              </span>
+              <span class="editor-action-label">Save a copy</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </Transition>
 
     <section
       v-if="linkSheetOpen"

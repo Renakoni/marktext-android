@@ -62,6 +62,7 @@ watch(
 .home-main {
   min-height: 0;
   overflow: auto;
+  background: var(--app-bg);
   -webkit-overflow-scrolling: touch;
 }
 </style>

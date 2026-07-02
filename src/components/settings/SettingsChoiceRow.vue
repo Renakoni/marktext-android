@@ -42,10 +42,11 @@ defineEmits<{
 .settings-choice-row {
   display: grid;
   gap: 10px;
-  width: min(100%, 760px);
+  width: 100%;
+  min-width: 0;
   min-height: 72px;
-  margin: 0 auto;
   padding: 12px 20px 14px;
+  border: 0;
   border-bottom: 1px solid var(--border);
   color: var(--text);
 }
@@ -62,8 +63,9 @@ defineEmits<{
 .settings-choice-label {
   min-width: 0;
   font-size: 16px;
-  font-weight: 720;
-  line-height: 1.25;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.008em;
   overflow-wrap: anywhere;
 }
 
@@ -79,28 +81,32 @@ defineEmits<{
   min-height: 38px;
   padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--surface) 86%, var(--surface-muted) 14%);
+  border-radius: var(--radius-sm, 10px);
+  background: var(--surface-muted);
   color: var(--text-muted);
   font: inherit;
   font-size: 14px;
-  font-weight: 720;
-  letter-spacing: 0;
+  font-weight: 600;
+  letter-spacing: -0.006em;
   touch-action: manipulation;
+  transition:
+    background 140ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    color 140ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color 140ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .settings-choice-option.is-active {
   border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  background: var(--accent-soft);
   color: var(--accent-strong);
 }
 
 .settings-choice-option:active {
-  transform: translateY(1px);
+  transform: translateY(0.5px);
 }
 
 .settings-choice-option:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
   outline-offset: 1px;
 }
 </style>
