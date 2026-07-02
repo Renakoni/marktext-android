@@ -28,25 +28,21 @@ defineEmits<{
 
 <style scoped>
 .settings-toggle-row {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   width: 100%;
   min-width: 0;
-  min-height: 58px;
+  min-height: 60px;
   padding: 12px 20px;
   border: 0;
-  border-bottom: 1px solid var(--border);
   background: transparent;
   color: var(--text);
   font: inherit;
   text-align: left;
   touch-action: manipulation;
-}
-
-.settings-toggle-row:last-child {
-  border-bottom: 0;
 }
 
 .settings-toggle-row:active {

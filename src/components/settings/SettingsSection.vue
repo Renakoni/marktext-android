@@ -16,27 +16,23 @@ defineProps<{
 <style scoped>
 .settings-section {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .settings-section h2 {
   max-width: 720px;
   width: 100%;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 22px;
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.2;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
 .settings-section-body {
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
 }
 </style>

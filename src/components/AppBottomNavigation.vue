@@ -67,10 +67,10 @@ function selectTab(tab: HomeTab) {
 
 .bottom-nav-indicator {
   position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  width: 50%;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc(50% - 6px);
   pointer-events: none;
   transition: transform 340ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
   will-change: transform;
@@ -78,9 +78,9 @@ function selectTab(tab: HomeTab) {
 
 .bottom-nav-indicator::before {
   position: absolute;
-  inset: 0 6px;
+  inset: 0 16px;
   border-radius: 999px;
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface) 28%);
   content: '';
 }
 

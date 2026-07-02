@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppBottomNavigation from './AppBottomNavigation.vue'
 import DocumentHome from './DocumentHome.vue'
 import SettingsHome from './SettingsHome.vue'
 import type { HomeDocumentItem } from '../lib/homeDocuments'
 import { HOME_TABS, type HomeTab } from '../lib/homeNavigation'
-import type { SettingsPage } from '../lib/settingsNavigation'
+import { SETTINGS_PAGES, type SettingsPage } from '../lib/settingsNavigation'
 
 interface Props {
   activeTab: HomeTab
@@ -27,6 +27,12 @@ const emit = defineEmits<{
 
 const homeMain = ref<HTMLElement | null>(null)
 
+const isSettingsDetail = computed(
+  () => props.activeTab === HOME_TABS.SETTINGS && props.settingsPage !== SETTINGS_PAGES.INDEX,
+)
+
+const showBottomNav = computed(() => !isSettingsDetail.value)
+
 watch(
   () => [props.activeTab, props.settingsPage] as const,
   () => {
@@ -37,7 +43,7 @@ watch(
 </script>
 
 <template>
-  <main class="app-shell is-home">
+  <main class="app-shell is-home" :class="{ 'is-detail': isSettingsDetail }">
     <div ref="homeMain" class="home-main">
       <DocumentHome
         v-if="activeTab === HOME_TABS.DOCUMENTS"
@@ -54,7 +60,11 @@ watch(
         @set-page="page => emit('setSettingsPage', page)"
       />
     </div>
-    <AppBottomNavigation :active-tab="activeTab" @set-tab="tab => emit('setTab', tab)" />
+    <AppBottomNavigation
+      v-if="showBottomNav"
+      :active-tab="activeTab"
+      @set-tab="tab => emit('setTab', tab)"
+    />
   </main>
 </template>
 

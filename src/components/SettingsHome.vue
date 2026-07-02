@@ -23,21 +23,28 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <section class="settings-screen" :aria-label="t('settings.title')" data-testid="settings-screen">
+  <section
+    class="settings-screen"
+    :class="{ 'is-detail': activePage !== SETTINGS_PAGES.INDEX }"
+    :aria-label="t('settings.title')"
+    data-testid="settings-screen"
+  >
     <header class="settings-top" :class="{ 'is-detail': activePage !== SETTINGS_PAGES.INDEX }">
-      <button
-        v-if="activePage !== SETTINGS_PAGES.INDEX"
-        class="settings-back-button"
-        type="button"
-        :aria-label="t('settings.back')"
-        data-testid="settings-detail-back"
-        @click="emit('setPage', SETTINGS_PAGES.INDEX)"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="M15 6l-6 6 6 6" />
-        </svg>
-      </button>
-      <h1 data-testid="settings-title">{{ t(SETTINGS_PAGE_TITLE_KEYS[activePage]) }}</h1>
+      <div class="settings-top-inner">
+        <button
+          v-if="activePage !== SETTINGS_PAGES.INDEX"
+          class="settings-back-button"
+          type="button"
+          :aria-label="t('settings.back')"
+          data-testid="settings-detail-back"
+          @click="emit('setPage', SETTINGS_PAGES.INDEX)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+        </button>
+        <h1 data-testid="settings-title">{{ t(SETTINGS_PAGE_TITLE_KEYS[activePage]) }}</h1>
+      </div>
     </header>
     <div class="settings-content">
       <template v-if="activePage === SETTINGS_PAGES.INDEX">
@@ -51,7 +58,6 @@ const { t } = useI18n()
               v-for="item in section.items"
               :key="item.id"
               :label="t(item.labelKey)"
-              :value="t(item.valueKey)"
               button
               chevron
               :test-id="item.testId"
@@ -73,7 +79,24 @@ const { t } = useI18n()
   background: var(--app-bg);
 }
 
+.settings-screen.is-detail {
+  padding-top: 0;
+}
+
 .settings-top {
+  display: block;
+}
+
+.settings-top.is-detail {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 0 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-top-inner {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -122,11 +145,21 @@ const { t } = useI18n()
   letter-spacing: -0.022em;
 }
 
+.settings-top.is-detail h1 {
+  font-size: 20px;
+  letter-spacing: -0.012em;
+}
+
 .settings-content {
   display: grid;
   max-width: 720px;
-  margin: 22px auto 0;
-  gap: 22px;
+  margin: 28px auto 0;
+  gap: 30px;
+}
+
+.settings-screen.is-detail .settings-content {
+  margin-top: 22px;
+  gap: 26px;
 }
 
 .settings-index {

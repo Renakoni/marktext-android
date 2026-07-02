@@ -38,6 +38,7 @@ function updateValue(value: string) {
 
 <style scoped>
 .settings-slider-row {
+  position: relative;
   display: grid;
   gap: 14px;
   width: 100%;
@@ -45,12 +46,7 @@ function updateValue(value: string) {
   min-height: 76px;
   padding: 12px 20px 16px;
   border: 0;
-  border-bottom: 1px solid var(--border);
   color: var(--text);
-}
-
-.settings-slider-row:last-child {
-  border-bottom: 0;
 }
 
 .settings-slider-head {
