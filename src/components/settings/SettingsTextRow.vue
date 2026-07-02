@@ -38,10 +38,11 @@ defineEmits<{
 .settings-text-row {
   display: grid;
   gap: 10px;
-  width: min(100%, 760px);
+  width: 100%;
+  min-width: 0;
   min-height: 76px;
-  margin: 0 auto;
   padding: 12px 20px 14px;
+  border: 0;
   border-bottom: 1px solid var(--border);
   color: var(--text);
 }
@@ -53,8 +54,9 @@ defineEmits<{
 .settings-text-label {
   min-width: 0;
   font-size: 16px;
-  font-weight: 720;
-  line-height: 1.25;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.008em;
   overflow-wrap: anywhere;
 }
 
@@ -63,8 +65,8 @@ defineEmits<{
   min-height: 40px;
   padding: 8px 11px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--surface) 86%, var(--surface-muted) 14%);
+  border-radius: var(--radius-sm, 10px);
+  background: var(--surface-muted);
   color: var(--text);
   font: inherit;
   font-size: 14px;
@@ -76,7 +78,7 @@ defineEmits<{
 }
 
 .settings-text-input:focus-visible {
-  border-color: color-mix(in srgb, var(--accent) 54%, var(--border));
+  border-color: var(--accent);
   outline: 2px solid color-mix(in srgb, var(--accent) 18%, transparent);
   outline-offset: 1px;
 }

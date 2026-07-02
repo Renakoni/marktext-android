@@ -57,10 +57,11 @@ const hasChevron = computed(() => Boolean(props.chevron || props.href))
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  width: min(100%, 760px);
-  min-height: 64px;
-  margin: 0 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
   padding: 12px 20px;
+  border: 0;
   border-bottom: 1px solid var(--border);
   background: transparent;
   color: var(--text);
@@ -73,20 +74,21 @@ const hasChevron = computed(() => Boolean(props.chevron || props.href))
 }
 
 .settings-row.has-chevron {
-  padding-right: 48px;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
+  padding-right: 16px;
 }
 
 .settings-row.has-chevron::after {
   position: absolute;
   top: 50%;
-  right: 24px;
-  width: 8px;
-  height: 8px;
-  border-top: 2px solid currentColor;
-  border-right: 2px solid currentColor;
-  color: var(--text-muted);
+  right: 20px;
+  width: 9px;
+  height: 9px;
+  border-top: 1.6px solid var(--text-faint);
+  border-right: 1.6px solid var(--text-faint);
   content: '';
   transform: translateY(-50%) rotate(45deg);
+  pointer-events: none;
 }
 
 .settings-row.is-link:active,
@@ -96,52 +98,36 @@ const hasChevron = computed(() => Boolean(props.chevron || props.href))
 
 .settings-row.is-link:focus-visible,
 .settings-row.is-action:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
   outline-offset: -2px;
 }
 
-.settings-row.is-action {
-  width: 100%;
-  max-width: 760px;
-  border-top: 0;
-  border-right: 0;
-  border-left: 0;
-  text-align: left;
-}
-
 .settings-row.is-action:disabled {
-  color: var(--text-muted);
-}
-
-.settings-row.has-chevron {
-  grid-template-columns: minmax(0, 1fr);
-  align-content: center;
-  gap: 3px;
-}
-
-.settings-row.has-chevron .settings-row-value {
-  max-width: none;
-  text-align: left;
+  color: var(--text-faint);
 }
 
 .settings-row-label,
 .settings-row-value {
   min-width: 0;
-  line-height: 1.25;
+  line-height: 1.3;
   overflow-wrap: anywhere;
   white-space: normal;
 }
 
 .settings-row-label {
   font-size: 16px;
-  font-weight: 720;
+  font-weight: 600;
+  letter-spacing: -0.008em;
 }
 
 .settings-row-value {
-  max-width: 42vw;
+  max-width: 46vw;
   color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 620;
+  font-size: 13.5px;
+  font-weight: 500;
   text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

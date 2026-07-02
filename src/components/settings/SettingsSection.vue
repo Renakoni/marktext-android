@@ -20,20 +20,23 @@ defineProps<{
 }
 
 .settings-section h2 {
-  max-width: 760px;
+  max-width: 720px;
   width: 100%;
   margin: 0 auto;
-  padding: 0 20px;
-  color: var(--text-muted);
-  font-size: 13px;
+  padding: 0 24px;
+  color: var(--text-faint);
+  font-size: 12px;
   line-height: 1.2;
-  font-weight: 760;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .settings-section-body {
   overflow: hidden;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 </style>

@@ -346,7 +346,7 @@ test('creates a local draft from real editor input and returns it to the recent 
 
   await page.getByTestId('new-document-button').click()
   await expectEditorReady(page)
-  await expect(page.getByTestId('back-button')).toHaveText('Back')
+  await expect(page.getByTestId('back-button')).toHaveAttribute('aria-label', 'Back')
 
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('# Fresh mobile note')
@@ -368,7 +368,7 @@ test('creates a local draft from real editor input and returns it to the recent 
   await page.getByTestId('prompt-keep-draft-button').click()
 
   await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
-  await expect(page.getByText('Continue writing')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Continue writing' })).toBeVisible()
   await expect(page.getByText('Fresh mobile note')).toBeVisible()
   await expect(page.getByText('No recent Markdown files')).toBeHidden()
   await expect(page.getByTestId('new-document-button')).toBeVisible()
@@ -1018,15 +1018,20 @@ test('saves a writable Android document as a copy and switches to the new docume
   await page.keyboard.type('copy target text')
 
   await page.getByTestId('editor-menu-button').click()
+  const actionSheet = page.getByTestId('editor-action-sheet')
+  await expect(actionSheet).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Document actions' })).toBeVisible()
   await expect(page.getByTestId('save-copy-button')).toBeVisible()
-  const menuButtonBox = await page.getByTestId('editor-menu-button').boundingBox()
-  const menuBox = await page.locator('.editor-menu').boundingBox()
-  expect(menuButtonBox).not.toBeNull()
-  expect(menuBox).not.toBeNull()
-  expect(
-    Math.abs(menuBox!.x + menuBox!.width - (menuButtonBox!.x + menuButtonBox!.width)),
-  ).toBeLessThanOrEqual(2)
-  expect(menuBox!.width).toBeLessThanOrEqual(150)
+  const viewport = page.viewportSize()
+  const sheetBox = await actionSheet.boundingBox()
+  const panelBox = await page.locator('.editor-action-panel').boundingBox()
+  expect(viewport).not.toBeNull()
+  expect(sheetBox).not.toBeNull()
+  expect(panelBox).not.toBeNull()
+  expect(sheetBox!.width).toBeGreaterThanOrEqual(viewport!.width - 2)
+  expect(sheetBox!.height).toBeGreaterThanOrEqual(viewport!.height - 2)
+  expect(panelBox!.y).toBeGreaterThan(viewport!.height / 2)
+  expect(panelBox!.y + panelBox!.height).toBeGreaterThanOrEqual(viewport!.height - 2)
   await page.getByTestId('save-copy-button').click()
 
   await expect(page.getByText('Saved', { exact: true })).toBeVisible()

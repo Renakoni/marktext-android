@@ -40,10 +40,11 @@ function updateValue(value: string) {
 .settings-slider-row {
   display: grid;
   gap: 14px;
-  width: min(100%, 760px);
+  width: 100%;
+  min-width: 0;
   min-height: 76px;
-  margin: 0 auto;
   padding: 12px 20px 16px;
+  border: 0;
   border-bottom: 1px solid var(--border);
   color: var(--text);
 }
@@ -62,15 +63,16 @@ function updateValue(value: string) {
 .settings-slider-label {
   min-width: 0;
   font-size: 16px;
-  font-weight: 720;
-  line-height: 1.25;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.008em;
   overflow-wrap: anywhere;
 }
 
 .settings-slider-value {
   color: var(--text-muted);
   font-size: 13px;
-  font-weight: 720;
+  font-weight: 600;
 }
 
 .settings-slider {
@@ -79,7 +81,7 @@ function updateValue(value: string) {
 }
 
 .settings-slider:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
   outline-offset: 4px;
 }
 </style>

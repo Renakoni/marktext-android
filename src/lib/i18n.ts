@@ -23,6 +23,7 @@ const MESSAGES = {
     'home.earlier': 'Earlier',
     'home.emptyTitle': 'No recent Markdown files',
     'home.emptyBody': 'Start a local draft or open a Markdown file from this device.',
+    'home.continueAction': 'Continue',
 
     'nav.documents': 'Documents',
     'nav.settings': 'Settings',
@@ -404,6 +405,7 @@ const MESSAGES = {
     'home.earlier': '更早',
     'home.emptyTitle': '没有最近的 Markdown 文件',
     'home.emptyBody': '新建一个本地草稿，或从设备打开 Markdown 文件。',
+    'home.continueAction': '继续',
 
     'nav.documents': '文档',
     'nav.settings': '设置',
