@@ -916,6 +916,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
     },
     {
       titleKey: 'settings.section.dictionary',
+      // TODO: Wire these dictionary action rows to a real Android spellchecker backend.
       rows: [
         {
           kind: 'action',

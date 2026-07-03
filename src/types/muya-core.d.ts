@@ -25,6 +25,7 @@ declare module '@muyajs/core' {
   export class Muya {
     static plugins: { plugin: unknown; options?: Record<string, unknown> }[]
     static use(plugin: unknown, options?: Record<string, unknown>): void
+    domNode: HTMLElement
     constructor(element: HTMLElement, options?: Record<string, unknown>)
     init(): void
     on(event: string, listener: (...args: unknown[]) => void): void
@@ -35,6 +36,7 @@ declare module '@muyajs/core' {
     setHistory(history: unknown): void
     clearHistory(): void
     setOptions(options: Record<string, unknown>, forceRender?: boolean): void
+    setListIndentation(listIndentation: number | string): void
     locale(locale: ILocale): void
     undo(): void
     redo(): void
