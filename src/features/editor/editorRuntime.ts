@@ -2,6 +2,12 @@ import {
   resolveEditorFontFamily,
   type AppearanceTextSettings,
 } from '../settings/appearanceSettings'
+import {
+  getMuyaEditingOptions,
+  getMuyaEditingRuntimeUpdates,
+  type EditingSettings,
+  type SpellcheckerLanguage,
+} from '../settings/editingSettings'
 
 type MuyaCoreModule = typeof import('@muyajs/core')
 
@@ -21,6 +27,7 @@ interface CreateMuyaEditorOptions {
   onBlur: (...args: unknown[]) => void
   appLocale?: string
   appearanceTextSettings?: AppearanceTextSettings
+  editingSettings?: EditingSettings
   isStale?: () => boolean
   logger?: EditorRuntimeLogger
 }
@@ -78,6 +85,30 @@ export function applyMuyaAppearanceSettings(
   editor?.setOptions(getMuyaAppearanceOptions(settings))
 }
 
+function applyMuyaSpellcheckLanguage(editor: MuyaEditor, language: SpellcheckerLanguage) {
+  editor.domNode.setAttribute('lang', language)
+}
+
+export function applyMuyaEditingSettings(
+  editor: MuyaEditor | null,
+  settings: EditingSettings,
+  previousSettings?: EditingSettings,
+) {
+  if (!editor) {
+    return
+  }
+
+  for (const update of getMuyaEditingRuntimeUpdates(settings, previousSettings)) {
+    if (update.kind === 'setOptions') {
+      editor.setOptions(update.options, update.forceRender)
+    } else if (update.kind === 'setListIndentation') {
+      editor.setListIndentation(update.listIndentation)
+    } else {
+      applyMuyaSpellcheckLanguage(editor, update.language)
+    }
+  }
+}
+
 export async function applyMuyaEditorLocale(
   editor: MuyaEditor | null,
   appLocale: string,
@@ -101,6 +132,7 @@ export async function createMuyaEditor({
   onBlur,
   appLocale,
   appearanceTextSettings,
+  editingSettings,
   isStale,
   logger,
 }: CreateMuyaEditorOptions) {
@@ -116,15 +148,16 @@ export async function createMuyaEditor({
   const editor = new Muya(element, {
     markdown,
     ...getMuyaAppearanceOptions(appearanceTextSettings),
-    codeBlockLineNumbers: true,
+    ...(editingSettings ? getMuyaEditingOptions(editingSettings) : {}),
     frontMatter: true,
-    footnote: true,
     math: true,
-    spellcheckEnabled: true,
     locale: resolveMuyaLocale(core, appLocale),
   })
 
   editor.init()
+  if (editingSettings) {
+    applyMuyaSpellcheckLanguage(editor, editingSettings.spellcheckerLanguage)
+  }
   editor.on('content-change', onContentChange)
   editor.on('json-change', onJsonChange)
   editor.on('focus', onFocus)

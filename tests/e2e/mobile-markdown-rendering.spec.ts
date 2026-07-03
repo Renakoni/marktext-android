@@ -4,15 +4,21 @@ import { expectEditorReady } from './helpers/editor'
 test.describe.configure({ timeout: 60000 })
 
 const DRAFTS_STORAGE_KEY = 'marktext-for-android:drafts'
+const SETTINGS_STORAGE_KEY = 'marktext-for-android:settings-ui'
 
-async function openLocalDraft(page: Page, markdown: string, title: RegExp) {
+async function openLocalDraft(
+  page: Page,
+  markdown: string,
+  title: RegExp,
+  settings: Record<string, boolean | number | string> = {},
+) {
   const now = '2026-07-01T10:00:00.000Z'
   await page.goto('/')
   await page.evaluate(
-    ({ markdown, now }) => {
+    ({ draftsStorageKey, markdown, now, settings, settingsStorageKey }) => {
       localStorage.clear()
       localStorage.setItem(
-        'marktext-for-android:drafts',
+        draftsStorageKey,
         JSON.stringify([
           {
             id: 'markdown-rendering-draft',
@@ -22,8 +28,17 @@ async function openLocalDraft(page: Page, markdown: string, title: RegExp) {
           },
         ]),
       )
+      if (Object.keys(settings).length > 0) {
+        localStorage.setItem(settingsStorageKey, JSON.stringify(settings))
+      }
     },
-    { markdown, now },
+    {
+      draftsStorageKey: DRAFTS_STORAGE_KEY,
+      markdown,
+      now,
+      settings,
+      settingsStorageKey: SETTINGS_STORAGE_KEY,
+    },
   )
   await page.reload()
 
@@ -174,6 +189,40 @@ Bob-->Alice: Hello Alice
   await expect.poll(() => getStoredMarkdown(page)).toBe(markdown)
 })
 
+test('applies Editing runtime settings on editor startup without rewriting source', async ({
+  page,
+}) => {
+  const markdown = `# Settings Matrix
+
+\`\`\`js
+const one = 1
+const two = 2
+\`\`\`
+
+Footnote marker.[^note]
+
+<div class="html-probe"><strong>Hidden HTML</strong></div>
+
+[^note]: Footnote body.
+`
+
+  await openLocalDraft(page, markdown, /Settings Matrix/, {
+    codeBlockLineNumbers: true,
+    footnote: true,
+    isHtmlEnabled: false,
+    spellcheckerEnabled: true,
+    spellcheckerLanguage: 'de-DE',
+  })
+
+  const editor = page.getByTestId('editor-host')
+  await expect(editor.locator('.mu-code-block.mu-line-numbers')).toHaveCount(1)
+  await expect(editor.locator('.mu-line-numbers-rows')).toHaveCount(1)
+  await expect(editor.locator('.mu-footnote')).toHaveCount(1)
+  await expect(editor.locator('.mu-html-block.mu-disable-html-render')).toHaveCount(1)
+  await expect(editor.locator('[lang="de-DE"]')).toHaveCount(1)
+  await expect.poll(() => getStoredMarkdown(page)).toBe(markdown)
+})
+
 test('renders loaded front matter, footnotes, HTML blocks, and inline images', async ({ page }) => {
   await page.goto('/')
   const appIconUrl = await page.evaluate(() => new URL('/favicon.svg', location.href).href)
@@ -195,6 +244,7 @@ Inline image: ![App icon](${appIconUrl})
 [^note]: Footnote body text.
 `,
     /Extended Matrix/,
+    { footnote: true },
   )
 
   const editor = page.getByTestId('editor-host')

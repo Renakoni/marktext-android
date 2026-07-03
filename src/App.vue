@@ -88,6 +88,7 @@ import {
 } from './features/editor/editorInlineInsert'
 import {
   applyMuyaAppearanceSettings,
+  applyMuyaEditingSettings,
   applyMuyaEditorLocale,
   createMuyaEditor,
   destroyMuyaEditor,
@@ -123,6 +124,7 @@ import {
   getAppearanceTextSettings,
   getEditorStyleVars,
 } from './features/settings/appearanceSettings'
+import { getEditingSettings } from './features/settings/editingSettings'
 import { createMuyaMobileEditorCommandTarget } from './lib/muyaMobileAdapter'
 import { translateKnownText, useI18n } from './lib/i18n'
 import {
@@ -180,6 +182,7 @@ const {
 const { locale, t } = useI18n()
 const { getValue } = useSettingsState()
 const appearanceTextSettings = computed(() => getAppearanceTextSettings(getValue))
+const editingSettings = computed(() => getEditingSettings(getValue))
 const editorStyleVars = computed(() => getEditorStyleVars(appearanceTextSettings.value))
 const displayStatus = computed(() => translateKnownText(status.value))
 const displayHomeNotice = computed(() =>
@@ -216,6 +219,10 @@ const loggingLog = createLogger('logging')
 
 watch(appearanceTextSettings, settings => {
   applyMuyaAppearanceSettings(editor, settings)
+})
+
+watch(editingSettings, (settings, previousSettings) => {
+  applyMuyaEditingSettings(editor, settings, previousSettings)
 })
 
 watch(locale, nextLocale => {
@@ -929,6 +936,7 @@ async function initEditor(initialMarkdown: string) {
       },
       appLocale: locale.value,
       appearanceTextSettings: appearanceTextSettings.value,
+      editingSettings: editingSettings.value,
       isStale: () => token !== editorInitToken || !editorElement.value,
       logger: editorLog,
     })
