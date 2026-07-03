@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { expectEditorReady } from './helpers/editor'
 
 test.describe.configure({ timeout: 60000 })
 
@@ -21,10 +22,6 @@ interface MockCapacitorWindow {
       callback?: (data: unknown) => void,
     ) => Promise<string>
   }
-}
-
-async function expectEditorReady(page: Page) {
-  await expect(page.getByTestId('editor-host')).toBeVisible({ timeout: 30000 })
 }
 
 async function newBlankDocument(page: Page) {

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { expectEditorReady } from './helpers/editor'
 
 test.describe.configure({ timeout: 60000 })
 
@@ -72,10 +73,6 @@ interface MockAndroidDocument {
 
 interface MockAndroidAppOptions {
   pendingOpenWithEvent?: MockAndroidOpenWithEvent
-}
-
-async function expectEditorReady(page: Page) {
-  await expect(page.getByTestId('editor-host')).toBeVisible({ timeout: 30000 })
 }
 
 async function installTransientAndroidCreateMock(page: Page) {

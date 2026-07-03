@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { expectEditorReady } from './helpers/editor'
 
 test.describe.configure({ timeout: 60000 })
 
@@ -44,10 +45,6 @@ interface MockAndroidShareEvent {
 
 interface MockAndroidShareOptions {
   pendingShareEvent?: MockAndroidShareEvent
-}
-
-async function expectEditorReady(page: Page) {
-  await expect(page.getByTestId('editor-host')).toBeVisible({ timeout: 30000 })
 }
 
 async function installAndroidShareAppMock(
