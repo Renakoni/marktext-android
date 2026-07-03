@@ -36,4 +36,40 @@ describe('homeDocuments', () => {
     expect(formatHomeDocumentSavedTime(null)).toBe('')
     expect(formatHomeDocumentSavedTime('not-a-date')).toBe('')
   })
+
+  it('formats app-owned recent draft details with localized presentation text', () => {
+    const item: RecentDocumentListItem = {
+      id: 'draft-1',
+      kind: 'local-draft',
+      displayName: 'draft.md',
+      title: 'Draft',
+      sourceUri: null,
+      providerName: 'Local draft',
+      pathHint: null,
+      markdownPreview: '# Draft',
+      updatedAt: 'not-a-date',
+      lastOpenedAt: 'not-a-date',
+      lastSavedAt: null,
+      autosaveState: 'clean',
+      canWrite: true,
+      stats: {
+        words: 2,
+        characters: 7,
+        lines: 1,
+      },
+    }
+
+    expect(
+      toHomeDocumentItem(item, {
+        localDraftSource: '本地草稿',
+        markdownDocumentSource: 'Markdown 文档',
+        detailsSeparator: ' · ',
+        formatWordCount: count => `${count} 字`,
+      }),
+    ).toEqual({
+      id: 'draft-1',
+      title: 'Draft',
+      details: '本地草稿 · 2 字',
+    })
+  })
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { App } from '@capacitor/app'
 import HomeScreen from './features/home/HomeScreen.vue'
 import EditorScreen from './features/editor/EditorScreen.vue'
@@ -86,7 +86,13 @@ import {
   insertTextAtRestoredSelection,
   resolveEditorDomNode,
 } from './features/editor/editorInlineInsert'
-import { createMuyaEditor, destroyMuyaEditor, type MuyaEditor } from './features/editor/editorRuntime'
+import {
+  applyMuyaAppearanceSettings,
+  applyMuyaEditorLocale,
+  createMuyaEditor,
+  destroyMuyaEditor,
+  type MuyaEditor,
+} from './features/editor/editorRuntime'
 import {
   removeLocalDraft,
   upsertLocalDraft,
@@ -106,13 +112,19 @@ import {
   type MobileEditorCommandTarget,
 } from './lib/mobileCommands'
 import { DEFAULT_HOME_TAB, HOME_TABS, type HomeTab } from './features/home/homeNavigation'
-import { toHomeDocumentItem } from './features/home/homeDocuments'
+import { toHomeDocumentItem, type HomeDocumentText } from './features/home/homeDocuments'
 import {
   DEFAULT_SETTINGS_PAGE,
   SETTINGS_PAGES,
   type SettingsPage,
 } from './features/settings/settingsNavigation'
+import { useSettingsState } from './features/settings/settingsState'
+import {
+  getAppearanceTextSettings,
+  getEditorStyleVars,
+} from './features/settings/appearanceSettings'
 import { createMuyaMobileEditorCommandTarget } from './lib/muyaMobileAdapter'
+import { translateKnownText, useI18n } from './lib/i18n'
 import {
   createRecentDocumentFromLocalDraft,
   getRecentDocumentListItems,
@@ -165,6 +177,21 @@ const {
   openLinkSheet: openEditorLinkSheet,
   closeLinkSheet: resetEditorLinkSheet,
 } = useEditorToolbar()
+const { locale, t } = useI18n()
+const { getValue } = useSettingsState()
+const appearanceTextSettings = computed(() => getAppearanceTextSettings(getValue))
+const editorStyleVars = computed(() => getEditorStyleVars(appearanceTextSettings.value))
+const displayStatus = computed(() => translateKnownText(status.value))
+const displayHomeNotice = computed(() =>
+  homeNotice.value ? translateKnownText(homeNotice.value) : null,
+)
+const homeDocumentText = computed<HomeDocumentText>(() => ({
+  localDraftSource: t('home.source.localDraft'),
+  markdownDocumentSource: t('home.source.markdownDocument'),
+  detailsSeparator: t('home.detailsSeparator'),
+  formatWordCount: count =>
+    t(count === 1 ? 'home.wordCount.one' : 'home.wordCount.other', { count }),
+}))
 
 function setEditorElement(element: HTMLElement | null) {
   editorElement.value = element
@@ -187,10 +214,31 @@ const draftLog = createLogger('draft')
 const androidDocumentLog = createLogger('android-document')
 const loggingLog = createLogger('logging')
 
+watch(appearanceTextSettings, settings => {
+  applyMuyaAppearanceSettings(editor, settings)
+})
+
+watch(locale, nextLocale => {
+  void applyMuyaEditorLocale(editor, nextLocale, editorLog)
+})
+
 const lineCount = computed(() => documentState.value.stats.lines)
 const characterCount = computed(() => documentState.value.stats.characters)
 const wordCount = computed(() => documentState.value.stats.words)
 const documentTitle = computed(() => documentState.value.title)
+const displayDocumentTitle = computed(() => {
+  const untitledMatch = documentState.value.displayName.match(/^Untitled-(\d+)$/)
+  if (
+    untitledMatch &&
+    documentState.value.sourceUri === null &&
+    documentState.value.title === documentState.value.displayName &&
+    documentState.value.markdown.trim() === ''
+  ) {
+    return t('document.untitledNumbered', { index: untitledMatch[1] })
+  }
+
+  return documentTitle.value
+})
 const recentDocumentRecords = computed(() =>
   [
     ...localDrafts.value.map(createRecentDocumentFromLocalDraft),
@@ -201,9 +249,15 @@ const documentItems = computed(() => getRecentDocumentListItems(recentDocumentRe
 const continueDocumentItem = computed(() => documentItems.value[0] ?? null)
 const earlierDocumentItems = computed(() => documentItems.value.slice(1))
 const continueDocument = computed(() =>
-  continueDocumentItem.value ? toHomeDocumentItem(continueDocumentItem.value) : null,
+  continueDocumentItem.value
+    ? toHomeDocumentItem(continueDocumentItem.value, homeDocumentText.value, locale.value)
+    : null,
 )
-const earlierDocuments = computed(() => earlierDocumentItems.value.map(toHomeDocumentItem))
+const earlierDocuments = computed(() =>
+  earlierDocumentItems.value.map(item =>
+    toHomeDocumentItem(item, homeDocumentText.value, locale.value),
+  ),
+)
 
 function getAndroidEditorStatus() {
   if (documentState.value.autosaveState === 'save-failed') {
@@ -260,10 +314,10 @@ function shouldPromptAndroidExitAfterSaveFailure() {
 
 function getAndroidExitPromptMessage() {
   if (!currentAndroidDocumentCanWrite.value) {
-    return 'This file cannot be saved directly. Save a copy or keep a recovery draft before leaving.'
+    return t('editor.exit.androidReadOnlyMessage')
   }
 
-  return 'MarkText could not save this file. Save a copy or keep a recovery draft before leaving.'
+  return t('editor.exit.androidSaveFailedMessage')
 }
 
 function normalizeEditorMarkdown(markdown: string) {
@@ -873,6 +927,8 @@ async function initEditor(initialMarkdown: string) {
             : 'Ready'
         editorLog.debug('editor blurred')
       },
+      appLocale: locale.value,
+      appearanceTextSettings: appearanceTextSettings.value,
       isStale: () => token !== editorInitToken || !editorElement.value,
       logger: editorLog,
     })
@@ -1409,7 +1465,7 @@ onBeforeUnmount(() => {
     :settings-page="settingsPage"
     :continue-document="continueDocument"
     :earlier-documents="earlierDocuments"
-    :notice="homeNotice"
+    :notice="displayHomeNotice"
     @new-document="newDocument"
     @open-document="openDocument"
     @open-file="openFileFromAndroid"
@@ -1421,8 +1477,8 @@ onBeforeUnmount(() => {
     v-else
     v-model:link-text="linkText"
     v-model:link-url="linkUrl"
-    :document-title="documentTitle"
-    :status="status"
+    :document-title="displayDocumentTitle"
+    :status="displayStatus"
     :editor-ready="editorReady"
     :show-editor-actions="canShowEditorActions()"
     :editor-menu-open="editorMenuOpen"
@@ -1445,6 +1501,8 @@ onBeforeUnmount(() => {
     :android-exit-message="getAndroidExitPromptMessage()"
     :android-can-save-copy="canSaveAndroidDocumentCopy()"
     :android-saving="savingAndroidDocumentCopy"
+    :text-direction="appearanceTextSettings.textDirection"
+    :editor-style-vars="editorStyleVars"
     @back="showHome"
     @search="openEditorSearch"
     @toggle-menu="toggleEditorMenu"

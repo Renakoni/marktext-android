@@ -9,6 +9,7 @@ import {
   getMobileToolbarPanelCommands,
   type MobileEditorToolbarPanel,
 } from '../../../lib/mobileToolbarConfig'
+import { useI18n, type I18nKey } from '../../../lib/i18n'
 
 const props = defineProps<{
   expanded: boolean
@@ -29,11 +30,17 @@ const panels = MOBILE_TOOLBAR_PANELS
 const quickCommands = MOBILE_TOOLBAR_QUICK_COMMANDS
 const editCommands = MOBILE_TOOLBAR_EDIT_COMMANDS
 const groupMenuOpen = ref(false)
+const { t } = useI18n()
 
 const activePanelDef = computed(() => getMobileToolbarPanel(props.activePanel))
 const activePanelCommands = computed(() => getMobileToolbarPanelCommands(props.activePanel))
 const statsText = computed(
-  () => `${props.wordCount} words · ${props.characterCount} chars · ${props.lineCount} lines`,
+  () =>
+    t('toolbar.stats', {
+      words: props.wordCount,
+      characters: props.characterCount,
+      lines: props.lineCount,
+    }),
 )
 
 watch(
@@ -61,25 +68,33 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
   emit('setPanel', panel)
   groupMenuOpen.value = false
 }
+
+function getCommandLabel(command: { label: string; labelKey?: I18nKey }) {
+  return command.labelKey ? t(command.labelKey) : command.label
+}
+
+function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
+  return t(command.titleKey) || command.title
+}
 </script>
 
 <template>
   <footer
     class="mobile-editor-toolbar"
     :class="{ 'is-expanded': expanded }"
-    aria-label="Markdown editing tools"
+    :aria-label="t('toolbar.markdownTools')"
     data-testid="mobile-editor-toolbar"
   >
     <!-- collapsed: quick actions + fixed expand handle -->
     <div v-if="!expanded" class="toolbar-collapsed">
-      <div class="toolbar-quick-strip" role="toolbar" aria-label="Quick editing actions">
+      <div class="toolbar-quick-strip" role="toolbar" :aria-label="t('toolbar.quickActions')">
         <button
           v-for="command in quickCommands"
           :key="command.commandId"
           class="toolbar-button"
           type="button"
-          :aria-label="command.title"
-          :title="command.title"
+          :aria-label="getCommandTitle(command)"
+          :title="getCommandTitle(command)"
           :disabled="!editorReady"
           :data-command-id="command.commandId"
           :data-testid="`toolbar-command-${command.commandId}`"
@@ -87,13 +102,13 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
           @mousedown.prevent
           @click="runCommand(command.commandId)"
         >
-          <span class="toolbar-button-label">{{ command.label }}</span>
+          <span class="toolbar-button-label">{{ getCommandLabel(command) }}</span>
         </button>
       </div>
       <button
         class="toolbar-expand-handle"
         type="button"
-        aria-label="Expand toolbar"
+        :aria-label="t('toolbar.expand')"
         :aria-expanded="false"
         data-testid="toolbar-expand-button"
         @pointerdown.prevent
@@ -108,7 +123,7 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
 
     <!-- expanded: header row + command body -->
     <div v-else class="toolbar-expanded">
-      <div class="toolbar-header" role="toolbar" aria-label="Toolbar controls">
+      <div class="toolbar-header" role="toolbar" :aria-label="t('toolbar.controls')">
         <button
           class="toolbar-group-switcher"
           type="button"
@@ -119,7 +134,7 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
           @mousedown.prevent
           @click="toggleGroupMenu"
         >
-          <span class="group-switcher-label">{{ activePanelDef.label }}</span>
+          <span class="group-switcher-label">{{ t(activePanelDef.labelKey) }}</span>
           <svg class="group-switcher-caret" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M6 9l6 6 6-6" />
           </svg>
@@ -132,8 +147,8 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
           :key="command.commandId"
           class="toolbar-button toolbar-history-button"
           type="button"
-          :aria-label="command.title"
-          :title="command.title"
+          :aria-label="getCommandTitle(command)"
+          :title="getCommandTitle(command)"
           :disabled="!editorReady"
           :data-command-id="command.commandId"
           :data-testid="`toolbar-command-${command.commandId}`"
@@ -141,13 +156,13 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
           @mousedown.prevent
           @click="runCommand(command.commandId)"
         >
-          <span class="toolbar-button-label">{{ command.label }}</span>
+          <span class="toolbar-button-label">{{ getCommandLabel(command) }}</span>
         </button>
 
         <button
           class="toolbar-expand-handle"
           type="button"
-          aria-label="Collapse toolbar"
+          :aria-label="t('toolbar.collapse')"
           :aria-expanded="true"
           data-testid="toolbar-expand-button"
           @pointerdown.prevent
@@ -167,14 +182,14 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
         @pointerdown.prevent
         @mousedown.prevent
       >
-        <div class="toolbar-command-strip" role="toolbar" :aria-label="activePanelDef.title">
+        <div class="toolbar-command-strip" role="toolbar" :aria-label="t(activePanelDef.titleKey)">
           <button
             v-for="command in activePanelCommands"
             :key="command.commandId"
             class="toolbar-button"
             type="button"
-            :aria-label="command.title"
-            :title="command.title"
+            :aria-label="getCommandTitle(command)"
+            :title="getCommandTitle(command)"
             :disabled="!editorReady"
             :data-command-id="command.commandId"
             :data-testid="`toolbar-command-${command.commandId}`"
@@ -182,7 +197,7 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
             @mousedown.prevent
             @click="runCommand(command.commandId)"
           >
-            <span class="toolbar-button-label">{{ command.label }}</span>
+            <span class="toolbar-button-label">{{ getCommandLabel(command) }}</span>
           </button>
         </div>
 
@@ -194,7 +209,7 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
         id="mobile-editor-toolbar-panel"
         class="toolbar-group-menu"
         role="menu"
-        aria-label="Toolbar groups"
+        :aria-label="t('toolbar.groups')"
         data-testid="mobile-editor-toolbar-panel"
         @pointerdown.prevent
         @mousedown.prevent
@@ -210,8 +225,8 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
           :data-testid="`toolbar-section-option-${panel.id}`"
           @click="selectPanel(panel.id)"
         >
-          <span class="group-option-label">{{ panel.label }}</span>
-          <span class="group-option-title">{{ panel.title }}</span>
+          <span class="group-option-label">{{ t(panel.labelKey) }}</span>
+          <span class="group-option-title">{{ t(panel.titleKey) }}</span>
         </button>
       </section>
     </div>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from '../../../lib/i18n'
+
 defineProps<{
   message: string
   canSaveCopy: boolean
@@ -10,6 +12,8 @@ const emit = defineEmits<{
   'keep-recovery': []
   discard: []
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -21,7 +25,7 @@ const emit = defineEmits<{
     data-testid="android-exit-prompt"
   >
     <div class="draft-save-panel">
-      <h2 id="android-exit-title">Save changes before leaving?</h2>
+      <h2 id="android-exit-title">{{ t('editor.exit.androidTitle') }}</h2>
       <p>{{ message }}</p>
       <div class="draft-save-actions">
         <button
@@ -32,7 +36,7 @@ const emit = defineEmits<{
           :disabled="saving"
           @click="emit('save-copy')"
         >
-          Save a copy
+          {{ t('editor.actions.saveCopy') }}
         </button>
         <button
           type="button"
@@ -40,7 +44,7 @@ const emit = defineEmits<{
           :disabled="saving"
           @click="emit('keep-recovery')"
         >
-          Keep recovery draft
+          {{ t('editor.exit.keepRecovery') }}
         </button>
         <button
           class="danger-action"
@@ -49,7 +53,7 @@ const emit = defineEmits<{
           :disabled="saving"
           @click="emit('discard')"
         >
-          Discard changes
+          {{ t('editor.exit.discardChanges') }}
         </button>
       </div>
     </div>

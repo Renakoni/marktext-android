@@ -34,6 +34,8 @@ declare module '@muyajs/core' {
     getHistory(): unknown
     setHistory(history: unknown): void
     clearHistory(): void
+    setOptions(options: Record<string, unknown>, forceRender?: boolean): void
+    locale(locale: ILocale): void
     undo(): void
     redo(): void
     setContent(content: unknown[] | string, autoFocus?: boolean): void

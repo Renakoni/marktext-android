@@ -27,7 +27,11 @@ function selectTab(tab: HomeTab) {
 </script>
 
 <template>
-  <nav class="app-bottom-navigation" aria-label="Primary" data-testid="app-bottom-navigation">
+  <nav
+    class="app-bottom-navigation"
+    :aria-label="t('nav.primary')"
+    data-testid="app-bottom-navigation"
+  >
     <div class="bottom-nav-track">
       <span class="bottom-nav-indicator" :style="{ transform: indicatorTransform }" aria-hidden="true" />
       <button

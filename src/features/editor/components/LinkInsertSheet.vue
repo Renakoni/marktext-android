@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { useI18n } from '../../../lib/i18n'
 
 const props = defineProps<{
   text: string
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const linkUrlInput = ref<HTMLInputElement | null>(null)
+const { t } = useI18n()
 const canInsert = computed(() => props.url.trim().length > 0)
 const textValue = computed({
   get: () => props.text,
@@ -41,9 +43,9 @@ onMounted(() => {
     @keydown.esc="emit('cancel')"
   >
     <form class="draft-save-panel link-insert-panel" @submit.prevent="emit('insert')">
-      <h2 id="link-sheet-title">Insert link</h2>
+      <h2 id="link-sheet-title">{{ t('editor.link.title') }}</h2>
       <label class="link-field">
-        <span>Text</span>
+        <span>{{ t('editor.link.text') }}</span>
         <input
           v-model="textValue"
           type="text"
@@ -53,7 +55,7 @@ onMounted(() => {
         >
       </label>
       <label class="link-field">
-        <span>URL</span>
+        <span>{{ t('editor.link.url') }}</span>
         <input
           ref="linkUrlInput"
           v-model="urlValue"
@@ -72,10 +74,10 @@ onMounted(() => {
           data-testid="link-insert-button"
           :disabled="!canInsert"
         >
-          Insert
+          {{ t('editor.link.insert') }}
         </button>
         <button type="button" data-testid="link-cancel-button" @click="emit('cancel')">
-          Cancel
+          {{ t('editor.link.cancel') }}
         </button>
       </div>
     </form>

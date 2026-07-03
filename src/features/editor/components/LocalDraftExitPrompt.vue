@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from '../../../lib/i18n'
+
 defineProps<{
   canSaveToDevice: boolean
   saving: boolean
@@ -9,6 +11,8 @@ const emit = defineEmits<{
   keep: []
   discard: []
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -20,8 +24,8 @@ const emit = defineEmits<{
     data-testid="draft-save-prompt"
   >
     <div class="draft-save-panel">
-      <h2 id="draft-save-title">Save this draft to your device?</h2>
-      <p>This draft is saved inside MarkText, but it has not been saved as a Markdown file yet.</p>
+      <h2 id="draft-save-title">{{ t('editor.exit.localDraftTitle') }}</h2>
+      <p>{{ t('editor.exit.localDraftBody') }}</p>
       <div class="draft-save-actions">
         <button
           v-if="canSaveToDevice"
@@ -31,7 +35,7 @@ const emit = defineEmits<{
           :disabled="saving"
           @click="emit('save-to-device')"
         >
-          Save to device
+          {{ t('editor.actions.saveToDevice') }}
         </button>
         <button
           type="button"
@@ -39,7 +43,7 @@ const emit = defineEmits<{
           :disabled="saving"
           @click="emit('keep')"
         >
-          Keep as draft
+          {{ t('editor.exit.keepDraft') }}
         </button>
         <button
           class="danger-action"
@@ -48,7 +52,7 @@ const emit = defineEmits<{
           :disabled="saving"
           @click="emit('discard')"
         >
-          Discard
+          {{ t('editor.exit.discard') }}
         </button>
       </div>
     </div>

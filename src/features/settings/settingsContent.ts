@@ -382,7 +382,7 @@ export const SETTINGS_DETAIL_SECTIONS: Partial<Record<SettingsPage, readonly Set
           kind: 'choice',
           id: 'editorFontFamily',
           labelKey: 'settings.appearance.font',
-          defaultValue: 'system',
+          defaultValue: 'open-sans',
           display: 'select',
           options: editorFontOptions,
           testId: 'settings-appearance-font',

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from '../../../lib/i18n'
+
 defineProps<{
   canShare: boolean
   canSaveToDevice: boolean
@@ -14,6 +16,8 @@ const emit = defineEmits<{
   'save-to-device': []
   'save-copy': []
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -21,14 +25,14 @@ const emit = defineEmits<{
     class="editor-action-sheet"
     role="dialog"
     aria-modal="true"
-    aria-label="Document actions"
+    :aria-label="t('editor.actions.documentActions')"
     data-testid="editor-action-sheet"
     @click="emit('close')"
     @keydown.esc="emit('close')"
   >
     <div class="editor-action-panel" @click.stop>
       <div class="editor-action-grabber" aria-hidden="true" />
-      <h2 class="editor-action-title">Document</h2>
+      <h2 class="editor-action-title">{{ t('editor.actions.document') }}</h2>
       <div class="editor-action-list" role="menu">
         <button
           v-if="canShare"
@@ -47,7 +51,7 @@ const emit = defineEmits<{
               <path d="M8.1 10.9l7.8-3.6M8.1 13.1l7.8 3.6" />
             </svg>
           </span>
-          <span class="editor-action-label">Share</span>
+          <span class="editor-action-label">{{ t('editor.actions.share') }}</span>
         </button>
         <button
           v-if="canSaveToDevice"
@@ -65,7 +69,7 @@ const emit = defineEmits<{
               <rect x="9" y="14" width="6" height="5" rx="0.6" />
             </svg>
           </span>
-          <span class="editor-action-label">Save to device</span>
+          <span class="editor-action-label">{{ t('editor.actions.saveToDevice') }}</span>
         </button>
         <button
           v-if="canSaveCopy"
@@ -85,7 +89,7 @@ const emit = defineEmits<{
               <path d="M18 15.6v3.8M16.1 17.5h3.8" />
             </svg>
           </span>
-          <span class="editor-action-label">Save a copy</span>
+          <span class="editor-action-label">{{ t('editor.actions.saveCopy') }}</span>
         </button>
       </div>
     </div>

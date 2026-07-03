@@ -1,3 +1,8 @@
+import {
+  resolveEditorFontFamily,
+  type AppearanceTextSettings,
+} from '../settings/appearanceSettings'
+
 type MuyaCoreModule = typeof import('@muyajs/core')
 
 export type MuyaEditor = InstanceType<MuyaCoreModule['Muya']>
@@ -14,6 +19,8 @@ interface CreateMuyaEditorOptions {
   onJsonChange: (...args: unknown[]) => void
   onFocus: (...args: unknown[]) => void
   onBlur: (...args: unknown[]) => void
+  appLocale?: string
+  appearanceTextSettings?: AppearanceTextSettings
   isStale?: () => boolean
   logger?: EditorRuntimeLogger
 }
@@ -48,6 +55,43 @@ async function registerMuyaPlugins(logger?: EditorRuntimeLogger) {
   return core
 }
 
+function resolveMuyaLocale(core: MuyaCoreModule, appLocale = 'en') {
+  return appLocale === 'zh-CN' ? core.zhCN : core.en
+}
+
+function getMuyaAppearanceOptions(settings?: AppearanceTextSettings) {
+  if (!settings) {
+    return {}
+  }
+
+  return {
+    fontSize: settings.fontSize,
+    lineHeight: settings.lineHeight,
+    editorFontFamily: resolveEditorFontFamily(settings.editorFontFamily),
+  }
+}
+
+export function applyMuyaAppearanceSettings(
+  editor: MuyaEditor | null,
+  settings: AppearanceTextSettings,
+) {
+  editor?.setOptions(getMuyaAppearanceOptions(settings))
+}
+
+export async function applyMuyaEditorLocale(
+  editor: MuyaEditor | null,
+  appLocale: string,
+  logger?: EditorRuntimeLogger,
+) {
+  if (!editor) {
+    return
+  }
+
+  const core = await loadMuyaCore()
+  editor.locale(resolveMuyaLocale(core, appLocale))
+  logger?.debug('Muya locale applied', { appLocale })
+}
+
 export async function createMuyaEditor({
   element,
   markdown,
@@ -55,10 +99,13 @@ export async function createMuyaEditor({
   onJsonChange,
   onFocus,
   onBlur,
+  appLocale,
+  appearanceTextSettings,
   isStale,
   logger,
 }: CreateMuyaEditorOptions) {
-  const { Muya, en } = await registerMuyaPlugins(logger)
+  const core = await registerMuyaPlugins(logger)
+  const { Muya } = core
   if (isStale?.()) {
     return null
   }
@@ -68,14 +115,13 @@ export async function createMuyaEditor({
   })
   const editor = new Muya(element, {
     markdown,
-    fontSize: 16,
-    lineHeight: 1.6,
+    ...getMuyaAppearanceOptions(appearanceTextSettings),
     codeBlockLineNumbers: true,
     frontMatter: true,
     footnote: true,
     math: true,
     spellcheckEnabled: true,
-    locale: en,
+    locale: resolveMuyaLocale(core, appLocale),
   })
 
   editor.init()
