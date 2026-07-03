@@ -80,8 +80,8 @@ const hasChevron = computed(() => Boolean(props.chevron || props.href))
   right: 20px;
   width: 9px;
   height: 9px;
-  border-top: 1.4px solid color-mix(in srgb, var(--text-faint) 70%, var(--surface));
-  border-right: 1.4px solid color-mix(in srgb, var(--text-faint) 70%, var(--surface));
+  border-top: 1.4px solid var(--settings-chevron-border);
+  border-right: 1.4px solid var(--settings-chevron-border);
   content: '';
   transform: translateY(-50%) rotate(45deg);
   pointer-events: none;
@@ -94,7 +94,7 @@ const hasChevron = computed(() => Boolean(props.chevron || props.href))
 
 .settings-row.is-link:focus-visible,
 .settings-row.is-action:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  outline: 2px solid var(--focus-ring-22);
   outline-offset: -2px;
 }
 

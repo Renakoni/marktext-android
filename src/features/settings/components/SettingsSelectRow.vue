@@ -70,7 +70,7 @@ defineEmits<{
 
 .settings-select:focus-visible {
   border-color: var(--accent);
-  outline: 2px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  outline: 2px solid var(--focus-ring-18);
   outline-offset: 1px;
 }
 

@@ -1,32 +1,4 @@
-:root {
-  --app-bg: oklch(0.965 0.004 255);
-  --surface: oklch(0.985 0.003 255);
-  --surface-muted: oklch(0.955 0.005 255);
-  --surface-sunken: oklch(0.935 0.006 255);
-  --text: oklch(0.23 0.014 255);
-  --text-muted: oklch(0.52 0.02 255);
-  --text-faint: oklch(0.63 0.018 255);
-  --border: oklch(0.9 0.008 255);
-  --border-strong: oklch(0.86 0.011 255);
-  --accent: oklch(0.52 0.06 255);
-  --accent-strong: oklch(0.45 0.065 255);
-  --accent-soft: oklch(0.93 0.035 255);
-  --danger: oklch(0.5 0.13 25);
-  --shadow-sm: 0 1px 2px oklch(0.25 0.02 255 / 0.05);
-  --shadow: 0 8px 28px oklch(0.25 0.02 255 / 0.07);
-  --radius: 14px;
-  --radius-sm: 10px;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-
-  color: var(--text);
-  background: var(--app-bg);
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@import './styles/theme-tokens.css';
 
 * {
   box-sizing: border-box;
@@ -102,9 +74,7 @@ body {
   font-size: 14px;
   font-weight: 600;
   letter-spacing: -0.006em;
-  box-shadow:
-    0 1px 2px oklch(0.25 0.02 255 / 0.04),
-    inset 0 1px 0 oklch(1 0 0 / 0.6);
+  box-shadow: var(--shadow-home-open-button);
   transition:
     border-color 160ms var(--ease-out),
     background 160ms var(--ease-out),
@@ -130,7 +100,7 @@ body {
 .home-open-button:active {
   background: var(--surface-sunken);
   transform: translateY(0.5px);
-  box-shadow: 0 1px 1px oklch(0.25 0.02 255 / 0.03);
+  box-shadow: var(--shadow-home-open-button-active);
 }
 
 .home-new-button {
@@ -144,9 +114,7 @@ body {
   background: var(--accent);
   color: var(--surface);
   font: inherit;
-  box-shadow:
-    0 2px 8px oklch(0.52 0.06 255 / 0.28),
-    inset 0 1px 0 oklch(1 0 0 / 0.22);
+  box-shadow: var(--shadow-home-new-button);
   transition:
     background 160ms var(--ease-out),
     box-shadow 160ms var(--ease-out),
@@ -164,15 +132,13 @@ body {
 }
 
 .home-new-button:hover {
-  background: color-mix(in srgb, var(--accent) 88%, var(--accent-strong) 12%);
+  background: var(--accent-hover);
 }
 
 .home-new-button:active {
   background: var(--accent-strong);
   transform: translateY(0.5px);
-  box-shadow:
-    0 1px 3px oklch(0.52 0.06 255 / 0.2),
-    inset 0 1px 0 oklch(1 0 0 / 0.16);
+  box-shadow: var(--shadow-home-new-button-active);
 }
 
 .home-open-button:active,
@@ -232,7 +198,7 @@ body {
 
 .continue-card:hover {
   border-color: var(--border-strong);
-  box-shadow: 0 4px 16px oklch(0.25 0.02 255 / 0.07);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .continue-card:active {
@@ -517,7 +483,7 @@ body {
   z-index: 40;
   display: grid;
   align-items: end;
-  background: oklch(0.23 0.02 255 / 0.5);
+  background: var(--editor-scrim);
 }
 
 .editor-sheet-enter-active,
@@ -602,7 +568,7 @@ body {
 }
 
 .editor-action-row:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  outline: 2px solid var(--focus-ring-22);
   outline-offset: -2px;
 }
 
@@ -728,7 +694,7 @@ body {
   display: grid;
   align-items: end;
   padding: 18px;
-  background: oklch(0.23 0.02 255 / 0.42);
+  background: var(--draft-scrim);
 }
 
 .draft-save-panel {
@@ -790,7 +756,7 @@ body {
 
 .link-field input:focus {
   border-color: var(--accent);
-  outline: 2px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  outline: 2px solid var(--focus-ring-18);
   outline-offset: 1px;
 }
 

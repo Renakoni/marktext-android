@@ -80,7 +80,7 @@ function selectTab(tab: HomeTab) {
   position: absolute;
   inset: 0 16px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface) 28%);
+  background: var(--bottom-nav-indicator-bg);
   content: '';
 }
 

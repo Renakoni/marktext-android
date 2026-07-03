@@ -77,7 +77,7 @@ function updateValue(value: string) {
 }
 
 .settings-slider:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  outline: 2px solid var(--focus-ring-22);
   outline-offset: 4px;
 }
 </style>

@@ -50,7 +50,7 @@ defineEmits<{
 }
 
 .settings-toggle-row:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  outline: 2px solid var(--focus-ring-22);
   outline-offset: -2px;
 }
 
@@ -83,7 +83,7 @@ defineEmits<{
   height: 22px;
   border-radius: 999px;
   background: var(--surface);
-  box-shadow: 0 2px 6px oklch(0.25 0.02 255 / 0.18);
+  box-shadow: var(--shadow-toggle-thumb);
   transition: transform 180ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
