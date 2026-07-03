@@ -10,6 +10,7 @@ import type { LocalDraftRecord } from '../../lib/localDrafts'
 const localDraft: LocalDraftRecord = {
   id: 'draft-1',
   markdown: '# Local draft\n\nbody',
+  createdAt: '2026-07-01T23:59:00.000Z',
   updatedAt: '2026-07-02T00:01:00.000Z',
   lastSavedAt: '2026-07-02T00:00:00.000Z',
 }
@@ -35,6 +36,7 @@ describe('documentSessionState', () => {
       markdown: '# Local draft\n\nbody',
       title: 'Local draft',
       autosaveTarget: 'local-draft',
+      createdAt: '2026-07-01T23:59:00.000Z',
       lastSavedAt: '2026-07-02T00:00:00.000Z',
       updatedAt: '2026-07-02T00:01:00.000Z',
       sourceUri: null,

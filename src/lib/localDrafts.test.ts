@@ -11,6 +11,7 @@ import {
 const olderDraft: LocalDraftRecord = {
   id: 'older',
   markdown: '# Older draft\n\nhello',
+  createdAt: '2026-06-28T23:59:00.000Z',
   updatedAt: '2026-06-29T00:00:00.000Z',
   lastSavedAt: '2026-06-29T00:00:00.000Z',
 }
@@ -18,6 +19,7 @@ const olderDraft: LocalDraftRecord = {
 const newerDraft: LocalDraftRecord = {
   id: 'newer',
   markdown: '# Newer draft\n\n你好',
+  createdAt: '2026-06-29T00:01:00.000Z',
   updatedAt: '2026-06-29T00:02:00.000Z',
   lastSavedAt: '2026-06-29T00:02:00.000Z',
 }
@@ -47,6 +49,21 @@ describe('localDrafts', () => {
 
     expect(drafts).toHaveLength(1)
     expect(drafts[0].markdown).toBe('# Updated draft')
+    expect(drafts[0].createdAt).toBe(olderDraft.createdAt)
+  })
+
+  it('migrates legacy draft records without created time', () => {
+    const legacyDraft = {
+      id: 'legacy',
+      markdown: '# Legacy draft',
+      updatedAt: '2026-06-29T00:04:00.000Z',
+      lastSavedAt: null,
+    }
+
+    expect(parseLocalDrafts(JSON.stringify([legacyDraft]))[0]).toMatchObject({
+      ...legacyDraft,
+      createdAt: legacyDraft.updatedAt,
+    })
   })
 
   it('removes drafts by id', () => {

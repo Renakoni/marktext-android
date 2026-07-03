@@ -14,6 +14,7 @@ import {
 const olderDraft = {
   id: 'older',
   markdown: '# Older draft\n\nhello',
+  createdAt: '2026-06-28T23:59:00.000Z',
   updatedAt: '2026-06-29T00:00:00.000Z',
   lastSavedAt: '2026-06-29T00:00:00.000Z',
 }
@@ -21,6 +22,7 @@ const olderDraft = {
 const newerDraft = {
   id: 'newer',
   markdown: '# Newer draft\n\n你好',
+  createdAt: '2026-06-29T00:01:00.000Z',
   updatedAt: '2026-06-29T00:02:00.000Z',
   lastSavedAt: '2026-06-29T00:02:00.000Z',
 }
@@ -34,6 +36,7 @@ const androidDocument: RecentDocumentRecord = {
   providerName: 'Documents',
   pathHint: 'Documents/notes.md',
   markdownPreview: null,
+  createdAt: '2026-06-29T00:01:00.000Z',
   updatedAt: '2026-06-29T00:01:00.000Z',
   lastOpenedAt: '2026-06-29T00:01:00.000Z',
   lastSavedAt: null,
@@ -57,6 +60,7 @@ describe('recentDocuments', () => {
     expect(record.title).toBe('Newer draft')
     expect(record.providerName).toBe('Local draft')
     expect(record.markdownPreview).toBe(newerDraft.markdown)
+    expect(record.createdAt).toBe(newerDraft.createdAt)
     expect(record.canWrite).toBe(true)
   })
 
@@ -75,6 +79,7 @@ describe('recentDocuments', () => {
     expect(record.kind).toBe('android-document')
     expect(record.title).toBe('Android note')
     expect(record.markdownPreview).toBeNull()
+    expect(record.createdAt).toBe('2026-06-29T00:06:00.000Z')
     expect(record.lastOpenedAt).toBe('2026-06-29T00:06:00.000Z')
     expect(record.canWrite).toBe(false)
   })
@@ -116,6 +121,7 @@ describe('recentDocuments', () => {
     })
 
     expect(saved.title).toBe('Updated Android title')
+    expect(saved.createdAt).toBe(androidDocument.createdAt)
     expect(saved.updatedAt).toBe('2026-06-29T00:07:00.000Z')
     expect(saved.lastSavedAt).toBe('2026-06-29T00:07:00.000Z')
     expect(saved.markdownPreview).toBeNull()
@@ -134,6 +140,17 @@ describe('recentDocuments', () => {
 
     expect(records).toHaveLength(1)
     expect(records[0].title).toBe('Updated draft')
+    expect(records[0].createdAt).toBe(olderRecord.createdAt)
+  })
+
+  it('migrates recent records without created time', () => {
+    const legacyRecord = {
+      ...androidDocument,
+      createdAt: undefined,
+    }
+    const [record] = parseRecentDocuments(JSON.stringify([legacyRecord]))
+
+    expect(record.createdAt).toBe(androidDocument.lastOpenedAt)
   })
 
   it('filters empty local draft previews', () => {

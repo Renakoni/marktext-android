@@ -103,6 +103,7 @@ describe('androidDocumentOpenWorkflow', () => {
     expect(result.localDraft).toEqual({
       id: result.documentState.id,
       markdown: '# Shared Text\n\nbody',
+      createdAt: '2026-07-02T00:00:00.000Z',
       updatedAt: '2026-07-02T00:00:00.000Z',
       lastSavedAt: '2026-07-02T00:00:00.000Z',
     })

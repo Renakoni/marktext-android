@@ -41,6 +41,7 @@ import {
 import {
   createAndroidRecoveryDraft,
   getAndroidRecoveryDraftId,
+  isAndroidRecoveryDraftId,
 } from './features/android-documents/androidRecoveryDrafts'
 import {
   markSavedAndroidRecentDocument,
@@ -54,6 +55,10 @@ import {
 import {
   createDocumentStateFromLocalDraft,
 } from './features/document-session/documentSessionState'
+import {
+  getDocumentSettings,
+  getSortedRecentDocumentListItems,
+} from './features/document-session/documentSettings'
 import {
   createAndroidDocumentOpenResult,
   createAndroidOpenWithDocumentEventAction,
@@ -133,10 +138,10 @@ import {
   type RecentDocumentRecord,
 } from './lib/recentDocuments'
 
-const DRAFT_SAVE_DELAY_MS = 800
-const ANDROID_DOCUMENT_SAVE_DELAY_MS = 1200
 const TRANSIENT_ANDROID_DOCUMENT_MESSAGE =
   'Saved to device. Kept local draft because Android did not grant long-term access.'
+const TRANSIENT_ANDROID_DOCUMENT_WITHOUT_DRAFT_MESSAGE =
+  'Saved to device. Reopen it from Android to keep editing later.'
 const OPEN_WITH_TEMPORARY_ACCESS_MESSAGE =
   'Opened with temporary Android access. Save a copy to keep editing later.'
 const SHARE_TEMPORARY_ACCESS_MESSAGE =
@@ -183,6 +188,7 @@ const { locale, t } = useI18n()
 const { getValue } = useSettingsState()
 const appearanceTextSettings = computed(() => getAppearanceTextSettings(getValue))
 const editingSettings = computed(() => getEditingSettings(getValue))
+const documentSettings = computed(() => getDocumentSettings(getValue))
 const editorStyleVars = computed(() => getEditorStyleVars(appearanceTextSettings.value))
 const displayStatus = computed(() => translateKnownText(status.value))
 const displayHomeNotice = computed(() =>
@@ -210,6 +216,7 @@ let androidSaveRequestedAfterCurrent = false
 let appLifecycleListeners: AppLifecycleListeners | null = null
 let androidDocumentIntentListeners: AndroidDocumentIntentListeners | null = null
 let pendingInlineInsertRange: Range | null = null
+let startupActionTimer: number | null = null
 
 const appLog = createLogger('app')
 const editorLog = createLogger('editor')
@@ -223,6 +230,32 @@ watch(appearanceTextSettings, settings => {
 
 watch(editingSettings, (settings, previousSettings) => {
   applyMuyaEditingSettings(editor, settings, previousSettings)
+})
+
+watch(documentSettings, (settings, previousSettings) => {
+  if (!settings.localDrafts) {
+    clearDraftSaveTimer()
+  }
+
+  if (!settings.autoSave) {
+    clearDraftSaveTimer()
+    clearAndroidDocumentSaveTimer()
+    return
+  }
+
+  if (!editor || currentScreen.value !== 'editor' || !documentState.value.isDirty) {
+    return
+  }
+
+  const autoSaveWasEnabled = previousSettings?.autoSave ?? settings.autoSave
+  const delayChanged = previousSettings?.autoSaveDelayMs !== settings.autoSaveDelayMs
+  if (!autoSaveWasEnabled || delayChanged) {
+    if (documentState.value.autosaveTarget === 'android-document') {
+      scheduleAndroidDocumentSave()
+    } else if (settings.localDrafts) {
+      scheduleDraftSave()
+    }
+  }
 })
 
 watch(locale, nextLocale => {
@@ -248,11 +281,16 @@ const displayDocumentTitle = computed(() => {
 })
 const recentDocumentRecords = computed(() =>
   [
-    ...localDrafts.value.map(createRecentDocumentFromLocalDraft),
+    ...localDrafts.value
+      .filter(draft => shouldShowLocalDraftRecord(draft.id))
+      .map(createRecentDocumentFromLocalDraft),
     ...androidRecentDocuments.value,
   ],
 )
-const documentItems = computed(() => getRecentDocumentListItems(recentDocumentRecords.value))
+const recentActivityDocumentItems = computed(() => getRecentDocumentListItems(recentDocumentRecords.value))
+const documentItems = computed(() =>
+  getSortedRecentDocumentListItems(recentDocumentRecords.value, documentSettings.value),
+)
 const continueDocumentItem = computed(() => documentItems.value[0] ?? null)
 const earlierDocumentItems = computed(() => documentItems.value.slice(1))
 const continueDocument = computed(() =>
@@ -284,6 +322,34 @@ function getAndroidEditorStatus() {
 
 function isLocalDraftDocument() {
   return documentState.value.autosaveTarget === 'local-draft'
+}
+
+function shouldShowLocalDraftRecord(id: string) {
+  return isAndroidRecoveryDraftId(id)
+    ? documentSettings.value.recoveryDrafts
+    : documentSettings.value.localDrafts
+}
+
+function canPersistLocalDrafts() {
+  return documentSettings.value.localDrafts
+}
+
+function canPersistAndroidRecoveryDrafts() {
+  return documentSettings.value.recoveryDrafts
+}
+
+function canRunIdleLocalDraftAutosave() {
+  return documentSettings.value.autoSave && canPersistLocalDrafts()
+}
+
+function canRunIdleAndroidDocumentAutosave() {
+  return documentSettings.value.autoSave
+}
+
+function getTransientAndroidSaveMessage() {
+  return canPersistLocalDrafts()
+    ? TRANSIENT_ANDROID_DOCUMENT_MESSAGE
+    : TRANSIENT_ANDROID_DOCUMENT_WITHOUT_DRAFT_MESSAGE
 }
 
 function hasDraftContent() {
@@ -352,15 +418,20 @@ function syncMarkdown(nextStatus: unknown = 'Edited') {
   documentState.value = updateDocumentMarkdown(documentState.value, nextMarkdown, { markDirty })
   if (markDirty && documentState.value.autosaveTarget === 'android-document') {
     status.value = getAndroidEditorStatus()
-    if (currentAndroidDocumentCanWrite.value) {
+    if (currentAndroidDocumentCanWrite.value && canRunIdleAndroidDocumentAutosave()) {
       scheduleAndroidDocumentSave()
     }
   } else {
-    status.value = markDirty ? 'Autosaving locally' : resolvedStatus
+    status.value =
+      markDirty && canRunIdleLocalDraftAutosave() ? 'Autosaving locally' : resolvedStatus
   }
   logContentSnapshot(resolvedStatus)
 
-  if (markDirty && documentState.value.autosaveTarget === 'local-draft') {
+  if (
+    markDirty &&
+    documentState.value.autosaveTarget === 'local-draft' &&
+    canRunIdleLocalDraftAutosave()
+  ) {
     scheduleDraftSave()
   }
 }
@@ -527,11 +598,15 @@ function logContentSnapshot(reason: string) {
 }
 
 function scheduleDraftSave() {
+  if (!canRunIdleLocalDraftAutosave()) {
+    return
+  }
+
   if (draftSaveTimer !== null) {
     window.clearTimeout(draftSaveTimer)
   }
 
-  draftSaveTimer = window.setTimeout(saveDraft, DRAFT_SAVE_DELAY_MS)
+  draftSaveTimer = window.setTimeout(saveDraft, documentSettings.value.autoSaveDelayMs)
 }
 
 function clearDraftSaveTimer() {
@@ -542,13 +617,17 @@ function clearDraftSaveTimer() {
 }
 
 function scheduleAndroidDocumentSave() {
+  if (!canRunIdleAndroidDocumentAutosave()) {
+    return
+  }
+
   if (androidSaveTimer !== null) {
     window.clearTimeout(androidSaveTimer)
   }
 
   androidSaveTimer = window.setTimeout(() => {
     void saveAndroidDocument()
-  }, ANDROID_DOCUMENT_SAVE_DELAY_MS)
+  }, documentSettings.value.autoSaveDelayMs)
 }
 
 function clearAndroidDocumentSaveTimer() {
@@ -569,6 +648,14 @@ function persistAndroidRecentDocuments(nextDocuments: RecentDocumentRecord[]) {
 }
 
 function persistAndroidRecoveryDraft(sourceUri: string, markdown: string) {
+  if (!canPersistAndroidRecoveryDrafts()) {
+    androidDocumentLog.warn('skip Android recovery draft because recovery drafts are disabled', {
+      sourceUri,
+      characters: markdown.length,
+    })
+    return
+  }
+
   const recoveryDraft = createAndroidRecoveryDraft(sourceUri, markdown, new Date().toISOString())
   if (!recoveryDraft) {
     return
@@ -675,8 +762,12 @@ async function saveAndroidDocument() {
     }
 
     documentState.value = result.failedDocument
-    persistAndroidRecoveryDraft(result.recoveryDraft.sourceUri, result.recoveryDraft.markdown)
-    status.value = result.status
+    if (canPersistAndroidRecoveryDrafts()) {
+      persistAndroidRecoveryDraft(result.recoveryDraft.sourceUri, result.recoveryDraft.markdown)
+      status.value = result.status
+    } else {
+      status.value = getAndroidDocumentUserMessage(result.error)
+    }
     return false
   } finally {
     androidSaveInFlight = false
@@ -712,7 +803,7 @@ async function saveLocalDraftToAndroidDocument(options: { returnHomeAfterSave?: 
     draftDocument,
     returnHomeAfterSave: options.returnHomeAfterSave === true,
     reopenPromptOnCancel,
-    transientAccessMessage: TRANSIENT_ANDROID_DOCUMENT_MESSAGE,
+    transientAccessMessage: getTransientAndroidSaveMessage(),
     createAndroidMarkdownDocument,
     getAndroidDocumentUserMessage,
     logger: androidDocumentLog,
@@ -725,7 +816,7 @@ async function saveLocalDraftToAndroidDocument(options: { returnHomeAfterSave?: 
     }
 
     if (result.kind === 'canceled') {
-      status.value = result.status
+      status.value = canPersistLocalDrafts() ? result.status : 'Edited'
       if (reopenPromptOnCancel) {
         draftExitPromptOpen.value = true
       }
@@ -785,7 +876,7 @@ async function saveAndroidDocumentCopy(options: { returnHomeAfterSave?: boolean 
       originalSourceUri,
       reservedDisplayNames: androidRecentDocuments.value.map(document => document.displayName),
       returnHomeAfterSave: options.returnHomeAfterSave === true,
-      transientAccessMessage: TRANSIENT_ANDROID_DOCUMENT_MESSAGE,
+      transientAccessMessage: getTransientAndroidSaveMessage(),
       createAndroidMarkdownDocument,
       getAndroidDocumentUserMessage,
       logger: androidDocumentLog,
@@ -797,7 +888,7 @@ async function saveAndroidDocumentCopy(options: { returnHomeAfterSave?: boolean 
     }
 
     if (result.kind === 'transient') {
-      if (result.recoveryDraft) {
+      if (result.recoveryDraft && canPersistAndroidRecoveryDrafts()) {
         persistAndroidRecoveryDraft(result.recoveryDraft.sourceUri, result.recoveryDraft.markdown)
       }
       status.value = result.status
@@ -820,7 +911,7 @@ async function saveAndroidDocumentCopy(options: { returnHomeAfterSave?: boolean 
       return true
     }
 
-    if (result.recoveryDraft) {
+    if (result.recoveryDraft && canPersistAndroidRecoveryDrafts()) {
       persistAndroidRecoveryDraft(result.recoveryDraft.sourceUri, result.recoveryDraft.markdown)
     }
     documentState.value = result.failedDocument
@@ -873,6 +964,14 @@ function saveDraft() {
       id: documentState.value.id,
       sourceUri: documentState.value.sourceUri,
       autosaveState: documentState.value.autosaveState,
+    })
+    return
+  }
+
+  if (!canPersistLocalDrafts()) {
+    clearDraftSaveTimer()
+    draftLog.debug('skip local draft save because local drafts are disabled', {
+      id: documentState.value.id,
     })
     return
   }
@@ -1017,7 +1116,9 @@ async function openSharedTextDocument(document: SharedAndroidDocument) {
     logger: androidDocumentLog,
   })
 
-  persistLocalDrafts(upsertLocalDraft(localDrafts.value, openResult.localDraft))
+  if (canPersistLocalDrafts()) {
+    persistLocalDrafts(upsertLocalDraft(localDrafts.value, openResult.localDraft))
+  }
   homeNotice.value = openResult.homeNotice
   promptLocalDraftSaveOnExit.value = openResult.promptLocalDraftSaveOnExit
   currentAndroidDocumentCanWrite.value = openResult.currentAndroidDocumentCanWrite
@@ -1170,6 +1271,34 @@ async function openDocument(id: string) {
   })
 }
 
+async function openLastEditedDocumentOnStartup() {
+  const recentDocument = recentActivityDocumentItems.value[0]
+  if (!recentDocument) {
+    return
+  }
+
+  appLog.info('open last edited document on startup', {
+    id: recentDocument.id,
+    kind: recentDocument.kind,
+  })
+  await openDocument(recentDocument.id)
+}
+
+function applyDocumentStartupAction() {
+  if (currentScreen.value !== 'home') {
+    return
+  }
+
+  if (documentSettings.value.startUpAction === 'blank') {
+    newDocument()
+    return
+  }
+
+  if (documentSettings.value.startUpAction === 'lastEdit') {
+    void openLastEditedDocumentOnStartup()
+  }
+}
+
 function newDocument() {
   homeNotice.value = null
   androidExitPromptOpen.value = false
@@ -1253,11 +1382,13 @@ async function showHome() {
 function keepAndroidRecoveryAndShowHome() {
   const sourceUri = documentState.value.sourceUri
   const currentDocument = syncDocumentFromEditor(documentState.value.isDirty)
-  if (sourceUri && currentDocument.markdown.trim()) {
+  if (sourceUri && currentDocument.markdown.trim() && canPersistAndroidRecoveryDrafts()) {
     persistAndroidRecoveryDraft(sourceUri, currentDocument.markdown)
+    homeNotice.value = ANDROID_EXIT_RECOVERY_MESSAGE
+  } else {
+    homeNotice.value = ANDROID_EXIT_DISCARD_MESSAGE
   }
 
-  homeNotice.value = ANDROID_EXIT_RECOVERY_MESSAGE
   closeEditorToHome()
 }
 
@@ -1395,7 +1526,9 @@ function removeAppLifecycleListeners() {
 function keepLocalDraftAndShowHome() {
   appLog.info('keep local draft and show recent home')
   promptLocalDraftSaveOnExit.value = false
-  saveDraft()
+  if (canPersistLocalDrafts()) {
+    saveDraft()
+  }
   closeEditorToHome()
 }
 
@@ -1417,8 +1550,13 @@ onMounted(() => {
 
   if (restoredDrafts.length > 0) {
     localDrafts.value = restoredDrafts
-    documentState.value = createDocumentStateFromLocalDraft(restoredDrafts[0])
-  } else if (legacyDraft?.trim()) {
+    const visibleDraft = restoredDrafts.find(draft => shouldShowLocalDraftRecord(draft.id))
+    if (visibleDraft) {
+      documentState.value = createDocumentStateFromLocalDraft(visibleDraft)
+    } else {
+      documentState.value = createUntitledDocument({ autosaveTarget: 'local-draft' })
+    }
+  } else if (legacyDraft?.trim() && canPersistLocalDrafts()) {
     const migratedDocument = createUntitledDocument({
       markdown: legacyDraft,
       autosaveTarget: 'local-draft',
@@ -1426,6 +1564,7 @@ onMounted(() => {
     const migratedDraft = {
       id: migratedDocument.id,
       markdown: migratedDocument.markdown,
+      createdAt: migratedDocument.createdAt,
       updatedAt: migratedDocument.updatedAt,
       lastSavedAt: migratedDocument.lastSavedAt,
     }
@@ -1442,6 +1581,10 @@ onMounted(() => {
   })
 
   installAndroidDocumentIntentListeners()
+  startupActionTimer = window.setTimeout(() => {
+    startupActionTimer = null
+    applyDocumentStartupAction()
+  }, 0)
 
   if (isNativeLoggerAvailable()) {
     getNativeLogInfo().then(info => {
@@ -1456,6 +1599,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   appLog.info('app before unmount')
+  if (startupActionTimer !== null) {
+    window.clearTimeout(startupActionTimer)
+    startupActionTimer = null
+  }
   removeAppLifecycleListeners()
   if (documentState.value.autosaveTarget === 'android-document') {
     void saveAndroidDocument()
@@ -1504,10 +1651,12 @@ onBeforeUnmount(() => {
     :link-sheet-open="linkSheetOpen"
     :draft-exit-prompt-open="draftExitPromptOpen"
     :draft-can-save-to-device="canSaveLocalDraftToAndroidDocument()"
+    :draft-can-keep-local="canPersistLocalDrafts()"
     :draft-saving="savingLocalDraftToAndroid"
     :android-exit-prompt-open="androidExitPromptOpen"
     :android-exit-message="getAndroidExitPromptMessage()"
     :android-can-save-copy="canSaveAndroidDocumentCopy()"
+    :android-can-keep-recovery="canPersistAndroidRecoveryDrafts()"
     :android-saving="savingAndroidDocumentCopy"
     :text-direction="appearanceTextSettings.textDirection"
     :editor-style-vars="editorStyleVars"

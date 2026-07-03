@@ -9,6 +9,7 @@ export function createDocumentStateFromLocalDraft(draft: LocalDraftRecord) {
     ...createUntitledDocument({
       markdown: draft.markdown,
       autosaveTarget: 'local-draft',
+      createdAt: draft.createdAt,
       now: draft.updatedAt,
     }),
     id: draft.id,

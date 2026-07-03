@@ -1,13 +1,18 @@
 export interface LocalDraftRecord {
   id: string
   markdown: string
+  createdAt: string
   updatedAt: string
   lastSavedAt: string | null
 }
 
+type StoredLocalDraftRecord = Omit<LocalDraftRecord, 'createdAt'> & {
+  createdAt?: string
+}
+
 const DEFAULT_DRAFT_LIMIT = 20
 
-function isLocalDraftRecord(value: unknown): value is LocalDraftRecord {
+function isStoredLocalDraftRecord(value: unknown): value is StoredLocalDraftRecord {
   if (!value || typeof value !== 'object') {
     return false
   }
@@ -16,20 +21,32 @@ function isLocalDraftRecord(value: unknown): value is LocalDraftRecord {
   return (
     typeof record.id === 'string' &&
     typeof record.markdown === 'string' &&
+    (typeof record.createdAt === 'string' || record.createdAt === undefined) &&
     typeof record.updatedAt === 'string' &&
     (typeof record.lastSavedAt === 'string' || record.lastSavedAt === null)
   )
 }
 
-function compareDraftsByUpdateTime(left: LocalDraftRecord, right: LocalDraftRecord) {
+function normalizeLocalDraftRecord(record: StoredLocalDraftRecord): LocalDraftRecord {
+  return {
+    ...record,
+    createdAt: record.createdAt ?? record.updatedAt,
+  }
+}
+
+function compareDraftsByUpdateTime(left: StoredLocalDraftRecord, right: StoredLocalDraftRecord) {
   return Date.parse(right.updatedAt) - Date.parse(left.updatedAt)
 }
 
-export function normalizeLocalDrafts(records: LocalDraftRecord[], limit = DEFAULT_DRAFT_LIMIT) {
+export function normalizeLocalDrafts(
+  records: StoredLocalDraftRecord[],
+  limit = DEFAULT_DRAFT_LIMIT,
+) {
   const seen = new Set<string>()
   const normalized: LocalDraftRecord[] = []
 
-  for (const record of [...records].sort(compareDraftsByUpdateTime)) {
+  for (const rawRecord of [...records].sort(compareDraftsByUpdateTime)) {
+    const record = normalizeLocalDraftRecord(rawRecord)
     if (seen.has(record.id) || !record.markdown.trim()) {
       continue
     }
@@ -52,7 +69,7 @@ export function parseLocalDrafts(value: string | null) {
       return []
     }
 
-    return normalizeLocalDrafts(parsed.filter(isLocalDraftRecord))
+    return normalizeLocalDrafts(parsed.filter(isStoredLocalDraftRecord))
   } catch {
     return []
   }
@@ -67,8 +84,14 @@ export function upsertLocalDraft(
   draft: LocalDraftRecord,
   limit = DEFAULT_DRAFT_LIMIT,
 ) {
+  const existingDraft = records.find(record => record.id === draft.id)
+  const nextDraft = {
+    ...draft,
+    createdAt: existingDraft?.createdAt ?? draft.createdAt,
+  }
+
   return normalizeLocalDrafts(
-    [draft, ...records.filter(record => record.id !== draft.id)],
+    [nextDraft, ...records.filter(record => record.id !== draft.id)],
     limit,
   )
 }

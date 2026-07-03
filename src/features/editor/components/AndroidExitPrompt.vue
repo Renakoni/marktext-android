@@ -4,6 +4,7 @@ import { useI18n } from '../../../lib/i18n'
 defineProps<{
   message: string
   canSaveCopy: boolean
+  canKeepRecovery: boolean
   saving: boolean
 }>()
 
@@ -39,6 +40,7 @@ const { t } = useI18n()
           {{ t('editor.actions.saveCopy') }}
         </button>
         <button
+          v-if="canKeepRecovery"
           type="button"
           data-testid="prompt-keep-recovery-button"
           :disabled="saving"
