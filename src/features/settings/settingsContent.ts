@@ -69,6 +69,7 @@ export const SETTINGS_PAGE_TITLE_KEYS = {
   [SETTINGS_PAGES.INDEX]: 'settings.title',
   [SETTINGS_PAGES.APPEARANCE]: 'settings.appearance',
   [SETTINGS_PAGES.EDITING]: 'settings.editing',
+  [SETTINGS_PAGES.TOOLBAR]: 'settings.section.mobileToolbar',
   [SETTINGS_PAGES.CODE]: 'settings.code',
   [SETTINGS_PAGES.MARKDOWN]: 'settings.markdown',
   [SETTINGS_PAGES.DOCUMENTS]: 'settings.documents',
@@ -297,7 +298,7 @@ const trailingNewlineOptions = [
   { id: '3', labelKey: 'settings.option.trailing.doNothing' },
 ] as const satisfies readonly SettingsOption[]
 
-export const SETTINGS_DETAIL_SECTIONS: Partial<Record<SettingsPage, readonly SettingsDetailSection[]>> = {
+const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly SettingsDetailSection[]>> = {
   [SETTINGS_PAGES.APPEARANCE]: [
     {
       titleKey: 'settings.section.theme',
@@ -1101,4 +1102,28 @@ export const SETTINGS_DETAIL_SECTIONS: Partial<Record<SettingsPage, readonly Set
       ],
     },
   ],
+} as const
+
+const {
+  [SETTINGS_PAGES.CODE]: codeSections = [],
+  [SETTINGS_PAGES.MARKDOWN]: markdownSections = [],
+  [SETTINGS_PAGES.SPELLING]: spellingSections = [],
+  ...settingsDetailSectionsWithoutMergedPages
+} = SETTINGS_DETAIL_SECTIONS_BASE
+
+const editingBaseSections = settingsDetailSectionsWithoutMergedPages[SETTINGS_PAGES.EDITING] ?? []
+const toolbarSections = editingBaseSections.filter(
+  section => section.titleKey === 'settings.section.mobileToolbar',
+)
+const editingSections = [
+  ...editingBaseSections.filter(section => section.titleKey !== 'settings.section.mobileToolbar'),
+  ...codeSections,
+  ...markdownSections,
+  ...spellingSections,
+]
+
+export const SETTINGS_DETAIL_SECTIONS: Partial<Record<SettingsPage, readonly SettingsDetailSection[]>> = {
+  ...settingsDetailSectionsWithoutMergedPages,
+  [SETTINGS_PAGES.EDITING]: editingSections,
+  [SETTINGS_PAGES.TOOLBAR]: toolbarSections,
 } as const
