@@ -1,5 +1,5 @@
-import { HOME_TABS, type HomeTab } from './homeNavigation'
-import { SETTINGS_PAGES, type SettingsPage } from './settingsNavigation'
+import { HOME_TABS, type HomeTab } from '../features/home/homeNavigation'
+import { SETTINGS_PAGES, type SettingsPage } from '../features/settings/settingsNavigation'
 import type { AutosaveTarget } from './documentState'
 
 export type AppScreen = 'home' | 'editor'
