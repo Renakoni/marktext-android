@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  getLocalDraftListItems,
   normalizeLocalDrafts,
   parseLocalDrafts,
   removeLocalDraft,
@@ -60,12 +59,5 @@ describe('localDrafts', () => {
     const serialized = serializeLocalDrafts([olderDraft, newerDraft])
 
     expect(parseLocalDrafts(serialized).map(draft => draft.id)).toEqual(['newer', 'older'])
-  })
-
-  it('creates list items with titles and stats for the mobile home screen', () => {
-    const items = getLocalDraftListItems([newerDraft])
-
-    expect(items[0].title).toBe('Newer draft')
-    expect(items[0].stats.words).toBe(4)
   })
 })

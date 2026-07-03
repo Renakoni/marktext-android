@@ -1,11 +1,11 @@
 import {
-  applyAndroidDocumentAutosaveFailure,
-  applyAndroidDocumentAutosaveSuccess,
-  canApplyAndroidDocumentAutosaveSuccess,
-  createAndroidDocumentAutosaveRequest,
-  type AndroidDocumentAutosaveRequest,
-} from './androidDocumentAutosave'
-import type { MarkdownDocumentState } from '../../lib/documentState'
+  markDocumentSaved,
+  markDocumentSaveFailed,
+  markDocumentSaving,
+  prepareMarkdownForSave,
+  updateDocumentMarkdown,
+  type MarkdownDocumentState,
+} from '../../lib/documentState'
 
 interface WorkflowLogger {
   debug(message: string, data?: unknown): void
@@ -18,8 +18,11 @@ interface AndroidRecoveryDraftRequest {
   markdown: string
 }
 
-export interface SaveAndroidDocumentWorkflowRequest extends AndroidDocumentAutosaveRequest {
+export interface SaveAndroidDocumentWorkflowRequest {
   sourceUri: string
+  savingDocument: MarkdownDocumentState
+  markdownForSave: string
+  saveMarkdown: string
 }
 
 export type SaveAndroidDocumentWorkflowStartResult =
@@ -93,6 +96,49 @@ interface SaveAndroidDocumentWorkflowOptions {
   logger?: WorkflowLogger
 }
 
+function createSaveAndroidDocumentWorkflowRequest(
+  documentState: MarkdownDocumentState,
+  markdown: string,
+  sourceUri: string,
+): SaveAndroidDocumentWorkflowRequest {
+  const nextDocument = updateDocumentMarkdown(documentState, markdown, {
+    markDirty: documentState.isDirty,
+  })
+
+  return {
+    sourceUri,
+    savingDocument: markDocumentSaving(nextDocument),
+    markdownForSave: prepareMarkdownForSave(nextDocument.markdown, nextDocument),
+    saveMarkdown: nextDocument.markdown,
+  }
+}
+
+function canApplyAndroidDocumentSaveSuccess(
+  documentState: MarkdownDocumentState,
+  sourceUri: string,
+  saveMarkdown: string,
+) {
+  return (
+    documentState.autosaveTarget === 'android-document' &&
+    documentState.sourceUri === sourceUri &&
+    documentState.markdown === saveMarkdown
+  )
+}
+
+function applyAndroidDocumentSaveSuccess(
+  documentState: MarkdownDocumentState,
+  saveMarkdown: string,
+  savedAt: string,
+) {
+  return markDocumentSaved(
+    updateDocumentMarkdown(documentState, saveMarkdown, {
+      markDirty: false,
+      now: savedAt,
+    }),
+    { autosaveTarget: 'android-document', now: savedAt },
+  )
+}
+
 export function createSaveAndroidDocumentWorkflowStart({
   documentState,
   markdown,
@@ -136,10 +182,7 @@ export function createSaveAndroidDocumentWorkflowStart({
     kind: 'ready',
     saved: false,
     status: 'Saving',
-    request: {
-      ...createAndroidDocumentAutosaveRequest(documentState, markdown),
-      sourceUri,
-    },
+    request: createSaveAndroidDocumentWorkflowRequest(documentState, markdown, sourceUri),
   }
 }
 
@@ -157,7 +200,7 @@ export async function saveAndroidDocumentWorkflow({
     const savedAt = now()
     const currentDocument = getCurrentDocumentState()
 
-    if (canApplyAndroidDocumentAutosaveSuccess(
+    if (canApplyAndroidDocumentSaveSuccess(
       currentDocument,
       request.sourceUri,
       request.saveMarkdown,
@@ -170,7 +213,7 @@ export async function saveAndroidDocumentWorkflow({
       return {
         kind: 'saved',
         saved: true,
-        savedDocument: applyAndroidDocumentAutosaveSuccess(
+        savedDocument: applyAndroidDocumentSaveSuccess(
           currentDocument,
           request.saveMarkdown,
           savedAt,
@@ -201,7 +244,7 @@ export async function saveAndroidDocumentWorkflow({
     return {
       kind: 'failed',
       saved: false,
-      failedDocument: applyAndroidDocumentAutosaveFailure(getCurrentDocumentState(), error),
+      failedDocument: markDocumentSaveFailed(getCurrentDocumentState(), error),
       sourceUri: request.sourceUri,
       recoveryDraft: {
         sourceUri: request.sourceUri,

@@ -2,13 +2,13 @@ import { MOBILE_COMMANDS, type MobileCommandId } from './mobileCommands'
 
 export type MobileEditorToolbarPanel = 'format' | 'paragraph' | 'insert' | 'markdown'
 
-export interface MobileToolbarCommandButton {
+interface MobileToolbarCommandButton {
   commandId: MobileCommandId
   label: string
   title: string
 }
 
-export interface MobileToolbarPanelDefinition {
+interface MobileToolbarPanelDefinition {
   id: MobileEditorToolbarPanel
   label: string
   title: string
@@ -31,7 +31,7 @@ export const MOBILE_TOOLBAR_QUICK_COMMANDS = [
   { commandId: MOBILE_COMMANDS.PARAGRAPH_ORDERED_LIST, label: '1.', title: 'Ordered list' },
 ] as const satisfies readonly MobileToolbarCommandButton[]
 
-export const MOBILE_TOOLBAR_PANEL_COMMANDS: Record<
+const MOBILE_TOOLBAR_PANEL_COMMANDS: Record<
   MobileEditorToolbarPanel,
   readonly MobileToolbarCommandButton[]
 > = {
@@ -125,8 +125,4 @@ export function getMobileToolbarPanel(panelId: MobileEditorToolbarPanel) {
 
 export function getMobileToolbarPanelCommands(panelId: MobileEditorToolbarPanel) {
   return getMobileToolbarPanel(panelId).commands
-}
-
-export function getMobileToolbarQuickCommand(commandId: MobileCommandId) {
-  return MOBILE_TOOLBAR_QUICK_COMMANDS.find(command => command.commandId === commandId)
 }

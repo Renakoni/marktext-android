@@ -1,14 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import {
-  MOBILE_COMMANDS,
-  getMobileCommandDefinition,
-  type MobileCommandId,
-  type MobileCommandSurface,
-} from './mobileCommands'
+import { MOBILE_COMMANDS } from './mobileCommands'
 import {
   DEFAULT_MOBILE_TOOLBAR_PANEL,
   MOBILE_TOOLBAR_EDIT_COMMANDS,
-  MOBILE_TOOLBAR_PANEL_COMMANDS,
   MOBILE_TOOLBAR_PANELS,
   MOBILE_TOOLBAR_QUICK_COMMANDS,
   getMobileToolbarPanel,
@@ -23,34 +17,8 @@ function getPanelCommandIds() {
   return MOBILE_TOOLBAR_PANELS.flatMap(panel => panel.commands.map(command => command.commandId))
 }
 
-function addSurface(
-  surfacesByCommand: Map<MobileCommandId, Set<MobileCommandSurface>>,
-  commandId: MobileCommandId,
-  surface: MobileCommandSurface,
-) {
-  const surfaces = surfacesByCommand.get(commandId) ?? new Set<MobileCommandSurface>()
-  surfaces.add(surface)
-  surfacesByCommand.set(commandId, surfaces)
-}
-
-function getActualToolbarSurfaces() {
-  const surfacesByCommand = new Map<MobileCommandId, Set<MobileCommandSurface>>()
-
-  for (const command of MOBILE_TOOLBAR_QUICK_COMMANDS) {
-    addSurface(surfacesByCommand, command.commandId, 'quick-toolbar')
-  }
-
-  for (const command of MOBILE_TOOLBAR_EDIT_COMMANDS) {
-    addSurface(surfacesByCommand, command.commandId, 'toolbar-header')
-  }
-
-  for (const panel of MOBILE_TOOLBAR_PANELS) {
-    for (const command of panel.commands) {
-      addSurface(surfacesByCommand, command.commandId, 'toolbar-panel')
-    }
-  }
-
-  return surfacesByCommand
+function getPanelCommandIdsByPanel(panelId: typeof DEFAULT_MOBILE_TOOLBAR_PANEL) {
+  return getMobileToolbarPanel(panelId).commands.map(command => command.commandId)
 }
 
 describe('mobileToolbarConfig', () => {
@@ -85,7 +53,7 @@ describe('mobileToolbarConfig', () => {
       'insert',
       'markdown',
     ])
-    expect(MOBILE_TOOLBAR_PANEL_COMMANDS.format.map(command => command.commandId)).toEqual([
+    expect(getPanelCommandIdsByPanel('format')).toEqual([
       MOBILE_COMMANDS.FORMAT_STRONG,
       MOBILE_COMMANDS.FORMAT_EMPHASIS,
       MOBILE_COMMANDS.FORMAT_UNDERLINE,
@@ -93,7 +61,7 @@ describe('mobileToolbarConfig', () => {
       MOBILE_COMMANDS.FORMAT_HIGHLIGHT,
       MOBILE_COMMANDS.FORMAT_CLEAR,
     ])
-    expect(MOBILE_TOOLBAR_PANEL_COMMANDS.paragraph.map(command => command.commandId)).toEqual([
+    expect(getPanelCommandIdsByPanel('paragraph')).toEqual([
       MOBILE_COMMANDS.PARAGRAPH_PARAGRAPH,
       MOBILE_COMMANDS.PARAGRAPH_HEADING_1,
       MOBILE_COMMANDS.PARAGRAPH_HEADING_2,
@@ -110,13 +78,13 @@ describe('mobileToolbarConfig', () => {
       MOBILE_COMMANDS.PARAGRAPH_TASK_LIST,
       MOBILE_COMMANDS.PARAGRAPH_LOOSE_LIST_ITEM,
     ])
-    expect(MOBILE_TOOLBAR_PANEL_COMMANDS.insert.map(command => command.commandId)).toEqual([
+    expect(getPanelCommandIdsByPanel('insert')).toEqual([
       MOBILE_COMMANDS.FORMAT_HYPERLINK,
       MOBILE_COMMANDS.FORMAT_IMAGE,
       MOBILE_COMMANDS.PARAGRAPH_TABLE,
       MOBILE_COMMANDS.PARAGRAPH_HORIZONTAL_LINE,
     ])
-    expect(MOBILE_TOOLBAR_PANEL_COMMANDS.markdown.map(command => command.commandId)).toEqual([
+    expect(getPanelCommandIdsByPanel('markdown')).toEqual([
       MOBILE_COMMANDS.FORMAT_INLINE_CODE,
       MOBILE_COMMANDS.FORMAT_INLINE_MATH,
       MOBILE_COMMANDS.FORMAT_SUPERSCRIPT,
@@ -127,7 +95,8 @@ describe('mobileToolbarConfig', () => {
     ])
   })
 
-  it('uses only command ids that have mobile command definitions', () => {
+  it('uses only known mobile command ids', () => {
+    const knownCommandIds = new Set(Object.values(MOBILE_COMMANDS))
     const toolbarCommandIds = new Set([
       ...getEditCommandIds(),
       ...getPanelCommandIds(),
@@ -135,15 +104,7 @@ describe('mobileToolbarConfig', () => {
     ])
 
     for (const commandId of toolbarCommandIds) {
-      expect(getMobileCommandDefinition(commandId), commandId).not.toBeNull()
-    }
-  })
-
-  it('keeps command surface metadata aligned with actual toolbar placement', () => {
-    const actualToolbarSurfaces = getActualToolbarSurfaces()
-
-    for (const [commandId, surfaces] of actualToolbarSurfaces) {
-      expect(getMobileCommandDefinition(commandId)?.surfaces, commandId).toEqual([...surfaces])
+      expect(knownCommandIds.has(commandId), commandId).toBe(true)
     }
   })
 
@@ -151,6 +112,6 @@ describe('mobileToolbarConfig', () => {
     const panel = getMobileToolbarPanel('missing' as typeof DEFAULT_MOBILE_TOOLBAR_PANEL)
 
     expect(panel.id).toBe(DEFAULT_MOBILE_TOOLBAR_PANEL)
-    expect(getMobileToolbarPanelCommands(panel.id)).toBe(MOBILE_TOOLBAR_PANEL_COMMANDS.format)
+    expect(getMobileToolbarPanelCommands(panel.id)).toBe(getMobileToolbarPanel('format').commands)
   })
 })

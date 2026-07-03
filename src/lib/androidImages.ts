@@ -38,11 +38,6 @@ export function isAndroidImageImportAvailable() {
   return Capacitor.getPlatform() === 'android' && Capacitor.isNativePlatform()
 }
 
-export function buildMarkTextImageSource(fileName: string) {
-  const normalized = normalizeImageFileName(fileName)
-  return `marktext-image://local/${encodeURIComponent(normalized)}`
-}
-
 export function resolveMarkTextImageSource(
   source: string,
   directory: ImportedAndroidImageDirectory | null,
@@ -88,7 +83,7 @@ export async function pickAndroidImageDocument() {
   return normalizeImportedImage(result)
 }
 
-export function getAndroidImageErrorCode(error: unknown) {
+function getAndroidImageErrorCode(error: unknown) {
   if (error instanceof AndroidImageError) {
     return error.code
   }
