@@ -1,12 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { App } from '@capacitor/app'
-import AndroidExitPrompt from './components/editor/AndroidExitPrompt.vue'
-import EditorActionSheet from './components/editor/EditorActionSheet.vue'
-import LinkInsertSheet from './components/editor/LinkInsertSheet.vue'
-import LocalDraftExitPrompt from './components/editor/LocalDraftExitPrompt.vue'
-import HomeShell from './components/HomeShell.vue'
-import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
+import HomeScreen from './features/home/HomeScreen.vue'
+import EditorScreen from './features/editor/EditorScreen.vue'
 import {
   createAndroidMarkdownDocument,
   getAndroidDocumentErrorCode,
@@ -34,7 +30,7 @@ import {
 import {
   installAndroidDocumentIntentListeners as installAndroidDocumentIntentListenerHandles,
   type AndroidDocumentIntentListeners,
-} from './lib/androidDocumentIntentListeners'
+} from './features/android-documents/androidDocumentIntentListeners'
 import {
   getAppBackButtonAction,
   getShowHomeAfterAndroidSaveAction,
@@ -45,11 +41,11 @@ import {
 import {
   createAndroidRecoveryDraft,
   getAndroidRecoveryDraftId,
-} from './lib/androidRecoveryDrafts'
+} from './features/android-documents/androidRecoveryDrafts'
 import {
   markSavedAndroidRecentDocument,
   rememberAndroidRecentDocument,
-} from './lib/androidRecentDocuments'
+} from './features/android-documents/androidRecentDocuments'
 import {
   createUntitledDocument,
   markDocumentSaveFailed,
@@ -57,7 +53,7 @@ import {
 } from './lib/documentState'
 import {
   createDocumentStateFromLocalDraft,
-} from './lib/documentSessionState'
+} from './features/document-session/documentSessionState'
 import {
   createAndroidDocumentOpenResult,
   createAndroidOpenWithDocumentEventAction,
@@ -67,14 +63,14 @@ import {
   openAndroidMarkdownDocumentWorkflow,
   shouldKeepAndroidRecoveryAfterPreserveFailure,
   type AndroidDocumentOpenSource,
-} from './lib/androidDocumentOpenWorkflow'
+} from './features/android-documents/androidDocumentOpenWorkflow'
 import {
   createSaveAndroidDocumentWorkflowStart,
   saveAndroidDocumentWorkflow,
-} from './lib/saveAndroidDocumentWorkflow'
-import { saveAndroidDocumentCopyWorkflow } from './lib/saveAndroidDocumentCopyWorkflow'
-import { saveLocalDraftToAndroidDocumentWorkflow } from './lib/saveLocalDraftToAndroidDocumentWorkflow'
-import { shareAndroidMarkdownDocumentWorkflow } from './lib/shareAndroidMarkdownDocumentWorkflow'
+} from './features/android-documents/saveAndroidDocumentWorkflow'
+import { saveAndroidDocumentCopyWorkflow } from './features/android-documents/saveAndroidDocumentCopyWorkflow'
+import { saveLocalDraftToAndroidDocumentWorkflow } from './features/android-documents/saveLocalDraftToAndroidDocumentWorkflow'
+import { shareAndroidMarkdownDocumentWorkflow } from './features/android-documents/shareAndroidMarkdownDocumentWorkflow'
 import {
   createAndroidImageInsertStart,
   createLinkInsertSheetWorkflow,
@@ -83,19 +79,20 @@ import {
   normalizeToolbarSelectionText,
   runEditorToolbarCommandWorkflow,
   scheduleEditorToolbarSync,
-} from './lib/editorToolbarWorkflow'
+} from './features/editor/editorToolbarWorkflow'
+import { useEditorToolbar } from './features/editor/useEditorToolbar'
 import {
   captureSelectionWithin,
   insertTextAtRestoredSelection,
   resolveEditorDomNode,
-} from './lib/editorInlineInsert'
-import { createMuyaEditor, destroyMuyaEditor, type MuyaEditor } from './lib/editorRuntime'
+} from './features/editor/editorInlineInsert'
+import { createMuyaEditor, destroyMuyaEditor, type MuyaEditor } from './features/editor/editorRuntime'
 import {
   removeLocalDraft,
   upsertLocalDraft,
   type LocalDraftRecord,
 } from './lib/localDrafts'
-import { createLocalDraftAutosaveResult } from './lib/localDraftAutosave'
+import { createLocalDraftAutosaveResult } from './features/local-drafts/localDraftAutosave'
 import {
   readLegacyDraft,
   readStoredAndroidRecentDocuments,
@@ -108,17 +105,13 @@ import {
   type MobileCommandId,
   type MobileEditorCommandTarget,
 } from './lib/mobileCommands'
-import {
-  DEFAULT_MOBILE_TOOLBAR_PANEL,
-  type MobileEditorToolbarPanel,
-} from './lib/mobileToolbarConfig'
-import { DEFAULT_HOME_TAB, HOME_TABS, type HomeTab } from './lib/homeNavigation'
-import { toHomeDocumentItem } from './lib/homeDocuments'
+import { DEFAULT_HOME_TAB, HOME_TABS, type HomeTab } from './features/home/homeNavigation'
+import { toHomeDocumentItem } from './features/home/homeDocuments'
 import {
   DEFAULT_SETTINGS_PAGE,
   SETTINGS_PAGES,
   type SettingsPage,
-} from './lib/settingsNavigation'
+} from './features/settings/settingsNavigation'
 import { createMuyaMobileEditorCommandTarget } from './lib/muyaMobileAdapter'
 import {
   createRecentDocumentFromLocalDraft,
@@ -152,17 +145,30 @@ const settingsPage = ref<SettingsPage>(DEFAULT_SETTINGS_PAGE)
 const editorReady = ref(false)
 const draftExitPromptOpen = ref(false)
 const androidExitPromptOpen = ref(false)
-const editorMenuOpen = ref(false)
-const editorToolbarExpanded = ref(false)
-const editorToolbarPanel = ref<MobileEditorToolbarPanel>(DEFAULT_MOBILE_TOOLBAR_PANEL)
-const linkSheetOpen = ref(false)
-const linkText = ref('')
-const linkUrl = ref('')
 const promptLocalDraftSaveOnExit = ref(false)
 const savingLocalDraftToAndroid = ref(false)
 const savingAndroidDocumentCopy = ref(false)
 const sharingCurrentDocument = ref(false)
-const importingAndroidImage = ref(false)
+const {
+  editorMenuOpen,
+  editorToolbarExpanded,
+  editorToolbarPanel,
+  linkSheetOpen,
+  linkText,
+  linkUrl,
+  importingAndroidImage,
+  toggleEditorMenu,
+  closeEditorMenu,
+  toggleEditorToolbar,
+  setEditorToolbarPanel,
+  closeEditorToolbar,
+  openLinkSheet: openEditorLinkSheet,
+  closeLinkSheet: resetEditorLinkSheet,
+} = useEditorToolbar()
+
+function setEditorElement(element: HTMLElement | null) {
+  editorElement.value = element
+}
 
 let editor: MuyaEditor | null = null
 let editorInitToken = 0
@@ -328,17 +334,14 @@ function openLinkSheet() {
   }
 
   pendingInlineInsertRange = capturedRange
-  linkText.value = nextLinkSheet.linkText
-  linkUrl.value = nextLinkSheet.linkUrl
-  editorMenuOpen.value = false
-  closeEditorToolbar()
-  linkSheetOpen.value = true
+  openEditorLinkSheet({
+    text: nextLinkSheet.linkText,
+    url: nextLinkSheet.linkUrl,
+  })
 }
 
 function closeLinkSheet() {
-  linkSheetOpen.value = false
-  linkText.value = ''
-  linkUrl.value = ''
+  resetEditorLinkSheet()
   pendingInlineInsertRange = null
 }
 
@@ -386,7 +389,7 @@ async function insertImageFromAndroidPicker() {
   const beforeMarkdown = editor.getMarkdown()
   pendingInlineInsertRange = captureEditorSelection()
   const selectedText = normalizeToolbarSelectionText(pendingInlineInsertRange?.toString() ?? '')
-  editorMenuOpen.value = false
+  closeEditorMenu()
   closeEditorToolbar()
   importingAndroidImage.value = true
   status.value = startResult.status
@@ -630,7 +633,7 @@ async function saveAndroidDocument() {
 }
 
 async function saveLocalDraftToAndroidDocument(options: { returnHomeAfterSave?: boolean } = {}) {
-  editorMenuOpen.value = false
+  closeEditorMenu()
 
   if (!editor || !isLocalDraftDocument() || savingLocalDraftToAndroid.value) {
     return false
@@ -703,7 +706,7 @@ async function saveLocalDraftToAndroidDocument(options: { returnHomeAfterSave?: 
 }
 
 async function saveAndroidDocumentCopy(options: { returnHomeAfterSave?: boolean } = {}) {
-  editorMenuOpen.value = false
+  closeEditorMenu()
 
   if (!editor || !canSaveAndroidDocumentCopy() || savingAndroidDocumentCopy.value) {
     return false
@@ -768,7 +771,7 @@ async function saveAndroidDocumentCopy(options: { returnHomeAfterSave?: boolean 
 }
 
 async function shareCurrentMarkdownDocument() {
-  editorMenuOpen.value = false
+  closeEditorMenu()
 
   if (!editor || !canShareCurrentDocument() || sharingCurrentDocument.value) {
     return false
@@ -1018,7 +1021,7 @@ async function handleAndroidOpenWithDocumentEvent(event: AndroidOpenWithDocument
   await preserveCurrentDocumentBeforeIncomingOpen()
   draftExitPromptOpen.value = false
   androidExitPromptOpen.value = false
-  editorMenuOpen.value = false
+  closeEditorMenu()
   closeEditorToolbar()
   await openAndroidDocumentResult(action.document, {
     source: action.source,
@@ -1041,7 +1044,7 @@ async function handleAndroidShareDocumentEvent(event: AndroidShareDocumentEvent)
   await preserveCurrentDocumentBeforeIncomingOpen()
   draftExitPromptOpen.value = false
   androidExitPromptOpen.value = false
-  editorMenuOpen.value = false
+  closeEditorMenu()
   closeEditorToolbar()
 
   if (action.kind === 'open-document') {
@@ -1113,34 +1116,8 @@ function newDocument() {
   void openEditor('')
 }
 
-function toggleEditorMenu() {
-  editorMenuOpen.value = !editorMenuOpen.value
-  if (editorMenuOpen.value) {
-    editorToolbarExpanded.value = false
-  }
-}
-
-function closeEditorMenu() {
-  editorMenuOpen.value = false
-}
-
 function openEditorSearch() {
   appLog.info('editor search requested')
-}
-
-function toggleEditorToolbar() {
-  editorToolbarExpanded.value = !editorToolbarExpanded.value
-  if (editorToolbarExpanded.value) {
-    editorMenuOpen.value = false
-  }
-}
-
-function setEditorToolbarPanel(panel: MobileEditorToolbarPanel) {
-  editorToolbarPanel.value = panel
-}
-
-function closeEditorToolbar() {
-  editorToolbarExpanded.value = false
 }
 
 function destroyEditor() {
@@ -1155,7 +1132,7 @@ function destroyEditor() {
 function closeEditorToHome() {
   draftExitPromptOpen.value = false
   androidExitPromptOpen.value = false
-  editorMenuOpen.value = false
+  closeEditorMenu()
   closeLinkSheet()
   closeEditorToolbar()
   destroyEditor()
@@ -1175,7 +1152,7 @@ function setSettingsPage(page: SettingsPage) {
 
 async function showHome() {
   appLog.info('show recent home')
-  editorMenuOpen.value = false
+  closeEditorMenu()
   closeEditorToolbar()
 
   const saveAction = getShowHomeDocumentSaveAction(documentState.value.autosaveTarget)
@@ -1288,7 +1265,7 @@ async function handleAppBackButton() {
       closeLinkSheet()
       return
     case 'close-editor-menu':
-      editorMenuOpen.value = false
+      closeEditorMenu()
       return
     case 'close-editor-toolbar':
       closeEditorToolbar()
@@ -1426,7 +1403,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <HomeShell
+  <HomeScreen
     v-if="currentScreen === 'home'"
     :active-tab="homeTab"
     :settings-page="settingsPage"
@@ -1440,117 +1417,52 @@ onBeforeUnmount(() => {
     @set-settings-page="setSettingsPage"
   />
 
-  <main v-else class="app-shell">
-    <header class="top-bar">
-      <button
-        class="nav-button"
-        type="button"
-        aria-label="Back"
-        data-testid="back-button"
-        @click="showHome"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="M15 6l-6 6 6 6" />
-        </svg>
-      </button>
-      <div class="document-heading">
-        <h1>{{ documentTitle }}</h1>
-        <p>{{ status }}</p>
-      </div>
-      <div v-if="editorReady" class="editor-actions">
-        <button
-          class="icon-button"
-          type="button"
-          aria-label="Search"
-          title="Search"
-          @click="openEditorSearch"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <circle cx="11" cy="11" r="6" />
-            <path d="M16 16l4.5 4.5" />
-          </svg>
-        </button>
-        <button
-          v-if="canShowEditorActions()"
-          class="icon-button"
-          type="button"
-          aria-label="More actions"
-          :aria-expanded="editorMenuOpen"
-          data-testid="editor-menu-button"
-          @click="toggleEditorMenu"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <circle cx="12" cy="5" r="1.6" />
-            <circle cx="12" cy="12" r="1.6" />
-            <circle cx="12" cy="19" r="1.6" />
-          </svg>
-        </button>
-      </div>
-    </header>
-
-    <section class="editor-pane" aria-label="Markdown editor">
-      <div
-        class="editor-host-shell"
-        :aria-busy="!editorReady"
-        :data-testid="editorReady ? 'editor-host' : 'editor-loading-host'"
-      >
-        <div ref="editorElement" class="muya-host" />
-      </div>
-    </section>
-
-    <MobileEditorToolbar
-      :expanded="editorToolbarExpanded"
-      :active-panel="editorToolbarPanel"
-      :editor-ready="editorReady"
-      :word-count="wordCount"
-      :character-count="characterCount"
-      :line-count="lineCount"
-      @run-command="runEditorToolbarCommand"
-      @toggle-expanded="toggleEditorToolbar"
-      @set-panel="setEditorToolbarPanel"
-    />
-
-    <Transition name="editor-sheet">
-      <EditorActionSheet
-        v-if="editorMenuOpen"
-        :can-share="canShareCurrentDocument()"
-        :can-save-to-device="canSaveLocalDraftToAndroidDocument()"
-        :can-save-copy="canSaveAndroidDocumentCopy()"
-        :sharing="sharingCurrentDocument"
-        :saving-to-device="savingLocalDraftToAndroid"
-        :saving-copy="savingAndroidDocumentCopy"
-        @close="closeEditorMenu"
-        @share="shareCurrentMarkdownDocument"
-        @save-to-device="() => saveLocalDraftToAndroidDocument()"
-        @save-copy="() => saveAndroidDocumentCopy()"
-      />
-    </Transition>
-
-    <LinkInsertSheet
-      v-if="linkSheetOpen"
-      v-model:text="linkText"
-      v-model:url="linkUrl"
-      @cancel="closeLinkSheet"
-      @insert="insertLinkFromSheet"
-    />
-
-    <LocalDraftExitPrompt
-      v-if="draftExitPromptOpen"
-      :can-save-to-device="canSaveLocalDraftToAndroidDocument()"
-      :saving="savingLocalDraftToAndroid"
-      @save-to-device="saveLocalDraftToAndroidDocument({ returnHomeAfterSave: true })"
-      @keep="keepLocalDraftAndShowHome"
-      @discard="discardLocalDraftAndShowHome"
-    />
-
-    <AndroidExitPrompt
-      v-if="androidExitPromptOpen"
-      :message="getAndroidExitPromptMessage()"
-      :can-save-copy="canSaveAndroidDocumentCopy()"
-      :saving="savingAndroidDocumentCopy"
-      @save-copy="saveAndroidDocumentCopy({ returnHomeAfterSave: true })"
-      @keep-recovery="keepAndroidRecoveryAndShowHome"
-      @discard="discardAndroidChangesAndShowHome"
-    />
-  </main>
+  <EditorScreen
+    v-else
+    v-model:link-text="linkText"
+    v-model:link-url="linkUrl"
+    :document-title="documentTitle"
+    :status="status"
+    :editor-ready="editorReady"
+    :show-editor-actions="canShowEditorActions()"
+    :editor-menu-open="editorMenuOpen"
+    :toolbar-expanded="editorToolbarExpanded"
+    :toolbar-panel="editorToolbarPanel"
+    :word-count="wordCount"
+    :character-count="characterCount"
+    :line-count="lineCount"
+    :can-share="canShareCurrentDocument()"
+    :can-save-to-device="canSaveLocalDraftToAndroidDocument()"
+    :can-save-copy="canSaveAndroidDocumentCopy()"
+    :sharing="sharingCurrentDocument"
+    :saving-to-device="savingLocalDraftToAndroid"
+    :saving-copy="savingAndroidDocumentCopy"
+    :link-sheet-open="linkSheetOpen"
+    :draft-exit-prompt-open="draftExitPromptOpen"
+    :draft-can-save-to-device="canSaveLocalDraftToAndroidDocument()"
+    :draft-saving="savingLocalDraftToAndroid"
+    :android-exit-prompt-open="androidExitPromptOpen"
+    :android-exit-message="getAndroidExitPromptMessage()"
+    :android-can-save-copy="canSaveAndroidDocumentCopy()"
+    :android-saving="savingAndroidDocumentCopy"
+    @back="showHome"
+    @search="openEditorSearch"
+    @toggle-menu="toggleEditorMenu"
+    @close-menu="closeEditorMenu"
+    @share="shareCurrentMarkdownDocument"
+    @save-to-device="saveLocalDraftToAndroidDocument"
+    @save-copy="saveAndroidDocumentCopy"
+    @run-toolbar-command="runEditorToolbarCommand"
+    @toggle-toolbar="toggleEditorToolbar"
+    @set-toolbar-panel="setEditorToolbarPanel"
+    @close-link-sheet="closeLinkSheet"
+    @insert-link="insertLinkFromSheet"
+    @save-draft-to-device="saveLocalDraftToAndroidDocument({ returnHomeAfterSave: true })"
+    @keep-local-draft="keepLocalDraftAndShowHome"
+    @discard-local-draft="discardLocalDraftAndShowHome"
+    @save-android-copy="saveAndroidDocumentCopy({ returnHomeAfterSave: true })"
+    @keep-android-recovery="keepAndroidRecoveryAndShowHome"
+    @discard-android-changes="discardAndroidChangesAndShowHome"
+    @editor-host-change="setEditorElement"
+  />
 </template>

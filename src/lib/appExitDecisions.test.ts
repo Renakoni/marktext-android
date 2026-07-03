@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { HOME_TABS } from './homeNavigation'
-import { SETTINGS_PAGES } from './settingsNavigation'
+import { HOME_TABS } from '../features/home/homeNavigation'
+import { SETTINGS_PAGES } from '../features/settings/settingsNavigation'
 import {
   getAppBackButtonAction,
   getShowHomeAfterAndroidSaveAction,
