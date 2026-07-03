@@ -1117,8 +1117,8 @@ const toolbarSections = editingBaseSections.filter(
 )
 const editingSections = [
   ...editingBaseSections.filter(section => section.titleKey !== 'settings.section.mobileToolbar'),
-  ...codeSections,
   ...markdownSections,
+  ...codeSections,
   ...spellingSections,
 ]
 
