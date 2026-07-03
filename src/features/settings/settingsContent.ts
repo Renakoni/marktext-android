@@ -199,16 +199,9 @@ const sequenceThemeOptions = [
   { id: 'simple', labelKey: 'settings.option.sequence.simple' },
 ] as const satisfies readonly SettingsOption[]
 
-const draftOptions = [
-  { id: 'recent', labelKey: 'settings.option.drafts.recent' },
-  { id: 'all', labelKey: 'settings.option.drafts.all' },
-  { id: 'off', labelKey: 'settings.option.off' },
-] as const satisfies readonly SettingsOption[]
-
 const startupOptions = [
-  { id: 'restoreAll', labelKey: 'settings.option.startup.restoreAll' },
-  { id: 'openLastFolder', labelKey: 'settings.option.startup.openLastFolder' },
-  { id: 'folder', labelKey: 'settings.option.startup.folder' },
+  { id: 'home', labelKey: 'settings.option.startup.home' },
+  { id: 'lastEdit', labelKey: 'settings.option.startup.lastEdit' },
   { id: 'blank', labelKey: 'settings.option.startup.blank' },
 ] as const satisfies readonly SettingsOption[]
 
@@ -686,11 +679,10 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
       titleKey: 'settings.section.drafts',
       rows: [
         {
-          kind: 'choice',
+          kind: 'toggle',
           id: 'localDrafts',
           labelKey: 'settings.documents.localDrafts',
-          defaultValue: 'recent',
-          options: draftOptions,
+          defaultValue: true,
           testId: 'settings-documents-local-drafts',
         },
         {
@@ -729,26 +721,12 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
       titleKey: 'settings.section.startup',
       rows: [
         {
-          kind: 'toggle',
-          id: 'restoreLayoutState',
-          labelKey: 'settings.documents.restoreSession',
-          defaultValue: true,
-          testId: 'settings-documents-restore-session',
-        },
-        {
           kind: 'choice',
           id: 'startUpAction',
           labelKey: 'settings.documents.startupAction',
-          defaultValue: 'restoreAll',
+          defaultValue: 'home',
           options: startupOptions,
           testId: 'settings-documents-startup-action',
-        },
-        {
-          kind: 'action',
-          id: 'defaultDirectoryToOpen',
-          labelKey: 'settings.documents.defaultFolder',
-          valueKey: 'settings.value.choose',
-          testId: 'settings-documents-default-folder',
         },
       ],
     },
@@ -771,27 +749,6 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
           defaultValue: 'asc',
           options: sortOrderOptions,
           testId: 'settings-documents-sort-order',
-        },
-        {
-          kind: 'action',
-          id: 'clearRecent',
-          labelKey: 'settings.documents.clearRecent',
-          valueKey: 'settings.value.manual',
-          testId: 'settings-documents-clear-recent',
-        },
-      ],
-    },
-    {
-      titleKey: 'settings.section.folders',
-      rows: [
-        {
-          kind: 'text',
-          id: 'treePathExcludePatterns',
-          labelKey: 'settings.documents.folderExcludes',
-          defaultValue: '',
-          placeholderKey: 'settings.placeholder.globPatterns',
-          multiline: true,
-          testId: 'settings-documents-folder-excludes',
         },
       ],
     },

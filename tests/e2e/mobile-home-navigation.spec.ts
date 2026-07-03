@@ -187,8 +187,16 @@ test('switches between document home and the settings about screen', async ({ pa
 
   await page.getByTestId('settings-entry-documents').click()
   await expect(page.getByTestId('settings-title')).toContainText('Documents')
-  await expect(page.getByTestId('settings-documents-local-drafts')).toContainText('Recent')
-  await expect(page.getByTestId('settings-documents-folder-excludes')).toBeVisible()
+  await expect(page.getByTestId('settings-documents-local-drafts')).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await expect(page.getByTestId('settings-documents-recovery')).toContainText('Save failed drafts')
+  await expect(page.getByTestId('settings-documents-startup-action')).toContainText('Home')
+  await expect(page.getByTestId('settings-documents-sort-by')).toContainText('Created')
+  await expect(page.getByTestId('settings-documents-sort-order')).toContainText('Asc')
+  await expect(page.getByTestId('settings-documents-folder-excludes')).toHaveCount(0)
+  await expect(page.getByTestId('settings-documents-clear-recent')).toHaveCount(0)
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()
