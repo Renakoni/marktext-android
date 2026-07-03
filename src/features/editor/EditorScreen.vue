@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watch, ref } from 'vue'
+import { onBeforeUnmount, watch, ref, type CSSProperties } from 'vue'
 import AndroidExitPrompt from './components/AndroidExitPrompt.vue'
 import EditorActionSheet from './components/EditorActionSheet.vue'
 import LinkInsertSheet from './components/LinkInsertSheet.vue'
@@ -7,6 +7,7 @@ import LocalDraftExitPrompt from './components/LocalDraftExitPrompt.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import type { MobileCommandId } from '../../lib/mobileCommands'
 import type { MobileEditorToolbarPanel } from '../../lib/mobileToolbarConfig'
+import { useI18n } from '../../lib/i18n'
 
 defineProps<{
   documentTitle: string
@@ -35,6 +36,8 @@ defineProps<{
   androidExitMessage: string
   androidCanSaveCopy: boolean
   androidSaving: boolean
+  textDirection: 'ltr' | 'rtl'
+  editorStyleVars: CSSProperties
 }>()
 
 const emit = defineEmits<{
@@ -62,6 +65,7 @@ const emit = defineEmits<{
 }>()
 
 const editorHost = ref<HTMLElement | null>(null)
+const { t } = useI18n()
 
 watch(editorHost, element => emit('editor-host-change', element), { immediate: true })
 
@@ -76,7 +80,7 @@ onBeforeUnmount(() => {
       <button
         class="nav-button"
         type="button"
-        aria-label="Back"
+        :aria-label="t('editor.back')"
         data-testid="back-button"
         @click="emit('back')"
       >
@@ -92,8 +96,8 @@ onBeforeUnmount(() => {
         <button
           class="icon-button"
           type="button"
-          aria-label="Search"
-          title="Search"
+          :aria-label="t('editor.search')"
+          :title="t('editor.search')"
           @click="emit('search')"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -105,7 +109,7 @@ onBeforeUnmount(() => {
           v-if="showEditorActions"
           class="icon-button"
           type="button"
-          aria-label="More actions"
+          :aria-label="t('editor.moreActions')"
           :aria-expanded="editorMenuOpen"
           data-testid="editor-menu-button"
           @click="emit('toggle-menu')"
@@ -119,9 +123,11 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <section class="editor-pane" aria-label="Markdown editor">
+    <section class="editor-pane" :aria-label="t('editor.markdownEditor')">
       <div
         class="editor-host-shell"
+        :dir="textDirection"
+        :style="editorStyleVars"
         :aria-busy="!editorReady"
         :data-testid="editorReady ? 'editor-host' : 'editor-loading-host'"
       >

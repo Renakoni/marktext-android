@@ -6,7 +6,21 @@ export interface HomeDocumentItem {
   details: string
 }
 
-export function formatHomeDocumentSavedTime(value: string | null) {
+export interface HomeDocumentText {
+  localDraftSource: string
+  markdownDocumentSource: string
+  detailsSeparator: string
+  formatWordCount: (count: number) => string
+}
+
+const DEFAULT_HOME_DOCUMENT_TEXT: HomeDocumentText = {
+  localDraftSource: 'Local draft',
+  markdownDocumentSource: 'Markdown document',
+  detailsSeparator: ' - ',
+  formatWordCount: count => `${count} ${count === 1 ? 'word' : 'words'}`,
+}
+
+export function formatHomeDocumentSavedTime(value: string | null, locale?: string) {
   if (!value) {
     return ''
   }
@@ -16,20 +30,32 @@ export function formatHomeDocumentSavedTime(value: string | null) {
     return ''
   }
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date)
 }
 
-export function toHomeDocumentItem(item: RecentDocumentListItem): HomeDocumentItem {
-  const savedAt = formatHomeDocumentSavedTime(item.lastSavedAt ?? item.updatedAt)
-  const count = item.stats ? `${item.stats.words} ${item.stats.words === 1 ? 'word' : 'words'}` : ''
-  const source = item.providerName ?? 'Markdown document'
+function getHomeDocumentSource(item: RecentDocumentListItem, text: HomeDocumentText) {
+  if (item.providerName === DEFAULT_HOME_DOCUMENT_TEXT.localDraftSource) {
+    return text.localDraftSource
+  }
+
+  return item.providerName ?? text.markdownDocumentSource
+}
+
+export function toHomeDocumentItem(
+  item: RecentDocumentListItem,
+  text: HomeDocumentText = DEFAULT_HOME_DOCUMENT_TEXT,
+  locale?: string,
+): HomeDocumentItem {
+  const savedAt = formatHomeDocumentSavedTime(item.lastSavedAt ?? item.updatedAt, locale)
+  const count = item.stats ? text.formatWordCount(item.stats.words) : ''
+  const source = getHomeDocumentSource(item, text)
 
   return {
     id: item.id,
     title: item.title,
-    details: [source, savedAt, count].filter(Boolean).join(' - '),
+    details: [source, savedAt, count].filter(Boolean).join(text.detailsSeparator),
   }
 }
