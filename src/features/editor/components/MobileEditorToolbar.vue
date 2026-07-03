@@ -224,7 +224,7 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
   z-index: 18;
   border-top: 1px solid var(--border);
   background: var(--surface);
-  box-shadow: 0 -6px 18px oklch(0.25 0.02 255 / 0.06);
+  box-shadow: var(--shadow-toolbar);
 }
 
 .toolbar-collapsed {
@@ -376,7 +376,7 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
 }
 
 .toolbar-button[data-command-id='format.highlight'] {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-tint-10);
   color: var(--accent-strong);
 }
 
@@ -399,7 +399,7 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
 .toolbar-expand-handle:active,
 .toolbar-group-switcher:active,
 .toolbar-group-option:active {
-  background: color-mix(in srgb, var(--accent) 11%, transparent);
+  background: var(--accent-tint-11);
 }
 
 .toolbar-button:disabled {
@@ -448,7 +448,7 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
   border: 1px solid var(--border);
   border-radius: var(--radius, 14px);
   background: var(--surface);
-  box-shadow: 0 14px 36px oklch(0.25 0.02 255 / 0.14);
+  box-shadow: var(--shadow-toolbar-menu);
 }
 
 .toolbar-group-option {
@@ -461,7 +461,7 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
 }
 
 .toolbar-group-option.is-active {
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  background: var(--toolbar-active-panel-bg);
   color: var(--accent-strong);
 }
 

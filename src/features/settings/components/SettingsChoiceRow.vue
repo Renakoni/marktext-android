@@ -92,7 +92,7 @@ defineEmits<{
 }
 
 .settings-choice-option.is-active {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-color: var(--settings-choice-active-border);
   background: var(--accent-soft);
   color: var(--accent-strong);
 }
@@ -102,7 +102,7 @@ defineEmits<{
 }
 
 .settings-choice-option:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  outline: 2px solid var(--focus-ring-22);
   outline-offset: 1px;
 }
 </style>
