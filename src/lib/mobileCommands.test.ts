@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   MOBILE_COMMANDS,
-  getMobileCommandDefinition,
   runMobileEditorCommand,
   type MobileEditorCommandTarget,
 } from './mobileCommands'
@@ -101,20 +100,5 @@ describe('mobileCommands', () => {
     const result = runMobileEditorCommand(editor, MOBILE_COMMANDS.PARAGRAPH_CODE_FENCE)
 
     expect(result.handled).toBe(false)
-  })
-
-  it('classifies frequent touch actions for the mobile editor toolbar', () => {
-    expect(getMobileCommandDefinition(MOBILE_COMMANDS.FORMAT_EMPHASIS)?.surfaces).toContain(
-      'quick-toolbar',
-    )
-    expect(getMobileCommandDefinition(MOBILE_COMMANDS.PARAGRAPH_HEADING_1)?.surfaces).toEqual([
-      'toolbar-panel',
-    ])
-    expect(getMobileCommandDefinition(MOBILE_COMMANDS.EDIT_REDO)?.surfaces).toEqual([
-      'toolbar-header',
-    ])
-    expect(getMobileCommandDefinition(MOBILE_COMMANDS.FORMAT_HYPERLINK)?.surfaces).toEqual([
-      'toolbar-panel',
-    ])
   })
 })

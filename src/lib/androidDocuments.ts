@@ -25,7 +25,7 @@ export interface SharedAndroidDocument {
   shareKind: 'text' | 'stream'
 }
 
-export interface SavedAndroidDocument {
+interface SavedAndroidDocument {
   sourceUri: string
   displayName: string
   providerName: string | null
@@ -79,7 +79,7 @@ interface AndroidShareDocumentPluginEvent {
   message?: string
 }
 
-export interface AndroidDocumentsPlugin {
+interface AndroidDocumentsPlugin {
   addListener(
     eventName: 'openWithDocument',
     listenerFunc: (event: AndroidOpenWithDocumentPluginEvent) => void,

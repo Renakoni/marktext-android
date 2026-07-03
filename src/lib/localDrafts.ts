@@ -1,19 +1,8 @@
-import { getDocumentStats, getDocumentTitle, type DocumentStats } from './documentState'
-
 export interface LocalDraftRecord {
   id: string
   markdown: string
   updatedAt: string
   lastSavedAt: string | null
-}
-
-export interface LocalDraftListItem {
-  id: string
-  title: string
-  markdown: string
-  updatedAt: string
-  lastSavedAt: string | null
-  stats: DocumentStats
 }
 
 const DEFAULT_DRAFT_LIMIT = 20
@@ -86,12 +75,4 @@ export function upsertLocalDraft(
 
 export function removeLocalDraft(records: LocalDraftRecord[], id: string) {
   return records.filter(record => record.id !== id)
-}
-
-export function getLocalDraftListItems(records: LocalDraftRecord[]): LocalDraftListItem[] {
-  return normalizeLocalDrafts(records).map(record => ({
-    ...record,
-    title: getDocumentTitle(record.markdown),
-    stats: getDocumentStats(record.markdown),
-  }))
 }

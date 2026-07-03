@@ -1,11 +1,11 @@
 import { readonly, ref } from 'vue'
 
-export const APP_LOCALES = Object.freeze({
+const APP_LOCALES = Object.freeze({
   EN: 'en',
   ZH_CN: 'zh-CN',
 } as const)
 
-export type AppLocale = (typeof APP_LOCALES)[keyof typeof APP_LOCALES]
+type AppLocale = (typeof APP_LOCALES)[keyof typeof APP_LOCALES]
 
 const DEFAULT_APP_LOCALE: AppLocale = APP_LOCALES.EN
 const APP_LOCALE_STORAGE_KEY = 'marktext-for-android:locale'
@@ -840,13 +840,13 @@ function interpolate(message: string, params: Record<string, string | number> = 
 const appLocale = ref<AppLocale>(getStoredLocale())
 applyDocumentLocale(appLocale.value)
 
-export function setAppLocale(nextLocale: AppLocale) {
+function setAppLocale(nextLocale: AppLocale) {
   appLocale.value = nextLocale
   writeStoredLocale(nextLocale)
   applyDocumentLocale(nextLocale)
 }
 
-export function t(key: I18nKey, params?: Record<string, string | number>) {
+function t(key: I18nKey, params?: Record<string, string | number>) {
   const message = MESSAGES[appLocale.value][key] ?? MESSAGES[DEFAULT_APP_LOCALE][key]
   return interpolate(message, params)
 }

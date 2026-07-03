@@ -21,7 +21,6 @@ interface NativeLogInfo {
 
 interface NativeLoggerPlugin {
   write(entry: NativeLogEntry): Promise<void>
-  clear(): Promise<void>
   getInfo(): Promise<NativeLogInfo>
 }
 
@@ -245,58 +244,6 @@ export function installGlobalLogging() {
     sessionId,
     userAgent: navigator.userAgent,
   })
-}
-
-export function getLocalLogText() {
-  return readStoredEntries().map(formatLine).join('\n')
-}
-
-export function getLocalLogCount() {
-  return readStoredEntries().length
-}
-
-export async function copyLocalLogs() {
-  const text = getLocalLogText()
-  if (!text || !navigator.clipboard) {
-    return false
-  }
-
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export function downloadLocalLogs() {
-  const text = getLocalLogText()
-  if (!text) {
-    return false
-  }
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const url = URL.createObjectURL(new Blob([`${text}\n`], { type: 'text/plain;charset=utf-8' }))
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `marktext-android-logs-${timestamp}.log`
-  anchor.click()
-  URL.revokeObjectURL(url)
-  return true
-}
-
-export async function clearLogs() {
-  localStorage.removeItem(STORAGE_KEY)
-  nativeLoggingUnavailable = false
-  if (!isNativeLoggerAvailable()) {
-    return
-  }
-
-  try {
-    await NativeLogger.clear()
-  } catch {
-    nativeLoggingUnavailable = true
-  }
 }
 
 export async function getNativeLogInfo() {

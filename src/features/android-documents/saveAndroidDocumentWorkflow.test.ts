@@ -79,6 +79,33 @@ describe('saveAndroidDocumentWorkflow', () => {
     })
   })
 
+  it('creates a ready request with Markdown prepared for the current document line ending', () => {
+    const documentState = updateDocumentMarkdown(
+      createAndroidDocumentState('one\r\ntwo\r\n'),
+      'one\ntwo\nthree\n',
+    )
+
+    const start = createSaveAndroidDocumentWorkflowStart({
+      documentState,
+      markdown: 'one\ntwo\nthree\n',
+      canWrite: true,
+    })
+
+    expect(start).toMatchObject({
+      kind: 'ready',
+      saved: false,
+      status: 'Saving',
+      request: {
+        sourceUri: 'content://provider/android.md',
+        saveMarkdown: 'one\ntwo\nthree\n',
+        markdownForSave: 'one\r\ntwo\r\nthree\r\n',
+        savingDocument: {
+          autosaveState: 'saving',
+        },
+      },
+    })
+  })
+
   it('writes prepared Markdown and returns a saved document result', async () => {
     const documentState = updateDocumentMarkdown(
       createAndroidDocumentState('# Android\r\n\r\nbody\r\n'),
@@ -122,6 +149,31 @@ describe('saveAndroidDocumentWorkflow', () => {
       '# Android\n\nchanged again',
       { markDirty: true, now: '2026-07-02T00:03:00.000Z' },
     )
+
+    const result = await saveAndroidDocumentWorkflow({
+      request,
+      getCurrentDocumentState: () => changedDocument,
+      writeAndroidMarkdownDocument: vi.fn().mockResolvedValue(undefined),
+      getAndroidDocumentUserMessage: () => 'Save failed',
+      recoveryMessage: 'A recovery draft was kept.',
+    })
+
+    expect(result).toEqual({
+      kind: 'changed-during-save',
+      saved: false,
+      sourceUri: 'content://provider/android.md',
+      scheduleAnotherSave: true,
+    })
+  })
+
+  it('requests another save when the active Android source changes during the write', async () => {
+    const request = createWorkflowRequest()
+    const changedDocument = createUntitledDocument({
+      markdown: request.saveMarkdown,
+      displayName: 'Other.md',
+      sourceUri: 'content://provider/other.md',
+      autosaveTarget: 'android-document',
+    })
 
     const result = await saveAndroidDocumentWorkflow({
       request,

@@ -13,7 +13,7 @@ export const APP_INFO = Object.freeze({
   upstreamMuyaUrl: 'https://github.com/marktext/muya',
 } as const)
 
-export interface AppReferenceLink {
+interface AppReferenceLink {
   labelKey: I18nKey
   value: string
   valueKey?: I18nKey
@@ -21,7 +21,7 @@ export interface AppReferenceLink {
   testId: string
 }
 
-export interface AppReferenceSection {
+interface AppReferenceSection {
   titleKey: I18nKey
   links: readonly AppReferenceLink[]
 }
@@ -75,7 +75,3 @@ export const APP_REFERENCE_SECTIONS: readonly AppReferenceSection[] = [
     ],
   },
 ]
-
-export const APP_REFERENCE_LINKS: readonly AppReferenceLink[] = APP_REFERENCE_SECTIONS.flatMap(section =>
-  [...section.links],
-)
