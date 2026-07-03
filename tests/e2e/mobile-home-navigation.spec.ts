@@ -110,9 +110,10 @@ test('switches between document home and the settings about screen', async ({ pa
   await expect(page.getByTestId('bottom-nav-settings')).toHaveAttribute('aria-current', 'page')
   await expect(page.getByTestId('settings-entry-appearance')).toBeVisible()
   await expect(page.getByTestId('settings-entry-editing')).toBeVisible()
-  await expect(page.getByTestId('settings-entry-code')).toBeVisible()
-  await expect(page.getByTestId('settings-entry-markdown')).toBeVisible()
-  await expect(page.getByTestId('settings-entry-spelling')).toBeVisible()
+  await expect(page.getByTestId('settings-entry-toolbar')).toBeVisible()
+  await expect(page.getByTestId('settings-entry-code')).toHaveCount(0)
+  await expect(page.getByTestId('settings-entry-markdown')).toHaveCount(0)
+  await expect(page.getByTestId('settings-entry-spelling')).toHaveCount(0)
   await expect(page.getByTestId('settings-entry-documents')).toBeVisible()
   await expect(page.getByTestId('settings-entry-images-sharing')).toBeVisible()
   await expect(page.getByTestId('settings-entry-advanced')).toBeVisible()
@@ -158,38 +159,27 @@ test('switches between document home and the settings about screen', async ({ pa
 
   await page.getByTestId('settings-entry-editing').click()
   await expect(page.getByTestId('settings-title')).toContainText('Editing')
+  await expect(page.getByTestId('settings-editing-brackets')).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByTestId('settings-code-wrap-lines')).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await expect(page.getByTestId('settings-markdown-heading-style')).toContainText('ATX')
+  await expect(page.getByTestId('settings-spelling-enabled')).toHaveAttribute(
+    'aria-checked',
+    'false',
+  )
+
+  await page.getByTestId('settings-detail-back').click()
+  await expect(page.getByTestId('settings-index')).toBeVisible()
+
+  await page.getByTestId('settings-entry-toolbar').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Toolbar')
   await expect(page.getByTestId('settings-editing-toolbar-keyboard')).toContainText('Docked')
   await page.getByTestId('settings-editing-toolbar-keyboard-option-floating').click()
   await expect(page.getByTestId('settings-editing-toolbar-keyboard-option-floating')).toHaveAttribute(
     'aria-pressed',
     'true',
-  )
-
-  await page.getByTestId('settings-detail-back').click()
-  await expect(page.getByTestId('settings-index')).toBeVisible()
-
-  await page.getByTestId('settings-entry-code').click()
-  await expect(page.getByTestId('settings-title')).toContainText('Code')
-  await expect(page.getByTestId('settings-code-wrap-lines')).toHaveAttribute(
-    'aria-checked',
-    'true',
-  )
-
-  await page.getByTestId('settings-detail-back').click()
-  await expect(page.getByTestId('settings-index')).toBeVisible()
-
-  await page.getByTestId('settings-entry-markdown').click()
-  await expect(page.getByTestId('settings-title')).toContainText('Markdown')
-  await expect(page.getByTestId('settings-markdown-heading-style')).toContainText('ATX')
-
-  await page.getByTestId('settings-detail-back').click()
-  await expect(page.getByTestId('settings-index')).toBeVisible()
-
-  await page.getByTestId('settings-entry-spelling').click()
-  await expect(page.getByTestId('settings-title')).toContainText('Spelling')
-  await expect(page.getByTestId('settings-spelling-enabled')).toHaveAttribute(
-    'aria-checked',
-    'false',
   )
 
   await page.getByTestId('settings-detail-back').click()
