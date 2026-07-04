@@ -223,9 +223,39 @@ test('switches between document home and the settings about screen', async ({ pa
 
   await page.getByTestId('settings-entry-advanced').click()
   await expect(page.getByTestId('settings-title')).toContainText('Advanced')
-  await expect(page.getByTestId('settings-advanced-line-endings')).toContainText('Default')
-  await expect(page.getByTestId('settings-advanced-search-exclusions')).toBeVisible()
-  await expect(page.getByTestId('settings-advanced-keybindings')).toContainText('Open')
+  await expect(page.locator('.settings-content .settings-section h2')).toHaveText([
+    'Files',
+    'Diagnostics',
+    'Maintenance',
+  ])
+  await expect(page.getByTestId('settings-advanced-diagnostics')).toContainText('Ready')
+  await expect(page.getByTestId('settings-advanced-encoding')).toContainText('UTF-8')
+  await expect(page.getByTestId('settings-advanced-auto-detect-encoding')).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await expect(page.getByTestId('settings-advanced-line-endings')).toContainText('Preserve')
+  await expect(page.getByTestId('settings-advanced-trailing-newline')).toContainText('Preserve')
+  await expect(page.getByTestId('settings-advanced-export-logs-action')).toContainText('Export')
+  await expect(page.getByTestId('settings-advanced-clear-drafts-action')).toContainText('Clear')
+  await expect(page.getByTestId('settings-advanced-reset-action')).toContainText('Reset')
+  await page.getByTestId('settings-advanced-export-logs-action').click()
+  await expect(page.getByTestId('settings-maintenance-sheet')).toContainText('ZIP archive')
+  await expect(page.getByTestId('settings-maintenance-export-confirm')).toContainText('Export ZIP')
+  await page.getByTestId('settings-maintenance-sheet').click({ position: { x: 12, y: 12 } })
+  await expect(page.getByTestId('settings-maintenance-sheet')).toHaveCount(0)
+  await page.getByTestId('settings-advanced-clear-drafts-action').click()
+  await expect(page.getByTestId('settings-maintenance-sheet')).toContainText('Clear local drafts?')
+  await expect(page.getByTestId('settings-maintenance-clear-confirm')).toContainText('Clear')
+  await page.getByTestId('settings-maintenance-cancel').click()
+  await page.getByTestId('settings-advanced-reset-action').click()
+  await expect(page.getByTestId('settings-maintenance-sheet')).toContainText('Reset settings?')
+  await expect(page.getByTestId('settings-maintenance-reset-confirm')).toContainText('Reset')
+  await page.getByTestId('settings-maintenance-cancel').click()
+  await expect(page.getByTestId('settings-advanced-normalize-endings')).toHaveCount(0)
+  await expect(page.getByTestId('settings-advanced-search-exclusions')).toHaveCount(0)
+  await expect(page.getByTestId('settings-advanced-keybindings')).toHaveCount(0)
+  await expect(page.getByTestId('settings-advanced-custom-css')).toHaveCount(0)
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()

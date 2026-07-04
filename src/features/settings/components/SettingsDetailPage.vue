@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import SettingsChoiceRow from './SettingsChoiceRow.vue'
 import SettingsRow from './SettingsRow.vue'
 import SettingsSection from './SettingsSection.vue'
@@ -16,7 +16,7 @@ import {
   type SettingsTextRow as SettingsTextDescriptor,
   type SettingsToggleRow as SettingsToggleDescriptor,
 } from '../settingsContent'
-import { APP_LANGUAGE_OPTIONS, useI18n } from '../../../lib/i18n'
+import { APP_LANGUAGE_OPTIONS, useI18n, type I18nKey } from '../../../lib/i18n'
 import { SETTINGS_PAGES, type SettingsPage } from '../settingsNavigation'
 import { useSettingsState } from '../settingsState'
 
@@ -27,6 +27,47 @@ const props = defineProps<{
 const { locale, setLocale, t } = useI18n()
 const { getValue, setValue } = useSettingsState()
 const sections = computed(() => SETTINGS_DETAIL_SECTIONS[props.page] ?? [])
+type MaintenanceActionId = 'exportLogs' | 'clearDrafts' | 'resetSettings'
+
+const maintenanceAction = ref<MaintenanceActionId | null>(null)
+const maintenanceActionCopies: Record<
+  MaintenanceActionId,
+  {
+    titleKey: I18nKey
+    bodyKey: I18nKey
+    actionKey: I18nKey
+    confirmKey: I18nKey
+    confirmTestId: string
+    danger?: boolean
+  }
+> = {
+  exportLogs: {
+    titleKey: 'settings.maintenance.exportLogsTitle',
+    bodyKey: 'settings.maintenance.exportLogsBody',
+    actionKey: 'settings.maintenance.exportLogsAction',
+    confirmKey: 'settings.maintenance.exportLogsConfirm',
+    confirmTestId: 'settings-maintenance-export-confirm',
+  },
+  clearDrafts: {
+    titleKey: 'settings.maintenance.clearDraftsTitle',
+    bodyKey: 'settings.maintenance.clearDraftsBody',
+    actionKey: 'settings.maintenance.clearDraftsAction',
+    confirmKey: 'settings.maintenance.clearDraftsConfirm',
+    confirmTestId: 'settings-maintenance-clear-confirm',
+    danger: true,
+  },
+  resetSettings: {
+    titleKey: 'settings.maintenance.resetSettingsTitle',
+    bodyKey: 'settings.maintenance.resetSettingsBody',
+    actionKey: 'settings.maintenance.resetSettingsAction',
+    confirmKey: 'settings.maintenance.resetSettingsConfirm',
+    confirmTestId: 'settings-maintenance-reset-confirm',
+    danger: true,
+  },
+}
+const activeMaintenanceActionCopy = computed(() =>
+  maintenanceAction.value ? maintenanceActionCopies[maintenanceAction.value] : null,
+)
 const languageOptions = computed(() =>
   APP_LANGUAGE_OPTIONS.map(option => ({
     id: option.id,
@@ -79,8 +120,40 @@ function setStoredValue(rowId: string, value: boolean | number | string) {
   setValue(rowId, value)
 }
 
+function getMaintenanceActionId(rowId: string): MaintenanceActionId | null {
+  if (rowId === 'exportLogs' || rowId === 'clearDrafts' || rowId === 'resetSettings') {
+    return rowId
+  }
+  return null
+}
+
+function getMaintenanceActionCopy(rowId: string) {
+  const maintenanceActionId = props.page === SETTINGS_PAGES.ADVANCED
+    ? getMaintenanceActionId(rowId)
+    : null
+  return maintenanceActionId ? maintenanceActionCopies[maintenanceActionId] : null
+}
+
 function recordAction(row: SettingsActionRow) {
+  const maintenanceActionId = props.page === SETTINGS_PAGES.ADVANCED
+    ? getMaintenanceActionId(row.id)
+    : null
+  if (maintenanceActionId) {
+    maintenanceAction.value = maintenanceActionId
+    return
+  }
   setValue(`action:${row.id}`, Date.now())
+}
+
+function closeMaintenanceSheet() {
+  maintenanceAction.value = null
+}
+
+function confirmMaintenanceAction() {
+  if (maintenanceAction.value) {
+    setValue(`action:${maintenanceAction.value}`, Date.now())
+  }
+  closeMaintenanceSheet()
 }
 </script>
 
@@ -147,6 +220,8 @@ function recordAction(row: SettingsActionRow) {
         v-else-if="row.kind === 'action'"
         :label="t(row.labelKey)"
         :value="getActionValue(row)"
+        :action-label="getMaintenanceActionCopy(row.id) ? t(getMaintenanceActionCopy(row.id)!.actionKey) : undefined"
+        :action-variant="getMaintenanceActionCopy(row.id)?.danger ? 'danger' : 'default'"
         :test-id="row.testId"
         button
         @activate="recordAction(row)"
@@ -159,4 +234,36 @@ function recordAction(row: SettingsActionRow) {
       />
     </template>
   </SettingsSection>
+
+  <section
+    v-if="activeMaintenanceActionCopy"
+    class="draft-save-sheet"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="settings-maintenance-title"
+    data-testid="settings-maintenance-sheet"
+    @click.self="closeMaintenanceSheet"
+  >
+    <div class="draft-save-panel">
+      <h2 id="settings-maintenance-title">{{ t(activeMaintenanceActionCopy.titleKey) }}</h2>
+      <p>{{ t(activeMaintenanceActionCopy.bodyKey) }}</p>
+      <div class="draft-save-actions">
+        <button
+          type="button"
+          :class="{ 'danger-action': activeMaintenanceActionCopy.danger, 'primary-action': !activeMaintenanceActionCopy.danger }"
+          :data-testid="activeMaintenanceActionCopy.confirmTestId"
+          @click="confirmMaintenanceAction"
+        >
+          {{ t(activeMaintenanceActionCopy.confirmKey) }}
+        </button>
+        <button
+          type="button"
+          data-testid="settings-maintenance-cancel"
+          @click="closeMaintenanceSheet"
+        >
+          {{ t('editor.link.cancel') }}
+        </button>
+      </div>
+    </div>
+  </section>
 </template>

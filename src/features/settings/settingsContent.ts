@@ -274,10 +274,9 @@ const lineEndingOptions = [
 ] as const satisfies readonly SettingsOption[]
 
 const trailingNewlineOptions = [
-  { id: '0', labelKey: 'settings.option.trailing.trim' },
-  { id: '1', labelKey: 'settings.option.trailing.ensureOne' },
   { id: '2', labelKey: 'settings.option.trailing.preserve' },
-  { id: '3', labelKey: 'settings.option.trailing.doNothing' },
+  { id: '1', labelKey: 'settings.option.trailing.ensureOne' },
+  { id: '0', labelKey: 'settings.option.trailing.trim' },
 ] as const satisfies readonly SettingsOption[]
 
 const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly SettingsDetailSection[]>> = {
@@ -840,51 +839,6 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
   ],
   [SETTINGS_PAGES.ADVANCED]: [
     {
-      titleKey: 'settings.section.maintenance',
-      rows: [
-        {
-          kind: 'action',
-          id: 'exportLogs',
-          labelKey: 'settings.advanced.exportLogs',
-          valueKey: 'settings.value.manual',
-          testId: 'settings-advanced-export-logs',
-        },
-        {
-          kind: 'action',
-          id: 'clearDrafts',
-          labelKey: 'settings.advanced.clearDrafts',
-          valueKey: 'settings.value.manual',
-          testId: 'settings-advanced-clear-drafts',
-        },
-        {
-          kind: 'action',
-          id: 'resetSettings',
-          labelKey: 'settings.advanced.reset',
-          valueKey: 'settings.value.manual',
-          testId: 'settings-advanced-reset',
-        },
-      ],
-    },
-    {
-      titleKey: 'settings.section.diagnostics',
-      rows: [
-        {
-          kind: 'status',
-          id: 'deviceInfo',
-          labelKey: 'settings.advanced.diagnostics',
-          valueKey: 'settings.value.ready',
-          testId: 'settings-advanced-diagnostics',
-        },
-        {
-          kind: 'status',
-          id: 'webviewInfo',
-          labelKey: 'settings.advanced.webview',
-          valueKey: 'settings.value.ready',
-          testId: 'settings-advanced-webview',
-        },
-      ],
-    },
-    {
       titleKey: 'settings.section.files',
       rows: [
         {
@@ -912,13 +866,6 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
           testId: 'settings-advanced-line-endings',
         },
         {
-          kind: 'toggle',
-          id: 'autoNormalizeLineEndings',
-          labelKey: 'settings.advanced.normalizeEndings',
-          defaultValue: false,
-          testId: 'settings-advanced-normalize-endings',
-        },
-        {
           kind: 'choice',
           id: 'trimTrailingNewline',
           labelKey: 'settings.advanced.trailingNewline',
@@ -930,71 +877,44 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
       ],
     },
     {
-      titleKey: 'settings.section.search',
+      titleKey: 'settings.section.diagnostics',
       rows: [
         {
-          kind: 'text',
-          id: 'searchExclusions',
-          labelKey: 'settings.advanced.searchExclusions',
-          defaultValue: '',
-          placeholderKey: 'settings.placeholder.globPatterns',
-          multiline: true,
-          testId: 'settings-advanced-search-exclusions',
+          kind: 'status',
+          id: 'deviceInfo',
+          labelKey: 'settings.advanced.diagnostics',
+          valueKey: 'settings.value.ready',
+          testId: 'settings-advanced-diagnostics',
         },
         {
-          kind: 'text',
-          id: 'searchMaxFileSize',
-          labelKey: 'settings.advanced.searchMaxFileSize',
-          defaultValue: '',
-          placeholderKey: 'settings.placeholder.fileSize',
-          testId: 'settings-advanced-search-max-file-size',
-        },
-        {
-          kind: 'toggle',
-          id: 'searchIncludeHidden',
-          labelKey: 'settings.advanced.searchIncludeHidden',
-          defaultValue: false,
-          testId: 'settings-advanced-search-include-hidden',
-        },
-        {
-          kind: 'toggle',
-          id: 'searchNoIgnore',
-          labelKey: 'settings.advanced.searchNoIgnore',
-          defaultValue: false,
-          testId: 'settings-advanced-search-no-ignore',
-        },
-        {
-          kind: 'toggle',
-          id: 'searchFollowSymlinks',
-          labelKey: 'settings.advanced.searchFollowSymlinks',
-          defaultValue: true,
-          testId: 'settings-advanced-search-follow-symlinks',
+          kind: 'status',
+          id: 'webviewInfo',
+          labelKey: 'settings.advanced.webview',
+          valueKey: 'settings.value.ready',
+          testId: 'settings-advanced-webview',
         },
       ],
     },
     {
-      titleKey: 'settings.section.keyboard',
+      titleKey: 'settings.section.maintenance',
       rows: [
         {
           kind: 'action',
-          id: 'keybindings',
-          labelKey: 'settings.advanced.keybindings',
-          valueKey: 'settings.value.open',
-          testId: 'settings-advanced-keybindings',
+          id: 'exportLogs',
+          labelKey: 'settings.advanced.exportLogs',
+          testId: 'settings-advanced-export-logs',
         },
-      ],
-    },
-    {
-      titleKey: 'settings.section.custom',
-      rows: [
         {
-          kind: 'text',
-          id: 'customCss',
-          labelKey: 'settings.advanced.customCss',
-          defaultValue: '',
-          placeholderKey: 'settings.placeholder.customCss',
-          multiline: true,
-          testId: 'settings-advanced-custom-css',
+          kind: 'action',
+          id: 'clearDrafts',
+          labelKey: 'settings.advanced.clearDrafts',
+          testId: 'settings-advanced-clear-drafts',
+        },
+        {
+          kind: 'action',
+          id: 'resetSettings',
+          labelKey: 'settings.advanced.reset',
+          testId: 'settings-advanced-reset',
         },
       ],
     },
