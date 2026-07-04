@@ -158,7 +158,10 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
 
         String suggestedName = normalizeSuggestedMarkdownName(call.getString("suggestedName", ""));
-        ShareMarkdownPayload sharePayload = buildShareMarkdownPayload(markdown);
+        boolean attachImages = call.getBoolean("attachImages", true);
+        ShareMarkdownPayload sharePayload = attachImages
+            ? buildShareMarkdownPayload(markdown)
+            : new ShareMarkdownPayload(markdown, new LinkedHashMap<>());
         byte[] bytes;
         try {
             bytes = validateMarkdownBytes(sharePayload.markdown);
@@ -251,7 +254,7 @@ public class AndroidDocumentsPlugin extends Plugin {
                 "image/svg+xml"
             }
         );
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
 
         try {
             startActivityForResult(call, intent, CALLBACK_PICK_IMAGE_DOCUMENT);
@@ -641,9 +644,10 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
 
         try {
-            JSObject importedImage = importImageResult(uri, data);
-            Log.i(TAG, "Imported Android image: " + safeForLog(importedImage.getString("displayName")));
-            call.resolve(importedImage);
+            boolean copyImage = call.getBoolean("copyImage", true);
+            JSObject image = copyImage ? importImageResult(uri, data) : linkedImageResult(uri, data);
+            Log.i(TAG, "Imported Android image: " + safeForLog(image.getString("displayName")));
+            call.resolve(image);
         } catch (DocumentReadException ex) {
             Log.w(TAG, "Android image import rejected: " + ex.getMessage());
             call.reject(ex.getMessage(), ex.code, ex);
@@ -708,6 +712,29 @@ public class AndroidDocumentsPlugin extends Plugin {
         result.put("markdownSrc", "marktext-image://local/" + Uri.encode(outputFile.getName()));
         result.put("fileUri", getFileUri(outputFile));
         result.put("bytes", bytes);
+        return result;
+    }
+
+    private JSObject linkedImageResult(Uri uri, Intent grantIntent) throws IOException, DocumentReadException {
+        String mimeType = getMimeType(uri, grantIntent);
+        String displayName = normalizeImageDisplayName(getDisplayName(uri), mimeType);
+        if (!isSupportedImage(displayName, mimeType)) {
+            throw new DocumentReadException(
+                "UNSUPPORTED_IMAGE",
+                "Choose a JPEG, PNG, GIF, WebP, or SVG image"
+            );
+        }
+
+        persistUriPermission(uri, grantIntent);
+
+        JSObject result = new JSObject();
+        result.put("canceled", false);
+        result.put("sourceUri", uri.toString());
+        result.put("displayName", displayName);
+        result.put("mimeType", mimeType);
+        result.put("markdownSrc", "marktext-image://android/" + Uri.encode(uri.toString()));
+        result.put("fileUri", uri.toString());
+        result.put("bytes", 0);
         return result;
     }
 
@@ -866,6 +893,7 @@ public class AndroidDocumentsPlugin extends Plugin {
             images.put(fileName, importedImage);
             matcher.appendReplacement(rewrittenMarkdown, Matcher.quoteReplacement(fileName));
         }
+        // TODO: Add linked Android image attachments when the linked images setting is wired.
         matcher.appendTail(rewrittenMarkdown);
 
         return new ShareMarkdownPayload(rewrittenMarkdown.toString(), images);

@@ -63,6 +63,10 @@ export interface AndroidShareResult {
   sharedFileCount: number
 }
 
+export interface AndroidShareOptions {
+  attachImages: boolean
+}
+
 interface CanceledAndroidDocumentOpen {
   canceled: true
 }
@@ -97,10 +101,11 @@ interface AndroidDocumentsPlugin {
   shareMarkdownDocument(options: {
     markdown: string
     suggestedName: string
+    attachImages?: boolean
   }): Promise<AndroidShareResult>
   writeMarkdownDocument(options: { sourceUri: string; markdown: string }): Promise<SavedAndroidDocument>
   getImportedImageDirectory(): Promise<{ fileUri: string; webBaseUri?: string }>
-  pickImageDocument(): Promise<{
+  pickImageDocument(options?: { copyImage?: boolean }): Promise<{
     canceled?: false
     sourceUri: string
     displayName: string
@@ -165,12 +170,17 @@ export async function writeAndroidMarkdownDocument(sourceUri: string, markdown: 
   )
 }
 
-export async function shareAndroidMarkdownDocument(markdown: string, suggestedName: string) {
+export async function shareAndroidMarkdownDocument(
+  markdown: string,
+  suggestedName: string,
+  options: AndroidShareOptions = { attachImages: true },
+) {
   ensureAndroidDocumentsAvailable()
   return normalizeShareResult(
     await AndroidDocuments.shareMarkdownDocument({
       markdown,
       suggestedName,
+      attachImages: options.attachImages,
     }),
   )
 }

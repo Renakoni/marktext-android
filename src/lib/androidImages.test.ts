@@ -11,11 +11,29 @@ describe('androidImages', () => {
     ).toBe('http://localhost/images/picked%20image.png')
   })
 
+  it('resolves Android URI Markdown image sources through Capacitor', () => {
+    expect(
+      resolveMarkTextImageSource(
+        'marktext-image://android/content%3A%2F%2Fmedia%2Fimage%2F1',
+        null,
+      ),
+    ).toBe('content://media/image/1')
+  })
+
   it('rejects image source filenames that escape the image directory', () => {
     expect(() =>
       resolveMarkTextImageSource('marktext-image://local/..%2Fsecret.png', {
         fileUri: 'file:///data/user/0/io.github.renakoni.marktextandroid/files/images',
       }),
+    ).toThrow(AndroidImageError)
+  })
+
+  it('rejects non-content Android image source URIs', () => {
+    expect(() =>
+      resolveMarkTextImageSource(
+        'marktext-image://android/file%3A%2F%2Fsdcard%2Fphoto.png',
+        null,
+      ),
     ).toThrow(AndroidImageError)
   })
 

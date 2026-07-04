@@ -203,11 +203,20 @@ test('switches between document home and the settings about screen', async ({ pa
 
   await page.getByTestId('settings-entry-images-sharing').click()
   await expect(page.getByTestId('settings-title')).toContainText('Images & Sharing')
-  await expect(page.getByTestId('settings-images-folder')).toContainText('Choose')
-  await page.getByTestId('settings-images-relative-folder').getByRole('textbox').fill('media')
-  await expect(page.getByTestId('settings-images-relative-folder').getByRole('textbox')).toHaveValue(
-    'media',
+  await expect(page.getByTestId('settings-images-copy')).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByTestId('settings-images-share')).toContainText('Attach images')
+  await page.getByTestId('settings-images-share-option-link-only').click()
+  await expect(page.getByTestId('settings-images-share')).toContainText('Markdown only')
+  await expect(page.getByTestId('settings-images-include-linked')).toHaveAttribute(
+    'aria-checked',
+    'false',
   )
+  await expect(page.getByTestId('settings-images-include-linked')).toContainText(
+    'Linked images (unfinished)',
+  )
+  await expect(page.getByTestId('settings-images-import')).toHaveCount(0)
+  await expect(page.getByTestId('settings-images-folder')).toHaveCount(0)
+  await expect(page.getByTestId('settings-images-attach-local')).toHaveCount(0)
 
   await page.getByTestId('settings-detail-back').click()
   await expect(page.getByTestId('settings-index')).toBeVisible()

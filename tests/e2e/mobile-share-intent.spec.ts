@@ -254,6 +254,38 @@ test('shares the current draft as a Markdown file through Android', async ({ pag
   })
   expect(shareOptions?.suggestedName).toBe('Share Out Note.md')
   expect(shareOptions?.markdown).toContain('send to QQ or another Android target')
+  expect(shareOptions?.attachImages).toBe(true)
+})
+
+test('passes the Markdown-only image sharing setting to Android share', async ({ page }) => {
+  await installAndroidShareAppMock(page)
+  await page.goto('/')
+  await page.evaluate(() => {
+    localStorage.clear()
+    localStorage.setItem('marktext-for-android:settings-ui', JSON.stringify({
+      shareImages: 'link-only',
+    }))
+  })
+  await page.reload()
+  await page.waitForFunction(() => {
+    const win = window as unknown as MockCapacitorWindow
+    return (win.__androidDocumentListenerCount?.('shareDocument') ?? 0) > 0
+  })
+
+  await page.getByTestId('new-document-button').click()
+  await expectEditorReady(page)
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('# Markdown Only Share')
+
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('share-document-button').click()
+  await expect(page.getByText('Share sheet opened')).toBeVisible()
+
+  const shareOptions = await page.evaluate(() => {
+    const win = window as unknown as MockCapacitorWindow
+    return win.__lastAndroidShareOptions
+  })
+  expect(shareOptions?.attachImages).toBe(false)
 })
 
 test('preserves an active local draft before opening a warm Android share', async ({ page }) => {

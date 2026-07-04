@@ -5,6 +5,7 @@ test.describe.configure({ timeout: 60000 })
 
 interface MockCapacitorWindow {
   androidBridge?: unknown
+  __lastAndroidImagePickOptions?: Record<string, unknown>
   Capacitor?: {
     PluginHeaders?: Array<{
       name: string
@@ -24,9 +25,14 @@ interface MockCapacitorWindow {
   }
 }
 
-async function newBlankDocument(page: Page) {
+async function newBlankDocument(page: Page, settings: Record<string, unknown> = {}) {
   await page.goto('/')
-  await page.evaluate(() => localStorage.clear())
+  await page.evaluate(settingsValue => {
+    localStorage.clear()
+    if (Object.keys(settingsValue).length > 0) {
+      localStorage.setItem('marktext-for-android:settings-ui', JSON.stringify(settingsValue))
+    }
+  }, settings)
   await page.reload()
   await page.getByTestId('new-document-button').click()
   await expectEditorReady(page)
@@ -90,7 +96,7 @@ async function installAndroidImagePickerMock(page: Page) {
           message: `${pluginName}.${methodName} is not mocked`,
         })
       },
-      nativePromise(pluginName, methodName) {
+      nativePromise(pluginName, methodName, options = {}) {
         if (pluginName === 'App' && methodName === 'exitApp') {
           return Promise.resolve()
         }
@@ -107,6 +113,7 @@ async function installAndroidImagePickerMock(page: Page) {
         }
 
         if (pluginName === 'AndroidDocuments' && methodName === 'pickImageDocument') {
+          win.__lastAndroidImagePickOptions = options
           return Promise.resolve({
             canceled: false,
             sourceUri: 'content://test/picked-image',
@@ -285,6 +292,28 @@ test('inserts an Android-picked image from selected text through the insert sect
   const editor = page.getByTestId('editor-host')
   await expect(editor.locator('.mu-inline-image img[alt="Picked icon"]')).toHaveCount(1)
   await expect.poll(() => editor.locator('.mu-inline-image.mu-image-success').count()).toBeGreaterThan(0)
+  await expect.poll(() =>
+    page.evaluate(() => {
+      const win = window as unknown as MockCapacitorWindow
+      return win.__lastAndroidImagePickOptions?.copyImage
+    }),
+  ).toBe(true)
+})
+
+test('passes the copy images setting to the Android image picker', async ({ page }) => {
+  await installAndroidImagePickerMock(page)
+  await newBlankDocument(page, { imageCopyImages: false })
+
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-format.image').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-format.image').click()
+
+  await expect.poll(() =>
+    page.evaluate(() => {
+      const win = window as unknown as MockCapacitorWindow
+      return win.__lastAndroidImagePickOptions?.copyImage
+    }),
+  ).toBe(false)
 })
 
 test('switches toolbar sections and applies paragraph commands to the current paragraph', async ({

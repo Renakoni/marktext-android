@@ -24,6 +24,10 @@ const shareResult: AndroidShareResult = {
   sharedFileCount: 1,
 }
 
+const defaultImageSharingSettings = {
+  shareImages: 'attach' as const,
+}
+
 describe('shareAndroidMarkdownDocumentWorkflow', () => {
   it('shares prepared Markdown with the suggested file name', async () => {
     const shareAndroidMarkdownDocument = vi.fn().mockResolvedValue(shareResult)
@@ -32,11 +36,13 @@ describe('shareAndroidMarkdownDocumentWorkflow', () => {
       currentDocument: createCurrentDocument(),
       shareAndroidMarkdownDocument,
       getAndroidDocumentUserMessage: () => 'failed',
+      imageSharingSettings: defaultImageSharingSettings,
     })
 
     expect(shareAndroidMarkdownDocument).toHaveBeenCalledWith(
       '# Share Out Note\n\nbody',
       'Share Out Note.md',
+      { attachImages: true },
     )
     expect(result).toEqual({
       kind: 'shared',
@@ -45,11 +51,31 @@ describe('shareAndroidMarkdownDocumentWorkflow', () => {
     })
   })
 
+  it('shares Markdown without image attachments when image sharing is disabled', async () => {
+    const shareAndroidMarkdownDocument = vi.fn().mockResolvedValue(shareResult)
+
+    await shareAndroidMarkdownDocumentWorkflow({
+      currentDocument: createCurrentDocument(),
+      shareAndroidMarkdownDocument,
+      getAndroidDocumentUserMessage: () => 'failed',
+      imageSharingSettings: {
+        shareImages: 'link-only',
+      },
+    })
+
+    expect(shareAndroidMarkdownDocument).toHaveBeenCalledWith(
+      '# Share Out Note\n\nbody',
+      'Share Out Note.md',
+      { attachImages: false },
+    )
+  })
+
   it('returns a user-facing status when sharing fails', async () => {
     const result = await shareAndroidMarkdownDocumentWorkflow({
       currentDocument: createCurrentDocument(),
       shareAndroidMarkdownDocument: vi.fn().mockRejectedValue(new Error('share target missing')),
       getAndroidDocumentUserMessage: error => `message: ${(error as Error).message}`,
+      imageSharingSettings: defaultImageSharingSettings,
     })
 
     expect(result).toMatchObject({
