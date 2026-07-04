@@ -10,6 +10,7 @@ import {
   SETTINGS_PAGES,
   type SettingsPage,
 } from './settingsNavigation'
+import type { AdvancedMaintenanceActionId } from './advancedSettings'
 
 defineProps<{
   activePage: SettingsPage
@@ -17,6 +18,7 @@ defineProps<{
 
 const emit = defineEmits<{
   setPage: [page: SettingsPage]
+  runMaintenanceAction: [action: AdvancedMaintenanceActionId]
 }>()
 
 const { t } = useI18n()
@@ -67,7 +69,11 @@ const { t } = useI18n()
         </div>
       </template>
       <AboutSettings v-else-if="activePage === SETTINGS_PAGES.ABOUT" />
-      <SettingsDetailPage v-else :page="activePage" />
+      <SettingsDetailPage
+        v-else
+        :page="activePage"
+        :run-maintenance-action="action => emit('runMaintenanceAction', action)"
+      />
     </div>
   </section>
 </template>

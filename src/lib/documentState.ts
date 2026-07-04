@@ -1,6 +1,7 @@
 export type LineEnding = 'lf' | 'crlf'
 export type AutosaveTarget = 'local-draft' | 'android-document'
 export type AutosaveState = 'clean' | 'dirty' | 'saving' | 'save-failed'
+export type MarkdownDocumentEncoding = string
 
 export interface DocumentStats {
   words: number
@@ -27,6 +28,8 @@ export interface MarkdownDocumentState {
   isMixedLineEndings: boolean
   adjustLineEndingOnSave: boolean
   trimTrailingNewline: number
+  encoding: MarkdownDocumentEncoding
+  hasEncodingBom: boolean
   autosaveTarget: AutosaveTarget
   autosaveState: AutosaveState
   lastSavedAt: string | null
@@ -42,6 +45,8 @@ interface CreateDocumentOptions {
   sourceUri?: string | null
   autosaveTarget?: AutosaveTarget
   preferredLineEnding?: LineEnding
+  encoding?: MarkdownDocumentEncoding
+  hasEncodingBom?: boolean
   createdAt?: string
   now?: string
 }
@@ -54,6 +59,11 @@ interface UpdateDocumentOptions {
 interface SaveDocumentOptions {
   autosaveTarget?: AutosaveTarget
   now?: string
+}
+
+export interface MarkdownSaveOptions {
+  lineEnding?: 'default' | LineEnding
+  trimTrailingNewline?: number
 }
 
 const DEFAULT_UNTITLED_NAME = 'Untitled-1'
@@ -149,10 +159,17 @@ export function normalizeMarkdownForEditor(
 export function prepareMarkdownForSave(
   markdown: string,
   options: Pick<MarkdownDocumentState, 'adjustLineEndingOnSave' | 'lineEnding' | 'trimTrailingNewline'>,
+  saveOptions: MarkdownSaveOptions = {},
 ) {
-  let nextMarkdown = adjustTrailingNewlines(markdown, options.trimTrailingNewline)
+  const trailingNewlineMode = saveOptions.trimTrailingNewline ?? options.trimTrailingNewline
+  const lineEndingMode = saveOptions.lineEnding ?? 'default'
+  const lineEnding = lineEndingMode === 'default' ? options.lineEnding : lineEndingMode
+  const adjustLineEndingOnSave = lineEndingMode === 'default'
+    ? options.adjustLineEndingOnSave
+    : lineEndingMode === 'crlf'
+  let nextMarkdown = adjustTrailingNewlines(markdown, trailingNewlineMode)
 
-  if (options.adjustLineEndingOnSave && options.lineEnding === 'crlf') {
+  if (adjustLineEndingOnSave && lineEnding === 'crlf') {
     nextMarkdown = nextMarkdown.replace(LINE_ENDING_REGEXP, '\r\n')
   }
 
@@ -238,6 +255,8 @@ export function createUntitledDocument(options: CreateDocumentOptions = {}): Mar
     isMixedLineEndings: normalized.isMixedLineEndings,
     adjustLineEndingOnSave: normalized.adjustLineEndingOnSave,
     trimTrailingNewline: normalized.trimTrailingNewline,
+    encoding: options.encoding ?? 'utf8',
+    hasEncodingBom: options.hasEncodingBom ?? false,
     autosaveTarget: options.autosaveTarget ?? 'local-draft',
     autosaveState: 'clean',
     lastSavedAt: now,

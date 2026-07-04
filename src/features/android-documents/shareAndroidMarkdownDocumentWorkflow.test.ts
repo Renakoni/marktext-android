@@ -42,7 +42,7 @@ describe('shareAndroidMarkdownDocumentWorkflow', () => {
     expect(shareAndroidMarkdownDocument).toHaveBeenCalledWith(
       '# Share Out Note\n\nbody',
       'Share Out Note.md',
-      { attachImages: true },
+      { attachImages: true, encoding: 'utf8' },
     )
     expect(result).toEqual({
       kind: 'shared',
@@ -66,7 +66,29 @@ describe('shareAndroidMarkdownDocumentWorkflow', () => {
     expect(shareAndroidMarkdownDocument).toHaveBeenCalledWith(
       '# Share Out Note\n\nbody',
       'Share Out Note.md',
-      { attachImages: false },
+      { attachImages: false, encoding: 'utf8' },
+    )
+  })
+
+  it('shares Markdown with configured save preparation options', async () => {
+    const shareAndroidMarkdownDocument = vi.fn().mockResolvedValue(shareResult)
+
+    await shareAndroidMarkdownDocumentWorkflow({
+      currentDocument: createCurrentDocument('one\ntwo\n\n'),
+      shareAndroidMarkdownDocument,
+      getAndroidDocumentUserMessage: () => 'failed',
+      imageSharingSettings: defaultImageSharingSettings,
+      markdownSaveSettings: {
+        encoding: 'gb18030',
+        lineEnding: 'crlf',
+        trimTrailingNewline: 0,
+      },
+    })
+
+    expect(shareAndroidMarkdownDocument).toHaveBeenCalledWith(
+      'one\r\ntwo',
+      'Draft.md',
+      { attachImages: true, encoding: 'gb18030' },
     )
   })
 

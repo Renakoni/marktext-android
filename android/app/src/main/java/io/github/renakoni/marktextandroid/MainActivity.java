@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(AndroidDocumentsPlugin.class);
         registerPlugin(NativeLoggerPlugin.class);
+        registerPlugin(AndroidAppInfoPlugin.class);
         super.onCreate(savedInstanceState);
     }
 

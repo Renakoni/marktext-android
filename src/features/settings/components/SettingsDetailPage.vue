@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import SettingsChoiceRow from './SettingsChoiceRow.vue'
 import SettingsRow from './SettingsRow.vue'
 import SettingsSection from './SettingsSection.vue'
@@ -19,17 +19,23 @@ import {
 import { APP_LANGUAGE_OPTIONS, useI18n, type I18nKey } from '../../../lib/i18n'
 import { SETTINGS_PAGES, type SettingsPage } from '../settingsNavigation'
 import { useSettingsState } from '../settingsState'
+import type { AdvancedMaintenanceActionId } from '../advancedSettings'
+import { getAdvancedDiagnostics } from '../advancedDiagnostics'
 
 const props = defineProps<{
   page: SettingsPage
+  runMaintenanceAction?: (action: AdvancedMaintenanceActionId) => Promise<void> | void
 }>()
 
 const { locale, setLocale, t } = useI18n()
 const { getValue, setValue } = useSettingsState()
 const sections = computed(() => SETTINGS_DETAIL_SECTIONS[props.page] ?? [])
-type MaintenanceActionId = 'exportLogs' | 'clearDrafts' | 'resetSettings'
+type MaintenanceActionId = AdvancedMaintenanceActionId
 
 const maintenanceAction = ref<MaintenanceActionId | null>(null)
+const maintenanceActionBusy = ref(false)
+const maintenanceActionError = ref<string | null>(null)
+const advancedDiagnostics = ref<Record<string, string>>({})
 const maintenanceActionCopies: Record<
   MaintenanceActionId,
   {
@@ -113,6 +119,12 @@ function getActionValue(row: SettingsActionRow) {
 }
 
 function getStatusValue(row: SettingsStatusRow) {
+  if (props.page === SETTINGS_PAGES.ADVANCED) {
+    const value = advancedDiagnostics.value[row.id]
+    if (value) {
+      return value
+    }
+  }
   return t(row.valueKey)
 }
 
@@ -140,21 +152,56 @@ function recordAction(row: SettingsActionRow) {
     : null
   if (maintenanceActionId) {
     maintenanceAction.value = maintenanceActionId
+    maintenanceActionError.value = null
     return
   }
   setValue(`action:${row.id}`, Date.now())
 }
 
 function closeMaintenanceSheet() {
+  if (maintenanceActionBusy.value) {
+    return
+  }
   maintenanceAction.value = null
+  maintenanceActionError.value = null
 }
 
-function confirmMaintenanceAction() {
-  if (maintenanceAction.value) {
-    setValue(`action:${maintenanceAction.value}`, Date.now())
+async function confirmMaintenanceAction() {
+  const action = maintenanceAction.value
+  if (!action || maintenanceActionBusy.value) {
+    return
   }
-  closeMaintenanceSheet()
+
+  maintenanceActionBusy.value = true
+  maintenanceActionError.value = null
+  try {
+    await props.runMaintenanceAction?.(action)
+    maintenanceAction.value = null
+  } catch (error) {
+    maintenanceActionError.value = error instanceof Error
+      ? error.message
+      : t('settings.maintenance.genericError')
+  } finally {
+    maintenanceActionBusy.value = false
+  }
 }
+
+watch(
+  () => props.page,
+  page => {
+    if (page !== SETTINGS_PAGES.ADVANCED) {
+      return
+    }
+
+    getAdvancedDiagnostics().then(result => {
+      advancedDiagnostics.value = {
+        deviceInfo: result.deviceInfo,
+        webviewInfo: result.webViewInfo,
+      }
+    })
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -247,10 +294,15 @@ function confirmMaintenanceAction() {
     <div class="draft-save-panel">
       <h2 id="settings-maintenance-title">{{ t(activeMaintenanceActionCopy.titleKey) }}</h2>
       <p>{{ t(activeMaintenanceActionCopy.bodyKey) }}</p>
+      <p v-if="maintenanceActionError" role="alert">
+        {{ maintenanceActionError }}
+      </p>
       <div class="draft-save-actions">
         <button
           type="button"
           :class="{ 'danger-action': activeMaintenanceActionCopy.danger, 'primary-action': !activeMaintenanceActionCopy.danger }"
+          :disabled="maintenanceActionBusy"
+          :aria-busy="maintenanceActionBusy ? 'true' : undefined"
           :data-testid="activeMaintenanceActionCopy.confirmTestId"
           @click="confirmMaintenanceAction"
         >
@@ -258,6 +310,7 @@ function confirmMaintenanceAction() {
         </button>
         <button
           type="button"
+          :disabled="maintenanceActionBusy"
           data-testid="settings-maintenance-cancel"
           @click="closeMaintenanceSheet"
         >

@@ -8,6 +8,11 @@ import {
   createSavedDocumentStateFromAndroidDocument,
   type SavedAndroidDocumentStateSource,
 } from '../document-session/documentSessionState'
+import {
+  DEFAULT_MARKDOWN_SAVE_SETTINGS,
+  type MarkdownEncoding,
+  type MarkdownSaveSettings,
+} from '../settings/advancedSettings'
 import type { OpenedAndroidDocument } from '../../lib/androidDocuments'
 
 interface CanceledAndroidDocumentCreate {
@@ -62,8 +67,10 @@ interface SaveAndroidDocumentCopyWorkflowOptions {
   createAndroidMarkdownDocument: (
     markdown: string,
     suggestedName: string,
+    options: { encoding: MarkdownEncoding; writeBom: boolean },
   ) => Promise<AndroidDocumentCreateResult>
   getAndroidDocumentUserMessage: (error: unknown) => string
+  markdownSaveSettings?: MarkdownSaveSettings
   now?: () => string
   logger?: WorkflowLogger
 }
@@ -90,10 +97,15 @@ export async function saveAndroidDocumentCopyWorkflow({
   transientAccessMessage,
   createAndroidMarkdownDocument,
   getAndroidDocumentUserMessage,
+  markdownSaveSettings = DEFAULT_MARKDOWN_SAVE_SETTINGS,
   now = () => new Date().toISOString(),
   logger,
 }: SaveAndroidDocumentCopyWorkflowOptions): Promise<SaveAndroidDocumentCopyResult> {
-  const markdownForSave = prepareMarkdownForSave(copySourceDocument.markdown, copySourceDocument)
+  const markdownForSave = prepareMarkdownForSave(
+    copySourceDocument.markdown,
+    copySourceDocument,
+    markdownSaveSettings,
+  )
   const suggestedName = getSuggestedMarkdownCopyFileName(
     copySourceDocument.markdown,
     copySourceDocument.displayName,
@@ -101,7 +113,10 @@ export async function saveAndroidDocumentCopyWorkflow({
   )
 
   try {
-    const document = await createAndroidMarkdownDocument(markdownForSave, suggestedName)
+    const document = await createAndroidMarkdownDocument(markdownForSave, suggestedName, {
+      encoding: markdownSaveSettings.encoding,
+      writeBom: copySourceDocument.hasEncodingBom,
+    })
     if (document.canceled) {
       logger?.info('Android document save copy canceled', {
         sourceUri: originalSourceUri,

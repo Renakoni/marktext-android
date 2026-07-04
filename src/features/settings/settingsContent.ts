@@ -63,8 +63,8 @@ export interface SettingsDetailSection {
   rows: readonly SettingsDetailRow[]
 }
 
-// Settings descriptors are front-end-only metadata. Until each setting is wired
-// explicitly, controls must not change editor behavior, document text, or files.
+// Settings descriptors define the mobile settings UI. Individual settings are
+// wired only where a feature module explicitly consumes their stored values.
 export const SETTINGS_PAGE_TITLE_KEYS = {
   [SETTINGS_PAGES.INDEX]: 'settings.title',
   [SETTINGS_PAGES.APPEARANCE]: 'settings.appearance',

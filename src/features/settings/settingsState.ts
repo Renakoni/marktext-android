@@ -48,6 +48,22 @@ function saveSettings() {
   }
 }
 
+function clearSettings() {
+  for (const key of Object.keys(settingsValues)) {
+    delete settingsValues[key]
+  }
+
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.removeItem(SETTINGS_STORAGE_KEY)
+  } catch {
+    // Resetting settings should leave the current session usable even if storage fails.
+  }
+}
+
 export function useSettingsState() {
   loadSettings()
 
@@ -65,5 +81,6 @@ export function useSettingsState() {
     values: readonly(settingsValues),
     getValue,
     setValue,
+    clearSettings,
   }
 }
