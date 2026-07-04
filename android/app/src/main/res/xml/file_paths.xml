@@ -2,5 +2,6 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <external-path name="my_images" path="." />
     <cache-path name="shared_markdown" path="shared-markdown/" />
+    <cache-path name="log_exports" path="log-exports/" />
     <cache-path name="my_cache_images" path="." />
 </paths>

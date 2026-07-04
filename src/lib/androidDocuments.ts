@@ -1,4 +1,9 @@
 import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core'
+import {
+  normalizeMarkdownEncoding,
+  type AndroidMarkdownSettings,
+  type MarkdownEncoding,
+} from '../features/settings/advancedSettings'
 
 export interface OpenedAndroidDocument {
   canceled?: false
@@ -8,6 +13,8 @@ export interface OpenedAndroidDocument {
   pathHint: string | null
   mimeType: string | null
   markdown: string
+  encoding?: MarkdownEncoding
+  hasEncodingBom?: boolean
   canWrite: boolean
   persisted: boolean
 }
@@ -20,6 +27,8 @@ export interface SharedAndroidDocument {
   pathHint: string | null
   mimeType: string | null
   markdown: string
+  encoding?: MarkdownEncoding
+  hasEncodingBom?: boolean
   canWrite: boolean
   persisted: boolean
   shareKind: 'text' | 'stream'
@@ -31,6 +40,8 @@ interface SavedAndroidDocument {
   providerName: string | null
   pathHint: string | null
   mimeType: string | null
+  encoding?: MarkdownEncoding
+  hasEncodingBom?: boolean
   canWrite: boolean
   persisted: boolean
 }
@@ -65,7 +76,16 @@ export interface AndroidShareResult {
 
 export interface AndroidShareOptions {
   attachImages: boolean
+  encoding: MarkdownEncoding
 }
+
+export interface AndroidWriteOptions {
+  encoding: MarkdownEncoding
+  writeBom?: boolean
+}
+
+export type AndroidCreateOptions = AndroidWriteOptions
+export type AndroidReadOptions = Partial<AndroidMarkdownSettings>
 
 interface CanceledAndroidDocumentOpen {
   canceled: true
@@ -95,15 +115,24 @@ interface AndroidDocumentsPlugin {
   createMarkdownDocument(options: {
     markdown: string
     suggestedName: string
+    encoding?: string
+    writeBom?: boolean
   }): Promise<OpenedAndroidDocument | CanceledAndroidDocumentOpen>
-  openMarkdownDocument(): Promise<OpenedAndroidDocument | CanceledAndroidDocumentOpen>
-  readMarkdownDocument(options: { sourceUri: string }): Promise<OpenedAndroidDocument>
+  openMarkdownDocument(options?: AndroidReadOptions): Promise<OpenedAndroidDocument | CanceledAndroidDocumentOpen>
+  readMarkdownDocument(options: { sourceUri: string } & AndroidReadOptions): Promise<OpenedAndroidDocument>
   shareMarkdownDocument(options: {
     markdown: string
     suggestedName: string
     attachImages?: boolean
+    encoding?: string
   }): Promise<AndroidShareResult>
-  writeMarkdownDocument(options: { sourceUri: string; markdown: string }): Promise<SavedAndroidDocument>
+  writeMarkdownDocument(options: {
+    sourceUri: string
+    markdown: string
+    encoding?: string
+    writeBom?: boolean
+  }): Promise<SavedAndroidDocument>
+  configureMarkdownSettings(options: AndroidMarkdownSettings): Promise<void>
   getImportedImageDirectory(): Promise<{ fileUri: string; webBaseUri?: string }>
   pickImageDocument(options?: { copyImage?: boolean }): Promise<{
     canceled?: false
@@ -132,9 +161,14 @@ export function isAndroidDocumentAccessAvailable() {
   return Capacitor.getPlatform() === 'android' && Capacitor.isNativePlatform()
 }
 
-export async function openAndroidMarkdownDocument() {
+export async function configureAndroidMarkdownSettings(settings: AndroidMarkdownSettings) {
   ensureAndroidDocumentsAvailable()
-  const result = await AndroidDocuments.openMarkdownDocument()
+  await AndroidDocuments.configureMarkdownSettings(settings)
+}
+
+export async function openAndroidMarkdownDocument(options: AndroidReadOptions = {}) {
+  ensureAndroidDocumentsAvailable()
+  const result = await AndroidDocuments.openMarkdownDocument(options)
   if (result.canceled) {
     return result
   }
@@ -142,11 +176,17 @@ export async function openAndroidMarkdownDocument() {
   return normalizeOpenedDocument(result)
 }
 
-export async function createAndroidMarkdownDocument(markdown: string, suggestedName: string) {
+export async function createAndroidMarkdownDocument(
+  markdown: string,
+  suggestedName: string,
+  options: AndroidCreateOptions,
+) {
   ensureAndroidDocumentsAvailable()
   const result = await AndroidDocuments.createMarkdownDocument({
     markdown,
     suggestedName,
+    encoding: options.encoding,
+    writeBom: options.writeBom,
   })
   if (result.canceled) {
     return result
@@ -155,17 +195,26 @@ export async function createAndroidMarkdownDocument(markdown: string, suggestedN
   return normalizeOpenedDocument(result)
 }
 
-export async function readAndroidMarkdownDocument(sourceUri: string) {
+export async function readAndroidMarkdownDocument(
+  sourceUri: string,
+  options: AndroidReadOptions = {},
+) {
   ensureAndroidDocumentsAvailable()
-  return normalizeOpenedDocument(await AndroidDocuments.readMarkdownDocument({ sourceUri }))
+  return normalizeOpenedDocument(await AndroidDocuments.readMarkdownDocument({ sourceUri, ...options }))
 }
 
-export async function writeAndroidMarkdownDocument(sourceUri: string, markdown: string) {
+export async function writeAndroidMarkdownDocument(
+  sourceUri: string,
+  markdown: string,
+  options: AndroidWriteOptions,
+) {
   ensureAndroidDocumentsAvailable()
   return normalizeSavedDocument(
     await AndroidDocuments.writeMarkdownDocument({
       sourceUri,
       markdown,
+      encoding: options.encoding,
+      writeBom: options.writeBom,
     }),
   )
 }
@@ -173,7 +222,7 @@ export async function writeAndroidMarkdownDocument(sourceUri: string, markdown: 
 export async function shareAndroidMarkdownDocument(
   markdown: string,
   suggestedName: string,
-  options: AndroidShareOptions = { attachImages: true },
+  options: AndroidShareOptions,
 ) {
   ensureAndroidDocumentsAvailable()
   return normalizeShareResult(
@@ -181,6 +230,7 @@ export async function shareAndroidMarkdownDocument(
       markdown,
       suggestedName,
       attachImages: options.attachImages,
+      encoding: options.encoding,
     }),
   )
 }
@@ -286,6 +336,14 @@ export function getAndroidDocumentUserMessage(error: unknown) {
     return 'Could not save this Markdown file.'
   }
 
+  if (code === 'DOCUMENT_ENCODING_UNSUPPORTED') {
+    return 'This text encoding is not available on this device.'
+  }
+
+  if (code === 'DOCUMENT_ENCODING_FAILED') {
+    return 'Could not read or save this file with the selected encoding.'
+  }
+
   if (code === 'DOCUMENT_CREATOR_UNAVAILABLE') {
     return 'Could not create a Markdown file on this device.'
   }
@@ -312,6 +370,8 @@ function normalizeOpenedDocument(value: OpenedAndroidDocument): OpenedAndroidDoc
     pathHint: value.pathHint ?? null,
     mimeType: value.mimeType ?? null,
     markdown: value.markdown,
+    encoding: normalizeMarkdownEncodingValue(value.encoding),
+    hasEncodingBom: Boolean(value.hasEncodingBom),
     canWrite: Boolean(value.canWrite),
     persisted: Boolean(value.persisted),
   }
@@ -336,6 +396,8 @@ function normalizeSharedDocument(value: SharedAndroidDocument): SharedAndroidDoc
     pathHint: value.pathHint ?? null,
     mimeType: value.mimeType ?? null,
     markdown: value.markdown,
+    encoding: normalizeMarkdownEncodingValue(value.encoding),
+    hasEncodingBom: Boolean(value.hasEncodingBom),
     canWrite: Boolean(value.canWrite),
     persisted: Boolean(value.persisted),
     shareKind,
@@ -353,9 +415,15 @@ function normalizeSavedDocument(value: SavedAndroidDocument): SavedAndroidDocume
     providerName: value.providerName ?? null,
     pathHint: value.pathHint ?? null,
     mimeType: value.mimeType ?? null,
+    encoding: normalizeMarkdownEncodingValue(value.encoding),
+    hasEncodingBom: Boolean(value.hasEncodingBom),
     canWrite: Boolean(value.canWrite),
     persisted: Boolean(value.persisted),
   }
+}
+
+function normalizeMarkdownEncodingValue(value: unknown): MarkdownEncoding {
+  return normalizeMarkdownEncoding(value)
 }
 
 function normalizeShareResult(value: AndroidShareResult): AndroidShareResult {

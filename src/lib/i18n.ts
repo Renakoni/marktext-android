@@ -172,6 +172,8 @@ const MESSAGES = {
     'android.message.readFailed': 'Could not read this Markdown file.',
     'android.message.readOnly': 'This file is read-only.',
     'android.message.saveFailed': 'Could not save this Markdown file.',
+    'android.message.encodingUnsupported': 'This text encoding is not available on this device.',
+    'android.message.encodingFailed': 'Could not read or save this file with the selected encoding.',
     'android.message.createFailed': 'Could not create a Markdown file on this device.',
     'android.message.openFailed': 'Could not open this Markdown file.',
     'android.image.fromAppBuild': 'Insert images from the Android app build.',
@@ -334,6 +336,7 @@ const MESSAGES = {
     'settings.maintenance.exportLogsBody': 'Package app logs as a ZIP archive for Android sharing.',
     'settings.maintenance.exportLogsAction': 'Export',
     'settings.maintenance.exportLogsConfirm': 'Export ZIP',
+    'settings.maintenance.exportLogsUnavailable': 'Export logs from the Android app build.',
     'settings.maintenance.clearDraftsTitle': 'Clear local drafts?',
     'settings.maintenance.clearDraftsBody':
       'This removes local drafts stored inside MarkText. Markdown files on the device are not deleted.',
@@ -344,6 +347,7 @@ const MESSAGES = {
       'This restores settings to defaults. Documents and local drafts are not deleted.',
     'settings.maintenance.resetSettingsAction': 'Reset',
     'settings.maintenance.resetSettingsConfirm': 'Reset',
+    'settings.maintenance.genericError': 'Action failed.',
 
     'settings.value.on': 'On',
     'settings.value.off': 'Off',
@@ -707,6 +711,8 @@ const MESSAGES = {
     'android.message.readFailed': '无法读取此 Markdown 文件。',
     'android.message.readOnly': '此文件为只读。',
     'android.message.saveFailed': '无法保存此 Markdown 文件。',
+    'android.message.encodingUnsupported': '此设备不支持所选文本编码。',
+    'android.message.encodingFailed': '无法使用所选编码读取或保存此文件。',
     'android.message.createFailed': '无法在此设备上创建 Markdown 文件。',
     'android.message.openFailed': '无法打开此 Markdown 文件。',
     'android.image.fromAppBuild': '请在 Android 应用中插入图片。',
@@ -869,6 +875,7 @@ const MESSAGES = {
     'settings.maintenance.exportLogsBody': '将应用日志打包为 ZIP 压缩包，用于通过系统分享。',
     'settings.maintenance.exportLogsAction': '导出',
     'settings.maintenance.exportLogsConfirm': '导出压缩包',
+    'settings.maintenance.exportLogsUnavailable': '请在 Android 应用内导出日志。',
     'settings.maintenance.clearDraftsTitle': '清除本地草稿？',
     'settings.maintenance.clearDraftsBody':
       '这会删除保存在 MarkText 内的本地草稿，不会删除设备上的 Markdown 文件。',
@@ -879,6 +886,7 @@ const MESSAGES = {
       '这会恢复所有设置为默认值，不会删除文档和本地草稿。',
     'settings.maintenance.resetSettingsAction': '重置',
     'settings.maintenance.resetSettingsConfirm': '重置',
+    'settings.maintenance.genericError': '操作失败。',
 
     'settings.value.on': '开',
     'settings.value.off': '关',
@@ -1133,6 +1141,8 @@ const KNOWN_TEXT_MESSAGE_KEYS = {
   'Could not read this Markdown file.': 'android.message.readFailed',
   'This file is read-only.': 'android.message.readOnly',
   'Could not save this Markdown file.': 'android.message.saveFailed',
+  'This text encoding is not available on this device.': 'android.message.encodingUnsupported',
+  'Could not read or save this file with the selected encoding.': 'android.message.encodingFailed',
   'Could not create a Markdown file on this device.': 'android.message.createFailed',
   'Could not open this Markdown file.': 'android.message.openFailed',
   'Insert images from the Android app build.': 'android.image.fromAppBuild',

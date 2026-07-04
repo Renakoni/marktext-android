@@ -6,6 +6,11 @@ import {
   updateDocumentMarkdown,
   type MarkdownDocumentState,
 } from '../../lib/documentState'
+import {
+  DEFAULT_MARKDOWN_SAVE_SETTINGS,
+  type MarkdownEncoding,
+  type MarkdownSaveSettings,
+} from '../settings/advancedSettings'
 
 interface WorkflowLogger {
   debug(message: string, data?: unknown): void
@@ -22,6 +27,8 @@ export interface SaveAndroidDocumentWorkflowRequest {
   sourceUri: string
   savingDocument: MarkdownDocumentState
   markdownForSave: string
+  encoding: MarkdownEncoding
+  writeBom: boolean
   saveMarkdown: string
 }
 
@@ -84,12 +91,17 @@ interface CreateSaveAndroidDocumentWorkflowStartOptions {
   documentState: MarkdownDocumentState
   markdown: string
   canWrite: boolean
+  markdownSaveSettings?: MarkdownSaveSettings
 }
 
 interface SaveAndroidDocumentWorkflowOptions {
   request: SaveAndroidDocumentWorkflowRequest
   getCurrentDocumentState: () => MarkdownDocumentState
-  writeAndroidMarkdownDocument: (sourceUri: string, markdown: string) => Promise<unknown>
+  writeAndroidMarkdownDocument: (
+    sourceUri: string,
+    markdown: string,
+    options: { encoding: MarkdownEncoding; writeBom: boolean },
+  ) => Promise<unknown>
   getAndroidDocumentUserMessage: (error: unknown) => string
   recoveryMessage: string
   now?: () => string
@@ -100,6 +112,7 @@ function createSaveAndroidDocumentWorkflowRequest(
   documentState: MarkdownDocumentState,
   markdown: string,
   sourceUri: string,
+  markdownSaveSettings: MarkdownSaveSettings,
 ): SaveAndroidDocumentWorkflowRequest {
   const nextDocument = updateDocumentMarkdown(documentState, markdown, {
     markDirty: documentState.isDirty,
@@ -108,7 +121,9 @@ function createSaveAndroidDocumentWorkflowRequest(
   return {
     sourceUri,
     savingDocument: markDocumentSaving(nextDocument),
-    markdownForSave: prepareMarkdownForSave(nextDocument.markdown, nextDocument),
+    markdownForSave: prepareMarkdownForSave(nextDocument.markdown, nextDocument, markdownSaveSettings),
+    encoding: markdownSaveSettings.encoding,
+    writeBom: nextDocument.hasEncodingBom,
     saveMarkdown: nextDocument.markdown,
   }
 }
@@ -143,6 +158,7 @@ export function createSaveAndroidDocumentWorkflowStart({
   documentState,
   markdown,
   canWrite,
+  markdownSaveSettings = DEFAULT_MARKDOWN_SAVE_SETTINGS,
 }: CreateSaveAndroidDocumentWorkflowStartOptions): SaveAndroidDocumentWorkflowStartResult {
   if (documentState.autosaveTarget !== 'android-document') {
     return {
@@ -182,7 +198,12 @@ export function createSaveAndroidDocumentWorkflowStart({
     kind: 'ready',
     saved: false,
     status: 'Saving',
-    request: createSaveAndroidDocumentWorkflowRequest(documentState, markdown, sourceUri),
+    request: createSaveAndroidDocumentWorkflowRequest(
+      documentState,
+      markdown,
+      sourceUri,
+      markdownSaveSettings,
+    ),
   }
 }
 
@@ -196,7 +217,10 @@ export async function saveAndroidDocumentWorkflow({
   logger,
 }: SaveAndroidDocumentWorkflowOptions): Promise<SaveAndroidDocumentWorkflowResult> {
   try {
-    await writeAndroidMarkdownDocument(request.sourceUri, request.markdownForSave)
+    await writeAndroidMarkdownDocument(request.sourceUri, request.markdownForSave, {
+      encoding: request.encoding,
+      writeBom: request.writeBom,
+    })
     const savedAt = now()
     const currentDocument = getCurrentDocumentState()
 

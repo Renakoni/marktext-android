@@ -6,6 +6,7 @@ import SettingsScreen from '../settings/SettingsScreen.vue'
 import type { HomeDocumentItem } from './homeDocuments'
 import { HOME_TABS, type HomeTab } from './homeNavigation'
 import { SETTINGS_PAGES, type SettingsPage } from '../settings/settingsNavigation'
+import type { AdvancedMaintenanceActionId } from '../settings/advancedSettings'
 
 interface Props {
   activeTab: HomeTab
@@ -23,6 +24,7 @@ const emit = defineEmits<{
   openFile: []
   newDocument: []
   setSettingsPage: [page: SettingsPage]
+  runMaintenanceAction: [action: AdvancedMaintenanceActionId]
 }>()
 
 const homeMain = ref<HTMLElement | null>(null)
@@ -58,6 +60,7 @@ watch(
         v-else
         :active-page="settingsPage"
         @set-page="page => emit('setSettingsPage', page)"
+        @run-maintenance-action="action => emit('runMaintenanceAction', action)"
       />
     </div>
     <AppBottomNavigation

@@ -19,9 +19,16 @@ interface NativeLogInfo {
   currentFile?: string
 }
 
+interface NativeLogExportResult {
+  displayName?: string
+  bytes?: number
+  fileCount?: number
+}
+
 interface NativeLoggerPlugin {
   write(entry: NativeLogEntry): Promise<void>
   getInfo(): Promise<NativeLogInfo>
+  exportLogs(options: { webLogs: string }): Promise<NativeLogExportResult>
 }
 
 interface CapacitorWindow {
@@ -257,4 +264,15 @@ export async function getNativeLogInfo() {
     nativeLoggingUnavailable = true
     return null
   }
+}
+
+export async function exportNativeLogs() {
+  if (!isNativeLoggerAvailable()) {
+    return null
+  }
+
+  const webLogs = readStoredEntries()
+    .map(entry => JSON.stringify(entry))
+    .join('\n')
+  return await NativeLogger.exportLogs({ webLogs })
 }

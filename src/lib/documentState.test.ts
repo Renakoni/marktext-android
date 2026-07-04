@@ -72,6 +72,25 @@ describe('documentState', () => {
     expect(saved).toBe('one\r\ntwo\r\n')
   })
 
+  it('overrides preserved line endings when a global save setting is selected', () => {
+    const documentState = createUntitledDocument({ markdown: 'one\r\ntwo\r\n' })
+    const saved = prepareMarkdownForSave('one\ntwo\n', documentState, {
+      lineEnding: 'lf',
+      trimTrailingNewline: 1,
+    })
+
+    expect(saved).toBe('one\ntwo\n')
+  })
+
+  it('trims trailing newlines when the global save setting requests it', () => {
+    const documentState = createUntitledDocument({ markdown: 'one\n\n' })
+    const saved = prepareMarkdownForSave('one\n\n', documentState, {
+      trimTrailingNewline: 0,
+    })
+
+    expect(saved).toBe('one')
+  })
+
   it('preserves a final newline added after opening a document without one', () => {
     const documentState = createUntitledDocument({ markdown: 'one' })
     const dirty = updateDocumentMarkdown(documentState, 'one\n')

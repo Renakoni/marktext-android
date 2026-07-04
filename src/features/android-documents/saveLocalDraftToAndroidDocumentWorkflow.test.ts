@@ -63,6 +63,7 @@ describe('saveLocalDraftToAndroidDocumentWorkflow', () => {
     expect(createAndroidMarkdownDocument).toHaveBeenCalledWith(
       '# Saved Draft\r\n\r\nbody\r\n',
       'Saved Draft.md',
+      { encoding: 'utf8', writeBom: false },
     )
     expect(result).toEqual({
       kind: 'canceled',
@@ -151,5 +152,29 @@ describe('saveLocalDraftToAndroidDocumentWorkflow', () => {
         lastSaveError: 'permission lost',
       },
     })
+  })
+
+  it('creates Android Markdown with configured save preparation options', async () => {
+    const createAndroidMarkdownDocument = vi.fn().mockResolvedValue({ canceled: true })
+
+    await saveLocalDraftToAndroidDocumentWorkflow({
+      draftDocument: createDraftDocument('one\ntwo\n\n'),
+      returnHomeAfterSave: false,
+      reopenPromptOnCancel: false,
+      transientAccessMessage: 'transient',
+      createAndroidMarkdownDocument,
+      getAndroidDocumentUserMessage: () => 'failed',
+      markdownSaveSettings: {
+        encoding: 'cp1252',
+        lineEnding: 'crlf',
+        trimTrailingNewline: 1,
+      },
+    })
+
+    expect(createAndroidMarkdownDocument).toHaveBeenCalledWith(
+      'one\r\ntwo\r\n',
+      'Draft.md',
+      { encoding: 'cp1252', writeBom: false },
+    )
   })
 })

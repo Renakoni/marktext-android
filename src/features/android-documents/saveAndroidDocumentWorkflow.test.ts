@@ -127,6 +127,7 @@ describe('saveAndroidDocumentWorkflow', () => {
     expect(writeAndroidMarkdownDocument).toHaveBeenCalledWith(
       'content://provider/android.md',
       '# Android\r\n\r\nbody\r\n\r\nchanged\r\n',
+      { encoding: 'utf8', writeBom: false },
     )
     expect(result).toMatchObject({
       kind: 'saved',
@@ -215,6 +216,30 @@ describe('saveAndroidDocumentWorkflow', () => {
       recoveryDraft: {
         sourceUri: 'content://provider/android.md',
         markdown: '# Android\n\nbody\n\nchanged',
+      },
+    })
+  })
+
+  it('applies configured line ending, trailing newline, and encoding settings', () => {
+    const documentState = createDirtyAndroidDocumentState('one\ntwo\n\n')
+
+    const start = createSaveAndroidDocumentWorkflowStart({
+      documentState,
+      markdown: documentState.markdown,
+      canWrite: true,
+      markdownSaveSettings: {
+        encoding: 'gbk',
+        lineEnding: 'crlf',
+        trimTrailingNewline: 1,
+      },
+    })
+
+    expect(start).toMatchObject({
+      kind: 'ready',
+      request: {
+        markdownForSave: 'one\r\ntwo\r\n',
+        encoding: 'gbk',
+        writeBom: false,
       },
     })
   })

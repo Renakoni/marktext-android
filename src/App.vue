@@ -5,6 +5,7 @@ import HomeScreen from './features/home/HomeScreen.vue'
 import EditorScreen from './features/editor/EditorScreen.vue'
 import {
   createAndroidMarkdownDocument,
+  configureAndroidMarkdownSettings,
   getAndroidDocumentErrorCode,
   getAndroidDocumentUserMessage,
   isAndroidDocumentAccessAvailable,
@@ -113,7 +114,12 @@ import {
   writeStoredAndroidRecentDocuments,
   writeStoredLocalDrafts,
 } from './lib/documentStorage'
-import { createLogger, getNativeLogInfo, isNativeLoggerAvailable } from './lib/logger'
+import {
+  createLogger,
+  exportNativeLogs,
+  getNativeLogInfo,
+  isNativeLoggerAvailable,
+} from './lib/logger'
 import {
   type MobileCommandId,
   type MobileEditorCommandTarget,
@@ -131,6 +137,12 @@ import {
   getEditorStyleVars,
 } from './features/settings/appearanceSettings'
 import { getEditingSettings } from './features/settings/editingSettings'
+import {
+  getAdvancedSettings,
+  getAndroidMarkdownSettings,
+  getMarkdownSaveSettings,
+  type AdvancedMaintenanceActionId,
+} from './features/settings/advancedSettings'
 import { createMuyaMobileEditorCommandTarget } from './lib/muyaMobileAdapter'
 import { translateKnownText, useI18n } from './lib/i18n'
 import {
@@ -185,12 +197,22 @@ const {
   openLinkSheet: openEditorLinkSheet,
   closeLinkSheet: resetEditorLinkSheet,
 } = useEditorToolbar()
-const { locale, t } = useI18n()
-const { getValue } = useSettingsState()
+const { locale, setLocale, t } = useI18n()
+const { getValue, clearSettings } = useSettingsState()
 const appearanceTextSettings = computed(() => getAppearanceTextSettings(getValue))
 const editingSettings = computed(() => getEditingSettings(getValue))
 const documentSettings = computed(() => getDocumentSettings(getValue))
 const imageSharingSettings = computed(() => getImageSharingSettings(getValue))
+const advancedSettings = computed(() => getAdvancedSettings(getValue))
+const androidMarkdownSettings = computed(() => getAndroidMarkdownSettings(advancedSettings.value))
+const detectedDocumentEncoding = computed(() =>
+  documentState.value.autosaveTarget === 'android-document'
+    ? documentState.value.encoding
+    : undefined,
+)
+const markdownSaveSettings = computed(() =>
+  getMarkdownSaveSettings(advancedSettings.value, detectedDocumentEncoding.value),
+)
 const editorStyleVars = computed(() => getEditorStyleVars(appearanceTextSettings.value))
 const displayStatus = computed(() => translateKnownText(status.value))
 const displayHomeNotice = computed(() =>
@@ -259,6 +281,20 @@ watch(documentSettings, (settings, previousSettings) => {
     }
   }
 })
+
+watch(
+  androidMarkdownSettings,
+  settings => {
+    if (!isAndroidDocumentAccessAvailable()) {
+      return
+    }
+
+    configureAndroidMarkdownSettings(settings).catch(error => {
+      androidDocumentLog.warn('Android Markdown settings update failed', error)
+    })
+  },
+  { immediate: true },
+)
 
 watch(locale, nextLocale => {
   void applyMuyaEditorLocale(editor, nextLocale, editorLog)
@@ -711,6 +747,7 @@ async function saveAndroidDocument() {
     documentState: documentState.value,
     markdown: value,
     canWrite: currentAndroidDocumentCanWrite.value,
+    markdownSaveSettings: markdownSaveSettings.value,
   })
 
   if (startResult.kind === 'not-android-document' || startResult.kind === 'clean') {
@@ -810,6 +847,7 @@ async function saveLocalDraftToAndroidDocument(options: { returnHomeAfterSave?: 
     transientAccessMessage: getTransientAndroidSaveMessage(),
     createAndroidMarkdownDocument,
     getAndroidDocumentUserMessage,
+    markdownSaveSettings: markdownSaveSettings.value,
     logger: androidDocumentLog,
   })
 
@@ -883,6 +921,7 @@ async function saveAndroidDocumentCopy(options: { returnHomeAfterSave?: boolean 
       transientAccessMessage: getTransientAndroidSaveMessage(),
       createAndroidMarkdownDocument,
       getAndroidDocumentUserMessage,
+      markdownSaveSettings: markdownSaveSettings.value,
       logger: androidDocumentLog,
     })
 
@@ -947,6 +986,7 @@ async function shareCurrentMarkdownDocument() {
       shareAndroidMarkdownDocument,
       getAndroidDocumentUserMessage,
       imageSharingSettings: imageSharingSettings.value,
+      markdownSaveSettings: markdownSaveSettings.value,
       logger: androidDocumentLog,
     })
 
@@ -1137,7 +1177,7 @@ async function openFileFromAndroid() {
   homeNotice.value = null
 
   const result = await openAndroidMarkdownDocumentWorkflow({
-    openAndroidMarkdownDocument,
+    openAndroidMarkdownDocument: () => openAndroidMarkdownDocument(androidMarkdownSettings.value),
     getAndroidDocumentErrorCode,
     getAndroidDocumentUserMessage,
     logger: androidDocumentLog,
@@ -1257,7 +1297,10 @@ async function openDocument(id: string) {
     homeNotice.value = null
     androidExitPromptOpen.value = false
     try {
-      const document = await readAndroidMarkdownDocument(recentDocument.sourceUri)
+      const document = await readAndroidMarkdownDocument(
+        recentDocument.sourceUri,
+        androidMarkdownSettings.value,
+      )
       await openAndroidDocumentResult(document)
     } catch (error) {
       homeNotice.value = getAndroidDocumentUserMessage(error)
@@ -1544,6 +1587,41 @@ function discardLocalDraftAndShowHome() {
   closeEditorToHome()
 }
 
+function clearLocalDraftMaintenanceState() {
+  clearDraftSaveTimer()
+  localDrafts.value = []
+  writeStoredLocalDrafts([])
+  if (documentState.value.autosaveTarget === 'local-draft') {
+    documentState.value = createUntitledDocument({ autosaveTarget: 'local-draft' })
+    promptLocalDraftSaveOnExit.value = false
+  }
+  draftLog.info('cleared local drafts from Advanced maintenance')
+}
+
+function resetSettingsMaintenanceState() {
+  clearSettings()
+  setLocale('en')
+  appLog.info('reset settings from Advanced maintenance')
+}
+
+async function runAdvancedMaintenanceAction(action: AdvancedMaintenanceActionId) {
+  if (action === 'exportLogs') {
+    const result = await exportNativeLogs()
+    if (!result) {
+      throw new Error(t('settings.maintenance.exportLogsUnavailable'))
+    }
+    loggingLog.info('exported native logs', result)
+    return
+  }
+
+  if (action === 'clearDrafts') {
+    clearLocalDraftMaintenanceState()
+    return
+  }
+
+  resetSettingsMaintenanceState()
+}
+
 onMounted(() => {
   appLog.info('app mounted')
   installAppLifecycleListeners()
@@ -1631,6 +1709,7 @@ onBeforeUnmount(() => {
     @open-file="openFileFromAndroid"
     @set-tab="setHomeTab"
     @set-settings-page="setSettingsPage"
+    @run-maintenance-action="runAdvancedMaintenanceAction"
   />
 
   <EditorScreen

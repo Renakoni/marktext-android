@@ -8,6 +8,11 @@ import {
   shouldAttachImagesWhenSharing,
   type ImageSharingSettings,
 } from './imageSharingSettings'
+import {
+  DEFAULT_MARKDOWN_SAVE_SETTINGS,
+  type MarkdownEncoding,
+  type MarkdownSaveSettings,
+} from '../settings/advancedSettings'
 
 interface WorkflowLogger {
   info(message: string, data?: unknown): void
@@ -31,10 +36,11 @@ interface ShareAndroidMarkdownDocumentWorkflowOptions {
   shareAndroidMarkdownDocument: (
     markdown: string,
     suggestedName: string,
-    options: { attachImages: boolean },
+    options: { attachImages: boolean; encoding: MarkdownEncoding },
   ) => Promise<AndroidShareResult>
   getAndroidDocumentUserMessage: (error: unknown) => string
   imageSharingSettings: Pick<ImageSharingSettings, 'shareImages'>
+  markdownSaveSettings?: MarkdownSaveSettings
   logger?: WorkflowLogger
 }
 
@@ -43,9 +49,10 @@ export async function shareAndroidMarkdownDocumentWorkflow({
   shareAndroidMarkdownDocument,
   getAndroidDocumentUserMessage,
   imageSharingSettings,
+  markdownSaveSettings = DEFAULT_MARKDOWN_SAVE_SETTINGS,
   logger,
 }: ShareAndroidMarkdownDocumentWorkflowOptions): Promise<ShareAndroidMarkdownDocumentResult> {
-  const markdownForShare = prepareMarkdownForSave(currentDocument.markdown, currentDocument)
+  const markdownForShare = prepareMarkdownForSave(currentDocument.markdown, currentDocument, markdownSaveSettings)
   const suggestedName = getSuggestedMarkdownFileName(
     currentDocument.markdown,
     currentDocument.displayName,
@@ -54,6 +61,7 @@ export async function shareAndroidMarkdownDocumentWorkflow({
   try {
     const result = await shareAndroidMarkdownDocument(markdownForShare, suggestedName, {
       attachImages: shouldAttachImagesWhenSharing(imageSharingSettings),
+      encoding: markdownSaveSettings.encoding,
     })
     logger?.info('Android share sheet opened', {
       displayName: result.displayName,

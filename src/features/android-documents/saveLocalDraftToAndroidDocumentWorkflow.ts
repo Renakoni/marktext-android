@@ -8,6 +8,11 @@ import {
   createSavedDocumentStateFromAndroidDocument,
   type SavedAndroidDocumentStateSource,
 } from '../document-session/documentSessionState'
+import {
+  DEFAULT_MARKDOWN_SAVE_SETTINGS,
+  type MarkdownEncoding,
+  type MarkdownSaveSettings,
+} from '../settings/advancedSettings'
 import type { OpenedAndroidDocument } from '../../lib/androidDocuments'
 
 interface CanceledAndroidDocumentCreate {
@@ -63,8 +68,10 @@ interface SaveLocalDraftToAndroidDocumentWorkflowOptions {
   createAndroidMarkdownDocument: (
     markdown: string,
     suggestedName: string,
+    options: { encoding: MarkdownEncoding; writeBom: boolean },
   ) => Promise<AndroidDocumentCreateResult>
   getAndroidDocumentUserMessage: (error: unknown) => string
+  markdownSaveSettings?: MarkdownSaveSettings
   now?: () => string
   logger?: WorkflowLogger
 }
@@ -76,6 +83,7 @@ export async function saveLocalDraftToAndroidDocumentWorkflow({
   transientAccessMessage,
   createAndroidMarkdownDocument,
   getAndroidDocumentUserMessage,
+  markdownSaveSettings = DEFAULT_MARKDOWN_SAVE_SETTINGS,
   now = () => new Date().toISOString(),
   logger,
 }: SaveLocalDraftToAndroidDocumentWorkflowOptions): Promise<SaveLocalDraftToAndroidDocumentResult> {
@@ -87,12 +95,15 @@ export async function saveLocalDraftToAndroidDocumentWorkflow({
   }
 
   try {
-    const markdownForSave = prepareMarkdownForSave(draftDocument.markdown, draftDocument)
+    const markdownForSave = prepareMarkdownForSave(draftDocument.markdown, draftDocument, markdownSaveSettings)
     const suggestedName = getSuggestedMarkdownFileName(
       draftDocument.markdown,
       draftDocument.displayName,
     )
-    const document = await createAndroidMarkdownDocument(markdownForSave, suggestedName)
+    const document = await createAndroidMarkdownDocument(markdownForSave, suggestedName, {
+      encoding: markdownSaveSettings.encoding,
+      writeBom: draftDocument.hasEncodingBom,
+    })
     if (document.canceled) {
       logger?.info('Android document create canceled')
       return {

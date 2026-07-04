@@ -23,6 +23,8 @@ export function createDocumentStateFromAndroidDocument(document: OpenedAndroidDo
     markdown: document.markdown,
     displayName: document.displayName,
     sourceUri: document.sourceUri,
+    encoding: document.encoding,
+    hasEncodingBom: document.hasEncodingBom,
     autosaveTarget: 'android-document',
   })
 

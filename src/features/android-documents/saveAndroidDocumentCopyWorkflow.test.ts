@@ -49,6 +49,7 @@ describe('saveAndroidDocumentCopyWorkflow', () => {
     expect(createAndroidMarkdownDocument).toHaveBeenCalledWith(
       '# Original Save Copy\n\nbody',
       'Original Save Copy copy 2.md',
+      { encoding: 'utf8', writeBom: false },
     )
     expect(result).toEqual({
       kind: 'canceled',
@@ -142,5 +143,31 @@ describe('saveAndroidDocumentCopyWorkflow', () => {
         markdown: '# Original\n\nbody\n\nchanged',
       },
     })
+  })
+
+  it('creates the copy with configured save preparation options', async () => {
+    const createAndroidMarkdownDocument = vi.fn().mockResolvedValue({ canceled: true })
+    const copySourceDocument = createDirtyAndroidDocumentState('one\ntwo\n\n')
+
+    await saveAndroidDocumentCopyWorkflow({
+      copySourceDocument,
+      originalSourceUri: 'content://provider/original.md',
+      reservedDisplayNames: [],
+      returnHomeAfterSave: false,
+      transientAccessMessage: 'transient',
+      createAndroidMarkdownDocument,
+      getAndroidDocumentUserMessage: () => 'failed',
+      markdownSaveSettings: {
+        encoding: 'utf16le',
+        lineEnding: 'crlf',
+        trimTrailingNewline: 0,
+      },
+    })
+
+    expect(createAndroidMarkdownDocument).toHaveBeenCalledWith(
+      'one\r\ntwo',
+      'Original copy.md',
+      { encoding: 'utf16le', writeBom: false },
+    )
   })
 })

@@ -228,7 +228,8 @@ test('switches between document home and the settings about screen', async ({ pa
     'Diagnostics',
     'Maintenance',
   ])
-  await expect(page.getByTestId('settings-advanced-diagnostics')).toContainText('Ready')
+  await expect(page.getByTestId('settings-advanced-diagnostics')).toContainText('web')
+  await expect(page.getByTestId('settings-advanced-webview')).toContainText('Mozilla')
   await expect(page.getByTestId('settings-advanced-encoding')).toContainText('UTF-8')
   await expect(page.getByTestId('settings-advanced-auto-detect-encoding')).toHaveAttribute(
     'aria-checked',
