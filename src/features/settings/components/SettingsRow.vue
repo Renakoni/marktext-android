@@ -4,6 +4,8 @@ import { computed } from 'vue'
 const props = defineProps<{
   label: string
   value?: string
+  actionLabel?: string
+  actionVariant?: 'default' | 'danger'
   href?: string
   button?: boolean
   chevron?: boolean
@@ -17,11 +19,32 @@ defineEmits<{
 }>()
 
 const hasChevron = computed(() => Boolean(props.chevron || props.href))
+const actionTestId = computed(() =>
+  props.actionLabel && props.testId ? `${props.testId}-action` : undefined,
+)
 </script>
 
 <template>
+  <div
+    v-if="button && actionLabel"
+    class="settings-row is-action-with-control"
+    :data-testid="testId"
+  >
+    <span class="settings-row-label">{{ label }}</span>
+    <button
+      class="settings-row-action-button"
+      :class="{ 'is-danger': actionVariant === 'danger' }"
+      type="button"
+      :disabled="disabled"
+      :aria-busy="busy ? 'true' : undefined"
+      :data-testid="actionTestId"
+      @click="$emit('activate')"
+    >
+      {{ actionLabel }}
+    </button>
+  </div>
   <button
-    v-if="button"
+    v-else-if="button"
     class="settings-row is-action"
     :class="{ 'has-chevron': hasChevron }"
     type="button"
@@ -100,6 +123,36 @@ const hasChevron = computed(() => Boolean(props.chevron || props.href))
 
 .settings-row.is-action:disabled {
   color: var(--text-faint);
+}
+
+.settings-row-action-button {
+  min-width: 68px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-row-action-button:active {
+  transform: translateY(0.5px);
+}
+
+.settings-row-action-button:focus-visible {
+  outline: 2px solid var(--focus-ring-22);
+  outline-offset: 1px;
+}
+
+.settings-row-action-button:disabled {
+  color: var(--text-faint);
+}
+
+.settings-row-action-button.is-danger {
+  color: var(--danger);
 }
 
 .settings-row-label,
