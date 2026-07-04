@@ -47,6 +47,7 @@ import {
   markSavedAndroidRecentDocument,
   rememberAndroidRecentDocument,
 } from './features/android-documents/androidRecentDocuments'
+import { getImageSharingSettings } from './features/android-documents/imageSharingSettings'
 import {
   createUntitledDocument,
   markDocumentSaveFailed,
@@ -189,6 +190,7 @@ const { getValue } = useSettingsState()
 const appearanceTextSettings = computed(() => getAppearanceTextSettings(getValue))
 const editingSettings = computed(() => getEditingSettings(getValue))
 const documentSettings = computed(() => getDocumentSettings(getValue))
+const imageSharingSettings = computed(() => getImageSharingSettings(getValue))
 const editorStyleVars = computed(() => getEditorStyleVars(appearanceTextSettings.value))
 const displayStatus = computed(() => translateKnownText(status.value))
 const displayHomeNotice = computed(() =>
@@ -530,7 +532,9 @@ async function insertImageFromAndroidPicker() {
     const result = await insertAndroidImageWorkflow({
       selectedText,
       ensureAndroidImageResolver,
-      pickAndroidImageDocument,
+      pickAndroidImageDocument: () => pickAndroidImageDocument({
+        copyImage: imageSharingSettings.value.imageCopyImages,
+      }),
       insertMarkdown: insertMarkdownAtPendingSelection,
       getAndroidImageUserMessage,
       logger: editorLog,
@@ -942,6 +946,7 @@ async function shareCurrentMarkdownDocument() {
       currentDocument,
       shareAndroidMarkdownDocument,
       getAndroidDocumentUserMessage,
+      imageSharingSettings: imageSharingSettings.value,
       logger: androidDocumentLog,
     })
 

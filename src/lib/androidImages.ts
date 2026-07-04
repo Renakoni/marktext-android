@@ -20,6 +20,10 @@ interface AndroidImageResolverWindow extends Window {
   MarkTextAndroidImageResolver?: (source: string) => string | null
 }
 
+export interface AndroidImagePickOptions {
+  copyImage: boolean
+}
+
 export class AndroidImageError extends Error {
   code: string
 
@@ -30,7 +34,8 @@ export class AndroidImageError extends Error {
   }
 }
 
-const MARKTEXT_IMAGE_SOURCE_REGEXP = /^marktext-image:\/\/local\/([^/?#]+)$/i
+const MARKTEXT_LOCAL_IMAGE_SOURCE_REGEXP = /^marktext-image:\/\/local\/([^/?#]+)$/i
+const MARKTEXT_ANDROID_IMAGE_SOURCE_REGEXP = /^marktext-image:\/\/android\/([^/?#]+)$/i
 
 let imageDirectory: ImportedAndroidImageDirectory | null = null
 
@@ -42,11 +47,16 @@ export function resolveMarkTextImageSource(
   source: string,
   directory: ImportedAndroidImageDirectory | null,
 ) {
+  const androidUri = getMarkTextAndroidImageUri(source)
+  if (androidUri) {
+    return Capacitor.convertFileSrc(androidUri)
+  }
+
   if (!directory) {
     return null
   }
 
-  const fileName = getMarkTextImageFileName(source)
+  const fileName = getMarkTextLocalImageFileName(source)
   if (!fileName) {
     return null
   }
@@ -73,9 +83,13 @@ export async function ensureAndroidImageResolver() {
   win.MarkTextAndroidImageResolver = source => resolveMarkTextImageSource(source, imageDirectory)
 }
 
-export async function pickAndroidImageDocument() {
+export async function pickAndroidImageDocument(
+  options: AndroidImagePickOptions = { copyImage: true },
+) {
   ensureAndroidImagesAvailable()
-  const result = await AndroidDocuments.pickImageDocument()
+  const result = await AndroidDocuments.pickImageDocument({
+    copyImage: options.copyImage,
+  })
   if (result.canceled) {
     return result
   }
@@ -162,8 +176,8 @@ function normalizeImportedImage(value: ImportedAndroidImage): ImportedAndroidIma
   }
 }
 
-function getMarkTextImageFileName(source: string) {
-  const match = MARKTEXT_IMAGE_SOURCE_REGEXP.exec(source)
+function getMarkTextLocalImageFileName(source: string) {
+  const match = MARKTEXT_LOCAL_IMAGE_SOURCE_REGEXP.exec(source)
   if (!match) {
     return null
   }
@@ -175,6 +189,26 @@ function getMarkTextImageFileName(source: string) {
       throw error
     }
     throw new AndroidImageError('INVALID_IMAGE_RESULT', 'Android image plugin returned an invalid file name')
+  }
+}
+
+function getMarkTextAndroidImageUri(source: string) {
+  const match = MARKTEXT_ANDROID_IMAGE_SOURCE_REGEXP.exec(source)
+  if (!match) {
+    return null
+  }
+
+  try {
+    const uri = decodeURIComponent(match[1]).trim()
+    if (!uri || !uri.toLowerCase().startsWith('content://')) {
+      throw new AndroidImageError('INVALID_IMAGE_RESULT', 'Android image plugin returned an invalid URI')
+    }
+    return uri
+  } catch (error) {
+    if (error instanceof AndroidImageError) {
+      throw error
+    }
+    throw new AndroidImageError('INVALID_IMAGE_RESULT', 'Android image plugin returned an invalid URI')
   }
 }
 

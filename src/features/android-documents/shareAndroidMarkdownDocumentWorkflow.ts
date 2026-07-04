@@ -4,6 +4,10 @@ import {
   type MarkdownDocumentState,
 } from '../../lib/documentState'
 import type { AndroidShareResult } from '../../lib/androidDocuments'
+import {
+  shouldAttachImagesWhenSharing,
+  type ImageSharingSettings,
+} from './imageSharingSettings'
 
 interface WorkflowLogger {
   info(message: string, data?: unknown): void
@@ -27,8 +31,10 @@ interface ShareAndroidMarkdownDocumentWorkflowOptions {
   shareAndroidMarkdownDocument: (
     markdown: string,
     suggestedName: string,
+    options: { attachImages: boolean },
   ) => Promise<AndroidShareResult>
   getAndroidDocumentUserMessage: (error: unknown) => string
+  imageSharingSettings: Pick<ImageSharingSettings, 'shareImages'>
   logger?: WorkflowLogger
 }
 
@@ -36,6 +42,7 @@ export async function shareAndroidMarkdownDocumentWorkflow({
   currentDocument,
   shareAndroidMarkdownDocument,
   getAndroidDocumentUserMessage,
+  imageSharingSettings,
   logger,
 }: ShareAndroidMarkdownDocumentWorkflowOptions): Promise<ShareAndroidMarkdownDocumentResult> {
   const markdownForShare = prepareMarkdownForSave(currentDocument.markdown, currentDocument)
@@ -45,7 +52,9 @@ export async function shareAndroidMarkdownDocumentWorkflow({
   )
 
   try {
-    const result = await shareAndroidMarkdownDocument(markdownForShare, suggestedName)
+    const result = await shareAndroidMarkdownDocument(markdownForShare, suggestedName, {
+      attachImages: shouldAttachImagesWhenSharing(imageSharingSettings),
+    })
     logger?.info('Android share sheet opened', {
       displayName: result.displayName,
       bytes: result.bytes,

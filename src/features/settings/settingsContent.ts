@@ -216,17 +216,6 @@ const sortOrderOptions = [
   { id: 'desc', labelKey: 'settings.option.sort.desc' },
 ] as const satisfies readonly SettingsOption[]
 
-const imageImportOptions = [
-  { id: 'copy', labelKey: 'settings.option.image.copy' },
-  { id: 'link', labelKey: 'settings.option.image.link' },
-  { id: 'ask', labelKey: 'settings.option.image.ask' },
-] as const satisfies readonly SettingsOption[]
-
-const relativeBaseOptions = [
-  { id: 'file', labelKey: 'settings.option.relative.file' },
-  { id: 'folder', labelKey: 'settings.option.relative.folder' },
-] as const satisfies readonly SettingsOption[]
-
 const imageShareOptions = [
   { id: 'attach', labelKey: 'settings.option.share.attach' },
   { id: 'link-only', labelKey: 'settings.option.share.linkOnly' },
@@ -758,54 +747,11 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
       titleKey: 'settings.section.import',
       rows: [
         {
-          kind: 'choice',
-          id: 'imageInsertAction',
-          labelKey: 'settings.images.imageImport',
-          defaultValue: 'copy',
-          options: imageImportOptions,
-          testId: 'settings-images-import',
-        },
-        {
           kind: 'toggle',
           id: 'imageCopyImages',
           labelKey: 'settings.images.copyImages',
           defaultValue: true,
           testId: 'settings-images-copy',
-        },
-      ],
-    },
-    {
-      titleKey: 'settings.section.folder',
-      rows: [
-        {
-          kind: 'action',
-          id: 'imageFolder',
-          labelKey: 'settings.images.imageFolder',
-          valueKey: 'settings.value.choose',
-          testId: 'settings-images-folder',
-        },
-        {
-          kind: 'text',
-          id: 'imageRelativeDirectoryName',
-          labelKey: 'settings.images.relativeFolder',
-          defaultValue: 'assets',
-          placeholderKey: 'settings.placeholder.folder',
-          testId: 'settings-images-relative-folder',
-        },
-        {
-          kind: 'toggle',
-          id: 'imagePreferRelativeDirectory',
-          labelKey: 'settings.images.preferRelative',
-          defaultValue: false,
-          testId: 'settings-images-prefer-relative',
-        },
-        {
-          kind: 'choice',
-          id: 'imageRelativeDirectoryBase',
-          labelKey: 'settings.images.relativeBase',
-          defaultValue: 'file',
-          options: relativeBaseOptions,
-          testId: 'settings-images-relative-base',
         },
       ],
     },
@@ -819,13 +765,6 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
           defaultValue: 'attach',
           options: imageShareOptions,
           testId: 'settings-images-share',
-        },
-        {
-          kind: 'toggle',
-          id: 'shareAttachLocal',
-          labelKey: 'settings.images.attachLocal',
-          defaultValue: true,
-          testId: 'settings-images-attach-local',
         },
         {
           kind: 'toggle',
