@@ -32,6 +32,7 @@ class MemoryStorage {
 const localDraft: LocalDraftRecord = {
   id: 'draft-1',
   markdown: '# Draft\n\nbody',
+  createdAt: '2026-06-29T00:00:00.000Z',
   updatedAt: '2026-06-29T00:01:00.000Z',
   lastSavedAt: null,
 }
@@ -45,6 +46,7 @@ const androidDocument: RecentDocumentRecord = {
   providerName: 'Documents',
   pathHint: 'Documents/notes.md',
   markdownPreview: null,
+  createdAt: '2026-06-29T00:02:00.000Z',
   updatedAt: '2026-06-29T00:02:00.000Z',
   lastOpenedAt: '2026-06-29T00:02:00.000Z',
   lastSavedAt: null,

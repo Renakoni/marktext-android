@@ -195,6 +195,7 @@ export function createSharedTextDocumentOpenResult(
     localDraft: {
       id: draftDocument.id,
       markdown: draftDocument.markdown,
+      createdAt: draftDocument.createdAt,
       updatedAt: draftDocument.updatedAt,
       lastSavedAt: draftDocument.lastSavedAt,
     },

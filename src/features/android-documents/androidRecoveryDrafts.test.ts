@@ -14,6 +14,7 @@ describe('androidRecoveryDrafts', () => {
     ).toEqual({
       id: 'android-recovery:content://test/document',
       markdown: '# Kept edits',
+      createdAt: '2026-07-02T00:00:00Z',
       updatedAt: '2026-07-02T00:00:00Z',
       lastSavedAt: null,
     })

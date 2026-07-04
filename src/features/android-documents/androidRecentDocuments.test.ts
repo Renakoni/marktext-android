@@ -14,6 +14,7 @@ const existingAndroidDocument: RecentDocumentRecord = {
   providerName: 'Documents',
   pathHint: 'Documents/old.md',
   markdownPreview: null,
+  createdAt: '2026-07-02T00:00:00.000Z',
   updatedAt: '2026-07-02T00:00:00.000Z',
   lastOpenedAt: '2026-07-02T00:00:00.000Z',
   lastSavedAt: null,
@@ -58,6 +59,7 @@ describe('androidRecentDocuments', () => {
     expect(records).not.toBeNull()
     expect(records?.[0]).toMatchObject({
       title: 'Saved title',
+      createdAt: '2026-07-02T00:00:00.000Z',
       updatedAt: '2026-07-02T00:03:00.000Z',
       lastSavedAt: '2026-07-02T00:03:00.000Z',
       autosaveState: 'clean',

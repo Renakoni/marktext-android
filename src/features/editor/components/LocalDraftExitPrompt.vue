@@ -3,6 +3,7 @@ import { useI18n } from '../../../lib/i18n'
 
 defineProps<{
   canSaveToDevice: boolean
+  canKeepDraft: boolean
   saving: boolean
 }>()
 
@@ -38,6 +39,7 @@ const { t } = useI18n()
           {{ t('editor.actions.saveToDevice') }}
         </button>
         <button
+          v-if="canKeepDraft"
           type="button"
           data-testid="prompt-keep-draft-button"
           :disabled="saving"

@@ -31,10 +31,12 @@ defineProps<{
   linkUrl: string
   draftExitPromptOpen: boolean
   draftCanSaveToDevice: boolean
+  draftCanKeepLocal: boolean
   draftSaving: boolean
   androidExitPromptOpen: boolean
   androidExitMessage: string
   androidCanSaveCopy: boolean
+  androidCanKeepRecovery: boolean
   androidSaving: boolean
   textDirection: 'ltr' | 'rtl'
   editorStyleVars: CSSProperties
@@ -176,6 +178,7 @@ onBeforeUnmount(() => {
     <LocalDraftExitPrompt
       v-if="draftExitPromptOpen"
       :can-save-to-device="draftCanSaveToDevice"
+      :can-keep-draft="draftCanKeepLocal"
       :saving="draftSaving"
       @save-to-device="emit('save-draft-to-device')"
       @keep="emit('keep-local-draft')"
@@ -186,6 +189,7 @@ onBeforeUnmount(() => {
       v-if="androidExitPromptOpen"
       :message="androidExitMessage"
       :can-save-copy="androidCanSaveCopy"
+      :can-keep-recovery="androidCanKeepRecovery"
       :saving="androidSaving"
       @save-copy="emit('save-android-copy')"
       @keep-recovery="emit('keep-android-recovery')"

@@ -53,6 +53,8 @@ const MESSAGES = {
     'app.status.shareSheetOpened': 'Share sheet opened',
     'app.notice.transientAndroidSave':
       'Saved to device. Kept local draft because Android did not grant long-term access.',
+    'app.notice.transientAndroidSaveWithoutDraft':
+      'Saved to device. Reopen it from Android to keep editing later.',
     'app.notice.openWithTemporaryAccess':
       'Opened with temporary Android access. Save a copy to keep editing later.',
     'app.notice.shareTemporaryAccess':
@@ -590,6 +592,8 @@ const MESSAGES = {
     'app.status.shareSheetOpened': '已打开分享面板',
     'app.notice.transientAndroidSave':
       '已保存到设备。Android 未授予长期访问权限，已保留本地草稿。',
+    'app.notice.transientAndroidSaveWithoutDraft':
+      '已保存到设备。之后请从 Android 重新打开以继续编辑。',
     'app.notice.openWithTemporaryAccess':
       '已通过 Android 临时访问打开。请保存副本以便之后继续编辑。',
     'app.notice.shareTemporaryAccess':
@@ -1104,6 +1108,8 @@ const KNOWN_TEXT_MESSAGE_KEYS = {
   'Share sheet opened': 'app.status.shareSheetOpened',
   'Saved to device. Kept local draft because Android did not grant long-term access.':
     'app.notice.transientAndroidSave',
+  'Saved to device. Reopen it from Android to keep editing later.':
+    'app.notice.transientAndroidSaveWithoutDraft',
   'Opened with temporary Android access. Save a copy to keep editing later.':
     'app.notice.openWithTemporaryAccess',
   'Opened from Android share with temporary access. Save a copy to keep editing later.':

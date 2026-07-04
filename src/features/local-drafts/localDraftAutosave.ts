@@ -34,6 +34,7 @@ export function createLocalDraftAutosaveResult(
     ? upsertLocalDraft(drafts, {
         id: savedDocument.id,
         markdown: savedDocument.markdown,
+        createdAt: savedDocument.createdAt,
         updatedAt: savedDocument.updatedAt,
         lastSavedAt: savedDocument.lastSavedAt,
       })

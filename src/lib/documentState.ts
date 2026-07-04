@@ -31,6 +31,7 @@ export interface MarkdownDocumentState {
   autosaveState: AutosaveState
   lastSavedAt: string | null
   lastSaveError: string | null
+  createdAt: string
   updatedAt: string
   stats: DocumentStats
 }
@@ -41,6 +42,7 @@ interface CreateDocumentOptions {
   sourceUri?: string | null
   autosaveTarget?: AutosaveTarget
   preferredLineEnding?: LineEnding
+  createdAt?: string
   now?: string
 }
 
@@ -240,6 +242,7 @@ export function createUntitledDocument(options: CreateDocumentOptions = {}): Mar
     autosaveState: 'clean',
     lastSavedAt: now,
     lastSaveError: null,
+    createdAt: options.createdAt ?? now,
     updatedAt: now,
     stats: getDocumentStats(normalized.markdown),
   }

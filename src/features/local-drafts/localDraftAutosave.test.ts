@@ -6,6 +6,7 @@ import type { LocalDraftRecord } from '../../lib/localDrafts'
 const existingDraft: LocalDraftRecord = {
   id: 'draft-1',
   markdown: '# Existing',
+  createdAt: '2026-07-02T00:00:00.000Z',
   updatedAt: '2026-07-02T00:00:00.000Z',
   lastSavedAt: '2026-07-02T00:00:00.000Z',
 }
@@ -31,6 +32,7 @@ describe('localDraftAutosave', () => {
     expect(result.nextDrafts[0]).toMatchObject({
       id: documentState.id,
       markdown: '# Updated draft\n\nbody',
+      createdAt: result.savedDocument.createdAt,
       lastSavedAt: result.savedDocument.lastSavedAt,
     })
   })

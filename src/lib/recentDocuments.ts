@@ -16,6 +16,7 @@ export interface RecentDocumentRecord {
   providerName: string | null
   pathHint: string | null
   markdownPreview: string | null
+  createdAt: string
   updatedAt: string
   lastOpenedAt: string
   lastSavedAt: string | null
@@ -30,6 +31,7 @@ export interface RecentDocumentListItem extends RecentDocumentRecord {
 interface LocalDraftSource {
   id: string
   markdown: string
+  createdAt?: string
   updatedAt: string
   lastSavedAt: string | null
 }
@@ -50,6 +52,10 @@ interface SavedDocumentOptions {
   canWrite?: boolean
 }
 
+type StoredRecentDocumentRecord = Omit<RecentDocumentRecord, 'createdAt'> & {
+  createdAt?: string
+}
+
 const DEFAULT_RECENT_LIMIT = 50
 
 function isRecentDocumentKind(value: unknown): value is RecentDocumentKind {
@@ -60,7 +66,7 @@ function isAutosaveState(value: unknown): value is AutosaveState {
   return value === 'clean' || value === 'dirty' || value === 'saving' || value === 'save-failed'
 }
 
-function isRecentDocumentRecord(value: unknown): value is RecentDocumentRecord {
+function isStoredRecentDocumentRecord(value: unknown): value is StoredRecentDocumentRecord {
   if (!value || typeof value !== 'object') {
     return false
   }
@@ -75,6 +81,7 @@ function isRecentDocumentRecord(value: unknown): value is RecentDocumentRecord {
     (typeof record.providerName === 'string' || record.providerName === null) &&
     (typeof record.pathHint === 'string' || record.pathHint === null) &&
     (typeof record.markdownPreview === 'string' || record.markdownPreview === null) &&
+    (typeof record.createdAt === 'string' || record.createdAt === undefined) &&
     typeof record.updatedAt === 'string' &&
     typeof record.lastOpenedAt === 'string' &&
     (typeof record.lastSavedAt === 'string' || record.lastSavedAt === null) &&
@@ -83,21 +90,31 @@ function isRecentDocumentRecord(value: unknown): value is RecentDocumentRecord {
   )
 }
 
-function getRecentDocumentKey(record: RecentDocumentRecord) {
+function normalizeRecentDocumentRecord(record: StoredRecentDocumentRecord): RecentDocumentRecord {
+  return {
+    ...record,
+    createdAt: record.createdAt ?? record.lastOpenedAt ?? record.updatedAt,
+  }
+}
+
+function getRecentDocumentKey(record: Pick<RecentDocumentRecord, 'id' | 'kind' | 'sourceUri'>) {
   return record.sourceUri ? `${record.kind}:${record.sourceUri}` : `${record.kind}:${record.id}`
 }
 
-function getRecentDocumentSortTime(record: RecentDocumentRecord) {
+function getRecentDocumentSortTime(
+  record: Pick<RecentDocumentRecord, 'updatedAt' | 'lastOpenedAt'>,
+) {
   return Math.max(Date.parse(record.updatedAt), Date.parse(record.lastOpenedAt))
 }
 
-function compareRecentDocuments(left: RecentDocumentRecord, right: RecentDocumentRecord) {
+function compareRecentDocuments(
+  left: Pick<RecentDocumentRecord, 'updatedAt' | 'lastOpenedAt'>,
+  right: Pick<RecentDocumentRecord, 'updatedAt' | 'lastOpenedAt'>,
+) {
   return getRecentDocumentSortTime(right) - getRecentDocumentSortTime(left)
 }
 
-export function createRecentDocumentFromLocalDraft(
-  draft: LocalDraftSource,
-): RecentDocumentRecord {
+export function createRecentDocumentFromLocalDraft(draft: LocalDraftSource): RecentDocumentRecord {
   const title = getDocumentTitle(draft.markdown)
 
   return {
@@ -109,6 +126,7 @@ export function createRecentDocumentFromLocalDraft(
     providerName: 'Local draft',
     pathHint: null,
     markdownPreview: draft.markdown,
+    createdAt: draft.createdAt ?? draft.updatedAt,
     updatedAt: draft.updatedAt,
     lastOpenedAt: draft.updatedAt,
     lastSavedAt: draft.lastSavedAt,
@@ -132,6 +150,7 @@ export function createRecentDocumentFromAndroidDocument(
     providerName: document.providerName,
     pathHint: document.pathHint,
     markdownPreview: null,
+    createdAt: openedAt,
     updatedAt: openedAt,
     lastOpenedAt: openedAt,
     lastSavedAt: null,
@@ -141,13 +160,14 @@ export function createRecentDocumentFromAndroidDocument(
 }
 
 export function normalizeRecentDocuments(
-  records: RecentDocumentRecord[],
+  records: StoredRecentDocumentRecord[],
   limit = DEFAULT_RECENT_LIMIT,
 ) {
   const seen = new Set<string>()
   const normalized: RecentDocumentRecord[] = []
 
-  for (const record of [...records].sort(compareRecentDocuments)) {
+  for (const rawRecord of [...records].sort(compareRecentDocuments)) {
+    const record = normalizeRecentDocumentRecord(rawRecord)
     const key = getRecentDocumentKey(record)
     if (seen.has(key)) {
       continue
@@ -175,7 +195,7 @@ export function parseRecentDocuments(value: string | null) {
       return []
     }
 
-    return normalizeRecentDocuments(parsed.filter(isRecentDocumentRecord))
+    return normalizeRecentDocuments(parsed.filter(isStoredRecentDocumentRecord))
   } catch {
     return []
   }
@@ -191,9 +211,17 @@ export function upsertRecentDocument(
   limit = DEFAULT_RECENT_LIMIT,
 ) {
   const nextKey = getRecentDocumentKey(nextRecord)
+  const existingRecord = records.find(record => getRecentDocumentKey(record) === nextKey)
+  const nextRecordWithCreatedAt = {
+    ...nextRecord,
+    createdAt: existingRecord?.createdAt ?? nextRecord.createdAt,
+  }
 
   return normalizeRecentDocuments(
-    [nextRecord, ...records.filter(record => getRecentDocumentKey(record) !== nextKey)],
+    [
+      nextRecordWithCreatedAt,
+      ...records.filter(record => getRecentDocumentKey(record) !== nextKey),
+    ],
     limit,
   )
 }
