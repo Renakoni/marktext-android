@@ -12,8 +12,6 @@ import type { SettingsValue } from '../settings/settingsState'
 export type ToolbarDisplayMode = 'docked' | 'hidden'
 export type ToolbarQuickBarMode = 'default' | 'custom'
 export type ToolbarSettingsReader = <T extends SettingsValue>(key: string, defaultValue: T) => T
-export type ToolbarSettingsHasValue = (key: string) => boolean
-export type ToolbarSettingsWriter = (key: string, value: SettingsValue) => void
 
 export interface EditorToolbarSettings {
   displayMode: ToolbarDisplayMode
@@ -32,9 +30,6 @@ const TOOLBAR_DISPLAY_MODE_STORAGE_KEY = 'toolbarDisplayMode'
 const TOOLBAR_DEFAULT_PANEL_STORAGE_KEY = 'toolbarDefaultPanel'
 const TOOLBAR_REMEMBER_PANEL_STORAGE_KEY = 'toolbarRememberPanel'
 const TOOLBAR_QUICK_BAR_MODE_STORAGE_KEY = 'toolbarQuickBarMode'
-const LEGACY_TOOLBAR_DISPLAY_MODE_STORAGE_KEY = 'toolbarKeyboard'
-const LEGACY_TOOLBAR_DEFAULT_PANEL_STORAGE_KEY = 'toolbarDefaultTab'
-const LEGACY_TOOLBAR_REMEMBER_PANEL_STORAGE_KEY = 'toolbarRememberTab'
 
 const TOOLBAR_DISPLAY_MODES = new Set<ToolbarDisplayMode>(['docked', 'hidden'])
 const TOOLBAR_QUICK_BAR_MODES = new Set<ToolbarQuickBarMode>(['default', 'custom'])
@@ -66,10 +61,6 @@ function normalizeChoice<T extends string>(value: unknown, options: Set<T>, fall
 }
 
 export function normalizeToolbarDisplayMode(value: unknown): ToolbarDisplayMode {
-  if (value === 'floating') {
-    return DEFAULT_EDITOR_TOOLBAR_SETTINGS.displayMode
-  }
-
   return normalizeChoice(
     value,
     TOOLBAR_DISPLAY_MODES,
@@ -141,81 +132,7 @@ export function getQuickToolbarCommands(
   ].filter((command): command is MobileToolbarCommandButton => Boolean(command))
 }
 
-export function migrateEditorToolbarSettings(
-  hasValue: ToolbarSettingsHasValue,
-  getValue: ToolbarSettingsReader,
-  setValue: ToolbarSettingsWriter,
-) {
-  if (
-    !hasValue(TOOLBAR_DISPLAY_MODE_STORAGE_KEY) &&
-    hasValue(LEGACY_TOOLBAR_DISPLAY_MODE_STORAGE_KEY)
-  ) {
-    setValue(
-      TOOLBAR_DISPLAY_MODE_STORAGE_KEY,
-      normalizeToolbarDisplayMode(
-        getValue(
-          LEGACY_TOOLBAR_DISPLAY_MODE_STORAGE_KEY,
-          DEFAULT_EDITOR_TOOLBAR_SETTINGS.displayMode,
-        ),
-      ),
-    )
-  }
-
-  if (
-    !hasValue(TOOLBAR_DEFAULT_PANEL_STORAGE_KEY) &&
-    hasValue(LEGACY_TOOLBAR_DEFAULT_PANEL_STORAGE_KEY)
-  ) {
-    setValue(
-      TOOLBAR_DEFAULT_PANEL_STORAGE_KEY,
-      normalizeToolbarPanel(
-        getValue(
-          LEGACY_TOOLBAR_DEFAULT_PANEL_STORAGE_KEY,
-          DEFAULT_EDITOR_TOOLBAR_SETTINGS.defaultPanel,
-        ),
-      ),
-    )
-  }
-
-  if (
-    !hasValue(TOOLBAR_REMEMBER_PANEL_STORAGE_KEY) &&
-    hasValue(LEGACY_TOOLBAR_REMEMBER_PANEL_STORAGE_KEY)
-  ) {
-    setValue(
-      TOOLBAR_REMEMBER_PANEL_STORAGE_KEY,
-      normalizeBoolean(
-        getValue(
-          LEGACY_TOOLBAR_REMEMBER_PANEL_STORAGE_KEY,
-          DEFAULT_EDITOR_TOOLBAR_SETTINGS.rememberPanel,
-        ),
-        DEFAULT_EDITOR_TOOLBAR_SETTINGS.rememberPanel,
-      ),
-    )
-  }
-
-  const quickBarMode = normalizeToolbarQuickBarMode(
-    getValue(TOOLBAR_QUICK_BAR_MODE_STORAGE_KEY, DEFAULT_EDITOR_TOOLBAR_SETTINGS.quickBarMode),
-  )
-  if (quickBarMode === 'custom' && !hasValue(TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY)) {
-    setValue(
-      TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY,
-      serializeToolbarCustomQuickCommands(DEFAULT_TOOLBAR_CUSTOM_COMMAND_IDS),
-    )
-  }
-}
-
 export function getEditorToolbarSettings(getValue: ToolbarSettingsReader): EditorToolbarSettings {
-  const legacyDisplayMode = getValue(
-    LEGACY_TOOLBAR_DISPLAY_MODE_STORAGE_KEY,
-    DEFAULT_EDITOR_TOOLBAR_SETTINGS.displayMode,
-  )
-  const legacyDefaultPanel = getValue(
-    LEGACY_TOOLBAR_DEFAULT_PANEL_STORAGE_KEY,
-    DEFAULT_EDITOR_TOOLBAR_SETTINGS.defaultPanel,
-  )
-  const legacyRememberPanel = getValue(
-    LEGACY_TOOLBAR_REMEMBER_PANEL_STORAGE_KEY,
-    DEFAULT_EDITOR_TOOLBAR_SETTINGS.rememberPanel,
-  )
   const customQuickCommandIds = normalizeToolbarCustomQuickCommands(
     getValue(TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY, ''),
   )
@@ -225,13 +142,13 @@ export function getEditorToolbarSettings(getValue: ToolbarSettingsReader): Edito
 
   return {
     displayMode: normalizeToolbarDisplayMode(
-      getValue(TOOLBAR_DISPLAY_MODE_STORAGE_KEY, legacyDisplayMode),
+      getValue(TOOLBAR_DISPLAY_MODE_STORAGE_KEY, DEFAULT_EDITOR_TOOLBAR_SETTINGS.displayMode),
     ),
     defaultPanel: normalizeToolbarPanel(
-      getValue(TOOLBAR_DEFAULT_PANEL_STORAGE_KEY, legacyDefaultPanel),
+      getValue(TOOLBAR_DEFAULT_PANEL_STORAGE_KEY, DEFAULT_EDITOR_TOOLBAR_SETTINGS.defaultPanel),
     ),
     rememberPanel: normalizeBoolean(
-      getValue(TOOLBAR_REMEMBER_PANEL_STORAGE_KEY, legacyRememberPanel),
+      getValue(TOOLBAR_REMEMBER_PANEL_STORAGE_KEY, DEFAULT_EDITOR_TOOLBAR_SETTINGS.rememberPanel),
       DEFAULT_EDITOR_TOOLBAR_SETTINGS.rememberPanel,
     ),
     compact: normalizeBoolean(
