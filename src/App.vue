@@ -89,7 +89,6 @@ import {
 } from './features/editor/editorToolbarWorkflow'
 import {
   getEditorToolbarSettings,
-  migrateEditorToolbarSettings,
 } from './features/editor/editorToolbarSettings'
 import { useEditorToolbar } from './features/editor/useEditorToolbar'
 import {
@@ -203,8 +202,7 @@ const {
   closeLinkSheet: resetEditorLinkSheet,
 } = useEditorToolbar()
 const { locale, setLocale, t } = useI18n()
-const { getValue, hasValue, setValue, clearSettings } = useSettingsState()
-migrateEditorToolbarSettings(hasValue, getValue, setValue)
+const { getValue, clearSettings } = useSettingsState()
 const appearanceTextSettings = computed(() => getAppearanceTextSettings(getValue))
 const editingSettings = computed(() => getEditingSettings(getValue))
 const toolbarSettings = computed(() => getEditorToolbarSettings(getValue))
