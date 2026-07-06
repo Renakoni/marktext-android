@@ -50,6 +50,10 @@ export interface SettingsStatusRow extends SettingsBaseRow {
   valueKey: I18nKey
 }
 
+export interface SettingsCustomToolbarRow extends SettingsBaseRow {
+  kind: 'customToolbar'
+}
+
 export type SettingsDetailRow =
   | SettingsToggleRow
   | SettingsChoiceRow
@@ -57,6 +61,7 @@ export type SettingsDetailRow =
   | SettingsTextRow
   | SettingsActionRow
   | SettingsStatusRow
+  | SettingsCustomToolbarRow
 
 export interface SettingsDetailSection {
   titleKey: I18nKey
@@ -142,17 +147,21 @@ const codeFontOptions = [
   { id: 'monospace', labelKey: 'settings.option.font.monospace' },
 ] as const satisfies readonly SettingsOption[]
 
-const toolbarTabOptions = [
+const toolbarPanelOptions = [
   { id: 'format', labelKey: 'settings.option.toolbar.format' },
   { id: 'paragraph', labelKey: 'settings.option.toolbar.paragraph' },
   { id: 'insert', labelKey: 'settings.option.toolbar.insert' },
   { id: 'markdown', labelKey: 'settings.option.toolbar.markdown' },
 ] as const satisfies readonly SettingsOption[]
 
-const keyboardToolbarOptions = [
-  { id: 'docked', labelKey: 'settings.option.keyboard.docked' },
-  { id: 'floating', labelKey: 'settings.option.keyboard.floating' },
-  { id: 'hidden', labelKey: 'settings.option.keyboard.hidden' },
+const toolbarDisplayOptions = [
+  { id: 'docked', labelKey: 'settings.option.toolbarDisplay.docked' },
+  { id: 'hidden', labelKey: 'settings.option.toolbarDisplay.hidden' },
+] as const satisfies readonly SettingsOption[]
+
+const quickBarContentOptions = [
+  { id: 'default', labelKey: 'settings.option.quickBar.default' },
+  { id: 'custom', labelKey: 'settings.option.quickBar.custom' },
 ] as const satisfies readonly SettingsOption[]
 
 const tabWidthOptions = [
@@ -446,28 +455,28 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
       ],
     },
     {
-      titleKey: 'settings.section.mobileToolbar',
+      titleKey: 'settings.section.toolbar',
       rows: [
         {
           kind: 'choice',
-          id: 'toolbarKeyboard',
-          labelKey: 'settings.editing.keyboardBehavior',
+          id: 'toolbarDisplayMode',
+          labelKey: 'settings.editing.toolbarDisplayMode',
           defaultValue: 'docked',
-          options: keyboardToolbarOptions,
-          testId: 'settings-editing-toolbar-keyboard',
+          options: toolbarDisplayOptions,
+          testId: 'settings-editing-toolbar-display',
         },
         {
           kind: 'choice',
-          id: 'toolbarDefaultTab',
-          labelKey: 'settings.editing.defaultToolbar',
+          id: 'toolbarDefaultPanel',
+          labelKey: 'settings.editing.defaultToolbarPanel',
           defaultValue: 'format',
-          options: toolbarTabOptions,
+          options: toolbarPanelOptions,
           testId: 'settings-editing-toolbar-default',
         },
         {
           kind: 'toggle',
-          id: 'toolbarRememberTab',
-          labelKey: 'settings.editing.rememberToolbar',
+          id: 'toolbarRememberPanel',
+          labelKey: 'settings.editing.rememberToolbarPanel',
           defaultValue: true,
           testId: 'settings-editing-toolbar-remember',
         },
@@ -477,6 +486,25 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
           labelKey: 'settings.editing.compactToolbar',
           defaultValue: false,
           testId: 'settings-editing-toolbar-compact',
+        },
+      ],
+    },
+    {
+      titleKey: 'settings.section.quickBar',
+      rows: [
+        {
+          kind: 'choice',
+          id: 'toolbarQuickBarMode',
+          labelKey: 'settings.editing.quickBarContent',
+          defaultValue: 'default',
+          options: quickBarContentOptions,
+          testId: 'settings-editing-quickbar-content',
+        },
+        {
+          kind: 'customToolbar',
+          id: 'toolbarCustomQuickCommands',
+          labelKey: 'settings.toolbar.custom.title',
+          testId: 'settings-editing-quickbar-custom',
         },
       ],
     },
@@ -930,10 +958,16 @@ const {
 
 const editingBaseSections = settingsDetailSectionsWithoutMergedPages[SETTINGS_PAGES.EDITING] ?? []
 const toolbarSections = editingBaseSections.filter(
-  section => section.titleKey === 'settings.section.mobileToolbar',
+  section =>
+    section.titleKey === 'settings.section.toolbar' ||
+    section.titleKey === 'settings.section.quickBar',
 )
 const editingSections = [
-  ...editingBaseSections.filter(section => section.titleKey !== 'settings.section.mobileToolbar'),
+  ...editingBaseSections.filter(
+    section =>
+      section.titleKey !== 'settings.section.toolbar' &&
+      section.titleKey !== 'settings.section.quickBar',
+  ),
   ...markdownSections,
   ...codeSections,
   ...spellingSections,

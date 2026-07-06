@@ -72,6 +72,10 @@ export function useSettingsState() {
     return isSettingsValue(value) ? (value as T) : defaultValue
   }
 
+  function hasValue(key: string) {
+    return Object.prototype.hasOwnProperty.call(settingsValues, key)
+  }
+
   function setValue(key: string, value: SettingsValue) {
     settingsValues[key] = value
     saveSettings()
@@ -80,6 +84,7 @@ export function useSettingsState() {
   return {
     values: readonly(settingsValues),
     getValue,
+    hasValue,
     setValue,
     clearSettings,
   }

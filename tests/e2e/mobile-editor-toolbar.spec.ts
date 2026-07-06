@@ -3,6 +3,8 @@ import { expectEditorReady } from './helpers/editor'
 
 test.describe.configure({ timeout: 60000 })
 
+const SETTINGS_STORAGE_KEY = 'marktext-for-android:settings-ui'
+
 interface MockCapacitorWindow {
   androidBridge?: unknown
   __lastAndroidImagePickOptions?: Record<string, unknown>
@@ -40,6 +42,16 @@ async function newBlankDocument(page: Page, settings: Record<string, unknown> = 
 
 async function getDraftStorage(page: Page) {
   return page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
+}
+
+async function openToolbarSettings(page: Page) {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.getByTestId('bottom-nav-settings').click()
+  await expect(page.getByTestId('settings-screen')).toBeVisible()
+  await page.getByTestId('settings-entry-toolbar').click()
+  await expect(page.getByTestId('settings-title')).toContainText('Toolbar')
 }
 
 async function selectToolbarPanel(page: Page, panelId: string) {
@@ -216,6 +228,135 @@ test('exposes mobile syntax sections without collapsing everything into paragrap
   await expect(page.getByTestId('toolbar-section-option-paragraph')).toBeVisible()
   await expect(page.getByTestId('toolbar-section-option-insert')).toBeVisible()
   await expect(page.getByTestId('toolbar-section-option-markdown')).toBeVisible()
+})
+
+test('applies toolbar display and panel settings without changing Markdown', async ({ page }) => {
+  await newBlankDocument(page, {
+    toolbarDefaultPanel: 'paragraph',
+    toolbarRememberPanel: false,
+    toolbarCompact: true,
+  })
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('Toolbar settings stay inert')
+  await expect.poll(() => getDraftStorage(page)).toContain('Toolbar settings stay inert')
+  const storedDraft = await getDraftStorage(page)
+
+  await page.getByTestId('toolbar-expand-button').click()
+  await expect(page.getByTestId('toolbar-group-switcher')).toContainText('Paragraph')
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-expand-button').click()
+  await page.getByTestId('toolbar-expand-button').click()
+  await expect(page.getByTestId('toolbar-group-switcher')).toContainText('Paragraph')
+  await expect(page.getByTestId('mobile-editor-toolbar')).toHaveClass(/is-compact/)
+
+  await expect.poll(() => getDraftStorage(page)).toBe(storedDraft)
+
+  await newBlankDocument(page, { toolbarDisplayMode: 'hidden' })
+  await expect(page.getByTestId('mobile-editor-toolbar')).toHaveCount(0)
+})
+
+test('customizes the collapsed quick toolbar from Settings', async ({ page }) => {
+  await openToolbarSettings(page)
+
+  await page.getByTestId('settings-editing-quickbar-content-option-custom').click()
+  await expect(page.getByTestId('settings-editing-quickbar-custom')).toBeVisible()
+  await expect(page.getByTestId('settings-quickbar-slot-fixed')).toHaveAttribute(
+    'aria-label',
+    'Undo, fixed',
+  )
+  await expect(page.getByTestId('settings-quickbar-slot-0')).toContainText('B')
+  await expect(page.getByTestId('settings-quickbar-slot-1')).toContainText('I')
+
+  await page.getByTestId('settings-quickbar-command-paragraph-heading-1').click()
+  await expect(page.getByTestId('settings-quickbar-slot-5')).toContainText('H1')
+
+  await page.getByTestId('settings-quickbar-button-format-strong').dispatchEvent('pointerdown', {
+    pointerId: 1,
+    pointerType: 'touch',
+    clientX: 120,
+    clientY: 700,
+  })
+  await expect(page.getByTestId('settings-quickbar-done')).toBeVisible({ timeout: 1700 })
+  await page.getByTestId('settings-quickbar-preview').dispatchEvent('pointerup', {
+    pointerId: 1,
+    pointerType: 'touch',
+    clientX: 120,
+    clientY: 700,
+  })
+
+  await expect.poll(() =>
+    page
+      .getByTestId('settings-quickbar-button-format-strong')
+      .evaluate(element => getComputedStyle(element).touchAction),
+  ).toBe('pan-x')
+
+  const boldButtonBox = await page
+    .getByTestId('settings-quickbar-button-format-strong')
+    .boundingBox()
+  const headingSlotBox = await page.getByTestId('settings-quickbar-slot-5').boundingBox()
+  expect(boldButtonBox).not.toBeNull()
+  expect(headingSlotBox).not.toBeNull()
+
+  await page.mouse.move(
+    boldButtonBox!.x + boldButtonBox!.width / 2,
+    boldButtonBox!.y + boldButtonBox!.height / 2,
+  )
+  await page.mouse.down()
+  await page.mouse.move(
+    headingSlotBox!.x + headingSlotBox!.width + 8,
+    headingSlotBox!.y + headingSlotBox!.height / 2,
+    { steps: 8 },
+  )
+  await page.mouse.up()
+
+  const movedBoldButtonBox = await page
+    .getByTestId('settings-quickbar-button-format-strong')
+    .boundingBox()
+  const firstEditableSlotBox = await page.getByTestId('settings-quickbar-slot-0').boundingBox()
+  expect(movedBoldButtonBox).not.toBeNull()
+  expect(firstEditableSlotBox).not.toBeNull()
+
+  await page.mouse.move(
+    movedBoldButtonBox!.x + movedBoldButtonBox!.width / 2,
+    movedBoldButtonBox!.y + movedBoldButtonBox!.height / 2,
+  )
+  await page.mouse.down()
+  await page.mouse.move(
+    firstEditableSlotBox!.x + 2,
+    firstEditableSlotBox!.y + firstEditableSlotBox!.height / 2,
+    { steps: 8 },
+  )
+  await page.mouse.up()
+
+  await page.getByTestId('settings-quickbar-done').click()
+  await expect(page.getByTestId('settings-quickbar-done')).toHaveCount(0)
+
+  await expect.poll(() =>
+    page.evaluate(settingsKey => {
+      const settings = JSON.parse(localStorage.getItem(settingsKey) ?? '{}') as Record<
+        string,
+        unknown
+      >
+      return settings
+    }, SETTINGS_STORAGE_KEY),
+  ).toMatchObject({
+    toolbarQuickBarMode: 'custom',
+    toolbarCustomQuickCommands:
+      'format.strong,format.emphasis,format.underline,paragraph.bullet-list,paragraph.order-list,paragraph.heading-1',
+  })
+
+  await page.getByTestId('settings-detail-back').click()
+  await page.getByTestId('bottom-nav-documents').click()
+  await page.getByTestId('new-document-button').click()
+  await expectEditorReady(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('Custom quick heading')
+  await page.getByTestId('toolbar-command-paragraph.heading-1').click()
+
+  await expect.poll(() => getDraftStorage(page)).toContain('# Custom quick heading')
+  await expect(page.getByTestId('toolbar-command-format.strike')).toHaveCount(0)
 })
 
 test('applies expanded heading and block commands from their mobile sections', async ({ page }) => {

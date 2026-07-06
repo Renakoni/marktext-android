@@ -22,6 +22,34 @@ describe('useEditorToolbar', () => {
     expect(toolbar.editorToolbarPanel.value).toBe('insert')
   })
 
+  it('uses the configured default panel when the toolbar does not remember panels', () => {
+    const toolbar = useEditorToolbar()
+
+    toolbar.applyEditorToolbarSettings({ defaultPanel: 'paragraph', rememberPanel: false })
+    expect(toolbar.editorToolbarPanel.value).toBe('paragraph')
+
+    toolbar.toggleEditorToolbar()
+    toolbar.setEditorToolbarPanel('insert')
+    expect(toolbar.editorToolbarPanel.value).toBe('insert')
+
+    toolbar.toggleEditorToolbar()
+    toolbar.toggleEditorToolbar()
+
+    expect(toolbar.editorToolbarPanel.value).toBe('paragraph')
+  })
+
+  it('keeps the selected panel when remember panels is enabled', () => {
+    const toolbar = useEditorToolbar()
+
+    toolbar.applyEditorToolbarSettings({ defaultPanel: 'paragraph', rememberPanel: true })
+    toolbar.toggleEditorToolbar()
+    toolbar.setEditorToolbarPanel('markdown')
+    toolbar.toggleEditorToolbar()
+    toolbar.toggleEditorToolbar()
+
+    expect(toolbar.editorToolbarPanel.value).toBe('markdown')
+  })
+
   it('opens and clears link sheet state without leaking stale values', () => {
     const toolbar = useEditorToolbar()
 

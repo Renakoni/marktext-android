@@ -87,6 +87,10 @@ import {
   runEditorToolbarCommandWorkflow,
   scheduleEditorToolbarSync,
 } from './features/editor/editorToolbarWorkflow'
+import {
+  getEditorToolbarSettings,
+  migrateEditorToolbarSettings,
+} from './features/editor/editorToolbarSettings'
 import { useEditorToolbar } from './features/editor/useEditorToolbar'
 import {
   captureSelectionWithin,
@@ -189,6 +193,7 @@ const {
   linkText,
   linkUrl,
   importingAndroidImage,
+  applyEditorToolbarSettings,
   toggleEditorMenu,
   closeEditorMenu,
   toggleEditorToolbar,
@@ -198,9 +203,11 @@ const {
   closeLinkSheet: resetEditorLinkSheet,
 } = useEditorToolbar()
 const { locale, setLocale, t } = useI18n()
-const { getValue, clearSettings } = useSettingsState()
+const { getValue, hasValue, setValue, clearSettings } = useSettingsState()
+migrateEditorToolbarSettings(hasValue, getValue, setValue)
 const appearanceTextSettings = computed(() => getAppearanceTextSettings(getValue))
 const editingSettings = computed(() => getEditingSettings(getValue))
+const toolbarSettings = computed(() => getEditorToolbarSettings(getValue))
 const documentSettings = computed(() => getDocumentSettings(getValue))
 const imageSharingSettings = computed(() => getImageSharingSettings(getValue))
 const advancedSettings = computed(() => getAdvancedSettings(getValue))
@@ -255,6 +262,17 @@ watch(appearanceTextSettings, settings => {
 watch(editingSettings, (settings, previousSettings) => {
   applyMuyaEditingSettings(editor, settings, previousSettings)
 })
+
+watch(
+  toolbarSettings,
+  settings => {
+    applyEditorToolbarSettings(settings)
+    if (settings.displayMode === 'hidden') {
+      closeEditorToolbar()
+    }
+  },
+  { immediate: true },
+)
 
 watch(documentSettings, (settings, previousSettings) => {
   if (!settings.localDrafts) {
@@ -1721,8 +1739,11 @@ onBeforeUnmount(() => {
     :editor-ready="editorReady"
     :show-editor-actions="canShowEditorActions()"
     :editor-menu-open="editorMenuOpen"
+    :toolbar-visible="toolbarSettings.displayMode !== 'hidden'"
     :toolbar-expanded="editorToolbarExpanded"
     :toolbar-panel="editorToolbarPanel"
+    :toolbar-compact="toolbarSettings.compact"
+    :quick-toolbar-commands="toolbarSettings.quickCommands"
     :word-count="wordCount"
     :character-count="characterCount"
     :line-count="lineCount"

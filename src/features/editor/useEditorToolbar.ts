@@ -3,11 +3,22 @@ import {
   DEFAULT_MOBILE_TOOLBAR_PANEL,
   type MobileEditorToolbarPanel,
 } from '../../lib/mobileToolbarConfig'
+import type { EditorToolbarSettings } from './editorToolbarSettings'
 
 interface OpenLinkSheetOptions {
   text: string
   url?: string
 }
+
+type EditorToolbarBehaviorSettings = Pick<
+  EditorToolbarSettings,
+  'defaultPanel' | 'rememberPanel'
+>
+
+const DEFAULT_EDITOR_TOOLBAR_BEHAVIOR_SETTINGS = {
+  defaultPanel: DEFAULT_MOBILE_TOOLBAR_PANEL,
+  rememberPanel: true,
+} as const satisfies EditorToolbarBehaviorSettings
 
 export function useEditorToolbar() {
   const editorMenuOpen = ref(false)
@@ -17,6 +28,18 @@ export function useEditorToolbar() {
   const linkText = ref('')
   const linkUrl = ref('')
   const importingAndroidImage = ref(false)
+  let toolbarBehaviorSettings: EditorToolbarBehaviorSettings = {
+    ...DEFAULT_EDITOR_TOOLBAR_BEHAVIOR_SETTINGS,
+  }
+
+  function applyEditorToolbarSettings(settings: EditorToolbarBehaviorSettings) {
+    const defaultPanelChanged = settings.defaultPanel !== toolbarBehaviorSettings.defaultPanel
+    toolbarBehaviorSettings = settings
+
+    if (!settings.rememberPanel || (defaultPanelChanged && !editorToolbarExpanded.value)) {
+      editorToolbarPanel.value = settings.defaultPanel
+    }
+  }
 
   function toggleEditorMenu() {
     editorMenuOpen.value = !editorMenuOpen.value
@@ -32,6 +55,9 @@ export function useEditorToolbar() {
   function toggleEditorToolbar() {
     editorToolbarExpanded.value = !editorToolbarExpanded.value
     if (editorToolbarExpanded.value) {
+      if (!toolbarBehaviorSettings.rememberPanel) {
+        editorToolbarPanel.value = toolbarBehaviorSettings.defaultPanel
+      }
       editorMenuOpen.value = false
     }
   }
@@ -66,6 +92,7 @@ export function useEditorToolbar() {
     linkText,
     linkUrl,
     importingAndroidImage,
+    applyEditorToolbarSettings,
     toggleEditorMenu,
     closeEditorMenu,
     toggleEditorToolbar,

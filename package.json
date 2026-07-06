@@ -21,6 +21,7 @@
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.4.1",
     "@muyajs/core": "file:third_party/muya",
+    "sortablejs": "^1.15.7",
     "vue": "^3.5.38"
   },
   "devDependencies": {
@@ -28,6 +29,7 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.1",
     "@types/node": "^24.13.2",
+    "@types/sortablejs": "^1.15.9",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vue/tsconfig": "^0.9.1",
     "eslint": "^10.6.0",
