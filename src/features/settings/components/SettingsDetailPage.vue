@@ -7,6 +7,7 @@ import SettingsSelectRow from './SettingsSelectRow.vue'
 import SettingsSliderRow from './SettingsSliderRow.vue'
 import SettingsTextRow from './SettingsTextRow.vue'
 import SettingsToggleRow from './SettingsToggleRow.vue'
+import ToolbarQuickSettings from './ToolbarQuickSettings.vue'
 import {
   SETTINGS_DETAIL_SECTIONS,
   type SettingsActionRow,
@@ -126,6 +127,10 @@ function getStatusValue(row: SettingsStatusRow) {
     }
   }
   return t(row.valueKey)
+}
+
+function shouldShowCustomToolbar() {
+  return getValue<string>('toolbarQuickBarMode', 'default') === 'custom'
 }
 
 function setStoredValue(rowId: string, value: boolean | number | string) {
@@ -273,8 +278,12 @@ watch(
         button
         @activate="recordAction(row)"
       />
+      <ToolbarQuickSettings
+        v-else-if="row.kind === 'customToolbar' && shouldShowCustomToolbar()"
+        :test-id="row.testId"
+      />
       <SettingsRow
-        v-else
+        v-else-if="row.kind === 'status'"
         :label="t(row.labelKey)"
         :value="getStatusValue(row)"
         :test-id="row.testId"

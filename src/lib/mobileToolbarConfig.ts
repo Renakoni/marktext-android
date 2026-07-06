@@ -3,7 +3,7 @@ import type { I18nKey } from './i18n'
 
 export type MobileEditorToolbarPanel = 'format' | 'paragraph' | 'insert' | 'markdown'
 
-interface MobileToolbarCommandButton {
+export interface MobileToolbarCommandButton {
   commandId: MobileCommandId
   label: string
   labelKey?: I18nKey
@@ -11,7 +11,7 @@ interface MobileToolbarCommandButton {
   titleKey: I18nKey
 }
 
-interface MobileToolbarPanelDefinition {
+export interface MobileToolbarPanelDefinition {
   id: MobileEditorToolbarPanel
   label: string
   labelKey: I18nKey
@@ -243,6 +243,16 @@ export const MOBILE_TOOLBAR_PANELS = [
   },
 ] as const satisfies readonly MobileToolbarPanelDefinition[]
 
+const MOBILE_TOOLBAR_COMMANDS_BY_ID = new Map<MobileCommandId, MobileToolbarCommandButton>()
+
+for (const command of [
+  ...MOBILE_TOOLBAR_EDIT_COMMANDS,
+  ...MOBILE_TOOLBAR_QUICK_COMMANDS,
+  ...MOBILE_TOOLBAR_PANELS.flatMap(panel => panel.commands),
+]) {
+  MOBILE_TOOLBAR_COMMANDS_BY_ID.set(command.commandId, command)
+}
+
 export function getMobileToolbarPanel(panelId: MobileEditorToolbarPanel) {
   return (
     MOBILE_TOOLBAR_PANELS.find(panel => panel.id === panelId) ??
@@ -252,4 +262,8 @@ export function getMobileToolbarPanel(panelId: MobileEditorToolbarPanel) {
 
 export function getMobileToolbarPanelCommands(panelId: MobileEditorToolbarPanel) {
   return getMobileToolbarPanel(panelId).commands
+}
+
+export function getMobileToolbarCommandButton(commandId: MobileCommandId) {
+  return MOBILE_TOOLBAR_COMMANDS_BY_ID.get(commandId) ?? null
 }

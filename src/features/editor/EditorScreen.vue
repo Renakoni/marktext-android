@@ -6,7 +6,10 @@ import LinkInsertSheet from './components/LinkInsertSheet.vue'
 import LocalDraftExitPrompt from './components/LocalDraftExitPrompt.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import type { MobileCommandId } from '../../lib/mobileCommands'
-import type { MobileEditorToolbarPanel } from '../../lib/mobileToolbarConfig'
+import type {
+  MobileEditorToolbarPanel,
+  MobileToolbarCommandButton,
+} from '../../lib/mobileToolbarConfig'
 import { useI18n } from '../../lib/i18n'
 
 defineProps<{
@@ -15,8 +18,11 @@ defineProps<{
   editorReady: boolean
   showEditorActions: boolean
   editorMenuOpen: boolean
+  toolbarVisible: boolean
   toolbarExpanded: boolean
   toolbarPanel: MobileEditorToolbarPanel
+  toolbarCompact: boolean
+  quickToolbarCommands: readonly MobileToolbarCommandButton[]
   wordCount: number
   characterCount: number
   lineCount: number
@@ -138,9 +144,12 @@ onBeforeUnmount(() => {
     </section>
 
     <MobileEditorToolbar
+      v-if="toolbarVisible"
       :expanded="toolbarExpanded"
       :active-panel="toolbarPanel"
       :editor-ready="editorReady"
+      :compact="toolbarCompact"
+      :quick-commands="quickToolbarCommands"
       :word-count="wordCount"
       :character-count="characterCount"
       :line-count="lineCount"

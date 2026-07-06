@@ -175,9 +175,13 @@ test('switches between document home and the settings about screen', async ({ pa
 
   await page.getByTestId('settings-entry-toolbar').click()
   await expect(page.getByTestId('settings-title')).toContainText('Toolbar')
-  await expect(page.getByTestId('settings-editing-toolbar-keyboard')).toContainText('Docked')
-  await page.getByTestId('settings-editing-toolbar-keyboard-option-floating').click()
-  await expect(page.getByTestId('settings-editing-toolbar-keyboard-option-floating')).toHaveAttribute(
+  await expect(page.getByTestId('settings-editing-toolbar-display')).toContainText(
+    'Docked at bottom',
+  )
+  await expect(page.getByTestId('settings-editing-toolbar-default')).toContainText('Format')
+  await expect(page.getByTestId('settings-editing-quickbar-content')).toContainText('Default')
+  await page.getByTestId('settings-editing-toolbar-display-option-hidden').click()
+  await expect(page.getByTestId('settings-editing-toolbar-display-option-hidden')).toHaveAttribute(
     'aria-pressed',
     'true',
   )

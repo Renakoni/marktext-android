@@ -4,10 +4,10 @@ import type { MobileCommandId } from '../../../lib/mobileCommands'
 import {
   MOBILE_TOOLBAR_EDIT_COMMANDS,
   MOBILE_TOOLBAR_PANELS,
-  MOBILE_TOOLBAR_QUICK_COMMANDS,
   getMobileToolbarPanel,
   getMobileToolbarPanelCommands,
   type MobileEditorToolbarPanel,
+  type MobileToolbarCommandButton,
 } from '../../../lib/mobileToolbarConfig'
 import { useI18n, type I18nKey } from '../../../lib/i18n'
 
@@ -18,6 +18,8 @@ const props = defineProps<{
   wordCount: number
   characterCount: number
   lineCount: number
+  quickCommands: readonly MobileToolbarCommandButton[]
+  compact: boolean
 }>()
 
 const emit = defineEmits<{
@@ -27,7 +29,6 @@ const emit = defineEmits<{
 }>()
 
 const panels = MOBILE_TOOLBAR_PANELS
-const quickCommands = MOBILE_TOOLBAR_QUICK_COMMANDS
 const editCommands = MOBILE_TOOLBAR_EDIT_COMMANDS
 const groupMenuOpen = ref(false)
 const { t } = useI18n()
@@ -81,7 +82,7 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
 <template>
   <footer
     class="mobile-editor-toolbar"
-    :class="{ 'is-expanded': expanded }"
+    :class="{ 'is-expanded': expanded, 'is-compact': compact }"
     :aria-label="t('toolbar.markdownTools')"
     data-testid="mobile-editor-toolbar"
   >
@@ -499,6 +500,50 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
 
 .toolbar-group-option.is-active .group-option-title {
   color: var(--accent-strong);
+}
+
+.mobile-editor-toolbar.is-compact .toolbar-collapsed {
+  grid-template-columns: minmax(0, 1fr) 40px;
+  min-height: 44px;
+  padding-top: 2px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2px);
+}
+
+.mobile-editor-toolbar.is-compact .toolbar-expanded {
+  gap: 1px;
+  padding-top: 3px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 3px);
+}
+
+.mobile-editor-toolbar.is-compact .toolbar-header {
+  min-height: 40px;
+}
+
+.mobile-editor-toolbar.is-compact .toolbar-button,
+.mobile-editor-toolbar.is-compact .toolbar-expand-handle,
+.mobile-editor-toolbar.is-compact .toolbar-group-option {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 7px;
+}
+
+.mobile-editor-toolbar.is-compact .toolbar-button {
+  padding: 0 9px;
+  font-size: 13px;
+}
+
+.mobile-editor-toolbar.is-compact .toolbar-quick-strip .toolbar-button {
+  padding: 0 10px;
+}
+
+.mobile-editor-toolbar.is-compact .toolbar-group-switcher {
+  min-height: 36px;
+  padding: 0 9px;
+  font-size: 13px;
+}
+
+.mobile-editor-toolbar.is-compact .toolbar-stats {
+  display: none;
 }
 
 @media (min-width: 720px) {

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { MOBILE_COMMANDS } from './mobileCommands'
+import { MOBILE_COMMANDS, type MobileCommandId } from './mobileCommands'
 import {
   DEFAULT_MOBILE_TOOLBAR_PANEL,
   MOBILE_TOOLBAR_EDIT_COMMANDS,
   MOBILE_TOOLBAR_PANELS,
   MOBILE_TOOLBAR_QUICK_COMMANDS,
+  getMobileToolbarCommandButton,
   getMobileToolbarPanel,
   getMobileToolbarPanelCommands,
 } from './mobileToolbarConfig'
@@ -106,6 +107,15 @@ describe('mobileToolbarConfig', () => {
     for (const commandId of toolbarCommandIds) {
       expect(knownCommandIds.has(commandId), commandId).toBe(true)
     }
+  })
+
+  it('looks up command button definitions by command id', () => {
+    expect(getMobileToolbarCommandButton(MOBILE_COMMANDS.FORMAT_STRONG)).toMatchObject({
+      commandId: MOBILE_COMMANDS.FORMAT_STRONG,
+      label: 'B',
+      titleKey: 'toolbar.command.bold',
+    })
+    expect(getMobileToolbarCommandButton('missing.command' as MobileCommandId)).toBeNull()
   })
 
   it('falls back to the default panel for an invalid panel id', () => {

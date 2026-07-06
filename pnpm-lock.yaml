@@ -20,6 +20,9 @@ importers:
       '@muyajs/core':
         specifier: file:third_party/muya
         version: file:third_party/muya(eve@0.5.4)
+      sortablejs:
+        specifier: ^1.15.7
+        version: 1.15.7
       vue:
         specifier: ^3.5.38
         version: 3.5.39(typescript@6.0.3)
@@ -36,6 +39,9 @@ importers:
       '@types/node':
         specifier: ^24.13.2
         version: 24.13.2
+      '@types/sortablejs':
+        specifier: ^1.15.9
+        version: 1.15.9
       '@vitejs/plugin-vue':
         specifier: ^6.0.7
         version: 6.0.7(vite@8.1.0(@types/node@24.13.2))(vue@3.5.39(typescript@6.0.3))
@@ -485,6 +491,9 @@ packages:
 
   '@types/slice-ansi@4.0.0':
     resolution: {integrity: sha512-+OpjSaq85gvlZAYINyzKpLeiFkSC4EsC6IIiT6v6TLSU5k5U83fHGj9Lel8oKEXM0HqgrMVCjXPDPVICtxF7EQ==}
+
+  '@types/sortablejs@1.15.9':
+    resolution: {integrity: sha512-7HP+rZGE2p886PKV9c9OJzLBI6BBJu1O7lJGYnPyG3fS4/duUCcngkNCjsLwIMV+WMqANe3tt4irrXHSIe68OQ==}
 
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
@@ -1675,6 +1684,9 @@ packages:
   snapsvg@0.5.1:
     resolution: {integrity: sha512-CjwWYsL7+CCk1vCk9BBKGYS4WJVDfJAOMWU+Zhzf8wf6pAm/xT34wnpaMPAgcgCNkxuU6OkQPPd8wGuRCY9aNw==}
 
+  sortablejs@1.15.7:
+    resolution: {integrity: sha512-Kk8wLQPlS+yi1ZEf48a4+fzHa4yxjC30M/Sr2AnQu+f/MPwvvX9XjZ6OWejiz8crBsLwSq8GHqaxaET7u6ux0A==}
+
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
@@ -2577,6 +2589,8 @@ snapshots:
       undici-types: 7.18.2
 
   '@types/slice-ansi@4.0.0': {}
+
+  '@types/sortablejs@1.15.9': {}
 
   '@types/trusted-types@2.0.7':
     optional: true
@@ -3776,6 +3790,8 @@ snapshots:
   snapsvg@0.5.1:
     dependencies:
       eve: 0.5.4
+
+  sortablejs@1.15.7: {}
 
   source-map-js@1.2.1: {}
 
