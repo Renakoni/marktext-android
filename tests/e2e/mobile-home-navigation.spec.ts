@@ -262,34 +262,24 @@ test('switches between document home and the settings about screen', async ({ pa
   await expect(page.getByTestId('settings-index')).toBeVisible()
 
   await page.getByTestId('settings-entry-about').click()
-  await expect(page.getByTestId('settings-title')).toContainText('About MarkText')
+  await expect(page.getByTestId('settings-title')).toContainText('About')
+  await expect(page.getByTestId('settings-about-page')).toBeVisible()
   await expect(page.getByTestId('settings-about-app')).toBeVisible()
-  await expect(page.getByTestId('settings-about-version')).toBeVisible()
-  await expect(page.getByTestId('settings-reference-repository')).toHaveAttribute(
+  await expect(page.getByTestId('settings-about-version')).toContainText('0.0.0')
+  await expect(page.getByTestId('settings-about-github')).toHaveAttribute(
     'href',
     'https://github.com/Renakoni/marktext-android',
   )
-  await expect(page.getByTestId('settings-reference-issues')).toHaveAttribute(
-    'href',
-    'https://github.com/Renakoni/marktext-android/issues',
-  )
-  await expect(page.getByTestId('settings-reference-upstream-marktext')).toHaveAttribute(
-    'href',
-    'https://github.com/marktext/marktext',
-  )
-  await expect(page.getByTestId('settings-reference-muya')).toHaveAttribute(
-    'href',
-    'https://github.com/marktext/muya',
-  )
-  await expect(page.getByTestId('settings-about-notices')).toContainText('Licenses')
+  await expect(page.getByTestId('settings-about-releases')).toHaveCount(0)
+  await expect(page.getByTestId('settings-about-report-issue')).toHaveCount(0)
+  await expect(page.getByTestId('settings-reference-repository')).toHaveCount(0)
+  await expect(page.getByTestId('settings-reference-upstream-marktext')).toHaveCount(0)
+  await expect(page.getByTestId('settings-reference-muya')).toHaveCount(0)
+  await expect(page.getByTestId('settings-about-notices')).toHaveCount(0)
 
   await page.getByTestId('settings-check-updates').click()
   await expect(page.getByTestId('settings-check-updates')).toContainText(
     'Update available: v0.1.0',
-  )
-  await expect(page.getByTestId('settings-latest-release')).toHaveAttribute(
-    'href',
-    'https://github.com/Renakoni/marktext-android/releases/tag/v0.1.0',
   )
 
   await page.getByTestId('settings-detail-back').click()
@@ -314,7 +304,7 @@ test('uses Android back to return from settings to documents before exiting', as
   await page.getByTestId('bottom-nav-settings').click()
   await expect(page.getByTestId('settings-screen')).toBeVisible()
   await page.getByTestId('settings-entry-about').click()
-  await expect(page.getByTestId('settings-title')).toContainText('About MarkText')
+  await expect(page.getByTestId('settings-title')).toContainText('About')
 
   await page.evaluate(() => {
     const win = window as unknown as MockCapacitorWindow
