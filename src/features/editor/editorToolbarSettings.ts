@@ -11,6 +11,13 @@ import type { SettingsValue } from '../settings/settingsState'
 
 export type ToolbarDisplayMode = 'docked' | 'hidden'
 export type ToolbarQuickBarMode = 'default' | 'custom'
+export type EditorToolbarSettingKey =
+  | 'toolbarDisplayMode'
+  | 'toolbarDefaultPanel'
+  | 'toolbarRememberPanel'
+  | 'toolbarCompact'
+  | 'toolbarQuickBarMode'
+  | 'toolbarCustomQuickCommands'
 export type ToolbarSettingsReader = <T extends SettingsValue>(key: string, defaultValue: T) => T
 
 export interface EditorToolbarSettings {
@@ -26,10 +33,19 @@ export interface EditorToolbarSettings {
 export const TOOLBAR_FIXED_QUICK_COMMAND_ID = MOBILE_COMMANDS.EDIT_UNDO
 export const TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY = 'toolbarCustomQuickCommands'
 
-const TOOLBAR_DISPLAY_MODE_STORAGE_KEY = 'toolbarDisplayMode'
-const TOOLBAR_DEFAULT_PANEL_STORAGE_KEY = 'toolbarDefaultPanel'
-const TOOLBAR_REMEMBER_PANEL_STORAGE_KEY = 'toolbarRememberPanel'
-const TOOLBAR_QUICK_BAR_MODE_STORAGE_KEY = 'toolbarQuickBarMode'
+export const TOOLBAR_DISPLAY_MODE_STORAGE_KEY = 'toolbarDisplayMode'
+export const TOOLBAR_DEFAULT_PANEL_STORAGE_KEY = 'toolbarDefaultPanel'
+export const TOOLBAR_REMEMBER_PANEL_STORAGE_KEY = 'toolbarRememberPanel'
+export const TOOLBAR_QUICK_BAR_MODE_STORAGE_KEY = 'toolbarQuickBarMode'
+
+export const EDITOR_TOOLBAR_SETTING_KEYS = [
+  TOOLBAR_DISPLAY_MODE_STORAGE_KEY,
+  TOOLBAR_DEFAULT_PANEL_STORAGE_KEY,
+  TOOLBAR_REMEMBER_PANEL_STORAGE_KEY,
+  'toolbarCompact',
+  TOOLBAR_QUICK_BAR_MODE_STORAGE_KEY,
+  TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY,
+] as const satisfies readonly EditorToolbarSettingKey[]
 
 const TOOLBAR_DISPLAY_MODES = new Set<ToolbarDisplayMode>(['docked', 'hidden'])
 const TOOLBAR_QUICK_BAR_MODES = new Set<ToolbarQuickBarMode>(['default', 'custom'])

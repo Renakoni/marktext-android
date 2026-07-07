@@ -74,6 +74,12 @@ export const ADVANCED_SETTING_KEYS = [
   'trimTrailingNewline',
 ] as const satisfies readonly AdvancedSettingKey[]
 
+export const ADVANCED_MAINTENANCE_ACTION_IDS = [
+  'exportLogs',
+  'clearDrafts',
+  'resetSettings',
+] as const satisfies readonly AdvancedMaintenanceActionId[]
+
 export const DEFAULT_ADVANCED_SETTINGS = {
   defaultEncoding: 'utf8',
   autoGuessEncoding: true,

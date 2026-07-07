@@ -7,8 +7,25 @@ export type AppearanceTextSettingKey =
   | 'editorFontFamily'
   | 'textDirection'
 
+export type AppearanceThemeSettingKey =
+  | 'followSystemTheme'
+  | 'appTheme'
+  | 'lightModeTheme'
+  | 'darkModeTheme'
+  | 'theme'
+
+export type AppearanceSettingKey = AppearanceTextSettingKey | AppearanceThemeSettingKey
+
 export type EditorFontFamily = 'open-sans' | 'system' | 'serif' | 'monospace'
 export type TextDirection = 'ltr' | 'rtl'
+
+export interface AppearanceThemeSettings {
+  followSystemTheme: boolean
+  appTheme: 'system' | 'light' | 'dark'
+  lightModeTheme: string
+  darkModeTheme: string
+  theme: string
+}
 
 export interface AppearanceTextSettings {
   fontSize: number
@@ -25,6 +42,27 @@ export const APPEARANCE_TEXT_SETTING_KEYS = [
   'editorFontFamily',
   'textDirection',
 ] as const satisfies readonly AppearanceTextSettingKey[]
+
+export const APPEARANCE_THEME_SETTING_KEYS = [
+  'followSystemTheme',
+  'appTheme',
+  'lightModeTheme',
+  'darkModeTheme',
+  'theme',
+] as const satisfies readonly AppearanceThemeSettingKey[]
+
+export const APPEARANCE_SETTING_KEYS = [
+  ...APPEARANCE_THEME_SETTING_KEYS,
+  ...APPEARANCE_TEXT_SETTING_KEYS,
+] as const satisfies readonly AppearanceSettingKey[]
+
+export const DEFAULT_APPEARANCE_THEME_SETTINGS = {
+  followSystemTheme: true,
+  appTheme: 'system',
+  lightModeTheme: 'light',
+  darkModeTheme: 'dark',
+  theme: 'light',
+} as const satisfies AppearanceThemeSettings
 
 export const DEFAULT_APPEARANCE_TEXT_SETTINGS = {
   fontSize: 16,

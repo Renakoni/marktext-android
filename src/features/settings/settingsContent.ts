@@ -8,9 +8,12 @@ interface SettingsOption {
 
 interface SettingsBaseRow {
   id: string
+  implementation: SettingsRowImplementation
   labelKey: I18nKey
   testId: string
 }
+
+export type SettingsRowImplementation = 'runtime' | 'storedOnly' | 'unfinished'
 
 export interface SettingsToggleRow extends SettingsBaseRow {
   kind: 'toggle'
@@ -296,6 +299,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'followSystemTheme',
+          implementation: 'storedOnly',
           labelKey: 'settings.appearance.followSystemTheme',
           defaultValue: true,
           testId: 'settings-appearance-system-theme',
@@ -303,6 +307,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'appTheme',
+          implementation: 'storedOnly',
           labelKey: 'settings.appearance.appTheme',
           defaultValue: 'system',
           options: appThemeOptions,
@@ -311,6 +316,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'lightModeTheme',
+          implementation: 'storedOnly',
           labelKey: 'settings.appearance.lightTheme',
           defaultValue: 'light',
           display: 'select',
@@ -320,6 +326,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'darkModeTheme',
+          implementation: 'storedOnly',
           labelKey: 'settings.appearance.darkTheme',
           defaultValue: 'dark',
           display: 'select',
@@ -329,6 +336,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'theme',
+          implementation: 'storedOnly',
           labelKey: 'settings.appearance.editorTheme',
           defaultValue: 'light',
           display: 'select',
@@ -343,6 +351,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'slider',
           id: 'fontSize',
+          implementation: 'runtime',
           labelKey: 'settings.appearance.fontSize',
           defaultValue: 16,
           min: 12,
@@ -354,6 +363,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'slider',
           id: 'lineHeight',
+          implementation: 'runtime',
           labelKey: 'settings.appearance.lineHeight',
           defaultValue: 1.6,
           min: 1.2,
@@ -364,6 +374,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'text',
           id: 'editorLineWidth',
+          implementation: 'runtime',
           labelKey: 'settings.appearance.lineWidth',
           defaultValue: '',
           placeholderKey: 'settings.placeholder.lineWidth',
@@ -372,6 +383,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'editorFontFamily',
+          implementation: 'runtime',
           labelKey: 'settings.appearance.font',
           defaultValue: 'open-sans',
           display: 'select',
@@ -381,6 +393,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'textDirection',
+          implementation: 'runtime',
           labelKey: 'settings.appearance.direction',
           defaultValue: 'ltr',
           options: textDirectionOptions,
@@ -396,6 +409,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'autoPairBracket',
+          implementation: 'runtime',
           labelKey: 'settings.editing.autoPairBrackets',
           defaultValue: true,
           testId: 'settings-editing-brackets',
@@ -403,6 +417,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'autoPairMarkdownSyntax',
+          implementation: 'runtime',
           labelKey: 'settings.editing.autoPairMarkdown',
           defaultValue: true,
           testId: 'settings-editing-markdown-syntax',
@@ -410,6 +425,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'autoPairQuote',
+          implementation: 'runtime',
           labelKey: 'settings.editing.autoPairQuotes',
           defaultValue: true,
           testId: 'settings-editing-quotes',
@@ -422,6 +438,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'quickInsert',
+          implementation: 'runtime',
           labelKey: 'settings.editing.quickInsert',
           defaultValue: true,
           testId: 'settings-editing-quick-insert',
@@ -429,6 +446,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'linkPopup',
+          implementation: 'runtime',
           labelKey: 'settings.editing.linkPopup',
           defaultValue: true,
           testId: 'settings-editing-link-popup',
@@ -436,6 +454,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'autoCheck',
+          implementation: 'runtime',
           labelKey: 'settings.editing.taskSync',
           defaultValue: false,
           testId: 'settings-editing-task-sync',
@@ -448,6 +467,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'sourceCodeModeEnabled',
+          implementation: 'storedOnly',
           labelKey: 'settings.editing.sourceMode',
           defaultValue: false,
           testId: 'settings-editing-source-mode',
@@ -460,6 +480,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'toolbarDisplayMode',
+          implementation: 'runtime',
           labelKey: 'settings.editing.toolbarDisplayMode',
           defaultValue: 'docked',
           options: toolbarDisplayOptions,
@@ -468,6 +489,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'toolbarDefaultPanel',
+          implementation: 'runtime',
           labelKey: 'settings.editing.defaultToolbarPanel',
           defaultValue: 'format',
           options: toolbarPanelOptions,
@@ -476,6 +498,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'toolbarRememberPanel',
+          implementation: 'runtime',
           labelKey: 'settings.editing.rememberToolbarPanel',
           defaultValue: true,
           testId: 'settings-editing-toolbar-remember',
@@ -483,6 +506,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'toolbarCompact',
+          implementation: 'runtime',
           labelKey: 'settings.editing.compactToolbar',
           defaultValue: false,
           testId: 'settings-editing-toolbar-compact',
@@ -495,6 +519,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'toolbarQuickBarMode',
+          implementation: 'runtime',
           labelKey: 'settings.editing.quickBarContent',
           defaultValue: 'default',
           options: quickBarContentOptions,
@@ -503,6 +528,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'customToolbar',
           id: 'toolbarCustomQuickCommands',
+          implementation: 'runtime',
           labelKey: 'settings.toolbar.custom.title',
           testId: 'settings-editing-quickbar-custom',
         },
@@ -516,6 +542,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'codeBlockLineNumbers',
+          implementation: 'runtime',
           labelKey: 'settings.code.lineNumbers',
           defaultValue: false,
           testId: 'settings-code-line-numbers',
@@ -523,6 +550,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'wrapCodeBlocks',
+          implementation: 'runtime',
           labelKey: 'settings.code.wrapLines',
           defaultValue: true,
           testId: 'settings-code-wrap-lines',
@@ -530,6 +558,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'trimUnnecessaryCodeBlockEmptyLines',
+          implementation: 'runtime',
           labelKey: 'settings.code.trimEmptyLines',
           defaultValue: true,
           testId: 'settings-code-trim-empty-lines',
@@ -542,6 +571,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'slider',
           id: 'codeFontSize',
+          implementation: 'runtime',
           labelKey: 'settings.code.fontSize',
           defaultValue: 14,
           min: 12,
@@ -553,6 +583,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'codeFontFamily',
+          implementation: 'runtime',
           labelKey: 'settings.code.font',
           defaultValue: 'dejavu-sans-mono',
           display: 'select',
@@ -562,6 +593,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'tabSize',
+          implementation: 'runtime',
           labelKey: 'settings.code.tabWidth',
           defaultValue: '4',
           options: tabWidthOptions,
@@ -577,6 +609,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'preferLooseListItem',
+          implementation: 'runtime',
           labelKey: 'settings.markdown.looseLists',
           defaultValue: true,
           testId: 'settings-markdown-loose-lists',
@@ -584,6 +617,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'bulletListMarker',
+          implementation: 'runtime',
           labelKey: 'settings.markdown.bulletMarker',
           defaultValue: '-',
           options: bulletMarkerOptions,
@@ -592,6 +626,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'orderListDelimiter',
+          implementation: 'runtime',
           labelKey: 'settings.markdown.orderedDelimiter',
           defaultValue: '.',
           options: orderedDelimiterOptions,
@@ -600,6 +635,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'listIndentation',
+          implementation: 'runtime',
           labelKey: 'settings.markdown.listIndentation',
           defaultValue: '1',
           display: 'select',
@@ -614,6 +650,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'preferHeadingStyle',
+          implementation: 'storedOnly',
           labelKey: 'settings.markdown.headingStyle',
           defaultValue: 'atx',
           options: headingStyleOptions,
@@ -627,6 +664,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'frontmatterType',
+          implementation: 'runtime',
           labelKey: 'settings.markdown.frontMatter',
           defaultValue: '-',
           display: 'select',
@@ -636,6 +674,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'footnote',
+          implementation: 'runtime',
           labelKey: 'settings.markdown.footnotes',
           defaultValue: false,
           testId: 'settings-markdown-footnotes',
@@ -643,6 +682,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'superSubScript',
+          implementation: 'runtime',
           labelKey: 'settings.markdown.superSub',
           defaultValue: false,
           testId: 'settings-markdown-super-sub',
@@ -655,6 +695,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'isHtmlEnabled',
+          implementation: 'runtime',
           labelKey: 'settings.markdown.htmlRendering',
           defaultValue: true,
           testId: 'settings-markdown-html-rendering',
@@ -662,6 +703,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'isGitlabCompatibilityEnabled',
+          implementation: 'runtime',
           labelKey: 'settings.markdown.gitlab',
           defaultValue: false,
           testId: 'settings-markdown-gitlab',
@@ -674,6 +716,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'sequenceTheme',
+          implementation: 'runtime',
           labelKey: 'settings.markdown.sequenceTheme',
           defaultValue: 'hand',
           options: sequenceThemeOptions,
@@ -682,6 +725,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'text',
           id: 'plantumlServer',
+          implementation: 'runtime',
           labelKey: 'settings.markdown.plantumlServer',
           defaultValue: 'https://www.plantuml.com/plantuml',
           placeholderKey: 'settings.placeholder.url',
@@ -697,6 +741,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'localDrafts',
+          implementation: 'runtime',
           labelKey: 'settings.documents.localDrafts',
           defaultValue: true,
           testId: 'settings-documents-local-drafts',
@@ -704,6 +749,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'recoveryDrafts',
+          implementation: 'runtime',
           labelKey: 'settings.documents.recovery',
           defaultValue: true,
           testId: 'settings-documents-recovery',
@@ -716,6 +762,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'autoSave',
+          implementation: 'runtime',
           labelKey: 'settings.documents.autosave',
           defaultValue: true,
           testId: 'settings-documents-autosave',
@@ -723,6 +770,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'slider',
           id: 'autoSaveDelay',
+          implementation: 'runtime',
           labelKey: 'settings.documents.saveDelay',
           defaultValue: 1,
           min: 1,
@@ -739,6 +787,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'startUpAction',
+          implementation: 'runtime',
           labelKey: 'settings.documents.startupAction',
           defaultValue: 'home',
           options: startupOptions,
@@ -752,6 +801,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'fileSortBy',
+          implementation: 'runtime',
           labelKey: 'settings.documents.sortBy',
           defaultValue: 'modified',
           display: 'select',
@@ -761,6 +811,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'fileSortOrder',
+          implementation: 'runtime',
           labelKey: 'settings.documents.sortOrder',
           defaultValue: 'desc',
           options: sortOrderOptions,
@@ -776,6 +827,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'imageCopyImages',
+          implementation: 'runtime',
           labelKey: 'settings.images.copyImages',
           defaultValue: true,
           testId: 'settings-images-copy',
@@ -788,6 +840,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'shareImages',
+          implementation: 'runtime',
           labelKey: 'settings.images.shareImages',
           defaultValue: 'attach',
           options: imageShareOptions,
@@ -796,6 +849,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'shareLinkedImages',
+          implementation: 'unfinished',
           labelKey: 'settings.images.includeLinked',
           defaultValue: false,
           testId: 'settings-images-include-linked',
@@ -810,6 +864,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'spellcheckerEnabled',
+          implementation: 'runtime',
           labelKey: 'settings.spelling.enabled',
           defaultValue: false,
           testId: 'settings-spelling-enabled',
@@ -817,6 +872,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'spellcheckerLanguage',
+          implementation: 'runtime',
           labelKey: 'settings.spelling.language',
           defaultValue: 'en-US',
           display: 'select',
@@ -831,6 +887,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'spellcheckerUnderline',
+          implementation: 'runtime',
           labelKey: 'settings.spelling.underlines',
           defaultValue: true,
           testId: 'settings-spelling-underlines',
@@ -844,6 +901,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'action',
           id: 'customWords',
+          implementation: 'unfinished',
           labelKey: 'settings.spelling.dictionary',
           valueKey: 'settings.value.open',
           testId: 'settings-spelling-dictionary',
@@ -851,6 +909,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'action',
           id: 'addWord',
+          implementation: 'unfinished',
           labelKey: 'settings.spelling.addWord',
           valueKey: 'settings.value.manual',
           testId: 'settings-spelling-add-word',
@@ -858,6 +917,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'action',
           id: 'removeWord',
+          implementation: 'unfinished',
           labelKey: 'settings.spelling.removeWord',
           valueKey: 'settings.value.manual',
           testId: 'settings-spelling-remove-word',
@@ -872,6 +932,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'defaultEncoding',
+          implementation: 'runtime',
           labelKey: 'settings.advanced.encoding',
           defaultValue: 'utf8',
           display: 'select',
@@ -881,6 +942,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'autoGuessEncoding',
+          implementation: 'runtime',
           labelKey: 'settings.advanced.autoDetectEncoding',
           defaultValue: true,
           testId: 'settings-advanced-auto-detect-encoding',
@@ -888,6 +950,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'endOfLine',
+          implementation: 'runtime',
           labelKey: 'settings.advanced.lineEndings',
           defaultValue: 'default',
           options: lineEndingOptions,
@@ -896,6 +959,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'trimTrailingNewline',
+          implementation: 'runtime',
           labelKey: 'settings.advanced.trailingNewline',
           defaultValue: '2',
           display: 'select',
@@ -910,6 +974,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'status',
           id: 'deviceInfo',
+          implementation: 'runtime',
           labelKey: 'settings.advanced.diagnostics',
           valueKey: 'settings.value.ready',
           testId: 'settings-advanced-diagnostics',
@@ -917,6 +982,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'status',
           id: 'webviewInfo',
+          implementation: 'runtime',
           labelKey: 'settings.advanced.webview',
           valueKey: 'settings.value.ready',
           testId: 'settings-advanced-webview',
@@ -929,18 +995,21 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'action',
           id: 'exportLogs',
+          implementation: 'runtime',
           labelKey: 'settings.advanced.exportLogs',
           testId: 'settings-advanced-export-logs',
         },
         {
           kind: 'action',
           id: 'clearDrafts',
+          implementation: 'runtime',
           labelKey: 'settings.advanced.clearDrafts',
           testId: 'settings-advanced-clear-drafts',
         },
         {
           kind: 'action',
           id: 'resetSettings',
+          implementation: 'runtime',
           labelKey: 'settings.advanced.reset',
           testId: 'settings-advanced-reset',
         },
