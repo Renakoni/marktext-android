@@ -6,6 +6,7 @@ import {
 } from './advancedSettings'
 import {
   APPEARANCE_SETTING_KEYS,
+  DEFAULT_APPEARANCE_THEME_SETTINGS,
   DEFAULT_APPEARANCE_TEXT_SETTINGS,
 } from './appearanceSettings'
 import {
@@ -50,6 +51,11 @@ const EXPECTED_UNFINISHED_ROW_IDS = new Set([
   'customWords',
   'addWord',
   'removeWord',
+])
+
+const EXPECTED_DERIVED_ROW_IDS = new Set([
+  'deviceInfo',
+  'webviewInfo',
 ])
 
 const OWNED_STORED_SETTING_KEYS = new Set<string>([
@@ -119,6 +125,16 @@ const RUNTIME_SETTING_DEFAULTS = new Map<string, SettingsValue>([
   ['autoGuessEncoding', DEFAULT_ADVANCED_SETTINGS.autoGuessEncoding],
   ['endOfLine', DEFAULT_ADVANCED_SETTINGS.endOfLine],
   ['trimTrailingNewline', String(DEFAULT_ADVANCED_SETTINGS.trimTrailingNewline)],
+])
+
+const STORED_ONLY_SETTING_DEFAULTS = new Map<string, SettingsValue>([
+  ['followSystemTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.followSystemTheme],
+  ['appTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.appTheme],
+  ['lightModeTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.lightModeTheme],
+  ['darkModeTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.darkModeTheme],
+  ['theme', DEFAULT_APPEARANCE_THEME_SETTINGS.theme],
+  ['sourceCodeModeEnabled', DEFAULT_EDITING_SETTINGS.sourceCodeModeEnabled],
+  ['preferHeadingStyle', DEFAULT_EDITING_SETTINGS.preferHeadingStyle],
 ])
 
 function getRows(): SettingsRowWithLocation[] {
@@ -197,6 +213,27 @@ describe('settings content governance', () => {
       .toEqual([...EXPECTED_STORED_ONLY_ROW_IDS].sort())
     expect(rows.filter(row => row.implementation === 'unfinished').map(row => row.id).sort())
       .toEqual([...EXPECTED_UNFINISHED_ROW_IDS].sort())
+  })
+
+  it('keeps stored-only descriptor defaults aligned with feature defaults', () => {
+    const storedOnlyRows = getStoredRows(getRows()).filter(
+      (row): row is SettingsDefaultValueRow =>
+        row.implementation === 'storedOnly' && hasDefaultValue(row),
+    )
+
+    expect(storedOnlyRows.map(row => row.id).filter(id => !STORED_ONLY_SETTING_DEFAULTS.has(id)))
+      .toEqual([])
+
+    for (const row of storedOnlyRows) {
+      expect(row.defaultValue, row.id).toBe(STORED_ONLY_SETTING_DEFAULTS.get(row.id))
+    }
+  })
+
+  it('keeps derived rows explicit and display-only', () => {
+    const derivedRows = getRows().filter(row => row.implementation === 'derived')
+
+    expect(derivedRows.map(row => row.id).sort()).toEqual([...EXPECTED_DERIVED_ROW_IDS].sort())
+    expect(derivedRows.map(row => row.kind)).toEqual(['status', 'status'])
   })
 
   it('keeps choice defaults valid and option ids unique', () => {

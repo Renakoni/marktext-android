@@ -13,7 +13,7 @@ interface SettingsBaseRow {
   testId: string
 }
 
-export type SettingsRowImplementation = 'runtime' | 'storedOnly' | 'unfinished'
+export type SettingsRowImplementation = 'runtime' | 'storedOnly' | 'derived' | 'unfinished'
 
 export interface SettingsToggleRow extends SettingsBaseRow {
   kind: 'toggle'
@@ -974,7 +974,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'status',
           id: 'deviceInfo',
-          implementation: 'runtime',
+          implementation: 'derived',
           labelKey: 'settings.advanced.diagnostics',
           valueKey: 'settings.value.ready',
           testId: 'settings-advanced-diagnostics',
@@ -982,7 +982,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'status',
           id: 'webviewInfo',
-          implementation: 'runtime',
+          implementation: 'derived',
           labelKey: 'settings.advanced.webview',
           valueKey: 'settings.value.ready',
           testId: 'settings-advanced-webview',

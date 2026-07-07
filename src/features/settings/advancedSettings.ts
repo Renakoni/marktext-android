@@ -80,6 +80,10 @@ export const ADVANCED_MAINTENANCE_ACTION_IDS = [
   'resetSettings',
 ] as const satisfies readonly AdvancedMaintenanceActionId[]
 
+export function isAdvancedMaintenanceActionId(value: string): value is AdvancedMaintenanceActionId {
+  return ADVANCED_MAINTENANCE_ACTION_IDS.includes(value as AdvancedMaintenanceActionId)
+}
+
 export const DEFAULT_ADVANCED_SETTINGS = {
   defaultEncoding: 'utf8',
   autoGuessEncoding: true,
