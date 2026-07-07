@@ -20,7 +20,10 @@ import {
 import { APP_LANGUAGE_OPTIONS, useI18n, type I18nKey } from '../../../lib/i18n'
 import { SETTINGS_PAGES, type SettingsPage } from '../settingsNavigation'
 import { useSettingsState } from '../settingsState'
-import type { AdvancedMaintenanceActionId } from '../advancedSettings'
+import {
+  isAdvancedMaintenanceActionId,
+  type AdvancedMaintenanceActionId,
+} from '../advancedSettings'
 import { getAdvancedDiagnostics } from '../advancedDiagnostics'
 
 const props = defineProps<{
@@ -138,10 +141,7 @@ function setStoredValue(rowId: string, value: boolean | number | string) {
 }
 
 function getMaintenanceActionId(rowId: string): MaintenanceActionId | null {
-  if (rowId === 'exportLogs' || rowId === 'clearDrafts' || rowId === 'resetSettings') {
-    return rowId
-  }
-  return null
+  return isAdvancedMaintenanceActionId(rowId) ? rowId : null
 }
 
 function getMaintenanceActionCopy(rowId: string) {
