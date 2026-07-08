@@ -411,6 +411,15 @@ class Content extends TreeNode {
         if (!isMouseEvent(event))
             return;
 
+        // Chromium synthesizes this click from taps. On touch, re-applying
+        // the (identical) range with setCursor would tear down the native
+        // touch-selection session and its drag handles — a double-tap word
+        // selection lost its handles one frame after they appeared. Adopt the
+        // browser's selection into the block model without touching the DOM.
+        const isTouchDerived
+            = 'pointerType' in event
+                && (event as PointerEvent).pointerType === 'touch';
+
         requestAnimationFrame(() => {
             if (event.shiftKey && this.selection.anchorBlock !== this)
                 return;
@@ -419,7 +428,10 @@ class Content extends TreeNode {
             if (!cursor)
                 return;
 
-            this.setCursor(cursor.start.offset, cursor.end.offset);
+            if (isTouchDerived)
+                this.adoptCursor(cursor.start.offset, cursor.end.offset);
+            else
+                this.setCursor(cursor.start.offset, cursor.end.offset);
         });
     }
 
@@ -591,6 +603,18 @@ class Content extends TreeNode {
         this.muya.editor.activeContentBlock = this;
 
         this.selection.setSelection(anchor, focus);
+    }
+
+    // Record an existing browser selection in the block model without
+    // re-applying it to the DOM (see clickHandler: a programmatic range
+    // replacement dismisses Android's touch-selection drag handles).
+    adoptCursor(begin: number, end: number) {
+        const anchor = { offset: begin, block: this, path: this.path };
+        const focus = { offset: end, block: this, path: this.path };
+
+        this.muya.editor.activeContentBlock = this;
+
+        this.selection.adoptSelection(anchor, focus);
     }
 
     update(_cursor?: IRenderCursor, _highlights: IHighlight[] = []) {

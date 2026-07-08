@@ -4,7 +4,7 @@ import Format from '../block/base/format';
 import { isClipboardEvent, isKeyboardEvent } from '../utils';
 import { getClipboardData, writeClipboardData } from './copyData';
 import { cutSelection, deleteTableSelection } from './cut';
-import { pastePlainText, pasteSelection } from './paste';
+import { pastePlainText, pasteRawText, pasteSelection } from './paste';
 import { pasteImageSrc } from './pasteImage';
 import { CopyType, PasteType } from './types';
 
@@ -104,16 +104,57 @@ class Clipboard {
                 this.pasteHandler(event);
         };
 
+        // Android IME clipboard chips insert text through InputConnection
+        // commitText instead of a DOM paste event. For multi-line text the
+        // browser's default insertion clones the content spans per line -
+        // clones carry no block link, so the whole insertion bypasses the
+        // block model (visible text that cut/delete/save cannot touch).
+        // Intercept paste-like beforeinput and run it through Muya's own
+        // paste pipeline instead.
+        const beforeInputHandler = (event: Event) => {
+            if (!ownsEvent() || !(event instanceof InputEvent) || !event.cancelable)
+                return;
+
+            const { inputType } = event;
+            const text = event.dataTransfer?.getData('text/plain') ?? event.data ?? '';
+            const isPasteLike
+                = inputType === 'insertFromPaste'
+                    || inputType === 'insertReplacementText'
+                    || (inputType === 'insertText' && /[\r\n]/.test(text));
+
+            if (!isPasteLike || !text)
+                return;
+
+            event.preventDefault();
+            void pasteRawText(this, text.replace(/\r\n?/g, '\n'));
+        };
+
         const { eventCenter } = this.muya;
 
         eventCenter.attachDOMEvent(document, 'copy', copyCutHandler);
         eventCenter.attachDOMEvent(document, 'cut', copyCutHandler);
         eventCenter.attachDOMEvent(document, 'paste', pasteHandler);
+        eventCenter.attachDOMEvent(document, 'beforeinput', beforeInputHandler);
         eventCenter.attachDOMEvent(document, 'keydown', keydownHandler);
     }
 
     getClipboardData(): IClipboardPayload {
         return getClipboardData(this);
+    }
+
+    cutSelectionToClipboardData(): IClipboardPayload {
+        const selectionBeforeCut = this.selection.getSelection();
+        const payload = this.getClipboardData();
+        if (payload.text) {
+            this.cutHandler();
+            const changedBlock = this.selection.getSelection()?.focus.block
+                ?? selectionBeforeCut?.focus.block
+                ?? selectionBeforeCut?.anchor.block;
+            if (changedBlock)
+                this.muya.eventCenter.emit('content-change', { block: changedBlock });
+        }
+
+        return payload;
     }
 
     copyHandler(event: ClipboardEvent): void {

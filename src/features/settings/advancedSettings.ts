@@ -48,12 +48,14 @@ export type AdvancedSettingKey =
   | 'autoGuessEncoding'
   | 'endOfLine'
   | 'trimTrailingNewline'
+  | 'selectionInputDiagnostics'
 
 export interface AdvancedSettings {
   defaultEncoding: MarkdownEncoding
   autoGuessEncoding: boolean
   endOfLine: AdvancedLineEnding
   trimTrailingNewline: TrailingNewlineMode
+  selectionInputDiagnostics: boolean
 }
 
 export interface AndroidMarkdownSettings {
@@ -72,6 +74,7 @@ export const ADVANCED_SETTING_KEYS = [
   'autoGuessEncoding',
   'endOfLine',
   'trimTrailingNewline',
+  'selectionInputDiagnostics',
 ] as const satisfies readonly AdvancedSettingKey[]
 
 export const ADVANCED_MAINTENANCE_ACTION_IDS = [
@@ -89,6 +92,7 @@ export const DEFAULT_ADVANCED_SETTINGS = {
   autoGuessEncoding: true,
   endOfLine: 'default',
   trimTrailingNewline: 2,
+  selectionInputDiagnostics: false,
 } as const satisfies AdvancedSettings
 
 export const DEFAULT_MARKDOWN_SAVE_SETTINGS = {
@@ -171,6 +175,8 @@ export function normalizeAdvancedSettingValue(key: AdvancedSettingKey, value: Se
       return normalizeChoice(value, ADVANCED_LINE_ENDINGS, DEFAULT_ADVANCED_SETTINGS.endOfLine)
     case 'trimTrailingNewline':
       return normalizeTrailingNewlineMode(value)
+    case 'selectionInputDiagnostics':
+      return normalizeBoolean(value, DEFAULT_ADVANCED_SETTINGS.selectionInputDiagnostics)
   }
 }
 
@@ -192,6 +198,13 @@ export function getAdvancedSettings(
     ),
     trimTrailingNewline: normalizeTrailingNewlineMode(
       getValue('trimTrailingNewline', DEFAULT_ADVANCED_SETTINGS.trimTrailingNewline),
+    ),
+    selectionInputDiagnostics: normalizeBoolean(
+      getValue(
+        'selectionInputDiagnostics',
+        DEFAULT_ADVANCED_SETTINGS.selectionInputDiagnostics,
+      ),
+      DEFAULT_ADVANCED_SETTINGS.selectionInputDiagnostics,
     ),
   }
 }

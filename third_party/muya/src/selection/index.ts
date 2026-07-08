@@ -126,6 +126,10 @@ class Selection {
         this._text.setSelection(anchor, focus);
     }
 
+    adoptSelection(anchor: IAnchorFocusInfo, focus: IAnchorFocusInfo): void {
+        this._text.adoptSelection(anchor, focus);
+    }
+
     selectAll(): void {
         const tableSelection = this._table;
 

@@ -21,6 +21,27 @@ import {
 } from './dom';
 import { SelectionCaretType, SelectionDirection, SelectionType } from './types';
 
+const CONTENT_DOM_SELECTOR = 'span.mu-content';
+
+function isBlockLinkedContentDOM(element: HTMLElement) {
+    return Boolean(element[BLOCK_DOM_PROPERTY]);
+}
+
+function firstContentDOMWithin(element: HTMLElement) {
+    return (
+        Array.from(element.querySelectorAll<HTMLElement>(CONTENT_DOM_SELECTOR)).find(
+            isBlockLinkedContentDOM,
+        ) ?? null
+    );
+}
+
+function lastContentDOMWithin(element: HTMLElement) {
+    const linked = Array.from(
+        element.querySelectorAll<HTMLElement>(CONTENT_DOM_SELECTOR),
+    ).filter(isBlockLinkedContentDOM);
+    return linked.length > 0 ? linked[linked.length - 1] : null;
+}
+
 function computeDirection(
     anchorBlock: Content,
     focusBlock: Content,
@@ -221,6 +242,20 @@ class TextSelection {
         this._emitSelectionChange();
     }
 
+    // Record a selection the browser already established without re-applying
+    // it to the DOM. Rewriting an identical range looks harmless on desktop,
+    // but on Android any programmatic range replacement tears down the
+    // touch-selection session and its drag handles.
+    adoptSelection(anchor: IAnchorFocusInfo, focus: IAnchorFocusInfo) {
+        this.anchor = { offset: anchor.offset };
+        this.anchorBlock = anchor.block;
+        this.anchorPath = anchor.path;
+        this.focus = { offset: focus.offset };
+        this.focusBlock = focus.block;
+        this.focusPath = focus.path;
+        this._emitSelectionChange();
+    }
+
     private _emitSelectionChange() {
         const { _isCollapsed: isCollapsed, isSelectionInSameBlock, _direction: direction, _type: type } = this;
         const anchorBlock = this.anchorBlock ?? null;
@@ -319,6 +354,71 @@ class TextSelection {
         eventCenter.attachDOMEvent(domNode, 'mouseup', handleMouseupOrLeave);
         eventCenter.attachDOMEvent(domNode, 'mouseleave', handleMouseupOrLeave);
         eventCenter.attachDOMEvent(domNode, 'click', handleMousemoveOrClick);
+        eventCenter.attachDOMEvent(this._doc, 'selectionchange', () =>
+            this._normalizeForeignCaret());
+    }
+
+    // Mobile taps and OEM WebView selection sessions can drop the caret on a
+    // block wrapper or the editor root instead of a content span. Desktop
+    // Muya never sees this because mouse clicks land on text nodes, but on
+    // Android it detaches the IME session from the block model: typed text
+    // lands in the DOM without content-change events and Backspace no-ops.
+    // Snap any such caret into the nearest content block instead.
+    private _normalizeForeignCaret() {
+        const selection = this._doc.getSelection();
+        if (!selection || selection.rangeCount === 0 || !selection.isCollapsed)
+            return;
+
+        const { anchorNode, anchorOffset } = selection;
+        if (!anchorNode || !this._muya.domNode.contains(anchorNode))
+            return;
+
+        // A content span cloned by the browser's native editing (multi-line
+        // IME insertion, drag-drop) keeps the class but not the block link,
+        // so a class match alone is not "inside Muya content".
+        const contentDom = findContentDOM(anchorNode);
+        if (contentDom && contentDom[BLOCK_DOM_PROPERTY])
+            return;
+
+        const target = this._findNearestContentTarget(anchorNode, anchorOffset);
+        if (!target)
+            return;
+
+        const block = target.contentDom[BLOCK_DOM_PROPERTY] as Content | undefined;
+        if (!block || typeof block.setCursor !== 'function')
+            return;
+
+        const offset = target.edge === 'start' ? 0 : block.text.length;
+        block.setCursor(offset, offset);
+    }
+
+    private _findNearestContentTarget(anchorNode: Node, anchorOffset: number) {
+        // Caret sitting between the children of a wrapper: prefer the end of
+        // the content before the caret, then the start of the content after.
+        if (isHTMLElement(anchorNode) && anchorNode.childNodes.length > 0) {
+            const before = anchorNode.childNodes[anchorOffset - 1];
+            const beforeContent = isHTMLElement(before) ? lastContentDOMWithin(before) : null;
+            if (beforeContent)
+                return { contentDom: beforeContent, edge: 'end' as const };
+
+            const after = anchorNode.childNodes[anchorOffset];
+            const afterContent = isHTMLElement(after) ? firstContentDOMWithin(after) : null;
+            if (afterContent)
+                return { contentDom: afterContent, edge: 'start' as const };
+        }
+
+        const anchorElement = isHTMLElement(anchorNode)
+            ? anchorNode
+            : anchorNode.parentElement;
+        if (!anchorElement)
+            return null;
+
+        const inner = firstContentDOMWithin(anchorElement);
+        if (inner)
+            return { contentDom: inner, edge: 'end' as const };
+
+        const last = lastContentDOMWithin(this._muya.domNode);
+        return last ? { contentDom: last, edge: 'end' as const } : null;
     }
 
     private _selectRange(range: Range) {
