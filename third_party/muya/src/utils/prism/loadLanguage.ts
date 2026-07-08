@@ -1,6 +1,5 @@
 import components from 'prismjs/components.js';
 import getLoader from 'prismjs/dependencies';
-import { getDefer } from '../index';
 
 interface ILangLoadStatus {
     lang: string;
@@ -20,9 +19,15 @@ export const loadedLanguages = new Set([
 
 const { languages } = components;
 const languageModules = import.meta.glob([
-    '../../../../../prismjs/components/prism-*.js',
-    '!../../../../../prismjs/components/prism-*.min.js',
+    '../../../node_modules/prismjs/components/prism-*.js',
+    '!../../../node_modules/prismjs/components/prism-*.min.js',
 ]) as Record<string, () => Promise<unknown>>;
+
+function getLanguageModule(lang: string) {
+    const modulePath = `../../../node_modules/prismjs/components/prism-${lang}.js`;
+    return languageModules[modulePath]
+        ?? Object.entries(languageModules).find(([path]) => path.endsWith(`/prism-${lang}.js`))?.[1];
+}
 
 // Look for the origin language by alias
 export function transformAliasToOrigin(langs: string[]) {
@@ -81,43 +86,38 @@ function initLoadLanguage(Prism: IPrismLike) {
         if (!Array.isArray(langs))
             langs = [langs];
 
-        const promises: Promise<ILangLoadStatus>[] = [];
+        const statuses: ILangLoadStatus[] = [];
         // The user might have loaded languages via some other way or used `prism.js` which already includes some
         // We don't need to validate the ids because `getLoader` will ignore invalid ones
         const loaded = [...loadedLanguages, ...Object.keys(Prism.languages)];
-        getLoader(components, langs, loaded).load(async (lang: string) => {
-            const defer = getDefer<ILangLoadStatus>();
-            promises.push(defer.promise);
+        const loadComponent = async (lang: string): Promise<void> => {
             if (!(lang in components.languages)) {
-                defer.resolve({
-                    lang,
-                    status: 'noexist',
-                });
+                statuses.push({ lang, status: 'noexist' });
+                return;
             }
-            else if (loadedLanguages.has(lang)) {
-                defer.resolve({
-                    lang,
-                    status: 'cached',
-                });
+            if (loadedLanguages.has(lang)) {
+                statuses.push({ lang, status: 'cached' });
+                return;
             }
-            else {
-                delete Prism.languages[lang];
-                const modulePath = `../../../../../prismjs/components/prism-${lang}.js`;
-                const loadLanguageModule = languageModules[modulePath];
-                if (!loadLanguageModule) {
-                    throw new Error(`Prism language module not found: ${lang}`);
-                }
 
-                await loadLanguageModule();
-                defer.resolve({
-                    lang,
-                    status: 'loaded',
-                });
-                loadedLanguages.add(lang);
+            delete Prism.languages[lang];
+            const loadLanguageModule = getLanguageModule(lang);
+            if (!loadLanguageModule) {
+                throw new Error(`Prism language module not found: ${lang}`);
             }
+
+            await loadLanguageModule();
+            loadedLanguages.add(lang);
+            statuses.push({ lang, status: 'loaded' });
+        };
+
+        await getLoader(components, langs, loaded).load(loadComponent, {
+            series: (before: Promise<void>, after: () => Promise<void>) =>
+                before.then(after),
+            parallel: (values: Promise<void>[]) => Promise.all(values),
         });
 
-        return Promise.all(promises);
+        return statuses;
     };
 }
 
