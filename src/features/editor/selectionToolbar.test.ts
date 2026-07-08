@@ -30,6 +30,12 @@ describe('selection toolbar commands', () => {
       'paste',
       'selectAll',
     ])
+    expect(SELECTION_TOOLBAR_COMMANDS.map(command => command.iconName)).toEqual([
+      'copy',
+      'cut',
+      'paste',
+      'selectAll',
+    ])
   })
 
   it('drops paste when clipboard read is unavailable', () => {

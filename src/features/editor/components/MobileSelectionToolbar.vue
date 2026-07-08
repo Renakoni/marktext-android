@@ -34,7 +34,7 @@ const pressedCommandId = ref<SelectionToolbarCommandId | null>(null)
 
 // Used for the first placement pass before the toolbar has rendered; the
 // update loop re-measures the real element right after it becomes visible.
-const FALLBACK_TOOLBAR_SIZE = { width: 248, height: 52 }
+const FALLBACK_TOOLBAR_SIZE = { width: 194, height: 54 }
 let frameId: number | null = null
 // Last non-collapsed editor selection, kept so commands can restore it if the
 // tap that pressed a toolbar button still managed to collapse the selection.
@@ -261,6 +261,8 @@ watch(
       class="selection-toolbar-button"
       :class="{ 'is-pressed': pressedCommandId === command.commandId }"
       type="button"
+      :aria-label="t(command.labelKey)"
+      :title="t(command.labelKey)"
       :data-command-id="command.commandId"
       :data-testid="`selection-command-${command.commandId}`"
       @touchstart="pressedCommandId = command.commandId"
@@ -268,7 +270,47 @@ watch(
       @touchend.prevent="runCommandFromTouch(command.commandId, $event)"
       @click="runCommand(command.commandId)"
     >
-      {{ t(command.labelKey) }}
+      <svg
+        v-if="command.iconName === 'copy'"
+        class="selection-toolbar-icon"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <rect x="9" y="8" width="10" height="12" rx="2" />
+        <path d="M5 16V6a2 2 0 0 1 2-2h8" />
+      </svg>
+      <svg
+        v-else-if="command.iconName === 'cut'"
+        class="selection-toolbar-icon"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle cx="6" cy="7" r="2.3" />
+        <circle cx="6" cy="17" r="2.3" />
+        <path d="M8.1 8.1 19 19" />
+        <path d="M8.1 15.9 19 5" />
+      </svg>
+      <svg
+        v-else-if="command.iconName === 'paste'"
+        class="selection-toolbar-icon"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path d="M9 5h6" />
+        <path d="M9 4.8A2.8 2.8 0 0 1 11.8 2h.4A2.8 2.8 0 0 1 15 4.8V6H9Z" />
+        <path d="M8 5H6.8A2.8 2.8 0 0 0 4 7.8v10.4A2.8 2.8 0 0 0 6.8 21h10.4a2.8 2.8 0 0 0 2.8-2.8V7.8A2.8 2.8 0 0 0 17.2 5H16" />
+      </svg>
+      <svg
+        v-else
+        class="selection-toolbar-icon selection-toolbar-icon-select-all"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <rect x="4" y="4" width="16" height="16" rx="2.5" />
+        <path d="M8 9h8" />
+        <path d="M8 12h8" />
+        <path d="M8 15h5" />
+      </svg>
     </button>
   </div>
 </template>
@@ -278,8 +320,8 @@ watch(
   position: fixed;
   z-index: 24;
   display: flex;
-  align-items: stretch;
-  gap: 2px;
+  align-items: center;
+  gap: 3px;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -291,19 +333,34 @@ watch(
 }
 
 .selection-toolbar-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
   min-height: 44px;
-  padding: 0 14px;
+  padding: 0;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
+  touch-action: manipulation;
 }
 
 .selection-toolbar-button:active,
 .selection-toolbar-button.is-pressed {
   background: var(--accent-tint-11);
+}
+
+.selection-toolbar-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.selection-toolbar-icon-select-all rect {
+  stroke-dasharray: 2.4 2.4;
 }
 </style>
