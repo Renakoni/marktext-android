@@ -125,6 +125,7 @@ const RUNTIME_SETTING_DEFAULTS = new Map<string, SettingsValue>([
   ['autoGuessEncoding', DEFAULT_ADVANCED_SETTINGS.autoGuessEncoding],
   ['endOfLine', DEFAULT_ADVANCED_SETTINGS.endOfLine],
   ['trimTrailingNewline', String(DEFAULT_ADVANCED_SETTINGS.trimTrailingNewline)],
+  ['selectionInputDiagnostics', DEFAULT_ADVANCED_SETTINGS.selectionInputDiagnostics],
 ])
 
 const STORED_ONLY_SETTING_DEFAULTS = new Map<string, SettingsValue>([

@@ -32,6 +32,7 @@ describe('advancedSettings', () => {
       ['autoGuessEncoding', false, false],
       ['endOfLine', 'crlf', 'crlf'],
       ['trimTrailingNewline', '0', 0],
+      ['selectionInputDiagnostics', true, true],
     ]
 
     for (const [key, value, expected] of cases) {
@@ -55,6 +56,7 @@ describe('advancedSettings', () => {
       autoGuessEncoding: true,
       endOfLine: 'lf',
       trimTrailingNewline: 1,
+      selectionInputDiagnostics: false,
     }, 'utf16le')).toEqual({
       encoding: 'utf16le',
       lineEnding: 'lf',
@@ -66,6 +68,7 @@ describe('advancedSettings', () => {
       autoGuessEncoding: false,
       endOfLine: 'crlf',
       trimTrailingNewline: 0,
+      selectionInputDiagnostics: false,
     }, 'utf16le')).toEqual({
       encoding: 'gbk',
       lineEnding: 'crlf',
@@ -79,6 +82,7 @@ describe('advancedSettings', () => {
       autoGuessEncoding: true,
       endOfLine: 'default',
       trimTrailingNewline: 2,
+      selectionInputDiagnostics: false,
     })).toMatchObject({
       encoding: 'gb18030',
     })

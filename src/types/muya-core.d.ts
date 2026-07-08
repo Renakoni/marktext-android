@@ -22,10 +22,43 @@ declare module '@muyajs/core' {
     githubSlug: string
   }
 
+  export interface IMuyaClipboard {
+    getClipboardData(): { html: string; text: string }
+    cutSelectionToClipboardData(): { html: string; text: string }
+    pasteAsPlainText(): Promise<void>
+    copyAsMarkdown(): void
+    copyAsHtml(): void
+    cutHandler(): void
+  }
+
+  export interface IMuyaSelectionEndpoint {
+    offset: number
+    block: unknown
+    path: (string | number)[]
+  }
+
+  export interface IMuyaSelectionSnapshot {
+    anchor: IMuyaSelectionEndpoint
+    focus: IMuyaSelectionEndpoint
+    isCollapsed: boolean
+    isSelectionInSameBlock: boolean
+  }
+
+  export interface IMuyaSelection {
+    clear(): void
+    getSelection(): IMuyaSelectionSnapshot | null
+    setSelection(anchor: IMuyaSelectionEndpoint, focus: IMuyaSelectionEndpoint): void
+  }
+
   export class Muya {
     static plugins: { plugin: unknown; options?: Record<string, unknown> }[]
     static use(plugin: unknown, options?: Record<string, unknown>): void
     domNode: HTMLElement
+    editor: {
+      activeContentBlock: unknown
+      clipboard: IMuyaClipboard
+      selection: IMuyaSelection
+    }
     constructor(element: HTMLElement, options?: Record<string, unknown>)
     init(): void
     on(event: string, listener: (...args: unknown[]) => void): void

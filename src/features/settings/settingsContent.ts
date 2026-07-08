@@ -987,6 +987,14 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
           valueKey: 'settings.value.ready',
           testId: 'settings-advanced-webview',
         },
+        {
+          kind: 'toggle',
+          id: 'selectionInputDiagnostics',
+          implementation: 'runtime',
+          labelKey: 'settings.advanced.selectionInputDiagnostics',
+          defaultValue: false,
+          testId: 'settings-advanced-selection-input-diagnostics',
+        },
       ],
     },
     {

@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watch, ref, type CSSProperties } from 'vue'
+import { onBeforeUnmount, watch, ref, computed, type CSSProperties } from 'vue'
 import AndroidExitPrompt from './components/AndroidExitPrompt.vue'
 import EditorActionSheet from './components/EditorActionSheet.vue'
 import LinkInsertSheet from './components/LinkInsertSheet.vue'
 import LocalDraftExitPrompt from './components/LocalDraftExitPrompt.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
+import MobileSelectionToolbar from './components/MobileSelectionToolbar.vue'
+import type { SelectionToolbarCommandId } from './selectionToolbar'
 import type { MobileCommandId } from '../../lib/mobileCommands'
 import type {
   MobileEditorToolbarPanel,
@@ -12,7 +14,7 @@ import type {
 } from '../../lib/mobileToolbarConfig'
 import { useI18n } from '../../lib/i18n'
 
-defineProps<{
+const props = defineProps<{
   documentTitle: string
   status: string
   editorReady: boolean
@@ -46,6 +48,7 @@ defineProps<{
   androidSaving: boolean
   textDirection: 'ltr' | 'rtl'
   editorStyleVars: CSSProperties
+  canPasteSelection: boolean
 }>()
 
 const emit = defineEmits<{
@@ -57,6 +60,8 @@ const emit = defineEmits<{
   'save-to-device': []
   'save-copy': []
   'run-toolbar-command': [commandId: MobileCommandId]
+  'run-selection-command': [commandId: SelectionToolbarCommandId, restoreRange: Range | null]
+  'dismiss-selection': [caretRange: Range | null]
   'toggle-toolbar': []
   'set-toolbar-panel': [panel: MobileEditorToolbarPanel]
   'update:linkText': [value: string]
@@ -73,7 +78,21 @@ const emit = defineEmits<{
 }>()
 
 const editorHost = ref<HTMLElement | null>(null)
+// Muya replaces the inner host element during init (originContainer.replaceWith),
+// so `editorHost` goes stale immediately. The shell stays in the document and
+// is the stable containment root for selection checks.
+const editorShell = ref<HTMLElement | null>(null)
 const { t } = useI18n()
+
+// Any sheet or prompt above the editor takes over the interaction surface,
+// so the floating selection toolbar must stand down while one is open.
+const selectionToolbarSuspended = computed(
+  () =>
+    props.editorMenuOpen ||
+    props.linkSheetOpen ||
+    props.draftExitPromptOpen ||
+    props.androidExitPromptOpen,
+)
 
 watch(editorHost, element => emit('editor-host-change', element), { immediate: true })
 
@@ -133,6 +152,7 @@ onBeforeUnmount(() => {
 
     <section class="editor-pane" :aria-label="t('editor.markdownEditor')">
       <div
+        ref="editorShell"
         class="editor-host-shell"
         :dir="textDirection"
         :style="editorStyleVars"
@@ -142,6 +162,17 @@ onBeforeUnmount(() => {
         <div ref="editorHost" class="muya-host" />
       </div>
     </section>
+
+    <MobileSelectionToolbar
+      :editor-ready="editorReady"
+      :suspended="selectionToolbarSuspended"
+      :host="editorShell"
+      :can-paste="canPasteSelection"
+      @run-command="
+        (commandId, restoreRange) => emit('run-selection-command', commandId, restoreRange)
+      "
+      @dismiss-selection="caretRange => emit('dismiss-selection', caretRange)"
+    />
 
     <MobileEditorToolbar
       v-if="toolbarVisible"

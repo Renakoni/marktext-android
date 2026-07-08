@@ -28,6 +28,7 @@ interface CreateMuyaEditorOptions {
   appLocale?: string
   appearanceTextSettings?: AppearanceTextSettings
   editingSettings?: EditingSettings
+  clipboardText?: () => Promise<string>
   isStale?: () => boolean
   logger?: EditorRuntimeLogger
 }
@@ -44,8 +45,10 @@ async function loadMuyaCore() {
 
 async function registerMuyaPlugins(logger?: EditorRuntimeLogger) {
   const core = await loadMuyaCore()
+  // InlineFormatToolbar is intentionally not registered: it is a desktop
+  // mouse-selection format popup and competes with the MarkText mobile
+  // selection toolbar for the same selection surface.
   const editorPlugins = [
-    core.InlineFormatToolbar,
     core.PreviewToolBar,
     core.CodeBlockLanguageSelector,
     core.EmojiSelector,
@@ -133,6 +136,7 @@ export async function createMuyaEditor({
   appLocale,
   appearanceTextSettings,
   editingSettings,
+  clipboardText,
   isStale,
   logger,
 }: CreateMuyaEditorOptions) {
@@ -149,6 +153,7 @@ export async function createMuyaEditor({
     markdown,
     ...getMuyaAppearanceOptions(appearanceTextSettings),
     ...(editingSettings ? getMuyaEditingOptions(editingSettings) : {}),
+    ...(clipboardText ? { clipboardText } : {}),
     frontMatter: true,
     math: true,
     locale: resolveMuyaLocale(core, appLocale),

@@ -497,6 +497,15 @@ class Format extends Content {
         if (footnoteEl)
             this._emitFootnoteToolEvent(footnoteEl);
 
+        // Chromium synthesizes this click from taps; re-applying the range
+        // with setCursor would tear down Android's touch-selection session
+        // and its drag handles (see Content.clickHandler). Only the
+        // re-render branch still needs setCursor, because update() rebuilds
+        // the DOM the selection lived in.
+        const isTouchDerived
+            = 'pointerType' in event
+                && (event as PointerEvent).pointerType === 'touch';
+
         requestAnimationFrame(() => {
             // TODO: @JOCS, remove use this.selection directly.
             if (event.shiftKey && this.selection.anchorBlock !== this) {
@@ -519,10 +528,16 @@ class Format extends Content {
                     ? this.checkNeedRender(cursor) || this.checkNeedRender()
                     : this.checkNeedRender(cursor);
 
-            if (needRender)
+            if (needRender) {
                 this.update(cursor);
-
-            this.setCursor(currentCursor.anchor.offset, currentCursor.focus.offset);
+                this.setCursor(currentCursor.anchor.offset, currentCursor.focus.offset);
+            }
+            else if (isTouchDerived) {
+                this.adoptCursor(currentCursor.anchor.offset, currentCursor.focus.offset);
+            }
+            else {
+                this.setCursor(currentCursor.anchor.offset, currentCursor.focus.offset);
+            }
 
             // Check and show format picker
             if (cursor.start.offset !== cursor.end.offset) {

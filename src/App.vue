@@ -33,6 +33,21 @@ import {
   type AndroidDocumentIntentListeners,
 } from './features/android-documents/androidDocumentIntentListeners'
 import {
+  addAndroidSelectionTapListener,
+  finishAndroidEditorSelectionActionMode,
+  isAndroidSelectionControlAvailable,
+  performAndroidNativeSelectAll,
+  readAndroidClipboardText,
+  setAndroidEditorSelectionMenuSuppressed,
+  writeAndroidClipboardText,
+  type AndroidSelectionTapEvent,
+} from './lib/androidSelection'
+import { installAndroidSelectionDiagnostics } from './lib/androidSelectionDiagnostics'
+import {
+  caretRangeAtPoint,
+  type SelectionToolbarCommandId,
+} from './features/editor/selectionToolbar'
+import {
   getAppBackButtonAction,
   getShowHomeAfterAndroidSaveAction,
   getShowHomeAfterLocalDraftSaveAction,
@@ -166,7 +181,10 @@ const SHARED_TEXT_IMPORTED_MESSAGE = 'Imported shared text as a local draft.'
 const ANDROID_SAVE_RECOVERY_MESSAGE = 'Save failed. A local recovery draft was kept.'
 const ANDROID_EXIT_RECOVERY_MESSAGE = 'Unsaved changes were kept as a recovery draft.'
 const ANDROID_EXIT_DISCARD_MESSAGE = 'Unsaved changes were discarded.'
-
+const ENABLE_ANDROID_SELECTION_ACTION_MODE_SUPPRESSION = true
+// Heavy per-event selection checkpoints are a debugging tool, not a product
+// behavior: leave off unless actively diagnosing selection lifecycle issues.
+const ENABLE_ANDROID_SELECTION_DIAGNOSTICS = false
 const editorElement = ref<HTMLElement | null>(null)
 const documentState = ref(createUntitledDocument())
 const localDrafts = ref<LocalDraftRecord[]>([])
@@ -210,6 +228,9 @@ const documentSettings = computed(() => getDocumentSettings(getValue))
 const imageSharingSettings = computed(() => getImageSharingSettings(getValue))
 const advancedSettings = computed(() => getAdvancedSettings(getValue))
 const androidMarkdownSettings = computed(() => getAndroidMarkdownSettings(advancedSettings.value))
+const androidInputDiagnosticsEnabled = computed(
+  () => advancedSettings.value.selectionInputDiagnostics,
+)
 const detectedDocumentEncoding = computed(() =>
   documentState.value.autosaveTarget === 'android-document'
     ? documentState.value.encoding
@@ -246,6 +267,9 @@ let appLifecycleListeners: AppLifecycleListeners | null = null
 let androidDocumentIntentListeners: AndroidDocumentIntentListeners | null = null
 let pendingInlineInsertRange: Range | null = null
 let startupActionTimer: number | null = null
+let editorSelectionDiagnosticCleanup: (() => void) | null = null
+let editorInputDiagnosticCleanup: (() => void) | null = null
+let nativeSelectionTapCleanup: (() => Promise<void>) | null = null
 
 const appLog = createLogger('app')
 const editorLog = createLogger('editor')
@@ -311,6 +335,18 @@ watch(
   },
   { immediate: true },
 )
+
+watch(androidInputDiagnosticsEnabled, enabled => {
+  if (!editorReady.value) {
+    return
+  }
+
+  if (enabled) {
+    installEditorInputDiagnostics()
+  } else {
+    uninstallEditorInputDiagnostics()
+  }
+})
 
 watch(locale, nextLocale => {
   void applyMuyaEditorLocale(editor, nextLocale, editorLog)
@@ -610,6 +646,308 @@ function syncAfterToolbarCommand(beforeMarkdown: string) {
     onEdited: () => syncMarkdown('Edited'),
     onUnchanged: () => syncDocumentFromEditor(documentState.value.isDirty),
   })
+}
+
+const canPasteSelection =
+  isAndroidSelectionControlAvailable() ||
+  (typeof navigator !== 'undefined' && Boolean(navigator.clipboard?.readText))
+
+// The Android tap that presses a toolbar button can collapse the selection
+// before the command handler runs; put the captured selection back so the
+// clipboard commands still have a range to operate on.
+function restoreEditorSelectionIfCollapsed(restoreRange: Range | null) {
+  if (!restoreRange || restoreRange.collapsed) {
+    return
+  }
+
+  const selection = document.getSelection()
+  if (!selection || (selection.rangeCount > 0 && !selection.isCollapsed)) {
+    return
+  }
+
+  try {
+    selection.removeAllRanges()
+    selection.addRange(restoreRange)
+  } catch (error) {
+    editorLog.debug('selection restore skipped', { error })
+  }
+}
+
+function restoreEditorSelectionRange(activeEditor: MuyaEditor, restoreRange: Range | null) {
+  if (!restoreRange || restoreRange.collapsed) {
+    return false
+  }
+
+  const selection = document.getSelection()
+  if (!selection) {
+    return false
+  }
+
+  try {
+    selection.removeAllRanges()
+    selection.addRange(restoreRange.cloneRange())
+    syncMuyaSelectionFromDom(activeEditor)
+    return true
+  } catch (error) {
+    editorLog.debug('selection range restore skipped', { error })
+    return false
+  }
+}
+
+function getCurrentSelectionRangeClone() {
+  const selection = document.getSelection()
+  if (!selection || selection.rangeCount === 0) {
+    return null
+  }
+
+  try {
+    return selection.getRangeAt(0).cloneRange()
+  } catch {
+    return null
+  }
+}
+
+function focusEditorDomNode(activeEditor: MuyaEditor) {
+  try {
+    activeEditor.domNode.focus({ preventScroll: true })
+  } catch {
+    activeEditor.domNode.focus()
+  }
+}
+
+function syncMuyaSelectionFromDom(activeEditor: MuyaEditor) {
+  const selectionController = activeEditor.editor.selection
+  const liveSelection = selectionController.getSelection()
+  if (!liveSelection) {
+    return false
+  }
+
+  selectionController.setSelection(liveSelection.anchor, liveSelection.focus)
+  activeEditor.editor.activeContentBlock = liveSelection.focus.block
+  return true
+}
+
+function restoreCollapsedEditorRange(activeEditor: MuyaEditor, range: Range | null) {
+  if (!range || !range.collapsed) {
+    return false
+  }
+
+  const selection = document.getSelection()
+  if (!selection) {
+    return false
+  }
+
+  try {
+    selection.removeAllRanges()
+    selection.addRange(range.cloneRange())
+    focusEditorDomNode(activeEditor)
+    syncMuyaSelectionFromDom(activeEditor)
+    return true
+  } catch (error) {
+    editorLog.debug('collapsed selection restore skipped', { error })
+    return false
+  }
+}
+
+function collapseEditorSelectionToRangeEdge(
+  activeEditor: MuyaEditor,
+  range: Range | null,
+  edge: 'start' | 'end',
+) {
+  if (!range) {
+    return false
+  }
+
+  const selection = document.getSelection()
+  if (!selection) {
+    return false
+  }
+
+  try {
+    const collapsedRange = range.cloneRange()
+    collapsedRange.collapse(edge === 'start')
+    selection.removeAllRanges()
+    selection.addRange(collapsedRange)
+    focusEditorDomNode(activeEditor)
+    syncMuyaSelectionFromDom(activeEditor)
+    return true
+  } catch (error) {
+    editorLog.debug('selection collapse skipped', { edge, error })
+    return false
+  }
+}
+
+function clearEditorSelectionIfStillExpanded(activeEditor: MuyaEditor) {
+  const selection = document.getSelection()
+  if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+    selection.removeAllRanges()
+    activeEditor.editor.selection.clear()
+  }
+}
+
+async function finishEditorSelectionActionMode(reason: string) {
+  const finished = await finishAndroidEditorSelectionActionMode(reason)
+  if (finished) {
+    editorLog.debug('Android editor selection action mode finished', { reason })
+  }
+  return finished
+}
+
+async function finishEditorSelectionActionModeAndRestoreCaret(
+  reason: string,
+  activeEditor: MuyaEditor,
+  caretRange: Range | null,
+) {
+  const finished = await finishEditorSelectionActionMode(reason)
+  if (finished && caretRange) {
+    restoreCollapsedEditorRange(activeEditor, caretRange)
+  }
+  return finished
+}
+
+function finishSelectionToolbarOutsideTap(caretRange: Range | null) {
+  const activeEditor = editorReady.value ? editor : null
+  if (!activeEditor) {
+    void finishEditorSelectionActionMode('selection-toolbar-outside-tap')
+    return
+  }
+
+  if (caretRange) {
+    restoreCollapsedEditorRange(activeEditor, caretRange)
+  }
+  void finishEditorSelectionActionModeAndRestoreCaret(
+    'selection-toolbar-outside-tap',
+    activeEditor,
+    caretRange,
+  ).then(finished => {
+    if (finished) {
+      editorLog.debug('selection toolbar outside tap dismissed', {
+        restoredCaret: Boolean(caretRange),
+      })
+    }
+  })
+}
+
+function getSelectionTextFallback(range: Range | null) {
+  const rangeText = range?.toString() ?? ''
+  if (rangeText.length > 0) {
+    return rangeText
+  }
+
+  return document.getSelection()?.toString() ?? ''
+}
+
+async function runSelectionToolbarCommand(
+  commandId: SelectionToolbarCommandId,
+  restoreRange: Range | null,
+) {
+  const activeEditor = editorReady.value ? editor : null
+  if (!activeEditor) {
+    return
+  }
+
+  try {
+    const rangeBeforeCommand = restoreRange?.cloneRange() ?? getCurrentSelectionRangeClone()
+    if (androidInputDiagnosticsEnabled.value) {
+      editorLog.debug('selection command state', {
+        commandId,
+        phase: 'before',
+        rangeText: (rangeBeforeCommand?.toString() ?? '').slice(0, 32),
+        ...describeEditorInputState(),
+      })
+    }
+    if (commandId === 'copy' || commandId === 'cut') {
+      const restoredRange = restoreEditorSelectionRange(activeEditor, rangeBeforeCommand)
+      if (!restoredRange) {
+        restoreEditorSelectionIfCollapsed(restoreRange)
+      }
+
+      if (isAndroidSelectionControlAvailable()) {
+        // Deterministic Android path: serialize the selection with Muya's own
+        // clipboard pipeline and write it through the native clipboard bridge.
+        // This avoids depending on execCommand + ClipboardEvent behavior in
+        // OEM WebViews, which cannot be debugged remotely.
+        const fallbackSelectionText = getSelectionTextFallback(rangeBeforeCommand)
+        const payload =
+          commandId === 'cut'
+            ? activeEditor.editor.clipboard.cutSelectionToClipboardData()
+            : activeEditor.editor.clipboard.getClipboardData()
+        const clipboardText = payload.text || fallbackSelectionText
+        if (!clipboardText) {
+          editorLog.warn('selection clipboard payload empty, command skipped', {
+            commandId,
+            hadRestoreRange: Boolean(rangeBeforeCommand),
+          })
+          return
+        }
+
+        const written = await writeAndroidClipboardText(clipboardText)
+        if (!written) {
+          editorLog.warn('android clipboard write failed', { commandId })
+          return
+        }
+      } else {
+        // Web path: execCommand routes through Muya's document-level copy/cut
+        // handlers, which own Markdown serialization and history-safe deletion.
+        const executed = document.execCommand(commandId)
+        if (!executed) {
+          const selectionText = document.getSelection()?.toString() ?? ''
+          const written =
+            selectionText.length > 0 && (await writeAndroidClipboardText(selectionText))
+          if (commandId === 'cut' && written) {
+            activeEditor.editor.clipboard.cutHandler()
+          }
+          editorLog.warn('selection execCommand rejected, used clipboard fallback', {
+            commandId,
+            written,
+          })
+        }
+      }
+
+      if (commandId === 'copy') {
+        collapseEditorSelectionToRangeEdge(activeEditor, rangeBeforeCommand, 'end')
+      } else if (!document.getSelection()?.isCollapsed) {
+        const collapsed = collapseEditorSelectionToRangeEdge(
+          activeEditor,
+          rangeBeforeCommand,
+          'start',
+        )
+        if (!collapsed) {
+          clearEditorSelectionIfStillExpanded(activeEditor)
+        }
+      }
+      await finishEditorSelectionActionModeAndRestoreCaret(
+        `selection-toolbar-${commandId}`,
+        activeEditor,
+        getCurrentSelectionRangeClone(),
+      )
+    } else if (commandId === 'paste') {
+      restoreEditorSelectionRange(activeEditor, restoreRange)
+      await activeEditor.editor.clipboard.pasteAsPlainText()
+      await finishEditorSelectionActionModeAndRestoreCaret(
+        'selection-toolbar-paste',
+        activeEditor,
+        getCurrentSelectionRangeClone(),
+      )
+    } else {
+      // Prefer the native select-all: it keeps Chromium's touch-selection
+      // session (and its drag handles) alive. Muya's JS select-all replaces
+      // the range programmatically, which never shows handles on Android.
+      const nativeSelectAll =
+        isAndroidSelectionControlAvailable() &&
+        (await performAndroidNativeSelectAll('selection-toolbar'))
+      if (!nativeSelectAll) {
+        activeEditor.selectAll()
+      }
+    }
+
+    editorLog.debug('selection toolbar command handled', {
+      commandId,
+      modelCharacters: activeEditor.getMarkdown().length,
+    })
+  } catch (error) {
+    editorLog.warn('selection toolbar command failed', { commandId, error })
+  }
 }
 
 function runEditorToolbarCommand(commandId: MobileCommandId) {
@@ -1097,14 +1435,25 @@ async function initEditor(initialMarkdown: string) {
       appLocale: locale.value,
       appearanceTextSettings: appearanceTextSettings.value,
       editingSettings: editingSettings.value,
+      clipboardText: isAndroidSelectionControlAvailable() ? readAndroidClipboardText : undefined,
       isStale: () => token !== editorInitToken || !editorElement.value,
       logger: editorLog,
     })
     if (!nextEditor) {
+      await setEditorSelectionMenuSuppression(false, 'editor-init-stale')
       return
     }
 
     editor = nextEditor
+    installEditorSelectionDiagnostics()
+    installEditorInputDiagnostics()
+    void installNativeSelectionTapListener()
+    await setEditorSelectionMenuSuppression(
+      ENABLE_ANDROID_SELECTION_ACTION_MODE_SUPPRESSION,
+      ENABLE_ANDROID_SELECTION_ACTION_MODE_SUPPRESSION
+        ? 'editor-init'
+        : 'editor-init-baseline-disabled',
+    )
     syncMarkdown('Ready')
     editorReady.value = true
     editorLog.info('Muya init complete', {
@@ -1115,6 +1464,163 @@ async function initEditor(initialMarkdown: string) {
   } catch (error) {
     status.value = 'Editor failed'
     editorLog.error('Muya init failed', error)
+    await setEditorSelectionMenuSuppression(false, 'editor-init-failed')
+  }
+}
+
+async function setEditorSelectionMenuSuppression(suppressed: boolean, reason: string) {
+  try {
+    const state = await setAndroidEditorSelectionMenuSuppressed(suppressed, reason)
+    if (state.native) {
+      editorLog.debug('Android editor selection menu suppression updated', state)
+    }
+  } catch (error) {
+    editorLog.warn('Android editor selection menu suppression update failed', error)
+  }
+}
+
+function installEditorSelectionDiagnostics() {
+  uninstallEditorSelectionDiagnostics()
+
+  if (!ENABLE_ANDROID_SELECTION_DIAGNOSTICS) {
+    return
+  }
+
+  const root = resolveEditorDomNode(editor, editorElement.value)
+  if (!root) {
+    return
+  }
+
+  editorSelectionDiagnosticCleanup = installAndroidSelectionDiagnostics({
+    root,
+    getFallbackRoot: () => editorElement.value,
+    logger: editorLog,
+  })
+}
+
+function uninstallEditorSelectionDiagnostics() {
+  editorSelectionDiagnosticCleanup?.()
+  editorSelectionDiagnosticCleanup = null
+}
+
+function describeEditorInputState() {
+  const selection = document.getSelection()
+  const anchorNode = selection?.anchorNode ?? null
+  const anchorElement =
+    anchorNode instanceof Element ? anchorNode : anchorNode?.parentElement ?? null
+  const muyaSelection = editor?.editor.selection.getSelection() ?? null
+
+  return {
+    anchor: anchorNode
+      ? `${anchorNode.nodeName}[${String(anchorElement?.className ?? '').slice(0, 44)}]@${selection?.anchorOffset}`
+      : 'none',
+    anchorInContent: Boolean(anchorElement?.closest?.('span.mu-content')),
+    collapsed: selection?.isCollapsed ?? null,
+    muyaSelection: muyaSelection
+      ? {
+          sameBlock: muyaSelection.isSelectionInSameBlock,
+          anchorOffset: muyaSelection.anchor.offset,
+          focusOffset: muyaSelection.focus.offset,
+        }
+      : null,
+    hasActiveBlock: Boolean(editor?.editor.activeContentBlock),
+    modelCharacters: editor?.getMarkdown().length ?? -1,
+  }
+}
+
+function installEditorInputDiagnostics() {
+  uninstallEditorInputDiagnostics()
+
+  if (!androidInputDiagnosticsEnabled.value) {
+    return
+  }
+
+  const root = resolveEditorDomNode(editor, editorElement.value)
+  if (!root) {
+    return
+  }
+
+  const handler = (event: Event) => {
+    const inputEvent = event as InputEvent
+    const inputType = inputEvent.inputType ?? ''
+    const eventText = inputEvent.dataTransfer?.getData('text/plain') ?? inputEvent.data ?? ''
+    const isDelete = inputType.startsWith('delete')
+    // Paste-like inserts (IME clipboard chips commit these) are the known
+    // model-divergence trigger, so keep them in the diagnostic trail too.
+    const isPasteLike =
+      inputType === 'insertFromPaste' ||
+      inputType === 'insertReplacementText' ||
+      (inputType.startsWith('insert') && /[\r\n]/.test(eventText))
+    if (!isDelete && !isPasteLike) {
+      return
+    }
+
+    const target = event.target
+    const targetName =
+      target instanceof Element
+        ? `${target.nodeName}[${String(target.className).slice(0, 44)}]`
+        : 'none'
+    editorLog.debug('editor input event', {
+      phase: event.type,
+      inputType,
+      cancelable: event.cancelable,
+      dataLength: eventText.length,
+      target: targetName,
+      ...describeEditorInputState(),
+    })
+  }
+
+  root.addEventListener('beforeinput', handler, true)
+  root.addEventListener('input', handler, true)
+  editorInputDiagnosticCleanup = () => {
+    root.removeEventListener('beforeinput', handler, true)
+    root.removeEventListener('input', handler, true)
+  }
+}
+
+function uninstallEditorInputDiagnostics() {
+  editorInputDiagnosticCleanup?.()
+  editorInputDiagnosticCleanup = null
+}
+
+function handleNativeSelectionTap(event: AndroidSelectionTapEvent) {
+  if (currentScreen.value !== 'editor' || !editorReady.value) {
+    return
+  }
+
+  const selection = document.getSelection()
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    return
+  }
+
+  const hitElement = document.elementFromPoint(event.x, event.y)
+  if (hitElement?.closest('[data-testid="mobile-selection-toolbar"]')) {
+    return
+  }
+
+  const caret = caretRangeAtPoint(event.x, event.y)
+  editorLog.debug('native selection tap dismissal', {
+    x: Math.round(event.x),
+    y: Math.round(event.y),
+    hasCaret: Boolean(caret),
+  })
+  finishSelectionToolbarOutsideTap(caret)
+}
+
+async function installNativeSelectionTapListener() {
+  await uninstallNativeSelectionTapListener()
+  nativeSelectionTapCleanup = await addAndroidSelectionTapListener(handleNativeSelectionTap)
+}
+
+async function uninstallNativeSelectionTapListener() {
+  const cleanup = nativeSelectionTapCleanup
+  nativeSelectionTapCleanup = null
+  if (cleanup) {
+    try {
+      await cleanup()
+    } catch (error) {
+      editorLog.debug('native selection tap listener cleanup failed', { error })
+    }
   }
 }
 
@@ -1132,7 +1638,7 @@ async function openEditor(markdown: string) {
   editorReady.value = false
   closeEditorToolbar()
   const wasEditorOpen = currentScreen.value === 'editor'
-  destroyEditor()
+  destroyEditor({ updateSelectionMenuSuppression: !wasEditorOpen })
   if (wasEditorOpen) {
     currentScreen.value = 'home'
     await nextTick()
@@ -1377,13 +1883,19 @@ function openEditorSearch() {
   appLog.info('editor search requested')
 }
 
-function destroyEditor() {
+function destroyEditor(options: { updateSelectionMenuSuppression?: boolean } = {}) {
   editorInitToken += 1
   editorReady.value = false
   clearDraftSaveTimer()
   clearAndroidDocumentSaveTimer()
+  uninstallEditorSelectionDiagnostics()
+  uninstallEditorInputDiagnostics()
+  void uninstallNativeSelectionTapListener()
   destroyMuyaEditor(editor)
   editor = null
+  if (options.updateSelectionMenuSuppression !== false) {
+    void setEditorSelectionMenuSuppression(false, 'editor-destroy')
+  }
 }
 
 function closeEditorToHome() {
@@ -1763,6 +2275,7 @@ onBeforeUnmount(() => {
     :android-saving="savingAndroidDocumentCopy"
     :text-direction="appearanceTextSettings.textDirection"
     :editor-style-vars="editorStyleVars"
+    :can-paste-selection="canPasteSelection"
     @back="showHome"
     @search="openEditorSearch"
     @toggle-menu="toggleEditorMenu"
@@ -1771,6 +2284,8 @@ onBeforeUnmount(() => {
     @save-to-device="saveLocalDraftToAndroidDocument"
     @save-copy="saveAndroidDocumentCopy"
     @run-toolbar-command="runEditorToolbarCommand"
+    @run-selection-command="runSelectionToolbarCommand"
+    @dismiss-selection="finishSelectionToolbarOutsideTap"
     @toggle-toolbar="toggleEditorToolbar"
     @set-toolbar-panel="setEditorToolbarPanel"
     @close-link-sheet="closeLinkSheet"

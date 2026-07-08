@@ -689,6 +689,19 @@ export function pasteSelection(
     return applyPaste(clipboard, { text, html, imageFile, pasteType: clipboard.pasteType });
 }
 
+// Entry for IME-committed paste-like insertions (for example Android
+// keyboard clipboard chips, which insert through InputConnection.commitText
+// and never dispatch a DOM paste event). Same normal-paste semantics as
+// `pasteSelection`, but fed from a text snapshot instead of a ClipboardEvent.
+export function pasteRawText(clipboard: Clipboard, text: string): Promise<void> {
+    return applyPaste(clipboard, {
+        text,
+        html: '',
+        imageFile: null,
+        pasteType: clipboard.pasteType,
+    });
+}
+
 // Entry for "Paste as Plain Text". The caller has already read the clipboard's
 // plain text (Chromium no longer fires a paste event for
 // `document.execCommand('paste')`), so feed it straight into the pipeline with
