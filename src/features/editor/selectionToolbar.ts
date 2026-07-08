@@ -160,6 +160,28 @@ export function getDomSelectionSnapshot(host: HTMLElement | null): SelectionSnap
           width: rect.width,
           height: rect.height,
         }
-      : null,
+    : null,
   }
+}
+
+export function captureNonCollapsedSelectionRange(host: HTMLElement | null): Range | null {
+  if (!host || typeof document === 'undefined') {
+    return null
+  }
+
+  const selection = document.getSelection()
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    return null
+  }
+
+  const range = selection.getRangeAt(0)
+  if (!host.contains(range.startContainer) || !host.contains(range.endContainer)) {
+    return null
+  }
+
+  if (selection.toString().trim().length === 0) {
+    return null
+  }
+
+  return range.cloneRange()
 }

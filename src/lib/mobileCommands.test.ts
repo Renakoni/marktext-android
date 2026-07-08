@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isSelectionDependentMobileCommand,
   MOBILE_COMMANDS,
   runMobileEditorCommand,
   type MobileEditorCommandTarget,
@@ -100,5 +101,14 @@ describe('mobileCommands', () => {
     const result = runMobileEditorCommand(editor, MOBILE_COMMANDS.PARAGRAPH_CODE_FENCE)
 
     expect(result.handled).toBe(false)
+  })
+
+  it('marks only selection-scoped editor commands as selection-dependent', () => {
+    expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.FORMAT_STRONG)).toBe(true)
+    expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.FORMAT_HYPERLINK)).toBe(true)
+    expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.PARAGRAPH_HEADING_1)).toBe(true)
+    expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.EDIT_UNDO)).toBe(false)
+    expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.EDIT_REDO)).toBe(false)
+    expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.FILE_OPEN)).toBe(false)
   })
 })

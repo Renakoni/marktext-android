@@ -44,6 +44,50 @@ async function getDraftStorage(page: Page) {
   return page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
 }
 
+async function selectTextInFirstParagraph(page: Page, text: string) {
+  await page.evaluate(selectedText => {
+    const paragraph = document.querySelector('[data-testid="editor-host"] .mu-editor p')
+    if (!paragraph?.textContent?.includes(selectedText)) {
+      throw new Error(`paragraph text not found: ${selectedText}`)
+    }
+
+    const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT)
+    const remainingStart = paragraph.textContent.indexOf(selectedText)
+    const remainingEnd = remainingStart + selectedText.length
+    let startNode: Text | null = null
+    let endNode: Text | null = null
+    let startOffset = 0
+    let endOffset = 0
+    let cursor = 0
+
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text
+      const nextCursor = cursor + node.length
+      if (!startNode && remainingStart >= cursor && remainingStart <= nextCursor) {
+        startNode = node
+        startOffset = remainingStart - cursor
+      }
+      if (!endNode && remainingEnd >= cursor && remainingEnd <= nextCursor) {
+        endNode = node
+        endOffset = remainingEnd - cursor
+      }
+      cursor = nextCursor
+    }
+
+    if (!startNode || !endNode) {
+      throw new Error(`selection text nodes not found: ${selectedText}`)
+    }
+
+    const range = document.createRange()
+    range.setStart(startNode, startOffset)
+    range.setEnd(endNode, endOffset)
+    const selection = document.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+    document.dispatchEvent(new Event('selectionchange'))
+  }, text)
+}
+
 async function openToolbarSettings(page: Page) {
   await page.goto('/')
   await page.evaluate(() => localStorage.clear())
@@ -155,6 +199,27 @@ test('applies quick toolbar inline formatting to selected editor text', async ({
   await page.getByTestId('toolbar-command-format.strong').click()
 
   await expect.poll(() => getDraftStorage(page)).toContain('**bold from mobile toolbar**')
+})
+
+test('keeps selected text active while chaining quick inline formatting', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('abc')
+  await selectTextInFirstParagraph(page, 'abc')
+  await expect.poll(() => page.evaluate(() => document.getSelection()?.toString() ?? '')).toBe('abc')
+  await page.evaluate(() => document.getSelection()?.removeAllRanges())
+
+  await page.getByTestId('toolbar-command-format.strong').tap()
+
+  await expect.poll(() => getDraftStorage(page)).toContain('**abc**')
+  await expect.poll(() => page.evaluate(() => document.getSelection()?.toString() ?? '')).toBe('abc')
+  await page.evaluate(() => document.getSelection()?.removeAllRanges())
+
+  await page.getByTestId('toolbar-command-format.emphasis').tap()
+
+  await expect.poll(() => getDraftStorage(page)).toContain('***abc***')
+  await expect.poll(() => page.evaluate(() => document.getSelection()?.toString() ?? '')).toBe('abc')
 })
 
 test('applies expanded desktop format commands to selected editor text', async ({ page }) => {

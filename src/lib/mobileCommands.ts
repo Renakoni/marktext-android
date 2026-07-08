@@ -135,3 +135,7 @@ export function runMobileEditorCommand(
 
   return { handled: false, commandId, reason: 'editor-unavailable' }
 }
+
+export function isSelectionDependentMobileCommand(commandId: MobileCommandId) {
+  return Boolean(FORMAT_ACTIONS[commandId] || PARAGRAPH_ACTIONS[commandId])
+}

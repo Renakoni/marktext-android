@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { MobileCommandId } from '../../../lib/mobileCommands'
 import {
   MOBILE_TOOLBAR_EDIT_COMMANDS,
@@ -10,11 +10,13 @@ import {
   type MobileToolbarCommandButton,
 } from '../../../lib/mobileToolbarConfig'
 import { useI18n, type I18nKey } from '../../../lib/i18n'
+import { captureNonCollapsedSelectionRange } from '../selectionToolbar'
 
 const props = defineProps<{
   expanded: boolean
   activePanel: MobileEditorToolbarPanel
   editorReady: boolean
+  host: HTMLElement | null
   wordCount: number
   characterCount: number
   lineCount: number
@@ -23,7 +25,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  runCommand: [commandId: MobileCommandId]
+  runCommand: [commandId: MobileCommandId, restoreRange: Range | null]
   toggleExpanded: []
   setPanel: [panel: MobileEditorToolbarPanel]
 }>()
@@ -32,6 +34,7 @@ const panels = MOBILE_TOOLBAR_PANELS
 const editCommands = MOBILE_TOOLBAR_EDIT_COMMANDS
 const groupMenuOpen = ref(false)
 const { t } = useI18n()
+let lastEditorSelectionRange: Range | null = null
 
 const activePanelDef = computed(() => getMobileToolbarPanel(props.activePanel))
 const activePanelCommands = computed(() => getMobileToolbarPanelCommands(props.activePanel))
@@ -53,12 +56,40 @@ watch(
   },
 )
 
+onMounted(() => {
+  document.addEventListener('selectionchange', rememberCurrentEditorSelection)
+  document.addEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('selectionchange', rememberCurrentEditorSelection)
+  document.removeEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
+})
+
+watch(
+  () => props.host,
+  () => rememberCurrentEditorSelection(),
+)
+
+function rememberCurrentEditorSelection() {
+  const range = captureNonCollapsedSelectionRange(props.host)
+  if (range) {
+    lastEditorSelectionRange = range
+  }
+}
+
+function clearEditorSelectionRangeFromEditorPointer(event: PointerEvent) {
+  if (event.target instanceof Node && props.host?.contains(event.target)) {
+    lastEditorSelectionRange = null
+  }
+}
+
 function runCommand(commandId: MobileCommandId) {
   if (!props.editorReady) {
     return
   }
 
-  emit('runCommand', commandId)
+  emit('runCommand', commandId, lastEditorSelectionRange?.cloneRange() ?? null)
 }
 
 function toggleGroupMenu() {
