@@ -33,18 +33,8 @@ describe('#4770: fenced code block info string round-trip', () => {
         expect(output).not.toContain('```undefined');
     });
 
-    it('uses the edited language when a stored info string is now stale', () => {
-        const states = [
-            {
-                name: 'code-block' as const,
-                meta: { type: 'fenced', lang: 'python', info: '{example, listing1-name}' },
-                text: 'x',
-            },
-        ];
-
-        const output = new ExportMarkdown({ listIndentation: 1 }).generate(states);
-
-        expect(output).toContain('```python\n');
-        expect(output).not.toContain('example');
-    });
+    // The stale-`meta.info` guard test from the interim #4770 port is gone on
+    // purpose: since #4856 the model stores the whole info string on
+    // `meta.lang` itself, so an edited language can no longer disagree with a
+    // separately stored info string.
 });
