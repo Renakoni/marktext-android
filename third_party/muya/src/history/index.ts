@@ -130,12 +130,15 @@ class History {
                 source,
                 prevDoc,
             }: {
-                op: JSONOpList;
+                op: Nullable<JSONOpList>;
                 source: string;
                 prevDoc: TState[];
                 doc: TState[];
             }) => {
                 if (this._ignoreChange)
+                    return;
+
+                if (op == null)
                     return;
 
                 if (!this._options.userOnly || source === 'user')
