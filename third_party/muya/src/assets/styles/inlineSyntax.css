@@ -47,13 +47,24 @@ span.mu-inline-rule.mu-link {
 }
 
 /* strong and emphasis — default to `inherit` (the surrounding editor color)
-   so the bundled light theme is unchanged; themes can recolor them. */
+   so the bundled light theme is unchanged; themes can recolor them.
+   The app shell disables font synthesis globally for UI chrome. Re-enable the
+   specific synthesized faces Markdown needs here so CJK/Arabic/system fonts
+   without native bold/italic variants still show visible emphasis. */
+strong.mu-inline-rule,
+em.mu-inline-rule {
+    font-synthesis: weight style;
+}
+
 strong.mu-inline-rule {
     color: var(--strong-color, inherit);
+    font-weight: 700;
 }
 
 em.mu-inline-rule {
     color: var(--em-color, inherit);
+    font-style: italic;
+    font-style: oblique 12deg;
 }
 
 /* inline code */
