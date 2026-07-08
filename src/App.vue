@@ -139,6 +139,7 @@ import {
   isNativeLoggerAvailable,
 } from './lib/logger'
 import {
+  isSelectionDependentMobileCommand,
   type MobileCommandId,
   type MobileEditorCommandTarget,
 } from './lib/mobileCommands'
@@ -543,9 +544,12 @@ function insertMarkdownAtPendingSelection(markdown: string) {
   return insertTextAtRestoredSelection(markdown, pendingInlineInsertRange)
 }
 
-function openLinkSheet() {
+function openLinkSheet(restoreRange: Range | null = null) {
   const hasEditor = Boolean(editor)
-  const capturedRange = editorReady.value && hasEditor ? captureEditorSelection() : null
+  const capturedRange =
+    editorReady.value && hasEditor
+      ? restoreRange?.cloneRange() ?? captureEditorSelection()
+      : null
   const nextLinkSheet = createLinkInsertSheetWorkflow({
     editorReady: editorReady.value,
     hasEditor,
@@ -586,7 +590,7 @@ function insertLinkFromSheet() {
   syncAfterToolbarCommand(result.beforeMarkdown)
 }
 
-async function insertImageFromAndroidPicker() {
+async function insertImageFromAndroidPicker(restoreRange: Range | null = null) {
   const startResult = createAndroidImageInsertStart({
     editorReady: editorReady.value,
     hasEditor: Boolean(editor),
@@ -609,7 +613,7 @@ async function insertImageFromAndroidPicker() {
   }
 
   const beforeMarkdown = editor.getMarkdown()
-  pendingInlineInsertRange = captureEditorSelection()
+  pendingInlineInsertRange = restoreRange?.cloneRange() ?? captureEditorSelection()
   const selectedText = normalizeToolbarSelectionText(pendingInlineInsertRange?.toString() ?? '')
   closeEditorMenu()
   closeEditorToolbar()
@@ -950,8 +954,16 @@ async function runSelectionToolbarCommand(
   }
 }
 
-function runEditorToolbarCommand(commandId: MobileCommandId) {
+function runEditorToolbarCommand(commandId: MobileCommandId, restoreRange: Range | null = null) {
   const activeEditor = editorReady.value ? editor : null
+  const commandRange =
+    activeEditor && isSelectionDependentMobileCommand(commandId)
+      ? restoreRange?.cloneRange() ?? captureEditorSelection()
+      : null
+  if (activeEditor && commandRange) {
+    restoreEditorSelectionRange(activeEditor, commandRange)
+  }
+
   const result = runEditorToolbarCommandWorkflow({
     commandId,
     editorReady: editorReady.value,
@@ -962,12 +974,12 @@ function runEditorToolbarCommand(commandId: MobileCommandId) {
   })
 
   if (result.kind === 'open-link-sheet') {
-    openLinkSheet()
+    openLinkSheet(commandRange)
     return
   }
 
   if (result.kind === 'insert-image') {
-    void insertImageFromAndroidPicker()
+    void insertImageFromAndroidPicker(commandRange)
     return
   }
 

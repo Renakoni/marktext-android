@@ -59,7 +59,7 @@ const emit = defineEmits<{
   share: []
   'save-to-device': []
   'save-copy': []
-  'run-toolbar-command': [commandId: MobileCommandId]
+  'run-toolbar-command': [commandId: MobileCommandId, restoreRange: Range | null]
   'run-selection-command': [commandId: SelectionToolbarCommandId, restoreRange: Range | null]
   'dismiss-selection': [caretRange: Range | null]
   'toggle-toolbar': []
@@ -179,12 +179,13 @@ onBeforeUnmount(() => {
       :expanded="toolbarExpanded"
       :active-panel="toolbarPanel"
       :editor-ready="editorReady"
+      :host="editorShell"
       :compact="toolbarCompact"
       :quick-commands="quickToolbarCommands"
       :word-count="wordCount"
       :character-count="characterCount"
       :line-count="lineCount"
-      @run-command="commandId => emit('run-toolbar-command', commandId)"
+      @run-command="(commandId, restoreRange) => emit('run-toolbar-command', commandId, restoreRange)"
       @toggle-expanded="emit('toggle-toolbar')"
       @set-panel="panel => emit('set-toolbar-panel', panel)"
     />

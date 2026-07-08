@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   caretRangeAtPoint,
+  captureNonCollapsedSelectionRange,
   computeSelectionToolbarPlacement,
   getDomSelectionSnapshot,
   getSelectionToolbarCommands,
@@ -79,9 +80,9 @@ function updateFromSelection() {
   top.value = placed.top
   placement.value = placed.placement
 
-  const selection = document.getSelection()
-  if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
-    lastEditorSelectionRange = selection.getRangeAt(0).cloneRange()
+  const range = captureNonCollapsedSelectionRange(props.host)
+  if (range) {
+    lastEditorSelectionRange = range
   }
 
   if (!visible.value) {
