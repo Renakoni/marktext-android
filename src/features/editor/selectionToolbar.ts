@@ -1,17 +1,19 @@
 import type { I18nKey } from '../../lib/i18n'
 
 export type SelectionToolbarCommandId = 'copy' | 'cut' | 'paste' | 'selectAll'
+export type SelectionToolbarIconName = 'copy' | 'cut' | 'paste' | 'selectAll'
 
 export interface SelectionToolbarCommand {
   commandId: SelectionToolbarCommandId
   labelKey: I18nKey
+  iconName: SelectionToolbarIconName
 }
 
 export const SELECTION_TOOLBAR_COMMANDS: readonly SelectionToolbarCommand[] = [
-  { commandId: 'copy', labelKey: 'editor.selection.copy' },
-  { commandId: 'cut', labelKey: 'editor.selection.cut' },
-  { commandId: 'paste', labelKey: 'editor.selection.paste' },
-  { commandId: 'selectAll', labelKey: 'editor.selection.selectAll' },
+  { commandId: 'copy', labelKey: 'editor.selection.copy', iconName: 'copy' },
+  { commandId: 'cut', labelKey: 'editor.selection.cut', iconName: 'cut' },
+  { commandId: 'paste', labelKey: 'editor.selection.paste', iconName: 'paste' },
+  { commandId: 'selectAll', labelKey: 'editor.selection.selectAll', iconName: 'selectAll' },
 ]
 
 export function getSelectionToolbarCommands(canPaste: boolean) {
