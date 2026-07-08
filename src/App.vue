@@ -277,6 +277,83 @@ const draftLog = createLogger('draft')
 const androidDocumentLog = createLogger('android-document')
 const loggingLog = createLogger('logging')
 
+function describeSpellcheckElement(element: Element | null) {
+  if (!(element instanceof HTMLElement)) {
+    return null
+  }
+
+  return {
+    tag: element.tagName.toLowerCase(),
+    spellcheckAttribute: element.getAttribute('spellcheck'),
+    spellcheckProperty: element.spellcheck,
+    lang: element.getAttribute('lang'),
+    contentEditable: element.getAttribute('contenteditable'),
+    className: element.className,
+    textSample: (element.textContent ?? '').slice(0, 64),
+  }
+}
+
+function collectEditorSpellcheckProbe() {
+  const domNode = editor?.domNode ?? null
+  const activeElement = document.activeElement
+  const selection = document.getSelection()
+  const spellcheckNodes = domNode
+    ? Array.from(domNode.querySelectorAll('[spellcheck]')).slice(0, 12)
+    : []
+  const contenteditableNodes = domNode
+    ? Array.from(domNode.querySelectorAll('[contenteditable]')).slice(0, 12)
+    : []
+  const muContentNodes = domNode
+    ? Array.from(domNode.querySelectorAll('.mu-content')).slice(0, 12)
+    : []
+
+  return {
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    editorReady: editorReady.value,
+    editingSettings: {
+      spellcheckerEnabled: editingSettings.value.spellcheckerEnabled,
+      spellcheckerLanguage: editingSettings.value.spellcheckerLanguage,
+      spellcheckerUnderline: editingSettings.value.spellcheckerUnderline,
+    },
+    editorDom: domNode
+      ? {
+          root: describeSpellcheckElement(domNode),
+          activeElement: describeSpellcheckElement(
+            activeElement instanceof Element ? activeElement : null,
+          ),
+          selection: selection
+            ? {
+                text: selection.toString().slice(0, 64),
+                isCollapsed: selection.isCollapsed,
+                rangeCount: selection.rangeCount,
+              }
+            : null,
+          counts: {
+            spellcheckNodes: domNode.querySelectorAll('[spellcheck]').length,
+            spellcheckFalseNodes: domNode.querySelectorAll('[spellcheck="false"]').length,
+            contenteditableNodes: domNode.querySelectorAll('[contenteditable]').length,
+            muContentNodes: domNode.querySelectorAll('.mu-content').length,
+            hideSpellingMarksNodes: domNode.querySelectorAll('.mu-hide-spelling-marks').length,
+          },
+          firstSpellcheckNodes: spellcheckNodes.map(describeSpellcheckElement),
+          firstContenteditableNodes: contenteditableNodes.map(describeSpellcheckElement),
+          firstMuContentNodes: muContentNodes.map(describeSpellcheckElement),
+        }
+      : null,
+  }
+}
+
+function dispatchEditorSpellcheckProbe() {
+  const result = collectEditorSpellcheckProbe()
+  editorLog.info('spellcheck probe', result)
+  window.dispatchEvent(new CustomEvent('marktext-spellcheck-probe-result', { detail: result }))
+}
+
+function handleEditorSpellcheckProbeRequest() {
+  dispatchEditorSpellcheckProbe()
+}
+
 watch(appearanceTextSettings, settings => {
   applyMuyaAppearanceSettings(editor, settings)
 })
@@ -2152,6 +2229,7 @@ async function runAdvancedMaintenanceAction(action: AdvancedMaintenanceActionId)
 
 onMounted(() => {
   appLog.info('app mounted')
+  window.addEventListener('marktext-spellcheck-probe-request', handleEditorSpellcheckProbeRequest)
   installAppLifecycleListeners()
   const restoredDrafts = readStoredLocalDrafts()
   const restoredRecentDocuments = readStoredAndroidRecentDocuments()
@@ -2210,6 +2288,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   appLog.info('app before unmount')
+  window.removeEventListener(
+    'marktext-spellcheck-probe-request',
+    handleEditorSpellcheckProbeRequest,
+  )
   if (startupActionTimer !== null) {
     window.clearTimeout(startupActionTimer)
     startupActionTimer = null

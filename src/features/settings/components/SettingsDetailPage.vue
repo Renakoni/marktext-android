@@ -7,6 +7,7 @@ import SettingsSelectRow from './SettingsSelectRow.vue'
 import SettingsSliderRow from './SettingsSliderRow.vue'
 import SettingsTextRow from './SettingsTextRow.vue'
 import SettingsToggleRow from './SettingsToggleRow.vue'
+import SpellcheckProbePanel from './SpellcheckProbePanel.vue'
 import ToolbarQuickSettings from './ToolbarQuickSettings.vue'
 import {
   SETTINGS_DETAIL_SECTIONS,
@@ -40,6 +41,7 @@ const maintenanceAction = ref<MaintenanceActionId | null>(null)
 const maintenanceActionBusy = ref(false)
 const maintenanceActionError = ref<string | null>(null)
 const advancedDiagnostics = ref<Record<string, string>>({})
+const showSpellcheckProbe = ref(false)
 const maintenanceActionCopies: Record<
   MaintenanceActionId,
   {
@@ -152,6 +154,11 @@ function getMaintenanceActionCopy(rowId: string) {
 }
 
 function recordAction(row: SettingsActionRow) {
+  if (props.page === SETTINGS_PAGES.ADVANCED && row.id === 'spellcheckProbe') {
+    showSpellcheckProbe.value = true
+    return
+  }
+
   const maintenanceActionId = props.page === SETTINGS_PAGES.ADVANCED
     ? getMaintenanceActionId(row.id)
     : null
@@ -202,6 +209,7 @@ watch(
       advancedDiagnostics.value = {
         deviceInfo: result.deviceInfo,
         webviewInfo: result.webViewInfo,
+        spellCheckerInfo: result.spellCheckerInfo ?? 'Unknown',
       }
     })
   },
@@ -328,4 +336,9 @@ watch(
       </div>
     </div>
   </section>
+
+  <SpellcheckProbePanel
+    v-if="showSpellcheckProbe"
+    @close="showSpellcheckProbe = false"
+  />
 </template>

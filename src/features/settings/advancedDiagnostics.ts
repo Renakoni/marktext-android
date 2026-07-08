@@ -3,6 +3,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core'
 interface NativeAdvancedDiagnostics {
   deviceInfo: string
   webViewInfo: string
+  spellCheckerInfo?: string
 }
 
 interface AndroidAppInfoPlugin {
@@ -15,6 +16,7 @@ function getBrowserDiagnostics(): NativeAdvancedDiagnostics {
   return {
     deviceInfo: Capacitor.getPlatform(),
     webViewInfo: navigator.userAgent,
+    spellCheckerInfo: 'Browser fallback',
   }
 }
 

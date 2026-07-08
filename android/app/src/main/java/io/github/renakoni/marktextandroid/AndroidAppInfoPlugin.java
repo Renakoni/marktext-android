@@ -1,7 +1,10 @@
 package io.github.renakoni.marktextandroid;
 
+import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.os.Build;
+import android.view.textservice.SpellCheckerInfo;
+import android.view.textservice.TextServicesManager;
 import android.webkit.WebView;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -17,6 +20,7 @@ public class AndroidAppInfoPlugin extends Plugin {
         JSObject result = new JSObject();
         result.put("deviceInfo", buildDeviceInfo());
         result.put("webViewInfo", buildWebViewInfo());
+        result.put("spellCheckerInfo", buildSpellCheckerInfo());
         call.resolve(result);
     }
 
@@ -39,6 +43,29 @@ public class AndroidAppInfoPlugin extends Plugin {
             return "Android WebView";
         }
         return "Android WebView";
+    }
+
+    private String buildSpellCheckerInfo() {
+        try {
+            TextServicesManager manager =
+                (TextServicesManager) getContext().getSystemService(Context.TEXT_SERVICES_MANAGER_SERVICE);
+            if (manager == null) {
+                return "No TextServicesManager";
+            }
+
+            SpellCheckerInfo info = manager.getCurrentSpellCheckerInfo();
+            if (info == null) {
+                return "No current system spell checker";
+            }
+
+            String packageName = info.getPackageName();
+            String serviceName = info.getServiceInfo() == null
+                ? "unknown"
+                : info.getServiceInfo().name;
+            return packageName + " / " + serviceName + " / subtypes=" + info.getSubtypeCount();
+        } catch (RuntimeException ex) {
+            return "Unavailable: " + ex.getClass().getSimpleName();
+        }
     }
 
     private String safeValue(String value) {
