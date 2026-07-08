@@ -31,6 +31,7 @@ export interface ICodeBlockState {
         type: string; // "indented" | "fenced";
         lang: string;
         fenceLength?: number;
+        info?: string;
     };
     text: string;
 }
