@@ -121,26 +121,22 @@ test('switches between document home and the settings about screen', async ({ pa
   await page.getByTestId('settings-entry-appearance').click()
   await expect(page.getByTestId('settings-title')).toContainText('Appearance')
   await expect(page.getByTestId('settings-language-app')).toContainText('English')
-  await expect(page.getByTestId('settings-appearance-system-theme')).toHaveAttribute(
-    'aria-checked',
+  await expect(page.getByTestId('settings-appearance-theme-mode-option-system')).toHaveAttribute(
+    'aria-pressed',
     'true',
   )
-  await page.getByTestId('settings-appearance-system-theme').click()
-  await expect(page.getByTestId('settings-appearance-system-theme')).toHaveAttribute(
-    'aria-checked',
-    'false',
+  await expect(page.getByTestId('settings-appearance-custom-theme')).toHaveCount(0)
+  await page.getByTestId('settings-appearance-theme-mode-option-custom').click()
+  await expect(page.getByTestId('settings-appearance-theme-mode-option-custom')).toHaveAttribute(
+    'aria-pressed',
+    'true',
   )
-  await page.getByTestId('settings-appearance-system-theme').click()
   await expect(page.getByTestId('settings-appearance-font-size')).toContainText('16px')
   await page.getByTestId('settings-appearance-font-size').getByRole('slider').fill('18')
   await expect(page.getByTestId('settings-appearance-font-size')).toContainText('18px')
-  await page
-    .getByTestId('settings-appearance-light-theme')
-    .locator('select')
-    .selectOption('ayu-light')
-  await expect(page.getByTestId('settings-appearance-light-theme').locator('select')).toHaveValue(
-    'ayu-light',
-  )
+  await page.getByTestId('settings-appearance-custom-theme-trigger').click()
+  await page.getByTestId('settings-appearance-custom-theme-option-ayu-light').click()
+  await expect(page.getByTestId('settings-appearance-custom-theme')).toContainText('Ayu Light')
   await page.getByTestId('settings-appearance-line-width').getByRole('textbox').fill('72ch')
   await expect(page.getByTestId('settings-appearance-line-width').getByRole('textbox')).toHaveValue(
     '72ch',
@@ -149,7 +145,7 @@ test('switches between document home and the settings about screen', async ({ pa
   await page.getByTestId('settings-language-option-zh-cn').click()
   await expect(page.getByTestId('settings-title')).toContainText('外观')
   await expect(page.getByTestId('settings-language-app')).toContainText('中文')
-  await expect(page.getByTestId('settings-appearance-system-theme')).toContainText('系统主题')
+  await expect(page.getByTestId('settings-appearance-theme-mode')).toContainText('模式')
 
   await page.getByTestId('settings-language-option-en').click()
   await expect(page.getByTestId('settings-title')).toContainText('Appearance')
