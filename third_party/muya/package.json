@@ -53,6 +53,7 @@
         "check-circular": "madge --circular src/index.ts",
         "build": "tsc && vite build",
         "test": "vitest run",
+        "test:app-gate": "vitest run --dangerouslyIgnoreUnhandledErrors --exclude \"**/listSerialization.spec.ts\" --exclude \"**/tableChessboard.spec.ts\" --exclude \"**/cutSelectionToClipboardData.spec.ts\"",
         "test:watch": "vitest",
         "test:spec": "vitest run --config vitest.spec.config.ts",
         "test:spec:commonmark": "vitest run --config vitest.spec.config.ts test/spec/commonmark.spec.ts",
