@@ -1,8 +1,19 @@
 // @vitest-environment happy-dom
 
 import type Content from '../../block/base/content';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import * as json1 from 'ot-json1';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Muya } from '../../muya';
+import { asDoc } from '..';
+
+vi.mock('../../utils/prism/index', () => ({
+    default: {},
+    walkTokens: () => null,
+    loadedLanguages: new Set(),
+    transformAliasToOrigin: (s: string) => s,
+    loadLanguage: () => Promise.resolve([]),
+    search: () => [],
+}));
 
 // #2938 part 2: `muya.flush()` makes a same-frame edit durable before the
 // document is swapped out (a tab switch calls setContent within the same frame
@@ -107,5 +118,26 @@ describe('muya.flush() — make pending edits durable synchronously (#2938)', ()
         expect(muya.getMarkdown().trim()).toBe('one'); // still deferred
         await nextFrame();
         expect(muya.getMarkdown().trim()).toBe('two');
+    });
+
+    it('does not emit json-change when queued operations compose to identity (#4806)', () => {
+        const muya = boot('hello\n');
+        const jsonState = muya.editor.jsonState;
+        const op = json1.insertOp([1], asDoc({ name: 'paragraph', text: 'x' } as never))!;
+        const inverse = json1.type.invert(op);
+        let changes = 0;
+
+        expect(json1.type.compose(op, inverse)).toBe(null);
+        muya.eventCenter.on('json-change', () => {
+            changes += 1;
+        });
+
+        // @ts-expect-error — drive the private deferred-flush path directly.
+        jsonState._operationCache.push(op, inverse);
+        // @ts-expect-error — this is the crash stack's private flush method.
+        expect(() => jsonState._flushOperationCache()).not.toThrow();
+
+        expect(changes).toBe(0);
+        expect(muya.getMarkdown().trim()).toBe('hello');
     });
 });

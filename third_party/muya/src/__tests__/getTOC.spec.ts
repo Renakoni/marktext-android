@@ -1,7 +1,16 @@
 // @vitest-environment happy-dom
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Muya } from '../muya';
+
+vi.mock('../utils/prism/index', () => ({
+    default: {},
+    walkTokens: () => null,
+    loadedLanguages: new Set(),
+    transformAliasToOrigin: (s: string) => s,
+    loadLanguage: () => Promise.resolve([]),
+    search: () => [],
+}));
 
 // Regression coverage for PR-15: re-introduces marktext's TOC API as a
 // public muya method (`muya.getTOC()`). Mirrors marktext's `tocCtrl.js`
@@ -10,9 +19,10 @@ import { Muya } from '../muya';
 //
 //  - Only top-level heading blocks are surfaced (matches marktext
 //    iterating `this.blocks`).
-//  - Heading text is the raw inner content — inline markdown markers are
-//    NOT stripped. marktext used `block.children[0].text` for the same
-//    reason.
+//  - Heading text is the rendered plain text: inline markdown markers,
+//    link/image URLs and tags are stripped to what a reader sees (#4811),
+//    and `githubSlug` is derived from that same plain text so it matches
+//    the anchor id the HTML export injects from `heading.textContent`.
 //  - Slug is a stable per-block identifier (so `getTOC()` returns the
 //    same slug across multiple invocations on the same document); duplicate
 //    headings keep distinct slugs but share `githubSlug`. The marktext
@@ -89,16 +99,28 @@ describe('muya.getTOC()', () => {
         expect(toc[1]).toMatchObject({ lvl: 2, content: 'Title Two' });
     });
 
-    it('keeps raw markdown inline markers in `content` (no inline parsing)', () => {
-        // marktext reads `block.children[0].text` — the raw source of the
-        // heading line — so `**bold**` and `[link](url)` are preserved as
-        // typed. Consumers that want rendered text should run their own
-        // inline tokenizer over `content`.
+    it('strips inline markdown to plain text in `content` (#4811)', () => {
         const md = `## **bold** and [link](https://example.com)`;
         const muya = bootMuya(md);
         const toc = muya.getTOC();
         expect(toc).toHaveLength(1);
-        expect(toc[0].content).toBe('**bold** and [link](https://example.com)');
+        expect(toc[0].content).toBe('bold and link');
+    });
+
+    it('renders an image heading as its alt text, not the raw `![]()`', () => {
+        const md = `## ![Logo](https://example.com/logo.png) Title`;
+        const muya = bootMuya(md);
+        const toc = muya.getTOC();
+        expect(toc).toHaveLength(1);
+        expect(toc[0].content).toBe('Logo Title');
+    });
+
+    it('derives githubSlug from the stripped text so anchors match the export', () => {
+        const md = `## a [link](https://example.com) here`;
+        const muya = bootMuya(md);
+        const toc = muya.getTOC();
+        expect(toc[0].content).toBe('a link here');
+        expect(toc[0].githubSlug).toBe('a-link-here');
     });
 
     it('strips the leading hash run robustly (9cb2cbe8 \\s regex fix)', () => {

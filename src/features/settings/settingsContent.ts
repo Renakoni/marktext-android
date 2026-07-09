@@ -1,4 +1,8 @@
 import type { I18nKey } from '../../lib/i18n'
+import {
+  APPEARANCE_CUSTOM_THEME_IDS,
+  DEFAULT_APPEARANCE_THEME_SETTINGS,
+} from './appearanceSettings'
 import { SETTINGS_PAGES, type SettingsPage } from './settingsNavigation'
 
 interface SettingsOption {
@@ -87,49 +91,21 @@ export const SETTINGS_PAGE_TITLE_KEYS = {
   [SETTINGS_PAGES.ABOUT]: 'settings.about',
 } as const satisfies Record<SettingsPage, I18nKey>
 
-const themeOptions = [
-  { id: 'ayu-light', labelKey: 'settings.option.theme.ayuLight' },
-  { id: 'light', labelKey: 'settings.option.theme.cadmiumLight' },
-  { id: 'catppuccin-latte', labelKey: 'settings.option.theme.catppuccinLatte' },
-  { id: 'everforest-light', labelKey: 'settings.option.theme.everforestLight' },
-  { id: 'graphite', labelKey: 'settings.option.theme.graphiteLight' },
-  { id: 'gruvbox-light', labelKey: 'settings.option.theme.gruvboxLight' },
-  { id: 'rose-pine-dawn', labelKey: 'settings.option.theme.rosePineDawn' },
-  { id: 'solarized-light', labelKey: 'settings.option.theme.solarizedLight' },
-  { id: 'tokyo-night-light', labelKey: 'settings.option.theme.tokyoNightLight' },
-  { id: 'ulysses', labelKey: 'settings.option.theme.ulyssesLight' },
-  { id: 'ayu-dark', labelKey: 'settings.option.theme.ayuDark' },
-  { id: 'ayu-mirage', labelKey: 'settings.option.theme.ayuMirage' },
-  { id: 'dark', labelKey: 'settings.option.theme.cadmiumDark' },
-  { id: 'catppuccin-mocha', labelKey: 'settings.option.theme.catppuccinMocha' },
-  { id: 'cyberdream', labelKey: 'settings.option.theme.cyberdream' },
-  { id: 'dracula', labelKey: 'settings.option.theme.dracula' },
-  { id: 'everforest-dark', labelKey: 'settings.option.theme.everforestDark' },
-  { id: 'gruvbox-dark', labelKey: 'settings.option.theme.gruvboxDark' },
-  { id: 'horizon-dark', labelKey: 'settings.option.theme.horizonDark' },
-  { id: 'kanagawa', labelKey: 'settings.option.theme.kanagawa' },
-  { id: 'material-dark', labelKey: 'settings.option.theme.materialDark' },
-  { id: 'monokai-pro', labelKey: 'settings.option.theme.monokaiPro' },
-  { id: 'nightfox', labelKey: 'settings.option.theme.nightfox' },
-  { id: 'nord', labelKey: 'settings.option.theme.nord' },
-  { id: 'one-dark', labelKey: 'settings.option.theme.oneDark' },
-  { id: 'oxocarbon-dark', labelKey: 'settings.option.theme.oxocarbonDark' },
-  { id: 'palenight', labelKey: 'settings.option.theme.palenight' },
-  { id: 'rose-pine', labelKey: 'settings.option.theme.rosePine' },
-  { id: 'rose-pine-moon', labelKey: 'settings.option.theme.rosePineMoon' },
-  { id: 'solarized-dark', labelKey: 'settings.option.theme.solarizedDark' },
-  { id: 'synthwave-84', labelKey: 'settings.option.theme.synthwave84' },
-  { id: 'tokyo-night', labelKey: 'settings.option.theme.tokyoNight' },
-  { id: 'tokyo-night-storm', labelKey: 'settings.option.theme.tokyoNightStorm' },
-] as const satisfies readonly SettingsOption[]
+const themeLabelKeys = {
+  'ayu-light': 'settings.option.theme.ayuLight',
+  'one-dark': 'settings.option.theme.oneDark',
+} as const satisfies Record<(typeof APPEARANCE_CUSTOM_THEME_IDS)[number], I18nKey>
 
-const lightThemeOptions = themeOptions.slice(0, 10)
-const darkThemeOptions = themeOptions.slice(10)
+const themeOptions = APPEARANCE_CUSTOM_THEME_IDS.map(id => ({
+  id,
+  labelKey: themeLabelKeys[id],
+})) satisfies readonly SettingsOption[]
 
-const appThemeOptions = [
+const themeModeOptions = [
   { id: 'system', labelKey: 'settings.option.system' },
   { id: 'light', labelKey: 'settings.option.light' },
   { id: 'dark', labelKey: 'settings.option.dark' },
+  { id: 'custom', labelKey: 'settings.option.custom' },
 ] as const satisfies readonly SettingsOption[]
 
 const textDirectionOptions = [
@@ -297,51 +273,23 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
       titleKey: 'settings.section.theme',
       rows: [
         {
-          kind: 'toggle',
-          id: 'followSystemTheme',
-          implementation: 'storedOnly',
-          labelKey: 'settings.appearance.followSystemTheme',
-          defaultValue: true,
-          testId: 'settings-appearance-system-theme',
-        },
-        {
           kind: 'choice',
-          id: 'appTheme',
+          id: 'themeMode',
           implementation: 'storedOnly',
-          labelKey: 'settings.appearance.appTheme',
+          labelKey: 'settings.appearance.themeMode',
           defaultValue: 'system',
-          options: appThemeOptions,
-          testId: 'settings-appearance-app-theme',
+          options: themeModeOptions,
+          testId: 'settings-appearance-theme-mode',
         },
         {
           kind: 'choice',
-          id: 'lightModeTheme',
+          id: 'customTheme',
           implementation: 'storedOnly',
-          labelKey: 'settings.appearance.lightTheme',
-          defaultValue: 'light',
-          display: 'select',
-          options: lightThemeOptions,
-          testId: 'settings-appearance-light-theme',
-        },
-        {
-          kind: 'choice',
-          id: 'darkModeTheme',
-          implementation: 'storedOnly',
-          labelKey: 'settings.appearance.darkTheme',
-          defaultValue: 'dark',
-          display: 'select',
-          options: darkThemeOptions,
-          testId: 'settings-appearance-dark-theme',
-        },
-        {
-          kind: 'choice',
-          id: 'theme',
-          implementation: 'storedOnly',
-          labelKey: 'settings.appearance.editorTheme',
-          defaultValue: 'light',
+          labelKey: 'settings.appearance.customTheme',
+          defaultValue: DEFAULT_APPEARANCE_THEME_SETTINGS.customTheme,
           display: 'select',
           options: themeOptions,
-          testId: 'settings-appearance-editor-theme',
+          testId: 'settings-appearance-custom-theme',
         },
       ],
     },

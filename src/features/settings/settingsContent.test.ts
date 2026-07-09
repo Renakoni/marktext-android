@@ -5,6 +5,8 @@ import {
   DEFAULT_ADVANCED_SETTINGS,
 } from './advancedSettings'
 import {
+  APPEARANCE_CUSTOM_THEME_IDS,
+  APPEARANCE_FIXED_THEME_IDS,
   APPEARANCE_SETTING_KEYS,
   DEFAULT_APPEARANCE_THEME_SETTINGS,
   DEFAULT_APPEARANCE_TEXT_SETTINGS,
@@ -37,11 +39,8 @@ type SettingsValueRow = Extract<
 type SettingsDefaultValueRow = Exclude<SettingsValueRow, { kind: 'customToolbar' }>
 
 const EXPECTED_STORED_ONLY_ROW_IDS = new Set([
-  'followSystemTheme',
-  'appTheme',
-  'lightModeTheme',
-  'darkModeTheme',
-  'theme',
+  'themeMode',
+  'customTheme',
   'sourceCodeModeEnabled',
   'preferHeadingStyle',
 ])
@@ -129,11 +128,8 @@ const RUNTIME_SETTING_DEFAULTS = new Map<string, SettingsValue>([
 ])
 
 const STORED_ONLY_SETTING_DEFAULTS = new Map<string, SettingsValue>([
-  ['followSystemTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.followSystemTheme],
-  ['appTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.appTheme],
-  ['lightModeTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.lightModeTheme],
-  ['darkModeTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.darkModeTheme],
-  ['theme', DEFAULT_APPEARANCE_THEME_SETTINGS.theme],
+  ['themeMode', DEFAULT_APPEARANCE_THEME_SETTINGS.themeMode],
+  ['customTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.customTheme],
   ['sourceCodeModeEnabled', DEFAULT_EDITING_SETTINGS.sourceCodeModeEnabled],
   ['preferHeadingStyle', DEFAULT_EDITING_SETTINGS.preferHeadingStyle],
 ])
@@ -246,6 +242,22 @@ describe('settings content governance', () => {
       expect(optionIds, row.id).toContain(row.defaultValue)
       expect(duplicates(optionIds), row.id).toEqual([])
     }
+  })
+
+  it('keeps the curated mobile theme surface small and explicit', () => {
+    const themeModeRow = getRows().find(row => row.id === 'themeMode')
+    const customThemeRow = getRows().find(row => row.id === 'customTheme')
+
+    expect(APPEARANCE_FIXED_THEME_IDS).toEqual({
+      light: 'graphite',
+      dark: 'dark',
+    })
+    expect(themeModeRow?.kind).toBe('choice')
+    expect(themeModeRow?.kind === 'choice' ? themeModeRow.options.map(option => option.id) : [])
+      .toEqual(['system', 'light', 'dark', 'custom'])
+    expect(customThemeRow?.kind).toBe('choice')
+    expect(customThemeRow?.kind === 'choice' ? customThemeRow.options.map(option => option.id) : [])
+      .toEqual([...APPEARANCE_CUSTOM_THEME_IDS])
   })
 
   it('keeps slider defaults inside their declared range and step', () => {
