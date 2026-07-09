@@ -1,0 +1,100 @@
+/*
+ * One Dark — curated custom theme.
+ *
+ * Heritage: desktop MarkText one-dark theme (Atom One Dark: #282c34 ground,
+ * slate-blue #4d78cc accent, golden blockquote border, the classic
+ * red/blue/green/cyan/purple/yellow heading scale). Values are plain
+ * hex/rgba so every WebView the app can meet renders them identically.
+ *
+ * Product deviation matching the other themes: `--strong-color`/`--em-color`
+ * stay `inherit` so emphasis keeps the ink color (desktop one-dark tints
+ * bold golden and italics purple).
+ */
+
+:root[data-theme='one-dark'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #21252b;
+  --surface: #282c34;
+  --surface-muted: #30363f;
+  --surface-sunken: #1c2026;
+  --surface-raised: #343a45;
+
+  /* Content */
+  --text: #b9c1cc;
+  --text-muted: #949dab;
+  --text-faint: #6f7887;
+  --on-accent: #ffffff;
+
+  /* Lines */
+  --border: #3a3f4b;
+  --border-strong: #4b5363;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — heritage slate blue; "strong" means more contrast, so it
+     lightens here instead of darkening. */
+  --accent: #4d78cc;
+  --accent-strong: #82a7ef;
+  --accent-hover: #5d88da;
+  --accent-soft: rgba(77, 120, 204, 0.22);
+  --accent-tint-10: rgba(77, 120, 204, 0.14);
+  --accent-tint-11: rgba(77, 120, 204, 0.16);
+
+  /* State */
+  --danger: #e06c75;
+  --focus-ring: rgba(86, 138, 242, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(77, 120, 204, 0.35);
+
+  /* Muya bridge — desktop one-dark palette on the writing surface. */
+  --theme-color: #4d78cc;
+  --highlight-color: rgba(255, 255, 255, 0.06);
+  --selection-color: rgba(103, 118, 150, 0.38);
+  --editor-color: #9da5b4;
+  --editor-color-80: #9da5b4;
+  --editor-color-50: rgba(157, 165, 180, 0.5);
+  --editor-color-30: rgba(157, 165, 180, 0.3);
+  --editor-color-10: rgba(157, 165, 180, 0.1);
+  --editor-color-04: rgba(157, 165, 180, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #ff6969;
+  --icon-color: rgba(255, 255, 255, 0.56);
+  --code-block-bg-color: #3a3f4b;
+  --table-border-color: #363839;
+  --input-bg-color: rgba(0, 0, 0, 0.1);
+  --button-font-color: #9da5b4;
+  --button-bg-color: linear-gradient(#3a3f4b, #353b45);
+  --button-border: 1px solid #181a1f;
+  --button-bg-color-hover: linear-gradient(#3e4451, #3a3f4b);
+  --button-border-hover: 1px solid #181a1f;
+  --button-bg-color-active: #2c313a;
+  --button-border-active: 1px solid #181a1f;
+  --button-border-focus: 1px solid #568af2;
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: #3a3f4b;
+  --float-border-color: #181a1f;
+  --float-shadow: var(--shadow-float);
+  --link-color: #61afef;
+  --h1-color: #e06c75;
+  --h2-color: #61afef;
+  --h3-color: #98c379;
+  --h4-color: #56b6c2;
+  --h5-color: #c678dd;
+  --h6-color: #e5c07b;
+  --blockquote-text-color: rgba(157, 165, 180, 0.6);
+  --blockquote-border-color: #e2c08d;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #e06c75;
+  --hr-color: #4b5362;
+}
