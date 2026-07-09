@@ -63,9 +63,11 @@ describe('resolveAppTheme', () => {
       .toBe('ayu-light')
   })
 
-  it('resolves One Dark to the fixed dark theme until its palette ships', () => {
+  it('resolves One Dark to its dedicated palette regardless of the system scheme', () => {
     expect(resolveAppTheme({ themeMode: 'custom', customTheme: 'one-dark' }, false))
-      .toBe('cadmium-dark')
+      .toBe('one-dark')
+    expect(resolveAppTheme({ themeMode: 'custom', customTheme: 'one-dark' }, true))
+      .toBe('one-dark')
   })
 })
 
@@ -164,5 +166,6 @@ describe('isDarkAppTheme', () => {
     expect(isDarkAppTheme('graphite-light')).toBe(false)
     expect(isDarkAppTheme('cadmium-dark')).toBe(true)
     expect(isDarkAppTheme('ayu-light')).toBe(false)
+    expect(isDarkAppTheme('one-dark')).toBe(true)
   })
 })

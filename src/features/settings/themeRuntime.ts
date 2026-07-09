@@ -10,26 +10,24 @@ import {
  * src/styles/themes/. Adding a future custom theme means adding its palette
  * file plus one entry in CUSTOM_THEME_APP_THEMES.
  */
-export type AppThemeId = 'graphite-light' | 'cadmium-dark' | 'ayu-light'
+export type AppThemeId = 'graphite-light' | 'cadmium-dark' | 'ayu-light' | 'one-dark'
 
 export const APP_THEME_IDS = [
   'graphite-light',
   'cadmium-dark',
   'ayu-light',
+  'one-dark',
 ] as const satisfies readonly AppThemeId[]
 
-/**
- * One Dark still resolves to the fixed dark theme until its palette lands in
- * its own PR, so choosing it stays honest about light/dark and upgrades in
- * place once the dedicated palette exists.
- */
 const CUSTOM_THEME_APP_THEMES: Record<(typeof APPEARANCE_CUSTOM_THEME_IDS)[number], AppThemeId> = {
   'ayu-light': 'ayu-light',
-  'one-dark': 'cadmium-dark',
+  'one-dark': 'one-dark',
 }
 
+const DARK_APP_THEMES: readonly AppThemeId[] = ['cadmium-dark', 'one-dark']
+
 export function isDarkAppTheme(theme: AppThemeId): boolean {
-  return theme === 'cadmium-dark'
+  return DARK_APP_THEMES.includes(theme)
 }
 
 export function resolveAppTheme(

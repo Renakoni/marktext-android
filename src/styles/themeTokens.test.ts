@@ -15,6 +15,7 @@ const themePaths = [
   join(themesRoot, 'graphite-light.css'),
   join(themesRoot, 'cadmium-dark.css'),
   join(themesRoot, 'ayu-light.css'),
+  join(themesRoot, 'one-dark.css'),
 ]
 
 // Tokens set from JS at runtime (inline style vars) rather than in a stylesheet.

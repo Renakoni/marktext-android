@@ -2,8 +2,10 @@
 @import './styles/themes/graphite-light.css';
 @import './styles/themes/cadmium-dark.css';
 @import './styles/themes/ayu-light.css';
+@import './styles/themes/one-dark.css';
 @import './styles/themes/prism-cadmium.css';
 @import './styles/themes/prism-ayu-light.css';
+@import './styles/themes/prism-one-dark.css';
 
 /*
  * Graphite Ink layout + shared chrome.

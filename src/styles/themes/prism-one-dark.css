@@ -1,0 +1,75 @@
+/*
+ * Prism syntax palette for One Dark.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever One Dark is active. Selectors mirror
+ * third_party/muya/src/assets/styles/prismjs/light.theme.css with a
+ * [data-theme] scope, so they win on specificity without !important.
+ * Palette ported from the desktop prism one-dark theme (Atom One Dark).
+ */
+
+[data-theme='one-dark'] .token.comment,
+[data-theme='one-dark'] .token.prolog,
+[data-theme='one-dark'] .token.doctype,
+[data-theme='one-dark'] .token.cdata {
+  color: #5c6370;
+}
+
+[data-theme='one-dark'] .token.punctuation {
+  color: #abb2bf;
+}
+
+[data-theme='one-dark'] .token.selector,
+[data-theme='one-dark'] .token.tag {
+  color: #e06c75;
+}
+
+[data-theme='one-dark'] .token.property,
+[data-theme='one-dark'] .token.boolean,
+[data-theme='one-dark'] .token.number,
+[data-theme='one-dark'] .token.constant,
+[data-theme='one-dark'] .token.symbol,
+[data-theme='one-dark'] .token.attr-name {
+  color: #d19a66;
+}
+
+[data-theme='one-dark'] .token.string,
+[data-theme='one-dark'] .token.char,
+[data-theme='one-dark'] .token.attr-value,
+[data-theme='one-dark'] .token.builtin {
+  color: #98c379;
+}
+
+[data-theme='one-dark'] .token.inserted {
+  color: #98c379;
+  background: rgba(152, 195, 121, 0.15);
+}
+
+[data-theme='one-dark'] .token.deleted {
+  color: #d19a66;
+  background: rgba(224, 108, 117, 0.15);
+}
+
+[data-theme='one-dark'] .token.operator,
+[data-theme='one-dark'] .token.entity,
+[data-theme='one-dark'] .token.url,
+[data-theme='one-dark'] .language-css .token.string,
+[data-theme='one-dark'] .style .token.string {
+  color: #56b6c2;
+}
+
+[data-theme='one-dark'] .token.atrule,
+[data-theme='one-dark'] .token.keyword {
+  color: #c678dd;
+}
+
+[data-theme='one-dark'] .token.function,
+[data-theme='one-dark'] .token.class-name {
+  color: #61afef;
+}
+
+[data-theme='one-dark'] .token.regex,
+[data-theme='one-dark'] .token.important,
+[data-theme='one-dark'] .token.variable {
+  color: #c678dd;
+}
