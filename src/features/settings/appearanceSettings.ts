@@ -29,6 +29,16 @@ export interface AppearanceTextSettings {
   textDirection: TextDirection
 }
 
+export const APPEARANCE_FIXED_THEME_IDS = {
+  light: 'graphite',
+  dark: 'dark',
+} as const
+
+export const APPEARANCE_CUSTOM_THEME_IDS = [
+  'ayu-light',
+  'one-dark',
+] as const
+
 export const APPEARANCE_TEXT_SETTING_KEYS = [
   'fontSize',
   'lineHeight',
@@ -49,7 +59,7 @@ export const APPEARANCE_SETTING_KEYS = [
 
 export const DEFAULT_APPEARANCE_THEME_SETTINGS = {
   themeMode: 'system',
-  customTheme: 'light',
+  customTheme: APPEARANCE_CUSTOM_THEME_IDS[0],
 } as const satisfies AppearanceThemeSettings
 
 export const DEFAULT_APPEARANCE_TEXT_SETTINGS = {
