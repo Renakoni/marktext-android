@@ -1,0 +1,102 @@
+/*
+ * Ayu Light — curated custom theme.
+ *
+ * Heritage: desktop MarkText ayu-light theme (bright near-white paper, warm
+ * #399ee6 blue, orange list markers, multicolor headings). Values are plain
+ * hex/rgba so every WebView the app can meet renders them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - `--accent` deepens the heritage blue so interactive text holds WCAG AA
+ *   on light surfaces; `--theme-color` keeps the heritage hue for editorial
+ *   accents (cursor, highlights, headings).
+ * - `--strong-color`/`--em-color` stay `inherit`: emphasis keeps the ink
+ *   color so Markdown structure never reads as broken syntax highlighting
+ *   (desktop ayu tints italics tan).
+ */
+
+:root[data-theme='ayu-light'] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --app-bg: #eff1f2;
+  --surface: #fafafa;
+  --surface-muted: #f0f0f0;
+  --surface-sunken: #e5e7e9;
+  --surface-raised: #ffffff;
+
+  /* Content */
+  --text: #454c54;
+  --text-muted: #6c7680;
+  --text-faint: #949ea8;
+  --on-accent: #ffffff;
+
+  /* Lines */
+  --border: #dcdfe2;
+  --border-strong: #cbd0d5;
+  --separator: rgba(87, 95, 102, 0.16);
+
+  /* Accent — ayu blue; --accent holds AA on light surfaces. */
+  --accent: #1c72b8;
+  --accent-strong: #155b94;
+  --accent-hover: #1b6aab;
+  --accent-soft: #d9ecfb;
+  --accent-tint-10: rgba(57, 158, 230, 0.12);
+  --accent-tint-11: rgba(57, 158, 230, 0.14);
+
+  /* State */
+  --danger: #bc5152;
+  --focus-ring: rgba(57, 158, 230, 0.38);
+  --press: rgba(87, 95, 102, 0.08);
+  --scrim: rgba(30, 35, 40, 0.42);
+
+  /* Shadows — reserved for genuinely floating surfaces. */
+  --shadow-sm: 0 1px 2px rgba(38, 44, 50, 0.06);
+  --shadow-float:
+    0 12px 32px rgba(38, 44, 50, 0.16),
+    0 2px 8px rgba(38, 44, 50, 0.08);
+  --shadow-thumb: 0 2px 6px rgba(38, 44, 50, 0.22);
+  --shadow-accent: 0 2px 10px rgba(57, 158, 230, 0.35);
+
+  /* Muya bridge — desktop ayu-light palette on the writing surface. */
+  --theme-color: #399ee6;
+  --highlight-color: rgba(57, 158, 230, 0.3);
+  --selection-color: rgba(214, 226, 235, 0.8);
+  --editor-color: #575f66;
+  --editor-color-80: rgba(87, 95, 102, 0.8);
+  --editor-color-50: rgba(87, 95, 102, 0.5);
+  --editor-color-30: rgba(87, 95, 102, 0.3);
+  --editor-color-10: rgba(87, 95, 102, 0.1);
+  --editor-color-04: rgba(87, 95, 102, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #f07171;
+  --icon-color: rgba(87, 95, 102, 0.56);
+  --code-block-bg-color: #f0f0f0;
+  --table-border-color: #dbdbdb;
+  --input-bg-color: #f3f3f3;
+  --button-font-color: rgba(87, 95, 102, 0.7);
+  --button-bg-color: #f0f0f0;
+  --button-border: 1px solid rgba(0, 0, 0, 0.08);
+  --button-bg-color-hover: #e5e5e5;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.12);
+  --button-bg-color-active: #dbdbdb;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.08);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(87, 95, 102, 0.06);
+  --float-border-color: rgba(0, 0, 0, 0.08);
+  --float-shadow: var(--shadow-float);
+  --link-color: var(--accent);
+  --h1-color: #fa8d3e;
+  --h2-color: #399ee6;
+  --h3-color: #86b300;
+  --h4-color: #55b4d4;
+  --h5-color: #a37acc;
+  --h6-color: #f07171;
+  --blockquote-text-color: rgba(87, 95, 102, 0.6);
+  --blockquote-border-color: #abb0b6;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #fa8d3e;
+  --hr-color: #dbdbdb;
+}

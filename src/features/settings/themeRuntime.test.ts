@@ -53,13 +53,19 @@ describe('resolveAppTheme', () => {
       .toBe('cadmium-dark')
   })
 
-  it('resolves custom themes to their base mode until dedicated palettes ship', () => {
+  it('resolves Ayu Light to its dedicated palette regardless of the system scheme', () => {
     expect(resolveAppTheme({ themeMode: 'custom', customTheme: 'ayu-light' }, true))
-      .toBe('graphite-light')
+      .toBe('ayu-light')
+    expect(resolveAppTheme({ themeMode: 'custom', customTheme: 'ayu-light' }, false))
+      .toBe('ayu-light')
+    // Unknown ids normalize to the default custom theme (ayu-light).
+    expect(resolveAppTheme({ themeMode: 'custom', customTheme: 'not-a-theme' }, false))
+      .toBe('ayu-light')
+  })
+
+  it('resolves One Dark to the fixed dark theme until its palette ships', () => {
     expect(resolveAppTheme({ themeMode: 'custom', customTheme: 'one-dark' }, false))
       .toBe('cadmium-dark')
-    expect(resolveAppTheme({ themeMode: 'custom', customTheme: 'not-a-theme' }, false))
-      .toBe('graphite-light')
   })
 })
 
@@ -157,5 +163,6 @@ describe('isDarkAppTheme', () => {
   it('classifies shipped themes', () => {
     expect(isDarkAppTheme('graphite-light')).toBe(false)
     expect(isDarkAppTheme('cadmium-dark')).toBe(true)
+    expect(isDarkAppTheme('ayu-light')).toBe(false)
   })
 })

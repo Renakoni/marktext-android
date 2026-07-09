@@ -1,0 +1,73 @@
+/*
+ * Prism syntax palette for Ayu Light.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Ayu Light is active. Selectors mirror
+ * third_party/muya/src/assets/styles/prismjs/light.theme.css with a
+ * [data-theme] scope, so they win on specificity without !important.
+ * Palette ported from the desktop prism ayu-light theme.
+ */
+
+[data-theme='ayu-light'] .token.comment,
+[data-theme='ayu-light'] .token.prolog,
+[data-theme='ayu-light'] .token.doctype,
+[data-theme='ayu-light'] .token.cdata {
+  color: #abb0b6;
+}
+
+[data-theme='ayu-light'] .token.punctuation {
+  color: #575f66;
+}
+
+[data-theme='ayu-light'] .token.property,
+[data-theme='ayu-light'] .token.tag,
+[data-theme='ayu-light'] .token.constant,
+[data-theme='ayu-light'] .token.symbol {
+  color: #f07171;
+}
+
+[data-theme='ayu-light'] .token.boolean,
+[data-theme='ayu-light'] .token.number {
+  color: #a37acc;
+}
+
+[data-theme='ayu-light'] .token.selector,
+[data-theme='ayu-light'] .token.attr-name,
+[data-theme='ayu-light'] .token.string,
+[data-theme='ayu-light'] .token.char,
+[data-theme='ayu-light'] .token.builtin {
+  color: #86b300;
+}
+
+[data-theme='ayu-light'] .token.inserted {
+  color: #86b300;
+}
+
+[data-theme='ayu-light'] .token.deleted {
+  color: #f07171;
+}
+
+[data-theme='ayu-light'] .token.operator,
+[data-theme='ayu-light'] .token.entity,
+[data-theme='ayu-light'] .token.url,
+[data-theme='ayu-light'] .language-css .token.string,
+[data-theme='ayu-light'] .style .token.string {
+  color: #4cbf99;
+}
+
+[data-theme='ayu-light'] .token.atrule,
+[data-theme='ayu-light'] .token.attr-value,
+[data-theme='ayu-light'] .token.function,
+[data-theme='ayu-light'] .token.class-name {
+  color: #f2ae49;
+}
+
+[data-theme='ayu-light'] .token.keyword {
+  color: #fa8d3e;
+}
+
+[data-theme='ayu-light'] .token.regex,
+[data-theme='ayu-light'] .token.important,
+[data-theme='ayu-light'] .token.variable {
+  color: #399ee6;
+}

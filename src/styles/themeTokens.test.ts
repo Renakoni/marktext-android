@@ -7,8 +7,15 @@ import { describe, expect, it } from 'vitest'
 const sourceRoot = join(process.cwd(), 'src')
 const themesRoot = join(sourceRoot, 'styles', 'themes')
 const structuralTokensPath = join(sourceRoot, 'styles', 'theme-tokens.css')
-const lightThemePath = join(themesRoot, 'graphite-light.css')
-const darkThemePath = join(themesRoot, 'cadmium-dark.css')
+
+// Every shipped palette; the first entry is the canonical token set the
+// others are compared against. Prism overlay files are rule-only (no token
+// definitions) and stay out of this list.
+const themePaths = [
+  join(themesRoot, 'graphite-light.css'),
+  join(themesRoot, 'cadmium-dark.css'),
+  join(themesRoot, 'ayu-light.css'),
+]
 
 // Tokens set from JS at runtime (inline style vars) rather than in a stylesheet.
 const RUNTIME_DEFINED_TOKENS = new Set(['--editor-area-width'])
@@ -77,19 +84,23 @@ describe('theme token architecture', () => {
     expect(offenders).toEqual([])
   })
 
-  it('defines the same token set in the light and dark themes', () => {
-    const lightTokens = collectDefinedTokens(readFileSync(lightThemePath, 'utf8'))
-    const darkTokens = collectDefinedTokens(readFileSync(darkThemePath, 'utf8'))
+  it('defines the same token set in every shipped theme', () => {
+    const [canonicalPath, ...otherPaths] = themePaths
+    const canonical = collectDefinedTokens(readFileSync(canonicalPath, 'utf8'))
 
-    const missingInDark = [...lightTokens].filter(token => !darkTokens.has(token)).sort()
-    const missingInLight = [...darkTokens].filter(token => !lightTokens.has(token)).sort()
+    for (const path of otherPaths) {
+      const tokens = collectDefinedTokens(readFileSync(path, 'utf8'))
+      const name = relative(process.cwd(), path)
+      const missing = [...canonical].filter(token => !tokens.has(token)).sort()
+      const extra = [...tokens].filter(token => !canonical.has(token)).sort()
 
-    expect(missingInDark).toEqual([])
-    expect(missingInLight).toEqual([])
+      expect(missing, `missing in ${name}`).toEqual([])
+      expect(extra, `extra in ${name}`).toEqual([])
+    }
   })
 
-  it('covers the documented semantic contract in both themes', () => {
-    for (const path of [lightThemePath, darkThemePath]) {
+  it('covers the documented semantic contract in every theme', () => {
+    for (const path of themePaths) {
       const tokens = collectDefinedTokens(readFileSync(path, 'utf8'))
       const missing = REQUIRED_SEMANTIC_TOKENS.filter(token => !tokens.has(token))
       expect(missing, `missing in ${relative(process.cwd(), path)}`).toEqual([])
@@ -98,7 +109,7 @@ describe('theme token architecture', () => {
 
   it('never references an undefined token from app styles', () => {
     const definedTokens = new Set<string>(RUNTIME_DEFINED_TOKENS)
-    for (const path of [structuralTokensPath, lightThemePath, darkThemePath]) {
+    for (const path of [structuralTokensPath, ...themePaths]) {
       for (const token of collectDefinedTokens(readFileSync(path, 'utf8'))) {
         definedTokens.add(token)
       }
