@@ -65,10 +65,8 @@ test('applies Appearance text settings without rewriting existing draft Markdown
   await openAppearanceSettings(page)
   await page.getByTestId('settings-appearance-font-size').getByRole('slider').fill('18')
   await page.getByTestId('settings-appearance-line-height').getByRole('slider').fill('1.8')
-  await page
-    .getByTestId('settings-appearance-font')
-    .locator('select')
-    .selectOption('monospace')
+  await page.getByTestId('settings-appearance-font-trigger').click()
+  await page.getByTestId('settings-appearance-font-option-monospace').click()
   await page.getByTestId('settings-appearance-line-width').getByRole('textbox').fill('72ch')
   await page.getByTestId('settings-appearance-direction-option-rtl').click()
 
