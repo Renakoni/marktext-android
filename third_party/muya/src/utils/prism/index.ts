@@ -7,6 +7,15 @@ const prism = Prism;
 window.Prism = Prism;
 import('prismjs/plugins/keep-markup/prism-keep-markup');
 
+if (languages.cpp) {
+    const existing = languages.cpp.alias;
+    languages.cpp.alias = Array.isArray(existing)
+        ? [...existing, 'c++', 'h++']
+        : existing
+            ? [existing, 'c++', 'h++']
+            : ['c++', 'h++'];
+}
+
 const langs: {
     name: string;
     [key: string]: string;
