@@ -31,6 +31,29 @@ jobs:
       - name: Run unit tests
         run: pnpm test
 
+  muya-tests:
+    name: Muya editor-core unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup
+
+      # The vendored editor core is not a workspace member and keeps its own
+      # devDependencies (no lockfile is vendored).
+      - name: Install Muya dependencies
+        run: pnpm --dir third_party/muya install
+
+      # test:app-gate runs the full Muya suite except three pre-existing
+      # upstream failures (listSerialization, tableChessboard,
+      # cutSelectionToClipboardData) and ignores the known async Prism
+      # language-loader rejections that the happy-dom environment produces —
+      # test assertions themselves still fail the gate normally.
+      - name: Run Muya unit tests
+        run: pnpm test:muya
+
   build:
     name: Vite production build
     runs-on: ubuntu-latest

@@ -168,6 +168,33 @@ describe('format.backspaceHandler — empty marker pair left by auto-pairing', (
         expect(content.text).toBe('~~');
         expect(event.defaultPrevented).toBe(false);
     });
+
+    it('paired prefix with content `*|*foo`: still trims one char, no deferral', () => {
+        // The pair is NOT empty — deferring here would let deleteAutoPair eat
+        // the second `*` too, deleting a character the user wanted to keep.
+        const content = caretInFirstBlock(bootMuya('**foo\n'), 1);
+        const event = pressBackspace(content);
+
+        expect(content.text).toBe('*foo');
+        expect(content.getCursor()!.start.offset).toBe(0);
+        expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('paired currency prefix `$|$100`: still trims one char, no deferral', () => {
+        const content = caretInFirstBlock(bootMuya('$$100\n'), 1);
+        const event = pressBackspace(content);
+
+        expect(content.text).toBe('$100');
+        expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('paired tilde prefix `~|~abc`: still trims one char, no deferral', () => {
+        const content = caretInFirstBlock(bootMuya('~~abc\n'), 1);
+        const event = pressBackspace(content);
+
+        expect(content.text).toBe('~abc');
+        expect(event.defaultPrevented).toBe(true);
+    });
 });
 
 describe('format.backspaceHandler — plain-text boundaries (no markers involved)', () => {

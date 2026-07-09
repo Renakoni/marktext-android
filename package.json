@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "test": "vitest run src",
+    "test:muya": "pnpm --dir third_party/muya run test:app-gate",
     "test:e2e": "playwright test",
     "typecheck": "vue-tsc -b",
     "lint": "eslint . --max-warnings 0",

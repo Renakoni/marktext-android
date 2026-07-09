@@ -1409,14 +1409,23 @@ class Format extends Content {
             // // Fix: https://github.com/marktext/muya/issues/113
             // for example: foo **strong**w|
             if (token.range.start + 1 === offset) {
-                // An empty inline marker pair in plain text (`*|*`, `~|~`, `$|$`
-                // — e.g. right after toolbar-inserted `**|**` lost its first
-                // pair): defer to the native delete so `deleteAutoPair` in the
-                // input handler removes the closing marker together with the
-                // opener. Trimming one char here would orphan the closer, and
+                // An EMPTY inline marker pair in plain text — the whole token
+                // is the two paired chars (`*|*`, `~|~`, e.g. right after
+                // toolbar-inserted `**|**` lost its first pair): defer to the
+                // native delete so `deleteAutoPair` in the input handler
+                // removes the closing marker together with the opener.
+                // Trimming one char here would orphan the closer, and
                 // muya#113 only concerns real syntax-token boundaries.
-                if (token.type === 'text' && BRACKET_HASH[token.raw[0]] === token.raw[1])
+                // The length check keeps paired-prefix text like `$|$100` or
+                // `*|*foo` on the trim-one-char path — deferring those would
+                // let deleteAutoPair eat the second (wanted) character too.
+                if (
+                    token.type === 'text'
+                    && token.raw.length === 2
+                    && BRACKET_HASH[token.raw[0]] === token.raw[1]
+                ) {
                     return { needRender: false, imageToken: null, referenceImageToken: null };
+                }
 
                 token.raw = token.raw.substring(1);
                 return { needRender: true, imageToken: null, referenceImageToken: null };

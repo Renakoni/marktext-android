@@ -80,8 +80,24 @@ export function watchSystemColorScheme(onChange: (prefersDark: boolean) => void)
     onChange(event.matches)
   }
 
-  mediaQuery.addEventListener('change', listener)
-  return () => {
-    mediaQuery.removeEventListener('change', listener)
+  // Older Android WebViews expose only the legacy addListener/removeListener
+  // pair on MediaQueryList. This runs early in App mount, so throwing here
+  // would abort draft restoration and startup actions on those devices —
+  // fall back instead of assuming the EventTarget API, and keep the cleanup
+  // on the same API that registered the listener.
+  if (typeof mediaQuery.addEventListener === 'function') {
+    mediaQuery.addEventListener('change', listener)
+    return () => {
+      mediaQuery.removeEventListener('change', listener)
+    }
   }
+
+  if (typeof mediaQuery.addListener === 'function') {
+    mediaQuery.addListener(listener)
+    return () => {
+      mediaQuery.removeListener(listener)
+    }
+  }
+
+  return () => {}
 }
