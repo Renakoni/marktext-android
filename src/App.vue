@@ -102,6 +102,7 @@ import {
   runEditorToolbarCommandWorkflow,
   scheduleEditorToolbarSync,
 } from './features/editor/editorToolbarWorkflow'
+import { readEditorMarkdownSnapshot } from './features/editor/editorMarkdownSnapshot'
 import {
   getEditorToolbarSettings,
 } from './features/editor/editorToolbarSettings'
@@ -488,12 +489,23 @@ function normalizeEditorMarkdown(markdown: string) {
   return markdown === '\n' ? '' : markdown
 }
 
-function syncDocumentFromEditor(markDirty = false) {
+function getEditorMarkdownSnapshot(flushPending = false) {
+  if (!editor) {
+    return ''
+  }
+
+  return readEditorMarkdownSnapshot(editor, {
+    flushPending,
+    normalizeMarkdown: normalizeEditorMarkdown,
+  })
+}
+
+function syncDocumentFromEditor(markDirty = false, flushPending = false) {
   if (!editor) {
     return documentState.value
   }
 
-  const value = normalizeEditorMarkdown(editor.getMarkdown())
+  const value = getEditorMarkdownSnapshot(flushPending)
   documentState.value = updateDocumentMarkdown(documentState.value, value, { markDirty })
   return documentState.value
 }
@@ -504,7 +516,7 @@ function syncMarkdown(nextStatus: unknown = 'Edited') {
   }
 
   const resolvedStatus = typeof nextStatus === 'string' ? nextStatus : 'Edited'
-  const nextMarkdown = normalizeEditorMarkdown(editor.getMarkdown())
+  const nextMarkdown = getEditorMarkdownSnapshot()
   const markDirty = resolvedStatus === 'Edited'
   documentState.value = updateDocumentMarkdown(documentState.value, nextMarkdown, { markDirty })
   if (markDirty && documentState.value.autosaveTarget === 'android-document') {
@@ -1108,7 +1120,7 @@ async function saveAndroidDocument() {
     return true
   }
 
-  const value = normalizeEditorMarkdown(editor.getMarkdown())
+  const value = getEditorMarkdownSnapshot(true)
   const startResult = createSaveAndroidDocumentWorkflowStart({
     documentState: documentState.value,
     markdown: value,
@@ -1199,7 +1211,7 @@ async function saveLocalDraftToAndroidDocument(options: { returnHomeAfterSave?: 
   }
 
   saveDraft()
-  const draftDocument = syncDocumentFromEditor(false)
+  const draftDocument = syncDocumentFromEditor(false, true)
 
   const reopenPromptOnCancel = draftExitPromptOpen.value && options.returnHomeAfterSave === true
   draftExitPromptOpen.value = false
@@ -1273,7 +1285,7 @@ async function saveAndroidDocumentCopy(options: { returnHomeAfterSave?: boolean 
   }
 
   const originalSourceUri = documentState.value.sourceUri
-  const copySourceDocument = syncDocumentFromEditor(documentState.value.isDirty)
+  const copySourceDocument = syncDocumentFromEditor(documentState.value.isDirty, true)
 
   savingAndroidDocumentCopy.value = true
   status.value = 'Choose a location'
@@ -1338,7 +1350,7 @@ async function shareCurrentMarkdownDocument() {
     return false
   }
 
-  const currentDocument = syncDocumentFromEditor(documentState.value.isDirty)
+  const currentDocument = syncDocumentFromEditor(documentState.value.isDirty, true)
   if (currentDocument.autosaveTarget === 'local-draft') {
     saveDraft()
   }
@@ -1387,7 +1399,7 @@ function saveDraft() {
     return
   }
 
-  const value = normalizeEditorMarkdown(editor.getMarkdown())
+  const value = getEditorMarkdownSnapshot(true)
   const localDraftAutosave = createLocalDraftAutosaveResult(
     documentState.value,
     value,
@@ -1738,7 +1750,7 @@ async function preserveCurrentDocumentBeforeIncomingOpen() {
   appLog.info('preserve current document before incoming Android document')
 
   if (preservationAction.kind === 'save-android-document') {
-    syncDocumentFromEditor(documentState.value.isDirty)
+    syncDocumentFromEditor(documentState.value.isDirty, true)
     const sourceUri = documentState.value.sourceUri
     const saved = await saveAndroidDocument()
     if (sourceUri && shouldKeepAndroidRecoveryAfterPreserveFailure(saved, sourceUri, documentState.value.markdown)) {
@@ -1969,7 +1981,7 @@ async function showHome() {
 
 function keepAndroidRecoveryAndShowHome() {
   const sourceUri = documentState.value.sourceUri
-  const currentDocument = syncDocumentFromEditor(documentState.value.isDirty)
+  const currentDocument = syncDocumentFromEditor(documentState.value.isDirty, true)
   if (sourceUri && currentDocument.markdown.trim() && canPersistAndroidRecoveryDrafts()) {
     persistAndroidRecoveryDraft(sourceUri, currentDocument.markdown)
     homeNotice.value = ANDROID_EXIT_RECOVERY_MESSAGE

@@ -67,7 +67,7 @@ defineEmits<{
 
 .settings-choice-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
   gap: 6px;
   width: 100%;
 }

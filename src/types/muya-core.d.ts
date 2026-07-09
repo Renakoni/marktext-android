@@ -64,6 +64,7 @@ declare module '@muyajs/core' {
     on(event: string, listener: (...args: unknown[]) => void): void
     off(event: string, listener: (...args: unknown[]) => void): void
     getMarkdown(): string
+    flush(): void
     getTOC(): ITocItem[]
     getHistory(): unknown
     setHistory(history: unknown): void
