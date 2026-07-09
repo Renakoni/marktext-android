@@ -1,7 +1,9 @@
 @import './styles/theme-tokens.css';
 @import './styles/themes/graphite-light.css';
 @import './styles/themes/cadmium-dark.css';
+@import './styles/themes/ayu-light.css';
 @import './styles/themes/prism-cadmium.css';
+@import './styles/themes/prism-ayu-light.css';
 
 /*
  * Graphite Ink layout + shared chrome.
