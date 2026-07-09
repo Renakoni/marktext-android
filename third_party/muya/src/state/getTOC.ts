@@ -1,6 +1,7 @@
 import type Content from '../block/base/content';
 import type Parent from '../block/base/parent';
 import type { Muya } from '../muya';
+import { tokenizer, tokensToPlainText } from '../inlineRenderer/lexer';
 import { getUniqueId } from '../utils';
 import { generateGithubSlug } from '../utils/slug';
 
@@ -42,9 +43,17 @@ export function getTOC(muya: Muya): ITocItem[] {
         const head = block.children.head as Content | null;
         const text = head?.text ?? '';
 
-        const content = blockName === 'setext-heading'
+        const source = blockName === 'setext-heading'
             ? text.trim()
             : text.replace(/^\s*#{1,6}\s+/, '').trim();
+
+        const { superSubScript, footnote } = muya.options;
+        const content = tokensToPlainText(
+            tokenizer(source, {
+                hasBeginRules: false,
+                options: { superSubScript, footnote },
+            }),
+        ).trim();
 
         items.push({
             content,
