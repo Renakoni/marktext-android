@@ -16,6 +16,7 @@ import type TreeNode from './treeNode';
 import Content from '../../block/base/content';
 import { ScrollPage } from '../../block/scrollPage';
 import {
+    BRACKET_HASH,
     CLASS_NAMES,
     FORMAT_MARKER_MAP,
     FORMAT_TAG_MAP,
@@ -1408,6 +1409,15 @@ class Format extends Content {
             // // Fix: https://github.com/marktext/muya/issues/113
             // for example: foo **strong**w|
             if (token.range.start + 1 === offset) {
+                // An empty inline marker pair in plain text (`*|*`, `~|~`, `$|$`
+                // — e.g. right after toolbar-inserted `**|**` lost its first
+                // pair): defer to the native delete so `deleteAutoPair` in the
+                // input handler removes the closing marker together with the
+                // opener. Trimming one char here would orphan the closer, and
+                // muya#113 only concerns real syntax-token boundaries.
+                if (token.type === 'text' && BRACKET_HASH[token.raw[0]] === token.raw[1])
+                    return { needRender: false, imageToken: null, referenceImageToken: null };
+
                 token.raw = token.raw.substring(1);
                 return { needRender: true, imageToken: null, referenceImageToken: null };
             }

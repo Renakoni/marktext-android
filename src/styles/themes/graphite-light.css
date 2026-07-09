@@ -1,0 +1,101 @@
+/*
+ * Graphite Light — the fixed Light mode.
+ *
+ * Heritage: desktop MarkText graphite theme (calm paper, graphite-blue accent,
+ * quietly colorful headings). Values are plain hex/rgba so every WebView the
+ * app can meet renders them identically.
+ *
+ * The bare `:root` block doubles as the boot fallback before the theme
+ * runtime stamps `data-theme`; the attribute selector keeps these tokens
+ * ahead of Muya's own `:root` defaults once the app is running.
+ */
+
+:root,
+:root[data-theme='graphite-light'] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --app-bg: #f2f3f5;
+  --surface: #fafbfc;
+  --surface-muted: #eef0f2;
+  --surface-sunken: #e6e8eb;
+  --surface-raised: #ffffff;
+
+  /* Content */
+  --text: #1c2126;
+  --text-muted: #5f6a76;
+  --text-faint: #8a939e;
+  --on-accent: #ffffff;
+
+  /* Lines */
+  --border: #d9dde2;
+  --border-strong: #c9cfd6;
+  --separator: rgba(60, 70, 82, 0.14);
+
+  /* Accent — graphite blue; --accent holds AA on light surfaces. */
+  --accent: #516b8b;
+  --accent-strong: #3d5878;
+  --accent-hover: #4c6685;
+  --accent-soft: #dde8f4;
+  --accent-tint-10: rgba(81, 107, 139, 0.1);
+  --accent-tint-11: rgba(81, 107, 139, 0.12);
+
+  /* State */
+  --danger: #a03f3c;
+  --focus-ring: rgba(81, 107, 139, 0.32);
+  --press: rgba(28, 33, 38, 0.07);
+  --scrim: rgba(21, 26, 34, 0.45);
+
+  /* Shadows — reserved for genuinely floating surfaces. */
+  --shadow-sm: 0 1px 2px rgba(23, 28, 36, 0.06);
+  --shadow-float:
+    0 12px 32px rgba(23, 28, 36, 0.16),
+    0 2px 8px rgba(23, 28, 36, 0.08);
+  --shadow-thumb: 0 2px 6px rgba(23, 28, 36, 0.22);
+  --shadow-accent: 0 2px 10px rgba(81, 107, 139, 0.35);
+
+  /* Muya bridge — desktop graphite palette on the writing surface. */
+  --theme-color: #6886aa;
+  --highlight-color: rgba(104, 134, 170, 0.4);
+  --selection-color: rgba(104, 134, 170, 0.25);
+  --editor-color: rgba(43, 48, 50, 0.75);
+  --editor-color-80: rgba(43, 48, 50, 0.8);
+  --editor-color-50: rgba(43, 48, 50, 0.5);
+  --editor-color-30: rgba(150, 150, 150, 0.8);
+  --editor-color-10: rgba(43, 48, 50, 0.1);
+  --editor-color-04: rgba(43, 48, 50, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #ff6969;
+  --icon-color: rgba(150, 150, 150, 0.8);
+  --code-block-bg-color: rgba(104, 134, 170, 0.05);
+  --table-border-color: var(--border);
+  --input-bg-color: rgba(0, 0, 0, 0.06);
+  --button-font-color: var(--text-muted);
+  --button-bg-color: var(--surface-raised);
+  --button-border: 1px solid var(--border);
+  --button-bg-color-hover: var(--surface-muted);
+  --button-border-hover: 1px solid var(--border-strong);
+  --button-bg-color-active: var(--surface-sunken);
+  --button-border-active: 1px solid var(--border-strong);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(43, 48, 50, 0.05);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: var(--accent);
+  --h1-color: #6886aa;
+  --h2-color: #5f9ea0;
+  --h3-color: #b8860b;
+  --h4-color: #7b68ee;
+  --h5-color: #cd5c5c;
+  --h6-color: #708090;
+  --blockquote-text-color: rgba(43, 48, 50, 0.55);
+  --blockquote-border-color: #6886aa;
+  /* Emphasis keeps the ink color: bold/italic are Markdown structure, and
+     recoloring them (desktop graphite does) misreads as broken syntax on a
+     phone-sized writing surface. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #6886aa;
+  --hr-color: rgba(43, 48, 50, 0.1);
+}

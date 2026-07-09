@@ -61,10 +61,15 @@ strong.mu-inline-rule {
     font-weight: 700;
 }
 
+/* `italic` only: requesting an oblique angle makes Chromium (verified on
+   149) render UPRIGHT text when the family has no real oblique face — it
+   neither falls back to the italic face nor synthesizes a slant, killing
+   emphasis for bundled Open Sans italics and CJK alike. `italic` matches
+   real italic faces and synthesizes for CJK via the
+   `font-synthesis: weight style` above. */
 em.mu-inline-rule {
     color: var(--em-color, inherit);
     font-style: italic;
-    font-style: oblique 12deg;
 }
 
 /* inline code */

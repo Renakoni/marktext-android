@@ -1,4 +1,17 @@
 @import './styles/theme-tokens.css';
+@import './styles/themes/graphite-light.css';
+@import './styles/themes/cadmium-dark.css';
+@import './styles/themes/prism-cadmium.css';
+
+/*
+ * Graphite Ink layout + shared chrome.
+ *
+ * Hierarchy comes from typography, spacing, and hairlines; boxes and shadows
+ * are reserved for surfaces that genuinely float (sheets, menus, popovers).
+ * Press feedback is instant on touch-down and eases out on release:
+ *   transition: ... var(--dur-standard) var(--ease-out);
+ *   :active { transition-duration: 0ms; background: var(--press); }
+ */
 
 * {
   box-sizing: border-box;
@@ -30,15 +43,17 @@ body {
   background: var(--app-bg);
 }
 
+/* ---------------------------------------------------------------- home */
+
 .home-screen {
   min-height: 100%;
-  padding: calc(env(safe-area-inset-top, 0px) + 26px) 22px 36px;
+  padding: calc(env(safe-area-inset-top, 0px) + 30px) 24px 40px;
   background: var(--app-bg);
 }
 
 .home-top {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   max-width: 720px;
@@ -48,38 +63,36 @@ body {
 .home-top h1 {
   margin: 0;
   color: var(--text);
-  font-size: 30px;
-  line-height: 1.04;
+  font-size: 23px;
+  line-height: 1.1;
   font-weight: 700;
-  letter-spacing: -0.022em;
+  letter-spacing: -0.02em;
 }
 
 .home-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .home-open-button {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 40px;
-  padding: 0 15px;
-  border: 1px solid var(--border);
+  min-height: 42px;
+  padding: 0 16px;
+  border: var(--hairline) solid var(--border-strong);
   border-radius: 999px;
-  background: var(--surface);
+  background: transparent;
   color: var(--text);
   font: inherit;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.006em;
-  box-shadow: var(--shadow-home-open-button);
+  touch-action: manipulation;
   transition:
-    border-color 160ms var(--ease-out),
-    background 160ms var(--ease-out),
-    box-shadow 160ms var(--ease-out),
-    transform 120ms var(--ease-out);
+    background-color var(--dur-standard) var(--ease-out),
+    transform var(--dur-standard) var(--ease-out);
 }
 
 .home-open-button svg {
@@ -92,33 +105,35 @@ body {
   stroke-linejoin: round;
 }
 
-.home-open-button:hover {
-  border-color: var(--border-strong);
-  background: var(--surface-muted);
+.home-open-button:active {
+  background: var(--press);
+  transform: scale(0.97);
+  transition-duration: 0ms;
 }
 
-.home-open-button:active {
-  background: var(--surface-sunken);
-  transform: translateY(0.5px);
-  box-shadow: var(--shadow-home-open-button-active);
+.home-open-button:focus-visible,
+.home-new-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .home-new-button {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   padding: 0;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: 999px;
   background: var(--accent);
-  color: var(--surface);
+  color: var(--on-accent);
   font: inherit;
-  box-shadow: var(--shadow-home-new-button);
+  box-shadow: var(--shadow-accent);
+  touch-action: manipulation;
   transition:
-    background 160ms var(--ease-out),
-    box-shadow 160ms var(--ease-out),
-    transform 120ms var(--ease-out);
+    background-color var(--dur-standard) var(--ease-out),
+    box-shadow var(--dur-standard) var(--ease-out),
+    transform var(--dur-standard) var(--ease-out);
 }
 
 .home-new-button svg {
@@ -131,111 +146,84 @@ body {
   stroke-linejoin: round;
 }
 
-.home-new-button:hover {
-  background: var(--accent-hover);
-}
-
 .home-new-button:active {
   background: var(--accent-strong);
-  transform: translateY(0.5px);
-  box-shadow: var(--shadow-home-new-button-active);
-}
-
-.home-open-button:active,
-.home-new-button:active {
-  transform: translateY(0.5px);
+  box-shadow: none;
+  transform: scale(0.94);
+  transition-duration: 0ms;
 }
 
 .home-notice {
   max-width: 720px;
-  margin: 18px auto 0;
+  margin: 20px auto 0;
   padding: 11px 14px;
-  border: 1px solid var(--border);
+  border: var(--hairline) solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--accent-soft);
   color: var(--accent-strong);
-  font-size: 13.5px;
-  line-height: 1.4;
+  font-size: 13px;
+  line-height: 1.45;
   font-weight: 500;
 }
 
 .home-section-label {
   max-width: 720px;
-  margin: 26px auto 0;
-  padding: 0 4px;
+  margin: 32px auto 0;
+  padding: 0 2px;
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .home-content {
   max-width: 720px;
-  margin: 12px auto 0;
+  margin: 6px auto 0;
 }
 
 .document-group + .document-group {
-  margin-top: 30px;
+  margin-top: 8px;
 }
 
+/* Continue masthead: an editorial block, not a card. The tap target inflates
+   into the gutters so the press tint can wrap the text without a resting box. */
 .continue-card {
   display: grid;
-  gap: 14px;
-  width: 100%;
-  padding: 20px 20px 22px;
-  border: 1px solid var(--border);
+  gap: 5px;
+  width: calc(100% + 24px);
+  margin: 4px -12px 0;
+  padding: 12px 12px 14px;
+  border: 0;
   border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  background: transparent;
   text-align: left;
   font: inherit;
+  touch-action: manipulation;
   transition:
-    border-color 180ms var(--ease-out),
-    box-shadow 180ms var(--ease-out),
-    transform 160ms var(--ease-out);
-}
-
-.continue-card:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-card-hover);
+    background-color var(--dur-standard) var(--ease-out),
+    transform var(--dur-standard) var(--ease-out);
 }
 
 .continue-card:active {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(0.5px);
+  background: var(--press);
+  transform: scale(0.99);
+  transition-duration: 0ms;
 }
 
-.continue-card-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--accent-strong);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.continue-card-head svg {
-  width: 15px;
-  height: 15px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.continue-card:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
 .continue-card-title {
   display: block;
   overflow: hidden;
   color: var(--text);
-  font-size: 19px;
+  font-size: 21px;
   line-height: 1.25;
   font-weight: 700;
-  letter-spacing: -0.012em;
+  letter-spacing: -0.014em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -246,79 +234,74 @@ body {
   color: var(--text-muted);
   font-size: 13.5px;
   line-height: 1.35;
-  font-weight: 500;
+  font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.continue-card-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--accent-strong);
-  font-size: 13.5px;
-  font-weight: 600;
-}
-
-.continue-card-cta svg {
-  width: 14px;
-  height: 14px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .document-list {
   display: grid;
   gap: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  width: calc(100% + 24px);
+  margin: 4px -12px 0;
 }
 
 .document-row {
+  position: relative;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 18px;
+  grid-template-columns: 28px minmax(0, 1fr);
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
-  min-height: 68px;
-  padding: 12px 18px;
+  min-height: 62px;
+  padding: 11px 12px;
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius);
   background: transparent;
   color: var(--text);
   text-align: left;
   font: inherit;
-  transition: background 140ms var(--ease-out);
+  touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
 }
 
-.document-list .document-row:last-child {
-  border-bottom: 0;
+.document-row::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 52px;
+  border-bottom: var(--hairline) solid var(--separator);
+}
+
+.document-list .document-row:last-child::after {
+  display: none;
 }
 
 .document-list .document-row:active {
-  background: var(--surface-muted);
+  background: var(--press);
+  transition-duration: 0ms;
+}
+
+.document-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
 .document-glyph {
   display: inline-grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   color: var(--text-faint);
 }
 
 .document-glyph svg {
-  width: 26px;
-  height: 26px;
+  width: 21px;
+  height: 21px;
   stroke: currentColor;
   fill: none;
-  stroke-width: 1.6;
+  stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -338,7 +321,7 @@ body {
 
 .document-text strong {
   color: var(--text);
-  font-size: 16px;
+  font-size: 15.5px;
   line-height: 1.25;
   font-weight: 600;
   letter-spacing: -0.008em;
@@ -348,50 +331,31 @@ body {
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.3;
-  font-weight: 500;
-}
-
-.document-chevron {
-  color: var(--text-faint);
-}
-
-.document-chevron svg {
-  width: 16px;
-  height: 16px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  font-weight: 400;
 }
 
 .empty-recent {
   display: grid;
-  gap: 14px;
+  gap: 10px;
   justify-items: start;
   max-width: 720px;
-  margin: 36px auto 0;
-  padding: 8px 4px;
+  margin: 46px auto 0;
+  padding: 0 4px;
 }
 
 .empty-recent .empty-mark {
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
-  margin-bottom: 4px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
+  margin-bottom: 2px;
   color: var(--text-faint);
 }
 
 .empty-recent .empty-mark svg {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   stroke: currentColor;
   fill: none;
-  stroke-width: 1.5;
+  stroke-width: 1.4;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -401,8 +365,8 @@ body {
   color: var(--text);
   font-size: 17px;
   line-height: 1.25;
-  font-weight: 700;
-  letter-spacing: -0.012em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .empty-recent p {
@@ -410,9 +374,11 @@ body {
   max-width: 46ch;
   color: var(--text-muted);
   font-size: 14px;
-  line-height: 1.45;
-  font-weight: 500;
+  line-height: 1.5;
+  font-weight: 400;
 }
+
+/* ---------------------------------------------------------- editor bar */
 
 .top-bar {
   position: relative;
@@ -420,10 +386,10 @@ body {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  min-height: 64px;
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
-  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  min-height: 60px;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 12px 8px;
+  border-bottom: var(--hairline) solid var(--separator);
   background: var(--surface);
 }
 
@@ -431,16 +397,17 @@ body {
 .icon-button {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--text);
+  color: var(--text-muted);
   touch-action: manipulation;
   transition:
-    background 140ms var(--ease-out),
-    color 140ms var(--ease-out);
+    background-color var(--dur-standard) var(--ease-out),
+    color var(--dur-standard) var(--ease-out),
+    transform var(--dur-standard) var(--ease-out);
 }
 
 .nav-button svg,
@@ -458,16 +425,18 @@ body {
   fill: currentColor;
 }
 
-.nav-button:hover,
-.icon-button:hover {
-  background: var(--surface-muted);
-  color: var(--text);
-}
-
 .nav-button:active,
 .icon-button:active {
-  background: var(--surface-sunken);
-  transform: translateY(0.5px);
+  background: var(--press);
+  color: var(--text);
+  transform: scale(0.92);
+  transition-duration: 0ms;
+}
+
+.nav-button:focus-visible,
+.icon-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
 .editor-actions {
@@ -477,23 +446,121 @@ body {
   position: relative;
 }
 
+.document-heading {
+  min-width: 0;
+}
+
+.document-heading span {
+  display: block;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.document-heading h1 {
+  overflow: hidden;
+  margin: 3px 0 0;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-heading p {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 400;
+}
+
+/* --------------------------------------------------------- editor pane */
+
+.editor-pane {
+  min-height: 0;
+  padding: 18px;
+  overflow: hidden;
+}
+
+.editor-host-shell {
+  width: min(100%, 980px);
+  height: 100%;
+  margin: 0 auto;
+  overflow: auto;
+  border: var(--hairline) solid var(--separator);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  -webkit-overflow-scrolling: touch;
+}
+
+.editor-host-shell .muya-host {
+  min-height: 100%;
+}
+
+.editor-host-shell .mu-editor {
+  min-height: 100%;
+  padding: 42px 56px 56px;
+}
+
+/* MIUI WebViews pin CJK glyphs to one weight: 400 and 700 rasterize to
+   identical pixels at every size and family (device-measured), while Latin
+   bolds fine. Real and synthetic bold are both unavailable, so bold-bearing
+   editor content gets stroke compensation instead; 0.035em matches the ink
+   gain of a real CJK bold face. The flag is set per manufacturer at startup
+   (cjkBoldCompensation.ts). */
+:root[data-cjk-bold-compensation] .mu-editor strong,
+:root[data-cjk-bold-compensation] .mu-editor th,
+:root[data-cjk-bold-compensation] .mu-editor h1,
+:root[data-cjk-bold-compensation] .mu-editor h2,
+:root[data-cjk-bold-compensation] .mu-editor h3,
+:root[data-cjk-bold-compensation] .mu-editor h4,
+:root[data-cjk-bold-compensation] .mu-editor h5,
+:root[data-cjk-bold-compensation] .mu-editor h6 {
+  -webkit-text-stroke: 0.035em currentColor;
+}
+
+.status-bar {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  min-height: 38px;
+  padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 8px);
+  border-top: var(--hairline) solid var(--separator);
+  color: var(--text-muted);
+  background: var(--surface);
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 400;
+}
+
+/* ------------------------------------------------------ floating sheets */
+
 .editor-action-sheet {
   position: fixed;
   inset: 0;
   z-index: 40;
   display: grid;
   align-items: end;
-  background: var(--editor-scrim);
+  background: var(--scrim);
 }
 
 .editor-sheet-enter-active,
 .editor-sheet-leave-active {
-  transition: opacity 200ms var(--ease-out);
+  transition: opacity var(--dur-standard) var(--ease-out);
 }
 
 .editor-sheet-enter-active .editor-action-panel,
-.editor-sheet-leave-active .editor-action-panel {
-  transition: transform 280ms var(--ease-out);
+.editor-sheet-leave-active .editor-action-panel,
+.editor-sheet-enter-active .draft-save-panel,
+.editor-sheet-leave-active .draft-save-panel {
+  transition: transform var(--dur-gentle) var(--ease-out);
 }
 
 .editor-sheet-enter-from,
@@ -502,7 +569,9 @@ body {
 }
 
 .editor-sheet-enter-from .editor-action-panel,
-.editor-sheet-leave-to .editor-action-panel {
+.editor-sheet-leave-to .editor-action-panel,
+.editor-sheet-enter-from .draft-save-panel,
+.editor-sheet-leave-to .draft-save-panel {
   transform: translateY(100%);
 }
 
@@ -510,11 +579,10 @@ body {
   width: min(100%, 520px);
   margin: 0 auto;
   padding: 10px 14px calc(env(safe-area-inset-bottom, 0px) + 14px);
-  border: 1px solid var(--border);
-  border-bottom: 0;
-  border-radius: var(--radius) var(--radius) 0 0;
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  border: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
 }
 
 .editor-action-grabber {
@@ -528,9 +596,9 @@ body {
 .editor-action-title {
   margin: 4px 6px 8px;
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -545,22 +613,24 @@ body {
   align-items: center;
   gap: 14px;
   width: 100%;
-  min-height: 56px;
+  min-height: 54px;
   padding: 8px 12px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 15.5px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 500;
   letter-spacing: -0.006em;
   text-align: left;
-  transition: background 140ms var(--ease-out);
+  touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
 }
 
 .editor-action-row:active {
-  background: var(--surface-muted);
+  background: var(--press);
+  transition-duration: 0ms;
 }
 
 .editor-action-row:disabled {
@@ -568,7 +638,7 @@ body {
 }
 
 .editor-action-row:focus-visible {
-  outline: 2px solid var(--focus-ring-22);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 
@@ -603,89 +673,7 @@ body {
   white-space: nowrap;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .editor-sheet-enter-active,
-  .editor-sheet-leave-active,
-  .editor-sheet-enter-active .editor-action-panel,
-  .editor-sheet-leave-active .editor-action-panel {
-    transition: none;
-  }
-}
-
-.document-heading {
-  min-width: 0;
-}
-
-.document-heading span {
-  display: block;
-  color: var(--text-faint);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.document-heading h1 {
-  overflow: hidden;
-  margin: 3px 0 0;
-  color: var(--text);
-  font-size: 17px;
-  line-height: 1.25;
-  font-weight: 700;
-  letter-spacing: -0.012em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.document-heading p {
-  margin: 2px 0 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.2;
-  font-weight: 500;
-}
-
-.editor-pane {
-  min-height: 0;
-  padding: 18px;
-  overflow: hidden;
-}
-
-.editor-host-shell {
-  width: min(100%, 980px);
-  height: 100%;
-  margin: 0 auto;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  -webkit-overflow-scrolling: touch;
-}
-
-.editor-host-shell .muya-host {
-  min-height: 100%;
-}
-
-.editor-host-shell .mu-editor {
-  min-height: 100%;
-  padding: 42px 56px 56px;
-}
-
-.status-bar {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
-  min-height: 38px;
-  padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 8px);
-  border-top: 1px solid var(--border);
-  color: var(--text-muted);
-  background: var(--surface-muted);
-  font-size: 12px;
-  line-height: 1.2;
-  font-weight: 500;
-}
+/* -------------------------------------------------------- exit prompts */
 
 .draft-save-sheet {
   position: fixed;
@@ -693,40 +681,40 @@ body {
   z-index: 20;
   display: grid;
   align-items: end;
-  padding: 18px;
-  background: var(--draft-scrim);
+  background: var(--scrim);
 }
 
 .draft-save-panel {
   width: min(100%, 520px);
   margin: 0 auto;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  padding: 22px 20px calc(env(safe-area-inset-bottom, 0px) + 8px);
+  border: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
 }
 
 .draft-save-panel h2 {
   margin: 0;
   color: var(--text);
-  font-size: 19px;
-  line-height: 1.25;
-  font-weight: 700;
-  letter-spacing: -0.012em;
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .draft-save-panel p {
   margin: 8px 0 0;
   color: var(--text-muted);
   font-size: 14px;
-  line-height: 1.45;
-  font-weight: 500;
+  line-height: 1.5;
+  font-weight: 400;
 }
 
 .link-insert-panel {
   display: grid;
   gap: 14px;
+  padding-bottom: 14px;
 }
 
 .link-field {
@@ -737,7 +725,7 @@ body {
 .link-field span {
   color: var(--text-muted);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.2;
 }
 
@@ -745,70 +733,88 @@ body {
   width: 100%;
   min-height: 46px;
   padding: 0 12px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--surface-muted);
   color: var(--text);
   font: inherit;
   font-size: 16px;
   line-height: 1.2;
+  transition:
+    border-color var(--dur-standard) var(--ease-out),
+    background-color var(--dur-standard) var(--ease-out);
 }
 
 .link-field input:focus {
   border-color: var(--accent);
-  outline: 2px solid var(--focus-ring-18);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
+/* Decision rows: quiet full-width text actions separated by hairlines,
+   not a stack of filled pills. */
 .draft-save-actions {
   display: grid;
-  gap: 8px;
-  margin-top: 18px;
+  gap: 0;
+  margin-top: 20px;
 }
 
 .draft-save-actions button {
-  min-height: 46px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text);
+  min-height: 50px;
+  border: 0;
+  border-top: var(--hairline) solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
   font: inherit;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15.5px;
+  font-weight: 500;
+  touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
 }
 
 .draft-save-actions button:active {
-  background: var(--surface-muted);
-  transform: translateY(0.5px);
+  background: var(--press);
+  transition-duration: 0ms;
 }
 
 .draft-save-actions button:disabled {
   color: var(--text-faint);
 }
 
+.draft-save-actions button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
 .draft-save-actions .primary-action {
-  border-color: transparent;
-  background: var(--accent);
-  color: var(--surface);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .draft-save-actions .danger-action {
   color: var(--danger);
 }
 
+/* ------------------------------------------------------------- motion */
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-sheet-enter-active,
+  .editor-sheet-leave-active,
+  .editor-sheet-enter-active .editor-action-panel,
+  .editor-sheet-leave-active .editor-action-panel,
+  .editor-sheet-enter-active .draft-save-panel,
+  .editor-sheet-leave-active .draft-save-panel {
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------- breakpoints */
+
 @media (max-width: 720px) {
   .home-screen {
     padding-right: 20px;
     padding-left: 20px;
-  }
-
-  .home-top h1 {
-    font-size: 27px;
-  }
-
-  .top-bar {
-    padding-right: 12px;
-    padding-left: 12px;
   }
 
   .editor-pane {

@@ -1,0 +1,75 @@
+/*
+ * Prism syntax palette for Cadmium Dark.
+ *
+ * Muya bundles a light Prism theme unconditionally; these rules re-color the
+ * tokens whenever the dark theme is active. Selectors mirror
+ * third_party/muya/src/assets/styles/prismjs/light.theme.css with a
+ * [data-theme] scope, so they win on specificity without !important.
+ * Palette ported from the desktop prism dark theme.
+ */
+
+[data-theme='cadmium-dark'] .token.comment,
+[data-theme='cadmium-dark'] .token.prolog,
+[data-theme='cadmium-dark'] .token.doctype,
+[data-theme='cadmium-dark'] .token.cdata {
+  color: #7f848e;
+}
+
+[data-theme='cadmium-dark'] .token.punctuation {
+  color: #d4d8de;
+}
+
+[data-theme='cadmium-dark'] .token.property,
+[data-theme='cadmium-dark'] .token.tag,
+[data-theme='cadmium-dark'] .token.constant,
+[data-theme='cadmium-dark'] .token.symbol {
+  color: #f92672;
+}
+
+[data-theme='cadmium-dark'] .token.boolean,
+[data-theme='cadmium-dark'] .token.number {
+  color: #ae81ff;
+}
+
+[data-theme='cadmium-dark'] .token.selector,
+[data-theme='cadmium-dark'] .token.attr-name,
+[data-theme='cadmium-dark'] .token.string,
+[data-theme='cadmium-dark'] .token.char,
+[data-theme='cadmium-dark'] .token.builtin {
+  color: #a6e22e;
+}
+
+[data-theme='cadmium-dark'] .token.inserted {
+  color: #7ee787;
+  background: rgba(46, 160, 67, 0.18);
+}
+
+[data-theme='cadmium-dark'] .token.deleted {
+  color: #ffa198;
+  background: rgba(248, 81, 73, 0.18);
+}
+
+[data-theme='cadmium-dark'] .token.operator,
+[data-theme='cadmium-dark'] .token.entity,
+[data-theme='cadmium-dark'] .token.url,
+[data-theme='cadmium-dark'] .language-css .token.string,
+[data-theme='cadmium-dark'] .style .token.string {
+  color: #e67e65;
+}
+
+[data-theme='cadmium-dark'] .token.atrule,
+[data-theme='cadmium-dark'] .token.attr-value,
+[data-theme='cadmium-dark'] .token.function,
+[data-theme='cadmium-dark'] .token.class-name {
+  color: #e6db74;
+}
+
+[data-theme='cadmium-dark'] .token.keyword {
+  color: #66d9ef;
+}
+
+[data-theme='cadmium-dark'] .token.regex,
+[data-theme='cadmium-dark'] .token.important,
+[data-theme='cadmium-dark'] .token.variable {
+  color: #fd971f;
+}

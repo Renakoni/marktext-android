@@ -8,9 +8,11 @@ export default [
     ignores: [
       'android/**',
       'dist/**',
+      'graphify-out/**',
       'logs/**',
       'node_modules/**',
       'playwright-report/**',
+      'refs/**',
       'test-results/**',
       'third_party/**',
       'vite-dev.*.log',

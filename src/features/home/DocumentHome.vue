@@ -64,24 +64,8 @@ const { t } = useI18n()
           type="button"
           @click="$emit('openDocument', continueDocument.id)"
         >
-          <span class="continue-card-head">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M7 4h7l4 4v12H7z" />
-              <path d="M14 4v5h5" />
-              <path d="M9.5 14h5" />
-            </svg>
-            {{ t('home.continueWriting') }}
-          </span>
-          <span>
-            <span class="continue-card-title">{{ continueDocument.title }}</span>
-            <span class="continue-card-meta">{{ continueDocument.details }}</span>
-          </span>
-          <span class="continue-card-cta">
-            {{ t('home.continueAction') }}
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M9 6l6 6-6 6" />
-            </svg>
-          </span>
+          <span class="continue-card-title">{{ continueDocument.title }}</span>
+          <span class="continue-card-meta">{{ continueDocument.details }}</span>
         </button>
       </section>
 
@@ -106,11 +90,6 @@ const { t } = useI18n()
             <span class="document-text">
               <strong>{{ document.title }}</strong>
               <span>{{ document.details }}</span>
-            </span>
-            <span class="document-chevron" aria-hidden="true">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M9 6l6 6-6 6" />
-              </svg>
             </span>
           </button>
         </div>

@@ -275,7 +275,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'themeMode',
-          implementation: 'storedOnly',
+          implementation: 'runtime',
           labelKey: 'settings.appearance.themeMode',
           defaultValue: 'system',
           options: themeModeOptions,
@@ -284,7 +284,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'choice',
           id: 'customTheme',
-          implementation: 'storedOnly',
+          implementation: 'runtime',
           labelKey: 'settings.appearance.customTheme',
           defaultValue: DEFAULT_APPEARANCE_THEME_SETTINGS.customTheme,
           display: 'select',

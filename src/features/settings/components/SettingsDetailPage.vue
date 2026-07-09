@@ -298,41 +298,43 @@ watch(
     </template>
   </SettingsSection>
 
-  <section
-    v-if="activeMaintenanceActionCopy"
-    class="draft-save-sheet"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="settings-maintenance-title"
-    data-testid="settings-maintenance-sheet"
-    @click.self="closeMaintenanceSheet"
-  >
-    <div class="draft-save-panel">
-      <h2 id="settings-maintenance-title">{{ t(activeMaintenanceActionCopy.titleKey) }}</h2>
-      <p>{{ t(activeMaintenanceActionCopy.bodyKey) }}</p>
-      <p v-if="maintenanceActionError" role="alert">
-        {{ maintenanceActionError }}
-      </p>
-      <div class="draft-save-actions">
-        <button
-          type="button"
-          :class="{ 'danger-action': activeMaintenanceActionCopy.danger, 'primary-action': !activeMaintenanceActionCopy.danger }"
-          :disabled="maintenanceActionBusy"
-          :aria-busy="maintenanceActionBusy ? 'true' : undefined"
-          :data-testid="activeMaintenanceActionCopy.confirmTestId"
-          @click="confirmMaintenanceAction"
-        >
-          {{ t(activeMaintenanceActionCopy.confirmKey) }}
-        </button>
-        <button
-          type="button"
-          :disabled="maintenanceActionBusy"
-          data-testid="settings-maintenance-cancel"
-          @click="closeMaintenanceSheet"
-        >
-          {{ t('editor.link.cancel') }}
-        </button>
+  <Transition name="editor-sheet">
+    <section
+      v-if="activeMaintenanceActionCopy"
+      class="draft-save-sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-maintenance-title"
+      data-testid="settings-maintenance-sheet"
+      @click.self="closeMaintenanceSheet"
+    >
+      <div class="draft-save-panel">
+        <h2 id="settings-maintenance-title">{{ t(activeMaintenanceActionCopy.titleKey) }}</h2>
+        <p>{{ t(activeMaintenanceActionCopy.bodyKey) }}</p>
+        <p v-if="maintenanceActionError" role="alert">
+          {{ maintenanceActionError }}
+        </p>
+        <div class="draft-save-actions">
+          <button
+            type="button"
+            :class="{ 'danger-action': activeMaintenanceActionCopy.danger, 'primary-action': !activeMaintenanceActionCopy.danger }"
+            :disabled="maintenanceActionBusy"
+            :aria-busy="maintenanceActionBusy ? 'true' : undefined"
+            :data-testid="activeMaintenanceActionCopy.confirmTestId"
+            @click="confirmMaintenanceAction"
+          >
+            {{ t(activeMaintenanceActionCopy.confirmKey) }}
+          </button>
+          <button
+            type="button"
+            :disabled="maintenanceActionBusy"
+            data-testid="settings-maintenance-cancel"
+            @click="closeMaintenanceSheet"
+          >
+            {{ t('editor.link.cancel') }}
+          </button>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </Transition>
 </template>

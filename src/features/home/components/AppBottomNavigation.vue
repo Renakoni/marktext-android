@@ -56,8 +56,8 @@ function selectTab(tab: HomeTab) {
 
 <style scoped>
 .app-bottom-navigation {
-  padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 8px);
-  border-top: 1px solid var(--border);
+  padding: 10px 14px calc(env(safe-area-inset-bottom, 0px) + 10px);
+  border-top: var(--hairline) solid var(--separator);
   background: var(--surface);
 }
 
@@ -71,12 +71,12 @@ function selectTab(tab: HomeTab) {
 
 .bottom-nav-indicator {
   position: absolute;
-  top: 6px;
-  bottom: 6px;
+  top: 5px;
+  bottom: 5px;
   left: 6px;
   width: calc(50% - 6px);
   pointer-events: none;
-  transition: transform 340ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+  transition: transform var(--dur-gentle) var(--ease-spring);
   will-change: transform;
 }
 
@@ -84,7 +84,7 @@ function selectTab(tab: HomeTab) {
   position: absolute;
   inset: 0 16px;
   border-radius: 999px;
-  background: var(--bottom-nav-indicator-bg);
+  background: var(--accent-soft);
   content: '';
 }
 
@@ -108,7 +108,7 @@ function selectTab(tab: HomeTab) {
   touch-action: manipulation;
   position: relative;
   z-index: 1;
-  transition: color 200ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+  transition: color var(--dur-standard) var(--ease-out);
 }
 
 .bottom-nav-button.is-active {
@@ -117,6 +117,12 @@ function selectTab(tab: HomeTab) {
 
 .bottom-nav-button:active {
   color: var(--text-muted);
+  transition-duration: 0ms;
+}
+
+.bottom-nav-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
 .bottom-nav-icon {

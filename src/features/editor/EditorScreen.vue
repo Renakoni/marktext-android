@@ -206,35 +206,41 @@ onBeforeUnmount(() => {
       />
     </Transition>
 
-    <LinkInsertSheet
-      v-if="linkSheetOpen"
-      :text="linkText"
-      :url="linkUrl"
-      @update:text="value => emit('update:linkText', value)"
-      @update:url="value => emit('update:linkUrl', value)"
-      @cancel="emit('close-link-sheet')"
-      @insert="emit('insert-link')"
-    />
+    <Transition name="editor-sheet">
+      <LinkInsertSheet
+        v-if="linkSheetOpen"
+        :text="linkText"
+        :url="linkUrl"
+        @update:text="value => emit('update:linkText', value)"
+        @update:url="value => emit('update:linkUrl', value)"
+        @cancel="emit('close-link-sheet')"
+        @insert="emit('insert-link')"
+      />
+    </Transition>
 
-    <LocalDraftExitPrompt
-      v-if="draftExitPromptOpen"
-      :can-save-to-device="draftCanSaveToDevice"
-      :can-keep-draft="draftCanKeepLocal"
-      :saving="draftSaving"
-      @save-to-device="emit('save-draft-to-device')"
-      @keep="emit('keep-local-draft')"
-      @discard="emit('discard-local-draft')"
-    />
+    <Transition name="editor-sheet">
+      <LocalDraftExitPrompt
+        v-if="draftExitPromptOpen"
+        :can-save-to-device="draftCanSaveToDevice"
+        :can-keep-draft="draftCanKeepLocal"
+        :saving="draftSaving"
+        @save-to-device="emit('save-draft-to-device')"
+        @keep="emit('keep-local-draft')"
+        @discard="emit('discard-local-draft')"
+      />
+    </Transition>
 
-    <AndroidExitPrompt
-      v-if="androidExitPromptOpen"
-      :message="androidExitMessage"
-      :can-save-copy="androidCanSaveCopy"
-      :can-keep-recovery="androidCanKeepRecovery"
-      :saving="androidSaving"
-      @save-copy="emit('save-android-copy')"
-      @keep-recovery="emit('keep-android-recovery')"
-      @discard="emit('discard-android-changes')"
-    />
+    <Transition name="editor-sheet">
+      <AndroidExitPrompt
+        v-if="androidExitPromptOpen"
+        :message="androidExitMessage"
+        :can-save-copy="androidCanSaveCopy"
+        :can-keep-recovery="androidCanKeepRecovery"
+        :saving="androidSaving"
+        @save-copy="emit('save-android-copy')"
+        @keep-recovery="emit('keep-android-recovery')"
+        @discard="emit('discard-android-changes')"
+      />
+    </Transition>
   </main>
 </template>

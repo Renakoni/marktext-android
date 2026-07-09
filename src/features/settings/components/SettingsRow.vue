@@ -82,18 +82,19 @@ const actionTestId = computed(() =>
   gap: 14px;
   width: 100%;
   min-width: 0;
-  min-height: 60px;
-  padding: 12px 20px;
+  min-height: 56px;
+  padding: 11px 20px;
   border: 0;
   background: transparent;
   color: var(--text);
   font: inherit;
   text-align: left;
   text-decoration: none;
+  transition: background-color var(--dur-standard) var(--ease-out);
 }
 
 .settings-row.has-chevron {
-  grid-template-columns: minmax(0, 1fr) auto 18px;
+  grid-template-columns: minmax(0, 1fr) auto 16px;
   padding-right: 16px;
 }
 
@@ -101,10 +102,10 @@ const actionTestId = computed(() =>
   position: absolute;
   top: 50%;
   right: 20px;
-  width: 9px;
-  height: 9px;
-  border-top: 1.4px solid var(--settings-chevron-border);
-  border-right: 1.4px solid var(--settings-chevron-border);
+  width: 8px;
+  height: 8px;
+  border-top: 1.5px solid var(--text-faint);
+  border-right: 1.5px solid var(--text-faint);
   content: '';
   transform: translateY(-50%) rotate(45deg);
   pointer-events: none;
@@ -112,12 +113,13 @@ const actionTestId = computed(() =>
 
 .settings-row.is-link:active,
 .settings-row.is-action:active {
-  background: var(--surface-muted);
+  background: var(--press);
+  transition-duration: 0ms;
 }
 
 .settings-row.is-link:focus-visible,
 .settings-row.is-action:focus-visible {
-  outline: 2px solid var(--focus-ring-22);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 
@@ -127,24 +129,30 @@ const actionTestId = computed(() =>
 
 .settings-row-action-button {
   min-width: 68px;
-  min-height: 44px;
+  min-height: 40px;
   padding: 0 16px;
-  border: 1px solid var(--border);
+  border: var(--hairline) solid var(--border-strong);
   border-radius: 999px;
-  background: var(--surface-muted);
+  background: transparent;
   color: var(--text);
   font: inherit;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  touch-action: manipulation;
+  transition:
+    background-color var(--dur-standard) var(--ease-out),
+    transform var(--dur-standard) var(--ease-out);
 }
 
 .settings-row-action-button:active {
-  transform: translateY(0.5px);
+  background: var(--press);
+  transform: scale(0.97);
+  transition-duration: 0ms;
 }
 
 .settings-row-action-button:focus-visible {
-  outline: 2px solid var(--focus-ring-22);
-  outline-offset: 1px;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .settings-row-action-button:disabled {
@@ -158,14 +166,14 @@ const actionTestId = computed(() =>
 .settings-row-label,
 .settings-row-value {
   min-width: 0;
-  line-height: 1.3;
+  line-height: 1.35;
   overflow-wrap: anywhere;
   white-space: normal;
 }
 
 .settings-row-label {
-  font-size: 16px;
-  font-weight: 560;
+  font-size: 15px;
+  font-weight: 500;
   letter-spacing: -0.006em;
 }
 
@@ -173,7 +181,7 @@ const actionTestId = computed(() =>
   max-width: 46vw;
   color: var(--text-muted);
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 400;
   text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;

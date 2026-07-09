@@ -3,6 +3,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core'
 interface NativeAdvancedDiagnostics {
   deviceInfo: string
   webViewInfo: string
+  manufacturer?: string
 }
 
 interface AndroidAppInfoPlugin {

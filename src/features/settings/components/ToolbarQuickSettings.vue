@@ -242,6 +242,7 @@ function onFixedCommandPointerDown(event: PointerEvent) {
 
 <style scoped>
 .toolbar-quick-settings {
+  position: relative;
   display: grid;
   gap: 14px;
   padding: 14px 20px 18px;
@@ -264,7 +265,7 @@ function onFixedCommandPointerDown(event: PointerEvent) {
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.3;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -279,18 +280,20 @@ function onFixedCommandPointerDown(event: PointerEvent) {
 .quickbar-reset-button {
   min-height: 38px;
   padding: 0 13px;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: 999px;
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0;
+  touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
 }
 
 .quickbar-done-button {
-  border-color: var(--settings-choice-active-border);
   background: var(--accent-soft);
   color: var(--accent-strong);
+  font-weight: 600;
 }
 
 .quickbar-reset-button {
@@ -306,9 +309,9 @@ function onFixedCommandPointerDown(event: PointerEvent) {
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 10px);
-  background: var(--surface-muted);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
   touch-action: pan-x;
 }
 
@@ -331,13 +334,13 @@ function onFixedCommandPointerDown(event: PointerEvent) {
   width: 100%;
   min-width: 0;
   min-height: 44px;
-  border: 1px solid var(--border);
+  border: var(--hairline) solid var(--border);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
   font: inherit;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0;
   touch-action: pan-x;
 }
@@ -353,13 +356,13 @@ function onFixedCommandPointerDown(event: PointerEvent) {
 }
 
 .quickbar-item.is-fixed .quickbar-slot {
-  border-color: var(--settings-choice-active-border);
+  border-color: transparent;
   background: var(--accent-soft);
   color: var(--accent-strong);
 }
 
 .quickbar-item.is-pressed .quickbar-slot {
-  border-color: var(--settings-choice-active-border);
+  border-color: var(--accent);
 }
 
 .toolbar-quick-settings.is-editing
@@ -376,9 +379,9 @@ function onFixedCommandPointerDown(event: PointerEvent) {
 .quickbar-sortable-fallback .quickbar-slot,
 .quickbar-item.is-dragging .quickbar-slot {
   animation: none;
-  border-color: var(--settings-choice-active-border);
-  background: var(--surface);
-  box-shadow: 0 12px 26px rgb(35 54 78 / 18%);
+  border-color: var(--accent);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
   color: var(--text);
   transform: translateY(-6px) scale(1.06);
   touch-action: none;
@@ -415,14 +418,14 @@ function onFixedCommandPointerDown(event: PointerEvent) {
   width: 24px;
   height: 24px;
   padding: 0;
-  border: 1px solid var(--border);
+  border: var(--hairline) solid var(--border);
   border-radius: 999px;
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text-muted);
   font: inherit;
   font-size: 16px;
   line-height: 1;
-  box-shadow: 0 4px 12px rgb(35 54 78 / 14%);
+  box-shadow: var(--shadow-thumb);
 }
 
 .quickbar-done-button:active,
@@ -438,7 +441,7 @@ function onFixedCommandPointerDown(event: PointerEvent) {
 .quickbar-slot:focus-visible,
 .quickbar-command-button:focus-visible,
 .quickbar-remove-button:focus-visible {
-  outline: 2px solid var(--focus-ring-22);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -459,7 +462,7 @@ function onFixedCommandPointerDown(event: PointerEvent) {
 }
 
 .quickbar-command-button.is-selected {
-  border-color: var(--settings-choice-active-border);
+  border-color: transparent;
   background: var(--accent-soft);
   color: var(--accent-strong);
 }

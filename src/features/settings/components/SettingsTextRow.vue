@@ -49,24 +49,27 @@ defineEmits<{
 
 .settings-text-label {
   min-width: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.008em;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.006em;
   overflow-wrap: anywhere;
 }
 
 .settings-text-input {
   width: 100%;
-  min-height: 40px;
-  padding: 8px 11px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 10px);
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: var(--surface-muted);
   color: var(--text);
   font: inherit;
   font-size: 14px;
   line-height: 1.35;
+  transition:
+    border-color var(--dur-standard) var(--ease-out),
+    background-color var(--dur-standard) var(--ease-out);
 }
 
 .settings-text-input.is-multiline {
@@ -75,7 +78,7 @@ defineEmits<{
 
 .settings-text-input:focus-visible {
   border-color: var(--accent);
-  outline: 2px solid var(--focus-ring-18);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 </style>

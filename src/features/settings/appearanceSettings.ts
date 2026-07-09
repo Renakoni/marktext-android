@@ -15,9 +15,10 @@ export type AppearanceSettingKey = AppearanceTextSettingKey | AppearanceThemeSet
 
 export type EditorFontFamily = 'open-sans' | 'system' | 'serif' | 'monospace'
 export type TextDirection = 'ltr' | 'rtl'
+export type AppearanceThemeMode = 'system' | 'light' | 'dark' | 'custom'
 
 export interface AppearanceThemeSettings {
-  themeMode: 'system' | 'light' | 'dark' | 'custom'
+  themeMode: AppearanceThemeMode
   customTheme: string
 }
 
@@ -79,6 +80,8 @@ const EDITOR_FONT_FAMILIES = new Set<EditorFontFamily>([
 ])
 
 const TEXT_DIRECTIONS = new Set<TextDirection>(['ltr', 'rtl'])
+const THEME_MODES = new Set<AppearanceThemeMode>(['system', 'light', 'dark', 'custom'])
+const CUSTOM_THEME_IDS = new Set<string>(APPEARANCE_CUSTOM_THEME_IDS)
 
 const OPEN_SANS_STACK =
   '"Open Sans", "Clear Sans", "Helvetica Neue", Helvetica, Arial, sans-serif, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji"'
@@ -168,6 +171,31 @@ export function getAppearanceTextSettings(
     ),
     textDirection: normalizeTextDirection(
       getValue('textDirection', DEFAULT_APPEARANCE_TEXT_SETTINGS.textDirection),
+    ),
+  }
+}
+
+export function normalizeThemeMode(value: unknown): AppearanceThemeMode {
+  return THEME_MODES.has(value as AppearanceThemeMode)
+    ? (value as AppearanceThemeMode)
+    : DEFAULT_APPEARANCE_THEME_SETTINGS.themeMode
+}
+
+export function normalizeCustomTheme(value: unknown): string {
+  return typeof value === 'string' && CUSTOM_THEME_IDS.has(value)
+    ? value
+    : DEFAULT_APPEARANCE_THEME_SETTINGS.customTheme
+}
+
+export function getAppearanceThemeSettings(
+  getValue: <T extends SettingsValue>(key: string, defaultValue: T) => T,
+): AppearanceThemeSettings {
+  return {
+    themeMode: normalizeThemeMode(
+      getValue('themeMode', DEFAULT_APPEARANCE_THEME_SETTINGS.themeMode as string),
+    ),
+    customTheme: normalizeCustomTheme(
+      getValue('customTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.customTheme as string),
     ),
   }
 }

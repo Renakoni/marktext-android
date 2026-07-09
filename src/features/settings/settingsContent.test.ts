@@ -39,8 +39,6 @@ type SettingsValueRow = Extract<
 type SettingsDefaultValueRow = Exclude<SettingsValueRow, { kind: 'customToolbar' }>
 
 const EXPECTED_STORED_ONLY_ROW_IDS = new Set([
-  'themeMode',
-  'customTheme',
   'sourceCodeModeEnabled',
   'preferHeadingStyle',
 ])
@@ -67,6 +65,9 @@ const OWNED_STORED_SETTING_KEYS = new Set<string>([
 ])
 
 const RUNTIME_SETTING_DEFAULTS = new Map<string, SettingsValue>([
+  ['themeMode', DEFAULT_APPEARANCE_THEME_SETTINGS.themeMode],
+  ['customTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.customTheme],
+
   ['fontSize', DEFAULT_APPEARANCE_TEXT_SETTINGS.fontSize],
   ['lineHeight', DEFAULT_APPEARANCE_TEXT_SETTINGS.lineHeight],
   ['editorLineWidth', DEFAULT_APPEARANCE_TEXT_SETTINGS.editorLineWidth],
@@ -128,8 +129,6 @@ const RUNTIME_SETTING_DEFAULTS = new Map<string, SettingsValue>([
 ])
 
 const STORED_ONLY_SETTING_DEFAULTS = new Map<string, SettingsValue>([
-  ['themeMode', DEFAULT_APPEARANCE_THEME_SETTINGS.themeMode],
-  ['customTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.customTheme],
   ['sourceCodeModeEnabled', DEFAULT_EDITING_SETTINGS.sourceCodeModeEnabled],
   ['preferHeadingStyle', DEFAULT_EDITING_SETTINGS.preferHeadingStyle],
 ])

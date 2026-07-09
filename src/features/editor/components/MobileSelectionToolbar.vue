@@ -324,13 +324,21 @@ watch(
   align-items: center;
   gap: 3px;
   padding: 4px;
-  border: 1px solid var(--border);
+  border: var(--hairline) solid var(--float-border-color);
   border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow-toolbar-menu);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
+  animation: selection-toolbar-in var(--dur-quick) var(--ease-out);
+}
+
+@keyframes selection-toolbar-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px) scale(0.98);
+  }
 }
 
 .selection-toolbar-button {
@@ -344,11 +352,24 @@ watch(
   background: transparent;
   color: var(--text);
   touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
 }
 
 .selection-toolbar-button:active,
 .selection-toolbar-button.is-pressed {
   background: var(--accent-tint-11);
+  transition-duration: 0ms;
+}
+
+.selection-toolbar-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-selection-toolbar {
+    animation: none;
+  }
 }
 
 .selection-toolbar-icon {
