@@ -17,6 +17,10 @@ public class AndroidAppInfoPlugin extends Plugin {
         JSObject result = new JSObject();
         result.put("deviceInfo", buildDeviceInfo());
         result.put("webViewInfo", buildWebViewInfo());
+        // Structured field for device-specific rendering policy (e.g. the
+        // MIUI CJK bold clamp workaround); the display strings above stay
+        // human-oriented.
+        result.put("manufacturer", safeValue(Build.MANUFACTURER));
         call.resolve(result);
     }
 

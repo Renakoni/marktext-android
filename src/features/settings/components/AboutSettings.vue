@@ -151,7 +151,7 @@ async function checkUpdates() {
   gap: 12px;
   min-height: 258px;
   padding: 52px 20px 40px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--hairline) solid var(--separator);
   background: var(--app-bg);
   color: var(--text-muted);
 }
@@ -161,7 +161,7 @@ async function checkUpdates() {
   color: var(--text-muted);
   font-size: 14px;
   line-height: 1.3;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0;
 }
 
@@ -192,16 +192,18 @@ async function checkUpdates() {
 }
 
 .about-list {
+  border-bottom: var(--hairline) solid var(--separator);
   background: var(--surface);
 }
 
 .about-row {
+  position: relative;
   display: grid;
   grid-template-columns: 68px minmax(0, 1fr) auto;
   align-items: center;
   gap: 0;
   width: 100%;
-  min-height: 76px;
+  min-height: 72px;
   padding: 10px 20px 10px 0;
   border: 0;
   background: transparent;
@@ -209,10 +211,17 @@ async function checkUpdates() {
   font: inherit;
   text-align: left;
   text-decoration: none;
+  transition: background-color var(--dur-standard) var(--ease-out);
 }
 
-.about-row + .about-row {
-  border-top: 1px solid var(--border);
+.about-row + .about-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 68px;
+  border-top: var(--hairline) solid var(--separator);
+  pointer-events: none;
 }
 
 .about-row.is-button,
@@ -222,12 +231,13 @@ async function checkUpdates() {
 
 .about-row.is-button:active,
 .about-row.is-link:active {
-  background: var(--surface-muted);
+  background: var(--press);
+  transition-duration: 0ms;
 }
 
 .about-row.is-button:focus-visible,
 .about-row.is-link:focus-visible {
-  outline: 2px solid var(--focus-ring-22);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 
@@ -272,10 +282,10 @@ async function checkUpdates() {
 .about-row-label {
   min-width: 0;
   color: var(--text);
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.25;
-  font-weight: 660;
-  letter-spacing: 0;
+  font-weight: 600;
+  letter-spacing: -0.008em;
   overflow-wrap: anywhere;
 }
 
@@ -284,7 +294,7 @@ async function checkUpdates() {
   color: var(--text-muted);
   font-size: 14px;
   line-height: 1.3;
-  font-weight: 560;
+  font-weight: 400;
   letter-spacing: 0;
   overflow-wrap: anywhere;
 }

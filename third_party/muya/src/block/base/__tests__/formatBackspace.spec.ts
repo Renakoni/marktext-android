@@ -147,6 +147,29 @@ describe('format.backspaceHandler — single-char `*` em markers (muya#113)', ()
     });
 });
 
+describe('format.backspaceHandler — empty marker pair left by auto-pairing', () => {
+    it('standalone `*|*`: defers to default so deleteAutoPair removes the pair', () => {
+        // Toolbar bold inserts `**|**`; the first Backspace pair-deletes down to
+        // `*|*`. The handler must NOT trim one star itself here — that orphans
+        // the closing `*`. Deferring lets the native delete plus
+        // `deleteAutoPair` remove opener and closer together.
+        const content = caretInFirstBlock(bootMuya('**\n'), 1);
+        const event = pressBackspace(content);
+
+        expect(content.text).toBe('**');
+        expect(content.getCursor()!.start.offset).toBe(1);
+        expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('standalone `~|~`: same deferral for other pairable marker chars', () => {
+        const content = caretInFirstBlock(bootMuya('~~\n'), 1);
+        const event = pressBackspace(content);
+
+        expect(content.text).toBe('~~');
+        expect(event.defaultPrevented).toBe(false);
+    });
+});
+
 describe('format.backspaceHandler — plain-text boundaries (no markers involved)', () => {
     it('caret at start of text (offset 0): no-op, defers to default', () => {
         const content = caretInFirstBlock(bootMuya('foo **strong**\n'), 0);

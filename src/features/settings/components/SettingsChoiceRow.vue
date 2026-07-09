@@ -58,51 +58,58 @@ defineEmits<{
 
 .settings-choice-label {
   min-width: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.008em;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.006em;
   overflow-wrap: anywhere;
 }
 
+/* Segmented control: sunken track, the active segment floats as a thumb. */
 .settings-choice-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 2px;
   width: 100%;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
 }
 
 .settings-choice-option {
   min-width: 0;
-  min-height: 38px;
+  min-height: 36px;
   padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 10px);
-  background: var(--surface-muted);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   color: var(--text-muted);
   font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.006em;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.004em;
   touch-action: manipulation;
   transition:
-    background 140ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-    color 140ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-    border-color 140ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+    background-color var(--dur-standard) var(--ease-out),
+    color var(--dur-standard) var(--ease-out),
+    box-shadow var(--dur-standard) var(--ease-out);
 }
 
 .settings-choice-option.is-active {
-  border-color: var(--settings-choice-active-border);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow-thumb);
 }
 
-.settings-choice-option:active {
-  transform: translateY(0.5px);
+.settings-choice-option:not(.is-active):active {
+  color: var(--text);
+  background: var(--press);
+  transition-duration: 0ms;
 }
 
 .settings-choice-option:focus-visible {
-  outline: 2px solid var(--focus-ring-22);
-  outline-offset: 1px;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 </style>

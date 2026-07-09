@@ -154,8 +154,22 @@ import {
 import { useSettingsState } from './features/settings/settingsState'
 import {
   getAppearanceTextSettings,
+  getAppearanceThemeSettings,
   getEditorStyleVars,
 } from './features/settings/appearanceSettings'
+import { getAdvancedDiagnostics } from './features/settings/advancedDiagnostics'
+import {
+  applyCjkBoldCompensation,
+  shouldCompensateCjkBold,
+} from './features/editor/cjkBoldCompensation'
+import {
+  applyAppTheme,
+  getSystemPrefersDark,
+  isDarkAppTheme,
+  resolveAppTheme,
+  watchSystemColorScheme,
+} from './features/settings/themeRuntime'
+import { applySystemBarsForTheme } from './lib/systemBars'
 import { getEditingSettings } from './features/settings/editingSettings'
 import {
   getAdvancedSettings,
@@ -224,6 +238,11 @@ const {
 const { locale, setLocale, t } = useI18n()
 const { getValue, clearSettings } = useSettingsState()
 const appearanceTextSettings = computed(() => getAppearanceTextSettings(getValue))
+const appearanceThemeSettings = computed(() => getAppearanceThemeSettings(getValue))
+const systemPrefersDark = ref(getSystemPrefersDark())
+const resolvedAppTheme = computed(() =>
+  resolveAppTheme(appearanceThemeSettings.value, systemPrefersDark.value),
+)
 const editingSettings = computed(() => getEditingSettings(getValue))
 const toolbarSettings = computed(() => getEditorToolbarSettings(getValue))
 const documentSettings = computed(() => getDocumentSettings(getValue))
@@ -272,6 +291,7 @@ let startupActionTimer: number | null = null
 let editorSelectionDiagnosticCleanup: (() => void) | null = null
 let editorInputDiagnosticCleanup: (() => void) | null = null
 let nativeSelectionTapCleanup: (() => Promise<void>) | null = null
+let systemColorSchemeCleanup: (() => void) | null = null
 
 const appLog = createLogger('app')
 const editorLog = createLogger('editor')
@@ -282,6 +302,16 @@ const loggingLog = createLogger('logging')
 watch(appearanceTextSettings, settings => {
   applyMuyaAppearanceSettings(editor, settings)
 })
+
+// Runs synchronously during setup so the stored theme lands before first paint.
+watch(
+  resolvedAppTheme,
+  theme => {
+    applyAppTheme(theme)
+    void applySystemBarsForTheme(isDarkAppTheme(theme))
+  },
+  { immediate: true },
+)
 
 watch(editingSettings, (settings, previousSettings) => {
   applyMuyaEditingSettings(editor, settings, previousSettings)
@@ -1907,6 +1937,17 @@ function openEditorSearch() {
   appLog.info('editor search requested')
 }
 
+// MIUI WebViews rasterize CJK identically at every font-weight (see
+// cjkBoldCompensation.ts), so bold Markdown needs stroke compensation there.
+async function installCjkBoldCompensation() {
+  const diagnostics = await getAdvancedDiagnostics()
+  const compensate = shouldCompensateCjkBold(diagnostics.manufacturer)
+  applyCjkBoldCompensation(compensate)
+  if (compensate) {
+    appLog.info('cjk bold compensation enabled', { manufacturer: diagnostics.manufacturer })
+  }
+}
+
 function destroyEditor(options: { updateSelectionMenuSuppression?: boolean } = {}) {
   editorInitToken += 1
   editorReady.value = false
@@ -2177,6 +2218,9 @@ async function runAdvancedMaintenanceAction(action: AdvancedMaintenanceActionId)
 onMounted(() => {
   appLog.info('app mounted')
   installAppLifecycleListeners()
+  systemColorSchemeCleanup = watchSystemColorScheme(prefersDark => {
+    systemPrefersDark.value = prefersDark
+  })
   const restoredDrafts = readStoredLocalDrafts()
   const restoredRecentDocuments = readStoredAndroidRecentDocuments()
   const legacyDraft = readLegacyDraft()
@@ -2221,6 +2265,8 @@ onMounted(() => {
     applyDocumentStartupAction()
   }, 0)
 
+  void installCjkBoldCompensation()
+
   if (isNativeLoggerAvailable()) {
     getNativeLogInfo().then(info => {
       if (info) {
@@ -2239,6 +2285,8 @@ onBeforeUnmount(() => {
     startupActionTimer = null
   }
   removeAppLifecycleListeners()
+  systemColorSchemeCleanup?.()
+  systemColorSchemeCleanup = null
   if (documentState.value.autosaveTarget === 'android-document') {
     void saveAndroidDocument()
   } else {

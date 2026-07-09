@@ -1,47 +1,38 @@
+/*
+ * Structural design tokens — shared by every theme.
+ *
+ * Palette tokens (colors, shadows, scrims) live in ./themes/<theme>.css and
+ * are selected at runtime through the `data-theme` attribute on <html>.
+ * Every theme must define the full semantic contract:
+ *
+ *   Surfaces   --app-bg --surface --surface-muted --surface-sunken --surface-raised
+ *   Content    --text --text-muted --text-faint --on-accent
+ *   Lines      --border --border-strong --separator
+ *   Accent     --accent --accent-strong --accent-hover --accent-soft
+ *              --accent-tint-10 --accent-tint-11
+ *   State      --danger --focus-ring --press --scrim
+ *   Shadows    --shadow-sm --shadow-float --shadow-thumb --shadow-accent
+ *
+ * plus the Muya editor bridge (--editor-*, --theme-color, --h1-color…), so the
+ * writing surface and the app chrome always belong to the same world.
+ * The light/dark parity test in themeTokens.test.ts enforces this contract.
+ */
+
 :root {
-  --app-bg: #f2f4f6;
-  --surface: #f9fafc;
-  --surface-muted: #eef0f3;
-  --surface-sunken: #e7eaed;
-  --text: #191d24;
-  --text-muted: #616a75;
-  --text-faint: #828a94;
-  --border: #dadee3;
-  --border-strong: #ccd1d8;
-  --accent: #516b8b;
-  --accent-strong: #3c5779;
-  --accent-soft: #d9eaff;
-  --danger: #a03f3c;
-  --accent-hover: #4e6989;
-  --accent-tint-10: rgba(81, 107, 139, 0.1);
-  --accent-tint-11: rgba(81, 107, 139, 0.11);
-  --focus-ring-18: rgba(81, 107, 139, 0.18);
-  --focus-ring-22: rgba(81, 107, 139, 0.22);
-  --bottom-nav-indicator-bg: #e2eefe;
-  --settings-choice-active-border: #a0aebe;
-  --settings-chevron-border: #a6acb3;
-  --toolbar-active-panel-bg: #e5e9ee;
-  --editor-scrim: rgba(23, 29, 38, 0.5);
-  --draft-scrim: rgba(23, 29, 38, 0.42);
-  --shadow-sm: 0 1px 2px rgba(27, 34, 43, 0.05);
-  --shadow: 0 8px 28px rgba(27, 34, 43, 0.07);
-  --shadow-home-open-button:
-    0 1px 2px rgba(27, 34, 43, 0.04),
-    inset 0 1px 0 rgba(251, 253, 255, 0.6);
-  --shadow-home-open-button-active: 0 1px 1px rgba(27, 34, 43, 0.03);
-  --shadow-home-new-button:
-    0 2px 8px rgba(81, 107, 139, 0.28),
-    inset 0 1px 0 rgba(251, 253, 255, 0.22);
-  --shadow-home-new-button-active:
-    0 1px 3px rgba(81, 107, 139, 0.2),
-    inset 0 1px 0 rgba(251, 253, 255, 0.16);
-  --shadow-card-hover: 0 4px 16px rgba(27, 34, 43, 0.07);
-  --shadow-toolbar: 0 -6px 18px rgba(27, 34, 43, 0.06);
-  --shadow-toolbar-menu: 0 14px 36px rgba(27, 34, 43, 0.14);
-  --shadow-toggle-thumb: 0 2px 6px rgba(27, 34, 43, 0.18);
+  /* Shape */
   --radius: 14px;
   --radius-sm: 10px;
+  --radius-lg: 20px;
+
+  /* Hairline: sub-pixel on dense displays, 1px elsewhere. */
+  --hairline: 1px;
+
+  /* Motion: state and touch feedback only, never spectacle. */
+  --dur-quick: 120ms;
+  --dur-standard: 200ms;
+  --dur-gentle: 300ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.5, 1);
 
   color: var(--text);
   background: var(--app-bg);
@@ -53,52 +44,8 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-@supports (color: oklch(0.52 0.06 255)) {
+@media (min-resolution: 2dppx) {
   :root {
-    --app-bg: oklch(0.965 0.004 255);
-    --surface: oklch(0.985 0.003 255);
-    --surface-muted: oklch(0.955 0.005 255);
-    --surface-sunken: oklch(0.935 0.006 255);
-    --text: oklch(0.23 0.014 255);
-    --text-muted: oklch(0.52 0.02 255);
-    --text-faint: oklch(0.63 0.018 255);
-    --border: oklch(0.9 0.008 255);
-    --border-strong: oklch(0.86 0.011 255);
-    --accent: oklch(0.52 0.06 255);
-    --accent-strong: oklch(0.45 0.065 255);
-    --accent-soft: oklch(0.93 0.035 255);
-    --danger: oklch(0.5 0.13 25);
-    --editor-scrim: oklch(0.23 0.02 255 / 0.5);
-    --draft-scrim: oklch(0.23 0.02 255 / 0.42);
-    --shadow-sm: 0 1px 2px oklch(0.25 0.02 255 / 0.05);
-    --shadow: 0 8px 28px oklch(0.25 0.02 255 / 0.07);
-    --shadow-home-open-button:
-      0 1px 2px oklch(0.25 0.02 255 / 0.04),
-      inset 0 1px 0 oklch(1 0 0 / 0.6);
-    --shadow-home-open-button-active: 0 1px 1px oklch(0.25 0.02 255 / 0.03);
-    --shadow-home-new-button:
-      0 2px 8px oklch(0.52 0.06 255 / 0.28),
-      inset 0 1px 0 oklch(1 0 0 / 0.22);
-    --shadow-home-new-button-active:
-      0 1px 3px oklch(0.52 0.06 255 / 0.2),
-      inset 0 1px 0 oklch(1 0 0 / 0.16);
-    --shadow-card-hover: 0 4px 16px oklch(0.25 0.02 255 / 0.07);
-    --shadow-toolbar: 0 -6px 18px oklch(0.25 0.02 255 / 0.06);
-    --shadow-toolbar-menu: 0 14px 36px oklch(0.25 0.02 255 / 0.14);
-    --shadow-toggle-thumb: 0 2px 6px oklch(0.25 0.02 255 / 0.18);
-  }
-}
-
-@supports (background: color-mix(in srgb, red 50%, blue 50%)) {
-  :root {
-    --accent-hover: color-mix(in srgb, var(--accent) 88%, var(--accent-strong) 12%);
-    --accent-tint-10: color-mix(in srgb, var(--accent) 10%, transparent);
-    --accent-tint-11: color-mix(in srgb, var(--accent) 11%, transparent);
-    --focus-ring-18: color-mix(in srgb, var(--accent) 18%, transparent);
-    --focus-ring-22: color-mix(in srgb, var(--accent) 22%, transparent);
-    --bottom-nav-indicator-bg: color-mix(in srgb, var(--accent-soft) 72%, var(--surface) 28%);
-    --settings-choice-active-border: color-mix(in srgb, var(--accent) 42%, var(--border));
-    --settings-chevron-border: color-mix(in srgb, var(--text-faint) 70%, var(--surface));
-    --toolbar-active-panel-bg: color-mix(in srgb, var(--accent) 12%, var(--surface));
+    --hairline: 0.5px;
   }
 }

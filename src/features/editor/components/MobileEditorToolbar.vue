@@ -269,9 +269,8 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
 .mobile-editor-toolbar {
   position: relative;
   z-index: 18;
-  border-top: 1px solid var(--border);
+  border-top: var(--hairline) solid var(--separator);
   background: var(--surface);
-  box-shadow: var(--shadow-toolbar);
 }
 
 .toolbar-collapsed {
@@ -319,15 +318,17 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
   align-items: center;
   gap: 5px;
   min-height: 38px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
+  padding: 0 12px;
+  border: 0;
   border-radius: 999px;
-  background: var(--surface);
+  background: var(--surface-muted);
   color: var(--text);
   font: inherit;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.006em;
+  touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
 }
 
 .group-switcher-label {
@@ -346,7 +347,7 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: transform 200ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+  transition: transform var(--dur-standard) var(--ease-out);
 }
 
 .toolbar-group-switcher[aria-expanded='true'] .group-switcher-caret {
@@ -365,6 +366,9 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
   font: inherit;
   letter-spacing: 0;
   touch-action: manipulation;
+  transition:
+    background-color var(--dur-standard) var(--ease-out),
+    color var(--dur-standard) var(--ease-out);
 }
 
 .toolbar-button {
@@ -447,6 +451,15 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
 .toolbar-group-switcher:active,
 .toolbar-group-option:active {
   background: var(--accent-tint-11);
+  transition-duration: 0ms;
+}
+
+.toolbar-button:focus-visible,
+.toolbar-expand-handle:focus-visible,
+.toolbar-group-switcher:focus-visible,
+.toolbar-group-option:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
 .toolbar-button:disabled {
@@ -478,7 +491,7 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
   color: var(--text-faint);
   font-size: 11px;
   line-height: 1.3;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .toolbar-group-menu {
@@ -492,10 +505,19 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
   overflow-y: auto;
   overscroll-behavior-y: contain;
   padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius, 14px);
-  background: var(--surface);
-  box-shadow: var(--shadow-toolbar-menu);
+  border: var(--hairline) solid var(--float-border-color);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
+  transform-origin: bottom left;
+  animation: toolbar-menu-in var(--dur-standard) var(--ease-out);
+}
+
+@keyframes toolbar-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
 }
 
 .toolbar-group-option {
@@ -508,7 +530,7 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
 }
 
 .toolbar-group-option.is-active {
-  background: var(--toolbar-active-panel-bg);
+  background: var(--accent-soft);
   color: var(--accent-strong);
 }
 
@@ -575,6 +597,12 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
 
 .mobile-editor-toolbar.is-compact .toolbar-stats {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar-group-menu {
+    animation: none;
+  }
 }
 
 @media (min-width: 720px) {

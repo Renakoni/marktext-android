@@ -35,64 +35,73 @@ defineEmits<{
   gap: 14px;
   width: 100%;
   min-width: 0;
-  min-height: 60px;
-  padding: 12px 20px;
+  min-height: 56px;
+  padding: 11px 20px;
   border: 0;
   background: transparent;
   color: var(--text);
   font: inherit;
   text-align: left;
   touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
 }
 
 .settings-toggle-row:active {
-  background: var(--surface-muted);
+  background: var(--press);
+  transition-duration: 0ms;
 }
 
 .settings-toggle-row:focus-visible {
-  outline: 2px solid var(--focus-ring-22);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 
 .settings-toggle-label {
   min-width: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.008em;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.006em;
   overflow-wrap: anywhere;
 }
 
 .settings-toggle-track {
   position: relative;
-  width: 50px;
-  height: 30px;
-  border: 1px solid var(--border-strong);
+  width: 48px;
+  height: 28px;
   border-radius: 999px;
   background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 var(--hairline) var(--border-strong);
   transition:
-    background 160ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-    border-color 160ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+    background-color var(--dur-standard) var(--ease-out),
+    box-shadow var(--dur-standard) var(--ease-out);
 }
 
 .settings-toggle-thumb {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 22px;
-  height: 22px;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
   border-radius: 999px;
-  background: var(--surface);
-  box-shadow: var(--shadow-toggle-thumb);
-  transition: transform 180ms var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+  background: var(--on-accent);
+  box-shadow: var(--shadow-thumb);
+  transition: transform var(--dur-gentle) var(--ease-spring);
 }
 
 .settings-toggle-row[aria-checked='true'] .settings-toggle-track {
-  border-color: var(--accent);
   background: var(--accent);
+  box-shadow: none;
 }
 
 .settings-toggle-row[aria-checked='true'] .settings-toggle-thumb {
   transform: translateX(20px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-toggle-track,
+  .settings-toggle-thumb {
+    transition: none;
+  }
 }
 </style>

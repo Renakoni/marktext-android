@@ -14,7 +14,13 @@ describe('Muya inline unicode emphasis style contract', () => {
     expect(css).toContain('font-weight: 700')
     expect(css).toContain('em.mu-inline-rule')
     expect(css).toContain('font-style: italic')
-    expect(css).toContain('font-style: oblique 12deg')
     expect(css).toContain('font-synthesis: weight style')
+  })
+
+  it('never requests an oblique angle, which Chromium renders upright', () => {
+    // `font-style: oblique <angle>` on a family without a real oblique face
+    // neither falls back to the italic face nor synthesizes a slant in
+    // Chromium (verified on 149) — emphasis silently renders upright.
+    expect(inlineSyntaxCss()).not.toMatch(/font-style:\s*oblique/)
   })
 })

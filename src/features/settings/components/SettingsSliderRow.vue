@@ -58,17 +58,18 @@ function updateValue(value: string) {
 
 .settings-slider-label {
   min-width: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.008em;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.006em;
   overflow-wrap: anywhere;
 }
 
 .settings-slider-value {
   color: var(--text-muted);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .settings-slider {
@@ -77,7 +78,7 @@ function updateValue(value: string) {
 }
 
 .settings-slider:focus-visible {
-  outline: 2px solid var(--focus-ring-22);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 4px;
 }
 </style>
