@@ -193,8 +193,8 @@ test('switches between document home and the settings about screen', async ({ pa
   )
   await expect(page.getByTestId('settings-documents-recovery')).toContainText('Save failed drafts')
   await expect(page.getByTestId('settings-documents-startup-action')).toContainText('Home')
-  await expect(page.getByTestId('settings-documents-sort-by')).toContainText('Created')
-  await expect(page.getByTestId('settings-documents-sort-order')).toContainText('Asc')
+  await expect(page.getByTestId('settings-documents-sort-by')).toContainText('Modified')
+  await expect(page.getByTestId('settings-documents-sort-order')).toContainText('Desc')
   await expect(page.getByTestId('settings-documents-folder-excludes')).toHaveCount(0)
   await expect(page.getByTestId('settings-documents-clear-recent')).toHaveCount(0)
 
