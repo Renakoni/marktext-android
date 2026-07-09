@@ -136,6 +136,13 @@ function shouldShowCustomToolbar() {
   return getValue<string>('toolbarQuickBarMode', 'default') === 'custom'
 }
 
+function shouldShowSettingsRow(rowId: string) {
+  if (props.page === SETTINGS_PAGES.APPEARANCE && rowId === 'customTheme') {
+    return getValue<string>('themeMode', 'system') === 'custom'
+  }
+  return true
+}
+
 function setStoredValue(rowId: string, value: boolean | number | string) {
   setValue(rowId, value)
 }
@@ -226,14 +233,14 @@ watch(
   <SettingsSection v-for="section in sections" :key="section.titleKey" :title="t(section.titleKey)">
     <template v-for="row in section.rows" :key="row.testId">
       <SettingsToggleRow
-        v-if="row.kind === 'toggle'"
+        v-if="shouldShowSettingsRow(row.id) && row.kind === 'toggle'"
         :label="t(row.labelKey)"
         :model-value="getToggleValue(row)"
         :test-id="row.testId"
         @update:model-value="value => setStoredValue(row.id, value)"
       />
       <SettingsSelectRow
-        v-else-if="row.kind === 'choice' && row.display === 'select'"
+        v-else-if="shouldShowSettingsRow(row.id) && row.kind === 'choice' && row.display === 'select'"
         :label="t(row.labelKey)"
         :model-value="getChoiceValue(row)"
         :options="optionLabels(row)"
@@ -241,7 +248,7 @@ watch(
         @update:model-value="value => setStoredValue(row.id, value)"
       />
       <SettingsChoiceRow
-        v-else-if="row.kind === 'choice'"
+        v-else-if="shouldShowSettingsRow(row.id) && row.kind === 'choice'"
         :label="t(row.labelKey)"
         :model-value="getChoiceValue(row)"
         :options="optionLabels(row)"
@@ -249,7 +256,7 @@ watch(
         @update:model-value="value => setStoredValue(row.id, value)"
       />
       <SettingsSliderRow
-        v-else-if="row.kind === 'slider'"
+        v-else-if="shouldShowSettingsRow(row.id) && row.kind === 'slider'"
         :label="t(row.labelKey)"
         :model-value="getSliderValue(row)"
         :min="row.min"
@@ -260,7 +267,7 @@ watch(
         @update:model-value="value => setStoredValue(row.id, value)"
       />
       <SettingsTextRow
-        v-else-if="row.kind === 'text'"
+        v-else-if="shouldShowSettingsRow(row.id) && row.kind === 'text'"
         :label="t(row.labelKey)"
         :model-value="getTextValue(row)"
         :placeholder="row.placeholderKey ? t(row.placeholderKey) : undefined"
@@ -269,7 +276,7 @@ watch(
         @update:model-value="value => setStoredValue(row.id, value)"
       />
       <SettingsRow
-        v-else-if="row.kind === 'action'"
+        v-else-if="shouldShowSettingsRow(row.id) && row.kind === 'action'"
         :label="t(row.labelKey)"
         :value="getActionValue(row)"
         :action-label="getMaintenanceActionCopy(row.id) ? t(getMaintenanceActionCopy(row.id)!.actionKey) : undefined"
@@ -279,11 +286,11 @@ watch(
         @activate="recordAction(row)"
       />
       <ToolbarQuickSettings
-        v-else-if="row.kind === 'customToolbar' && shouldShowCustomToolbar()"
+        v-else-if="shouldShowSettingsRow(row.id) && row.kind === 'customToolbar' && shouldShowCustomToolbar()"
         :test-id="row.testId"
       />
       <SettingsRow
-        v-else-if="row.kind === 'status'"
+        v-else-if="shouldShowSettingsRow(row.id) && row.kind === 'status'"
         :label="t(row.labelKey)"
         :value="getStatusValue(row)"
         :test-id="row.testId"
