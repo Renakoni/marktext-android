@@ -123,13 +123,11 @@ const themeOptions = [
   { id: 'tokyo-night-storm', labelKey: 'settings.option.theme.tokyoNightStorm' },
 ] as const satisfies readonly SettingsOption[]
 
-const lightThemeOptions = themeOptions.slice(0, 10)
-const darkThemeOptions = themeOptions.slice(10)
-
-const appThemeOptions = [
+const themeModeOptions = [
   { id: 'system', labelKey: 'settings.option.system' },
   { id: 'light', labelKey: 'settings.option.light' },
   { id: 'dark', labelKey: 'settings.option.dark' },
+  { id: 'custom', labelKey: 'settings.option.custom' },
 ] as const satisfies readonly SettingsOption[]
 
 const textDirectionOptions = [
@@ -297,51 +295,23 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
       titleKey: 'settings.section.theme',
       rows: [
         {
-          kind: 'toggle',
-          id: 'followSystemTheme',
-          implementation: 'storedOnly',
-          labelKey: 'settings.appearance.followSystemTheme',
-          defaultValue: true,
-          testId: 'settings-appearance-system-theme',
-        },
-        {
           kind: 'choice',
-          id: 'appTheme',
+          id: 'themeMode',
           implementation: 'storedOnly',
-          labelKey: 'settings.appearance.appTheme',
+          labelKey: 'settings.appearance.themeMode',
           defaultValue: 'system',
-          options: appThemeOptions,
-          testId: 'settings-appearance-app-theme',
+          options: themeModeOptions,
+          testId: 'settings-appearance-theme-mode',
         },
         {
           kind: 'choice',
-          id: 'lightModeTheme',
+          id: 'customTheme',
           implementation: 'storedOnly',
-          labelKey: 'settings.appearance.lightTheme',
-          defaultValue: 'light',
-          display: 'select',
-          options: lightThemeOptions,
-          testId: 'settings-appearance-light-theme',
-        },
-        {
-          kind: 'choice',
-          id: 'darkModeTheme',
-          implementation: 'storedOnly',
-          labelKey: 'settings.appearance.darkTheme',
-          defaultValue: 'dark',
-          display: 'select',
-          options: darkThemeOptions,
-          testId: 'settings-appearance-dark-theme',
-        },
-        {
-          kind: 'choice',
-          id: 'theme',
-          implementation: 'storedOnly',
-          labelKey: 'settings.appearance.editorTheme',
+          labelKey: 'settings.appearance.customTheme',
           defaultValue: 'light',
           display: 'select',
           options: themeOptions,
-          testId: 'settings-appearance-editor-theme',
+          testId: 'settings-appearance-custom-theme',
         },
       ],
     },

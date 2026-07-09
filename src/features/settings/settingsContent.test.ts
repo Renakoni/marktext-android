@@ -37,11 +37,8 @@ type SettingsValueRow = Extract<
 type SettingsDefaultValueRow = Exclude<SettingsValueRow, { kind: 'customToolbar' }>
 
 const EXPECTED_STORED_ONLY_ROW_IDS = new Set([
-  'followSystemTheme',
-  'appTheme',
-  'lightModeTheme',
-  'darkModeTheme',
-  'theme',
+  'themeMode',
+  'customTheme',
   'sourceCodeModeEnabled',
   'preferHeadingStyle',
 ])
@@ -129,11 +126,8 @@ const RUNTIME_SETTING_DEFAULTS = new Map<string, SettingsValue>([
 ])
 
 const STORED_ONLY_SETTING_DEFAULTS = new Map<string, SettingsValue>([
-  ['followSystemTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.followSystemTheme],
-  ['appTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.appTheme],
-  ['lightModeTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.lightModeTheme],
-  ['darkModeTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.darkModeTheme],
-  ['theme', DEFAULT_APPEARANCE_THEME_SETTINGS.theme],
+  ['themeMode', DEFAULT_APPEARANCE_THEME_SETTINGS.themeMode],
+  ['customTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.customTheme],
   ['sourceCodeModeEnabled', DEFAULT_EDITING_SETTINGS.sourceCodeModeEnabled],
   ['preferHeadingStyle', DEFAULT_EDITING_SETTINGS.preferHeadingStyle],
 ])
