@@ -8,11 +8,8 @@ export type AppearanceTextSettingKey =
   | 'textDirection'
 
 export type AppearanceThemeSettingKey =
-  | 'followSystemTheme'
-  | 'appTheme'
-  | 'lightModeTheme'
-  | 'darkModeTheme'
-  | 'theme'
+  | 'themeMode'
+  | 'customTheme'
 
 export type AppearanceSettingKey = AppearanceTextSettingKey | AppearanceThemeSettingKey
 
@@ -20,11 +17,8 @@ export type EditorFontFamily = 'open-sans' | 'system' | 'serif' | 'monospace'
 export type TextDirection = 'ltr' | 'rtl'
 
 export interface AppearanceThemeSettings {
-  followSystemTheme: boolean
-  appTheme: 'system' | 'light' | 'dark'
-  lightModeTheme: string
-  darkModeTheme: string
-  theme: string
+  themeMode: 'system' | 'light' | 'dark' | 'custom'
+  customTheme: string
 }
 
 export interface AppearanceTextSettings {
@@ -35,6 +29,16 @@ export interface AppearanceTextSettings {
   textDirection: TextDirection
 }
 
+export const APPEARANCE_FIXED_THEME_IDS = {
+  light: 'graphite',
+  dark: 'dark',
+} as const
+
+export const APPEARANCE_CUSTOM_THEME_IDS = [
+  'ayu-light',
+  'one-dark',
+] as const
+
 export const APPEARANCE_TEXT_SETTING_KEYS = [
   'fontSize',
   'lineHeight',
@@ -44,11 +48,8 @@ export const APPEARANCE_TEXT_SETTING_KEYS = [
 ] as const satisfies readonly AppearanceTextSettingKey[]
 
 export const APPEARANCE_THEME_SETTING_KEYS = [
-  'followSystemTheme',
-  'appTheme',
-  'lightModeTheme',
-  'darkModeTheme',
-  'theme',
+  'themeMode',
+  'customTheme',
 ] as const satisfies readonly AppearanceThemeSettingKey[]
 
 export const APPEARANCE_SETTING_KEYS = [
@@ -57,11 +58,8 @@ export const APPEARANCE_SETTING_KEYS = [
 ] as const satisfies readonly AppearanceSettingKey[]
 
 export const DEFAULT_APPEARANCE_THEME_SETTINGS = {
-  followSystemTheme: true,
-  appTheme: 'system',
-  lightModeTheme: 'light',
-  darkModeTheme: 'dark',
-  theme: 'light',
+  themeMode: 'system',
+  customTheme: APPEARANCE_CUSTOM_THEME_IDS[0],
 } as const satisfies AppearanceThemeSettings
 
 export const DEFAULT_APPEARANCE_TEXT_SETTINGS = {

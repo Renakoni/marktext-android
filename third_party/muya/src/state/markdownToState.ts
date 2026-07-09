@@ -458,12 +458,14 @@ export class MarkdownToState {
         // but `'fenced'` reaches us at runtime via the
         // walkTokens assignment — hence the cast.
         const isFenced = (codeBlockStyle as 'indented' | 'fenced' | undefined) === 'fenced';
+        const info = infoString || '';
         return {
             name: 'code-block' as const,
             meta: {
                 type: isFenced ? 'fenced' : 'indented',
                 lang,
                 ...(isFenced && fenceLength && fenceLength > 3 ? { fenceLength } : {}),
+                ...(isFenced && info !== lang ? { info } : {}),
             },
             text: value,
         };
