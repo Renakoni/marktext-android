@@ -1,9 +1,38 @@
-import type { RecentDocumentListItem } from '../../lib/recentDocuments'
+import type { RecentDocumentKind, RecentDocumentListItem } from '../../lib/recentDocuments'
 
 export interface HomeDocumentItem {
   id: string
+  kind: RecentDocumentKind
   title: string
+  /** The document's own name (file name for device documents); titles can be heading-derived. */
+  displayName: string
   details: string
+}
+
+export interface HomeDocumentSections<Item extends { id: string }> {
+  continueItem: Item | null
+  pinnedItems: Item[]
+  earlierItems: Item[]
+}
+
+/**
+ * Splits the sorted document list into the home sections. The Continue
+ * masthead stays the top of the user-sorted list regardless of pins — it
+ * means "your latest work", not "your favorite" — and pinned documents form
+ * a block above Earlier while keeping their relative sort order.
+ */
+export function partitionHomeDocumentItems<Item extends { id: string }>(
+  items: Item[],
+  pinnedIds: ReadonlySet<string>,
+): HomeDocumentSections<Item> {
+  const continueItem = items.length > 0 ? items[0] : null
+  const rest = items.slice(1)
+
+  return {
+    continueItem,
+    pinnedItems: rest.filter(item => pinnedIds.has(item.id)),
+    earlierItems: rest.filter(item => !pinnedIds.has(item.id)),
+  }
 }
 
 export interface HomeDocumentText {
@@ -55,7 +84,9 @@ export function toHomeDocumentItem(
 
   return {
     id: item.id,
+    kind: item.kind,
     title: item.title,
+    displayName: item.displayName,
     details: [source, savedAt, count].filter(Boolean).join(text.detailsSeparator),
   }
 }

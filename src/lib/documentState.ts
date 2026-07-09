@@ -127,7 +127,7 @@ function adjustTrailingNewlines(markdown: string, mode: number) {
   return markdown
 }
 
-function stripMarkdownExtension(displayName: string) {
+export function stripMarkdownExtension(displayName: string) {
   return displayName.replace(MARKDOWN_EXTENSION_REGEXP, '')
 }
 
@@ -240,6 +240,15 @@ export function getDocumentStats(markdown: string): DocumentStats {
     characters: markdown.length,
     lines: markdown ? markdown.split(/\r\n|\r|\n/).length : 0,
   }
+}
+
+/**
+ * The user-facing name of a document when it has one: the Untitled-N
+ * placeholder is not a real name and yields undefined.
+ */
+export function getCustomDisplayName(displayName: string): string | undefined {
+  const trimmed = displayName.trim()
+  return trimmed && !UNTITLED_NAME_REGEXP.test(trimmed) ? trimmed : undefined
 }
 
 export function getDocumentTitle(markdown: string, displayName = DEFAULT_UNTITLED_NAME) {

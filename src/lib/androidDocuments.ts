@@ -79,6 +79,20 @@ export interface AndroidShareOptions {
   encoding: MarkdownEncoding
 }
 
+export interface AndroidShareDocumentPayload {
+  markdown: string
+  suggestedName: string
+}
+
+export interface RenamedAndroidDocument {
+  sourceUri: string
+  displayName: string
+  providerName: string | null
+  pathHint: string | null
+  canWrite: boolean
+  persisted: boolean
+}
+
 export interface AndroidWriteOptions {
   encoding: MarkdownEncoding
   writeBom?: boolean
@@ -126,6 +140,14 @@ interface AndroidDocumentsPlugin {
     attachImages?: boolean
     encoding?: string
   }): Promise<AndroidShareResult>
+  shareMarkdownDocuments(options: {
+    documents: AndroidShareDocumentPayload[]
+    encoding?: string
+  }): Promise<AndroidShareResult>
+  renameMarkdownDocument(options: {
+    sourceUri: string
+    newName: string
+  }): Promise<RenamedAndroidDocument>
   writeMarkdownDocument(options: {
     sourceUri: string
     markdown: string
@@ -232,6 +254,26 @@ export async function shareAndroidMarkdownDocument(
       attachImages: options.attachImages,
       encoding: options.encoding,
     }),
+  )
+}
+
+export async function shareAndroidMarkdownDocuments(
+  documents: AndroidShareDocumentPayload[],
+  options: Pick<AndroidShareOptions, 'encoding'>,
+) {
+  ensureAndroidDocumentsAvailable()
+  return normalizeShareResult(
+    await AndroidDocuments.shareMarkdownDocuments({
+      documents,
+      encoding: options.encoding,
+    }),
+  )
+}
+
+export async function renameAndroidMarkdownDocument(sourceUri: string, newName: string) {
+  ensureAndroidDocumentsAvailable()
+  return normalizeRenamedDocument(
+    await AndroidDocuments.renameMarkdownDocument({ sourceUri, newName }),
   )
 }
 
@@ -348,6 +390,18 @@ export function getAndroidDocumentUserMessage(error: unknown) {
     return 'Could not create a Markdown file on this device.'
   }
 
+  if (code === 'INVALID_DOCUMENT_NAME') {
+    return 'Enter a name for this file.'
+  }
+
+  if (code === 'DOCUMENT_RENAME_UNSUPPORTED') {
+    return 'This file’s storage location does not support renaming.'
+  }
+
+  if (code === 'DOCUMENT_RENAME_FAILED') {
+    return 'Could not rename this Markdown file.'
+  }
+
   return 'Could not open this Markdown file.'
 }
 
@@ -417,6 +471,21 @@ function normalizeSavedDocument(value: SavedAndroidDocument): SavedAndroidDocume
     mimeType: value.mimeType ?? null,
     encoding: normalizeMarkdownEncodingValue(value.encoding),
     hasEncodingBom: Boolean(value.hasEncodingBom),
+    canWrite: Boolean(value.canWrite),
+    persisted: Boolean(value.persisted),
+  }
+}
+
+function normalizeRenamedDocument(value: RenamedAndroidDocument): RenamedAndroidDocument {
+  if (!value.sourceUri || !value.displayName) {
+    throw new AndroidDocumentError('INVALID_DOCUMENT_RESULT', 'Android document plugin returned an invalid result')
+  }
+
+  return {
+    sourceUri: value.sourceUri,
+    displayName: value.displayName,
+    providerName: value.providerName ?? null,
+    pathHint: value.pathHint ?? null,
     canWrite: Boolean(value.canWrite),
     persisted: Boolean(value.persisted),
   }

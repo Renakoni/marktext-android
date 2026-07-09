@@ -18,6 +18,8 @@ const baseBackState: AppBackButtonState = {
   linkSheetOpen: false,
   editorMenuOpen: false,
   editorToolbarExpanded: false,
+  homeSelectionActive: false,
+  homeSheetOpen: false,
 }
 
 describe('appExitDecisions', () => {
@@ -114,5 +116,32 @@ describe('appExitDecisions', () => {
     })).toBe('show-documents-tab')
 
     expect(getAppBackButtonAction(baseBackState)).toBe('exit-app')
+  })
+
+  it('clears an active home selection before leaving the app', () => {
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      homeSelectionActive: true,
+    })).toBe('clear-home-selection')
+
+    // A delete/rename sheet dismisses first, keeping the selection intact.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      homeSelectionActive: true,
+      homeSheetOpen: true,
+    })).toBe('close-home-sheet')
+
+    // Selection mode only exists on the documents tab; elsewhere the flag is stale.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      homeTab: HOME_TABS.SETTINGS,
+      homeSelectionActive: true,
+    })).toBe('show-documents-tab')
+
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'editor',
+      homeSelectionActive: true,
+    })).toBe('show-home')
   })
 })

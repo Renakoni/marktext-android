@@ -12,10 +12,12 @@ import android.content.pm.ProviderInfo;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
+import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import androidx.activity.result.ActivityResult;
 import androidx.core.content.FileProvider;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -253,6 +255,183 @@ public class AndroidDocumentsPlugin extends Plugin {
         } catch (IOException | SecurityException ex) {
             Log.e(TAG, "Failed to prepare Markdown document for sharing", ex);
             call.reject("Could not prepare Markdown document for sharing", "SHARE_WRITE_FAILED", ex);
+        }
+    }
+
+    @PluginMethod
+    public void shareMarkdownDocuments(PluginCall call) {
+        Activity activity = getActivity();
+        if (activity == null) {
+            call.reject("No Android activity is available for sharing", "SHARE_TARGET_UNAVAILABLE");
+            return;
+        }
+
+        JSArray documents = call.getArray("documents");
+        if (documents == null || documents.length() == 0) {
+            call.reject("Markdown content is required", "INVALID_MARKDOWN");
+            return;
+        }
+
+        MarkdownWriteOptions writeOptions = getMarkdownWriteOptions(call);
+        try {
+            File shareDirectory = getShareCacheDirectory();
+            ArrayList<Uri> streamUris = new ArrayList<>();
+            Set<String> usedNames = new java.util.HashSet<>();
+            long totalBytes = 0;
+            String firstName = null;
+
+            for (int index = 0; index < documents.length(); index++) {
+                org.json.JSONObject document = documents.getJSONObject(index);
+                String markdown = document.optString("markdown", null);
+                if (markdown == null) {
+                    call.reject("Markdown content is required", "INVALID_MARKDOWN");
+                    return;
+                }
+
+                byte[] bytes = validateMarkdownBytes(markdown, writeOptions);
+                String fileName = uniqueShareFileName(
+                    normalizeSuggestedMarkdownName(document.optString("suggestedName", "")),
+                    usedNames
+                );
+                if (firstName == null) {
+                    firstName = fileName;
+                }
+
+                streamUris.add(writeShareCacheFile(shareDirectory, fileName, bytes));
+                totalBytes += bytes.length;
+            }
+
+            boolean sharesMultiple = streamUris.size() > 1;
+            Intent shareIntent = new Intent(sharesMultiple ? Intent.ACTION_SEND_MULTIPLE : Intent.ACTION_SEND);
+            shareIntent.setType("text/markdown");
+            if (sharesMultiple) {
+                shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, streamUris);
+            } else {
+                shareIntent.putExtra(Intent.EXTRA_STREAM, streamUris.get(0));
+            }
+            shareIntent.putExtra(Intent.EXTRA_TITLE, firstName);
+            shareIntent.putExtra(Intent.EXTRA_SUBJECT, firstName);
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            shareIntent.setClipData(buildShareClipData(firstName, streamUris));
+
+            Intent chooser = Intent.createChooser(shareIntent, "Share Markdown");
+            chooser.putExtra(
+                Intent.EXTRA_EXCLUDE_COMPONENTS,
+                new ComponentName[] { new ComponentName(getContext(), MainActivity.class) }
+            );
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            activity.startActivity(chooser);
+
+            JSObject result = new JSObject();
+            result.put("displayName", firstName);
+            result.put("mimeType", "text/markdown");
+            result.put("bytes", totalBytes);
+            result.put("imageCount", 0);
+            result.put("sharedFileCount", streamUris.size());
+            Log.i(TAG, "Opened Android share sheet for " + streamUris.size() + " Markdown documents");
+            call.resolve(result);
+        } catch (org.json.JSONException ex) {
+            Log.w(TAG, "Android multi-share received malformed documents", ex);
+            call.reject("Markdown content is required", "INVALID_MARKDOWN", ex);
+        } catch (DocumentReadException ex) {
+            Log.w(TAG, "Android multi-share rejected: " + ex.getMessage());
+            call.reject(ex.getMessage(), ex.code, ex);
+        } catch (ActivityNotFoundException ex) {
+            Log.w(TAG, "No Android share target is available", ex);
+            call.reject("No Android share target is available", "SHARE_TARGET_UNAVAILABLE", ex);
+        } catch (IOException | SecurityException ex) {
+            Log.e(TAG, "Failed to prepare Markdown documents for sharing", ex);
+            call.reject("Could not prepare Markdown documents for sharing", "SHARE_WRITE_FAILED", ex);
+        }
+    }
+
+    @PluginMethod
+    public void renameMarkdownDocument(PluginCall call) {
+        String sourceUri = call.getString("sourceUri", "");
+        Uri uri = parseContentUri(sourceUri);
+        if (uri == null) {
+            call.reject("A valid content URI is required", "INVALID_SOURCE_URI");
+            return;
+        }
+
+        String rawName = call.getString("newName", "");
+        if (rawName == null || rawName.trim().length() == 0) {
+            call.reject("A document name is required", "INVALID_DOCUMENT_NAME");
+            return;
+        }
+        String newName = normalizeSuggestedMarkdownName(rawName);
+
+        try {
+            if (!DocumentsContract.isDocumentUri(getContext(), uri)) {
+                call.reject(
+                    "This Android document cannot be renamed",
+                    "DOCUMENT_RENAME_UNSUPPORTED"
+                );
+                return;
+            }
+
+            int flags = getDocumentFlags(uri);
+            if ((flags & DocumentsContract.Document.FLAG_SUPPORTS_RENAME) == 0) {
+                call.reject(
+                    "This Android storage provider does not support renaming",
+                    "DOCUMENT_RENAME_UNSUPPORTED"
+                );
+                return;
+            }
+
+            Uri renamedUri = DocumentsContract.renameDocument(
+                getContext().getContentResolver(),
+                uri,
+                newName
+            );
+            if (renamedUri == null) {
+                call.reject("Could not rename this Android document", "DOCUMENT_RENAME_FAILED");
+                return;
+            }
+
+            // Renaming can change the document URI; the provider migrates the
+            // runtime grant but revokes the old persisted one, so re-persist
+            // when possible and report the real state.
+            try {
+                getContext()
+                    .getContentResolver()
+                    .takePersistableUriPermission(
+                        renamedUri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    );
+            } catch (SecurityException ignored) {
+                // The migrated grant is not persistable on most providers.
+            }
+
+            String displayName = getDisplayName(renamedUri);
+            JSObject result = new JSObject();
+            result.put("sourceUri", renamedUri.toString());
+            result.put("displayName", displayName);
+            result.put("providerName", getProviderName(renamedUri));
+            result.put("pathHint", displayName);
+            result.put("canWrite", canWrite(renamedUri, null));
+            result.put("persisted", hasPersistedReadPermission(renamedUri));
+            Log.i(TAG, "Renamed Android document to: " + safeForLog(displayName));
+            call.resolve(result);
+        } catch (FileNotFoundException ex) {
+            Log.w(TAG, "Android document no longer exists", ex);
+            call.reject("This Android document was moved or deleted", "DOCUMENT_NOT_FOUND", ex);
+        } catch (SecurityException ex) {
+            Log.w(TAG, "Android document rename permission is no longer available", ex);
+            call.reject("Android document permission is no longer available", "DOCUMENT_PERMISSION_LOST", ex);
+        } catch (UnsupportedOperationException ex) {
+            Log.w(TAG, "Android storage provider does not support renaming", ex);
+            call.reject(
+                "This Android storage provider does not support renaming",
+                "DOCUMENT_RENAME_UNSUPPORTED",
+                ex
+            );
+        } catch (RuntimeException ex) {
+            // Storage providers surface arbitrary runtime failures through
+            // ContentResolver.call; keep them as a rename failure instead of
+            // crashing the WebView bridge.
+            Log.e(TAG, "Failed to rename Android document", ex);
+            call.reject("Could not rename this Android document", "DOCUMENT_RENAME_FAILED", ex);
         }
     }
 
@@ -978,6 +1157,35 @@ public class AndroidDocumentsPlugin extends Plugin {
             clipData.addItem(new ClipData.Item(streamUris.get(index)));
         }
         return clipData;
+    }
+
+    private String uniqueShareFileName(String fileName, Set<String> usedNames) {
+        if (usedNames.add(fileName.toLowerCase(Locale.US))) {
+            return fileName;
+        }
+
+        int extensionIndex = fileName.lastIndexOf('.');
+        String baseName = extensionIndex > 0 ? fileName.substring(0, extensionIndex) : fileName;
+        String extension = extensionIndex > 0 ? fileName.substring(extensionIndex) : "";
+        for (int counter = 2; ; counter++) {
+            String candidate = baseName + " " + counter + extension;
+            if (usedNames.add(candidate.toLowerCase(Locale.US))) {
+                return candidate;
+            }
+        }
+    }
+
+    private int getDocumentFlags(Uri uri) {
+        try (
+            Cursor cursor = getContext()
+                .getContentResolver()
+                .query(uri, new String[] { DocumentsContract.Document.COLUMN_FLAGS }, null, null, null)
+        ) {
+            if (cursor != null && cursor.moveToFirst() && !cursor.isNull(0)) {
+                return cursor.getInt(0);
+            }
+        }
+        return 0;
     }
 
     private File getShareCacheDirectory() throws IOException {

@@ -148,4 +148,5 @@ describe('documentSettings', () => {
         .map(record => record.id),
     ).toEqual(['charlie', 'alpha', 'bravo'])
   })
+
 })

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { formatHomeDocumentSavedTime, toHomeDocumentItem } from './homeDocuments'
+import {
+  formatHomeDocumentSavedTime,
+  partitionHomeDocumentItems,
+  toHomeDocumentItem,
+} from './homeDocuments'
 import type { RecentDocumentListItem } from '../../lib/recentDocuments'
 
 describe('homeDocuments', () => {
@@ -28,9 +32,38 @@ describe('homeDocuments', () => {
 
     expect(toHomeDocumentItem(item)).toEqual({
       id: 'draft-1',
+      kind: 'local-draft',
       title: 'Draft',
+      displayName: 'draft.md',
       details: 'Local draft - 1 word',
     })
+  })
+
+  it('keeps the masthead pin-agnostic and floats pinned documents above Earlier', () => {
+    const items = [{ id: 'newest' }, { id: 'older-pin' }, { id: 'plain' }, { id: 'newer-pin' }]
+
+    const sections = partitionHomeDocumentItems(items, new Set(['older-pin', 'newer-pin']))
+
+    expect(sections.continueItem?.id).toBe('newest')
+    // Pinned block preserves the list's own (chronological) order.
+    expect(sections.pinnedItems.map(item => item.id)).toEqual(['older-pin', 'newer-pin'])
+    expect(sections.earlierItems.map(item => item.id)).toEqual(['plain'])
+  })
+
+  it('keeps a pinned masthead in the Continue spot without duplicating it', () => {
+    const items = [{ id: 'pinned-newest' }, { id: 'plain' }]
+
+    const sections = partitionHomeDocumentItems(items, new Set(['pinned-newest']))
+
+    expect(sections.continueItem?.id).toBe('pinned-newest')
+    expect(sections.pinnedItems).toEqual([])
+    expect(sections.earlierItems.map(item => item.id)).toEqual(['plain'])
+  })
+
+  it('partitions an empty list into empty sections', () => {
+    const sections = partitionHomeDocumentItems([], new Set())
+
+    expect(sections).toEqual({ continueItem: null, pinnedItems: [], earlierItems: [] })
   })
 
   it('formats empty saved times as blank text', () => {
@@ -70,7 +103,9 @@ describe('homeDocuments', () => {
       }),
     ).toEqual({
       id: 'draft-1',
+      kind: 'local-draft',
       title: 'Draft',
+      displayName: 'draft.md',
       details: '本地草稿 · 2 字',
     })
   })

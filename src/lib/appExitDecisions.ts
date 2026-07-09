@@ -21,6 +21,8 @@ export interface AppBackButtonState {
   linkSheetOpen: boolean
   editorMenuOpen: boolean
   editorToolbarExpanded: boolean
+  homeSelectionActive: boolean
+  homeSheetOpen: boolean
 }
 
 export type AppBackButtonAction =
@@ -29,6 +31,8 @@ export type AppBackButtonAction =
   | 'close-link-sheet'
   | 'close-editor-menu'
   | 'close-editor-toolbar'
+  | 'close-home-sheet'
+  | 'clear-home-selection'
   | 'show-home'
   | 'show-settings-index'
   | 'show-documents-tab'
@@ -71,6 +75,8 @@ export function getAppBackButtonAction({
   linkSheetOpen,
   editorMenuOpen,
   editorToolbarExpanded,
+  homeSelectionActive,
+  homeSheetOpen,
 }: AppBackButtonState): AppBackButtonAction {
   if (androidExitPromptOpen) {
     return 'close-android-exit-prompt'
@@ -94,6 +100,17 @@ export function getAppBackButtonAction({
 
   if (currentScreen === 'editor') {
     return 'show-home'
+  }
+
+  if (currentScreen === 'home' && homeTab === HOME_TABS.DOCUMENTS) {
+    // A confirm/rename sheet dismisses on its own before the selection does.
+    if (homeSheetOpen) {
+      return 'close-home-sheet'
+    }
+
+    if (homeSelectionActive) {
+      return 'clear-home-selection'
+    }
   }
 
   if (homeTab === HOME_TABS.SETTINGS && settingsPage !== SETTINGS_PAGES.INDEX) {

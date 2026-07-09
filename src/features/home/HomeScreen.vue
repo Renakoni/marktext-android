@@ -12,8 +12,15 @@ interface Props {
   activeTab: HomeTab
   settingsPage: SettingsPage
   continueDocument: HomeDocumentItem | null
+  pinnedDocuments: HomeDocumentItem[]
   earlierDocuments: HomeDocumentItem[]
   notice: string | null
+  selectionActive: boolean
+  selectionCount: number
+  selectedIds: ReadonlySet<string>
+  allSelectedPinned: boolean
+  deleteSheetOpen: boolean
+  renameSheetOpen: boolean
 }
 
 const props = defineProps<Props>()
@@ -25,6 +32,15 @@ const emit = defineEmits<{
   newDocument: []
   setSettingsPage: [page: SettingsPage]
   runMaintenanceAction: [action: AdvancedMaintenanceActionId]
+  selectDocument: [id: string]
+  toggleDocument: [id: string]
+  exitSelection: []
+  pinSelected: []
+  deleteSelected: []
+  shareSelected: []
+  renameSelected: [id: string, name: string]
+  'update:deleteSheetOpen': [open: boolean]
+  'update:renameSheetOpen': [open: boolean]
 }>()
 
 const homeMain = ref<HTMLElement | null>(null)
@@ -50,11 +66,27 @@ watch(
       <DocumentHome
         v-if="activeTab === HOME_TABS.DOCUMENTS"
         :continue-document="continueDocument"
+        :pinned-documents="pinnedDocuments"
         :earlier-documents="earlierDocuments"
         :notice="notice"
+        :selection-active="selectionActive"
+        :selection-count="selectionCount"
+        :selected-ids="selectedIds"
+        :all-selected-pinned="allSelectedPinned"
+        :delete-sheet-open="deleteSheetOpen"
+        :rename-sheet-open="renameSheetOpen"
         @new-document="emit('newDocument')"
         @open-document="id => emit('openDocument', id)"
         @open-file="emit('openFile')"
+        @select-document="id => emit('selectDocument', id)"
+        @toggle-document="id => emit('toggleDocument', id)"
+        @exit-selection="emit('exitSelection')"
+        @pin-selected="emit('pinSelected')"
+        @delete-selected="emit('deleteSelected')"
+        @share-selected="emit('shareSelected')"
+        @rename-selected="(id, name) => emit('renameSelected', id, name)"
+        @update:delete-sheet-open="open => emit('update:deleteSheetOpen', open)"
+        @update:rename-sheet-open="open => emit('update:renameSheetOpen', open)"
       />
       <SettingsScreen
         v-else
