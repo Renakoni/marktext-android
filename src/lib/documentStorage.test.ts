@@ -3,11 +3,14 @@ import {
   ANDROID_RECENT_DOCUMENTS_STORAGE_KEY,
   LEGACY_DRAFT_STORAGE_KEY,
   LOCAL_DRAFTS_STORAGE_KEY,
+  PINNED_DOCUMENTS_STORAGE_KEY,
   readLegacyDraft,
   readStoredAndroidRecentDocuments,
   readStoredLocalDrafts,
+  readStoredPinnedDocuments,
   writeStoredAndroidRecentDocuments,
   writeStoredLocalDrafts,
+  writeStoredPinnedDocuments,
 } from './documentStorage'
 import { createRecentDocumentFromLocalDraft } from './recentDocuments'
 import type { LocalDraftRecord } from './localDrafts'
@@ -113,5 +116,26 @@ describe('documentStorage', () => {
     writeStoredAndroidRecentDocuments([createRecentDocumentFromLocalDraft(localDraft)], storage)
 
     expect(storage.getItem(ANDROID_RECENT_DOCUMENTS_STORAGE_KEY)).toBeNull()
+  })
+
+  it('round-trips pinned documents through their own storage key', () => {
+    const storage = new MemoryStorage()
+    const pins = [{ id: 'draft-1', pinnedAt: '2026-07-08T00:00:00.000Z' }]
+
+    writeStoredPinnedDocuments(pins, storage)
+
+    expect(readStoredPinnedDocuments(storage)).toEqual(pins)
+  })
+
+  it('removes the pinned documents key when the last pin is cleared', () => {
+    const storage = new MemoryStorage()
+    storage.setItem(
+      PINNED_DOCUMENTS_STORAGE_KEY,
+      JSON.stringify([{ id: 'draft-1', pinnedAt: '2026-07-08T00:00:00.000Z' }]),
+    )
+
+    writeStoredPinnedDocuments([], storage)
+
+    expect(storage.getItem(PINNED_DOCUMENTS_STORAGE_KEY)).toBeNull()
   })
 })

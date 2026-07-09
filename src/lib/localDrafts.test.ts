@@ -3,6 +3,7 @@ import {
   normalizeLocalDrafts,
   parseLocalDrafts,
   removeLocalDraft,
+  renameLocalDraft,
   serializeLocalDrafts,
   upsertLocalDraft,
   type LocalDraftRecord,
@@ -76,5 +77,33 @@ describe('localDrafts', () => {
     const serialized = serializeLocalDrafts([olderDraft, newerDraft])
 
     expect(parseLocalDrafts(serialized).map(draft => draft.id)).toEqual(['newer', 'older'])
+  })
+
+  it('renames drafts and trims the chosen name', () => {
+    const drafts = renameLocalDraft([olderDraft, newerDraft], 'older', '  Trip plan  ')
+
+    expect(drafts.find(draft => draft.id === 'older')?.displayName).toBe('Trip plan')
+    expect(drafts.find(draft => draft.id === 'newer')?.displayName).toBeUndefined()
+    // Renaming is a metadata change, not an edit — it must not reorder the list.
+    expect(drafts.find(draft => draft.id === 'older')?.updatedAt).toBe(olderDraft.updatedAt)
+  })
+
+  it('ignores empty rename requests', () => {
+    const renamed = renameLocalDraft([olderDraft], 'older', 'Trip plan')
+
+    expect(renameLocalDraft(renamed, 'older', '   ')).toEqual(renamed)
+  })
+
+  it('keeps a rename through storage round-trips and content upserts', () => {
+    const renamed = renameLocalDraft([olderDraft], 'older', 'Trip plan')
+
+    expect(parseLocalDrafts(serializeLocalDrafts(renamed))[0].displayName).toBe('Trip plan')
+
+    const updated = upsertLocalDraft(renamed, {
+      ...olderDraft,
+      markdown: '# Updated content',
+      updatedAt: '2026-06-29T00:05:00.000Z',
+    })
+    expect(updated[0].displayName).toBe('Trip plan')
   })
 })

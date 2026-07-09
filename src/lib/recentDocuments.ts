@@ -34,6 +34,7 @@ interface LocalDraftSource {
   createdAt?: string
   updatedAt: string
   lastSavedAt: string | null
+  displayName?: string
 }
 
 interface AndroidDocumentSource {
@@ -115,7 +116,10 @@ function compareRecentDocuments(
 }
 
 export function createRecentDocumentFromLocalDraft(draft: LocalDraftSource): RecentDocumentRecord {
-  const title = getDocumentTitle(draft.markdown)
+  // An explicit rename is the draft's identity: it wins over content-derived
+  // titles, headings included.
+  const customName = draft.displayName?.trim()
+  const title = customName || getDocumentTitle(draft.markdown)
 
   return {
     id: draft.id,

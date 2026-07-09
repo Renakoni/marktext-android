@@ -45,6 +45,15 @@ describe('documentSessionState', () => {
     })
   })
 
+  it('carries a renamed draft name into editor document state', () => {
+    const documentState = createDocumentStateFromLocalDraft({
+      ...localDraft,
+      displayName: 'Trip plan',
+    })
+
+    expect(documentState.displayName).toBe('Trip plan')
+  })
+
   it('creates Android document state without marking it saved locally', () => {
     const documentState = createDocumentStateFromAndroidDocument(androidDocument)
 

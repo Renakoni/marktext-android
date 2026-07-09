@@ -37,6 +37,20 @@ describe('localDraftAutosave', () => {
     })
   })
 
+  it('keeps a renamed draft name through autosave', () => {
+    const renamedDraft = { ...existingDraft, displayName: 'Trip plan' }
+    const documentState = updateDocumentMarkdown(
+      { ...createUntitledDocument({ markdown: '# Existing' }), id: existingDraft.id },
+      '# Updated draft',
+    )
+
+    const result = createLocalDraftAutosaveResult(documentState, '# Updated draft', [
+      renamedDraft,
+    ])
+
+    expect(result.nextDrafts[0].displayName).toBe('Trip plan')
+  })
+
   it('removes the local draft when autosaved Markdown is blank', () => {
     const documentState = createUntitledDocument({
       markdown: '# Existing',

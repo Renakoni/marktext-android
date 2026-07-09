@@ -4,6 +4,11 @@ import {
   type LocalDraftRecord,
 } from './localDrafts'
 import {
+  parsePinnedDocuments,
+  serializePinnedDocuments,
+  type PinnedDocumentRecord,
+} from './pinnedDocuments'
+import {
   parseRecentDocuments,
   serializeRecentDocuments,
   type RecentDocumentRecord,
@@ -13,6 +18,7 @@ export const LEGACY_DRAFT_STORAGE_KEY = 'marktext-for-android:draft'
 export const LOCAL_DRAFTS_STORAGE_KEY = 'marktext-for-android:drafts'
 export const ANDROID_RECENT_DOCUMENTS_STORAGE_KEY =
   'marktext-for-android:recent-documents'
+export const PINNED_DOCUMENTS_STORAGE_KEY = 'marktext-for-android:pinned-documents'
 
 interface DocumentStorage {
   getItem(key: string): string | null
@@ -39,6 +45,21 @@ export function writeStoredLocalDrafts(
 
 export function readLegacyDraft(storage: DocumentStorage = localStorage) {
   return storage.getItem(LEGACY_DRAFT_STORAGE_KEY)
+}
+
+export function readStoredPinnedDocuments(storage: DocumentStorage = localStorage) {
+  return parsePinnedDocuments(storage.getItem(PINNED_DOCUMENTS_STORAGE_KEY))
+}
+
+export function writeStoredPinnedDocuments(
+  records: PinnedDocumentRecord[],
+  storage: DocumentStorage = localStorage,
+) {
+  if (records.length > 0) {
+    storage.setItem(PINNED_DOCUMENTS_STORAGE_KEY, serializePinnedDocuments(records))
+  } else {
+    storage.removeItem(PINNED_DOCUMENTS_STORAGE_KEY)
+  }
 }
 
 export function readStoredAndroidRecentDocuments(

@@ -382,6 +382,265 @@ body {
   font-weight: 400;
 }
 
+/* ------------------------------------------------- home selection mode */
+
+.home-top-default {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.home-top-swap-enter-active,
+.home-top-swap-leave-active {
+  transition:
+    opacity var(--dur-quick) var(--ease-out),
+    transform var(--dur-quick) var(--ease-out);
+}
+
+.home-top-swap-enter-from,
+.home-top-swap-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* Pulled into the gutters so the round icon targets optically align with the
+   masthead text and action pills. */
+.home-selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: calc(100% + 16px);
+  min-height: 42px;
+  margin: 0 -8px;
+}
+
+.selection-count {
+  min-width: 30px;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.selection-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.selection-icon-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  touch-action: manipulation;
+  transition:
+    background-color var(--dur-standard) var(--ease-out),
+    transform var(--dur-standard) var(--ease-out);
+}
+
+.selection-icon-button svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.selection-icon-button:active {
+  background: var(--press);
+  transform: scale(0.92);
+  transition-duration: 0ms;
+}
+
+.selection-icon-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.selection-menu-anchor {
+  position: relative;
+}
+
+.selection-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
+}
+
+.selection-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 25;
+  display: grid;
+  gap: 2px;
+  min-width: 200px;
+  padding: 6px;
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
+  transform-origin: top right;
+}
+
+.selection-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 16px 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  text-align: left;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
+}
+
+.selection-menu-item svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--text-muted);
+}
+
+.selection-menu-item:active {
+  background: var(--press);
+  transition-duration: 0ms;
+}
+
+.selection-menu-item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.selection-menu-enter-active,
+.selection-menu-leave-active {
+  transition:
+    opacity var(--dur-quick) var(--ease-out),
+    transform var(--dur-quick) var(--ease-out);
+}
+
+.selection-menu-enter-from,
+.selection-menu-leave-to {
+  opacity: 0;
+  transform: scale(0.92) translateY(-4px);
+}
+
+/* Selection indicator: an empty ring that fills with the accent when picked.
+   It replaces the document glyph so rows keep their geometry. */
+.document-check {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  place-self: center;
+  border: 1.6px solid var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: transparent;
+  transition:
+    background-color var(--dur-quick) var(--ease-out),
+    border-color var(--dur-quick) var(--ease-out);
+}
+
+.document-check svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity var(--dur-quick) var(--ease-out),
+    transform var(--dur-standard) var(--ease-spring);
+}
+
+.document-check.is-checked {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.document-check.is-checked svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.document-row.is-selected,
+.document-list .document-row.is-selected:active {
+  background: var(--accent-soft);
+}
+
+.document-row.has-pin {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+}
+
+.document-pin-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--text-faint);
+}
+
+.document-pin-mark svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.continue-card.is-selecting {
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: center;
+}
+
+.continue-card.is-selecting .continue-check {
+  grid-row: 1 / span 2;
+}
+
+.continue-card.is-selecting .continue-card-title,
+.continue-card.is-selecting .continue-card-meta {
+  grid-column: 2;
+}
+
+.continue-card.is-selected,
+.continue-card.is-selected:active {
+  background: var(--accent-soft);
+}
+
 /* ---------------------------------------------------------- editor bar */
 
 .top-bar {
@@ -808,7 +1067,13 @@ body {
   .editor-sheet-enter-active .editor-action-panel,
   .editor-sheet-leave-active .editor-action-panel,
   .editor-sheet-enter-active .draft-save-panel,
-  .editor-sheet-leave-active .draft-save-panel {
+  .editor-sheet-leave-active .draft-save-panel,
+  .home-top-swap-enter-active,
+  .home-top-swap-leave-active,
+  .selection-menu-enter-active,
+  .selection-menu-leave-active,
+  .document-check,
+  .document-check svg {
     transition: none;
   }
 }

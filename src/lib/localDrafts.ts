@@ -4,6 +4,8 @@ export interface LocalDraftRecord {
   createdAt: string
   updatedAt: string
   lastSavedAt: string | null
+  /** Explicit user-chosen name; when set it beats content-derived titles. */
+  displayName?: string
 }
 
 type StoredLocalDraftRecord = Omit<LocalDraftRecord, 'createdAt'> & {
@@ -23,7 +25,8 @@ function isStoredLocalDraftRecord(value: unknown): value is StoredLocalDraftReco
     typeof record.markdown === 'string' &&
     (typeof record.createdAt === 'string' || record.createdAt === undefined) &&
     typeof record.updatedAt === 'string' &&
-    (typeof record.lastSavedAt === 'string' || record.lastSavedAt === null)
+    (typeof record.lastSavedAt === 'string' || record.lastSavedAt === null) &&
+    (typeof record.displayName === 'string' || record.displayName === undefined)
   )
 }
 
@@ -88,6 +91,7 @@ export function upsertLocalDraft(
   const nextDraft = {
     ...draft,
     createdAt: existingDraft?.createdAt ?? draft.createdAt,
+    displayName: draft.displayName ?? existingDraft?.displayName,
   }
 
   return normalizeLocalDrafts(
@@ -98,4 +102,18 @@ export function upsertLocalDraft(
 
 export function removeLocalDraft(records: LocalDraftRecord[], id: string) {
   return records.filter(record => record.id !== id)
+}
+
+export function renameLocalDraft(records: LocalDraftRecord[], id: string, displayName: string) {
+  const trimmedName = displayName.trim()
+
+  // A rename needs a name; the rename sheet enforces this, and treating an
+  // empty one as a no-op keeps the helper safe for any caller.
+  if (!trimmedName) {
+    return records
+  }
+
+  return records.map(record =>
+    record.id === id ? { ...record, displayName: trimmedName } : record,
+  )
 }

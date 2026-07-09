@@ -64,6 +64,16 @@ describe('recentDocuments', () => {
     expect(record.canWrite).toBe(true)
   })
 
+  it('lets an explicit draft rename beat content-derived titles', () => {
+    const record = createRecentDocumentFromLocalDraft({
+      ...newerDraft,
+      displayName: 'Trip plan',
+    })
+
+    expect(record.title).toBe('Trip plan')
+    expect(record.displayName).toBe('Trip plan')
+  })
+
   it('creates recent document records from Android documents without storing markdown content', () => {
     const record = createRecentDocumentFromAndroidDocument({
       sourceUri: 'content://provider/android-note.md',

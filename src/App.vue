@@ -11,7 +11,9 @@ import {
   isAndroidDocumentAccessAvailable,
   openAndroidMarkdownDocument,
   readAndroidMarkdownDocument,
+  renameAndroidMarkdownDocument,
   shareAndroidMarkdownDocument,
+  shareAndroidMarkdownDocuments,
   writeAndroidMarkdownDocument,
   type AndroidOpenWithDocumentEvent,
   type AndroidShareDocumentEvent,
@@ -122,6 +124,7 @@ import {
 } from './features/editor/editorRuntime'
 import {
   removeLocalDraft,
+  renameLocalDraft,
   upsertLocalDraft,
   type LocalDraftRecord,
 } from './lib/localDrafts'
@@ -130,9 +133,18 @@ import {
   readLegacyDraft,
   readStoredAndroidRecentDocuments,
   readStoredLocalDrafts,
+  readStoredPinnedDocuments,
   writeStoredAndroidRecentDocuments,
   writeStoredLocalDrafts,
+  writeStoredPinnedDocuments,
 } from './lib/documentStorage'
+import {
+  areAllDocumentsPinned,
+  getPinnedDocumentIds,
+  prunePinnedDocuments,
+  togglePinnedDocuments,
+  type PinnedDocumentRecord,
+} from './lib/pinnedDocuments'
 import {
   createLogger,
   exportNativeLogs,
@@ -145,7 +157,14 @@ import {
   type MobileEditorCommandTarget,
 } from './lib/mobileCommands'
 import { DEFAULT_HOME_TAB, HOME_TABS, type HomeTab } from './features/home/homeNavigation'
-import { toHomeDocumentItem, type HomeDocumentText } from './features/home/homeDocuments'
+import {
+  partitionHomeDocumentItems,
+  toHomeDocumentItem,
+  type HomeDocumentText,
+} from './features/home/homeDocuments'
+import { useDocumentSelection } from './features/home/useDocumentSelection'
+import { renameAndroidRecentDocumentWorkflow } from './features/android-documents/renameRecentDocumentWorkflow'
+import { shareRecentDocumentsWorkflow } from './features/android-documents/shareRecentDocumentsWorkflow'
 import {
   DEFAULT_SETTINGS_PAGE,
   SETTINGS_PAGES,
@@ -193,6 +212,8 @@ const OPEN_WITH_TEMPORARY_ACCESS_MESSAGE =
   'Opened with temporary Android access. Save a copy to keep editing later.'
 const SHARE_TEMPORARY_ACCESS_MESSAGE =
   'Opened from Android share with temporary access. Save a copy to keep editing later.'
+const RENAME_TEMPORARY_ACCESS_MESSAGE =
+  'Renamed, but Android only kept temporary access. Reopen it from Android to add it back to Recents.'
 const SHARED_TEXT_IMPORTED_MESSAGE = 'Imported shared text as a local draft.'
 const ANDROID_SAVE_RECOVERY_MESSAGE = 'Save failed. A local recovery draft was kept.'
 const ANDROID_EXIT_RECOVERY_MESSAGE = 'Unsaved changes were kept as a recovery draft.'
@@ -205,6 +226,10 @@ const editorElement = ref<HTMLElement | null>(null)
 const documentState = ref(createUntitledDocument())
 const localDrafts = ref<LocalDraftRecord[]>([])
 const androidRecentDocuments = ref<RecentDocumentRecord[]>([])
+const pinnedDocuments = ref<PinnedDocumentRecord[]>([])
+const homeSelection = useDocumentSelection()
+const homeDeleteSheetOpen = ref(false)
+const homeRenameSheetOpen = ref(false)
 const currentAndroidDocumentCanWrite = ref(false)
 const status = ref('Ready')
 const homeNotice = ref<string | null>(null)
@@ -413,18 +438,44 @@ const recentActivityDocumentItems = computed(() => getRecentDocumentListItems(re
 const documentItems = computed(() =>
   getSortedRecentDocumentListItems(recentDocumentRecords.value, documentSettings.value),
 )
-const continueDocumentItem = computed(() => documentItems.value[0] ?? null)
-const earlierDocumentItems = computed(() => documentItems.value.slice(1))
+const pinnedDocumentIds = computed(() => getPinnedDocumentIds(pinnedDocuments.value))
+const homeDocumentSections = computed(() =>
+  partitionHomeDocumentItems(documentItems.value, pinnedDocumentIds.value),
+)
+const continueDocumentItem = computed(() => homeDocumentSections.value.continueItem)
 const continueDocument = computed(() =>
   continueDocumentItem.value
     ? toHomeDocumentItem(continueDocumentItem.value, homeDocumentText.value, locale.value)
     : null,
 )
-const earlierDocuments = computed(() =>
-  earlierDocumentItems.value.map(item =>
+const pinnedHomeDocuments = computed(() =>
+  homeDocumentSections.value.pinnedItems.map(item =>
     toHomeDocumentItem(item, homeDocumentText.value, locale.value),
   ),
 )
+const earlierDocuments = computed(() =>
+  homeDocumentSections.value.earlierItems.map(item =>
+    toHomeDocumentItem(item, homeDocumentText.value, locale.value),
+  ),
+)
+const allSelectedDocumentsPinned = computed(() =>
+  areAllDocumentsPinned(pinnedDocuments.value, [...homeSelection.selectedIds.value]),
+)
+
+// Documents can leave the list while selected (e.g. an autosave drops an
+// emptied draft); the selection must not keep counting them.
+watch(documentItems, items => {
+  if (homeSelection.isActive.value) {
+    homeSelection.retain(items.map(item => item.id))
+  }
+})
+
+watch(homeSelection.isActive, active => {
+  if (!active) {
+    homeDeleteSheetOpen.value = false
+    homeRenameSheetOpen.value = false
+  }
+})
 
 function getAndroidEditorStatus() {
   if (documentState.value.autosaveState === 'save-failed') {
@@ -1093,6 +1144,11 @@ function persistLocalDrafts(nextDrafts: LocalDraftRecord[]) {
 function persistAndroidRecentDocuments(nextDocuments: RecentDocumentRecord[]) {
   const filteredDocuments = writeStoredAndroidRecentDocuments(nextDocuments)
   androidRecentDocuments.value = filteredDocuments
+}
+
+function persistPinnedDocuments(nextPins: PinnedDocumentRecord[]) {
+  pinnedDocuments.value = nextPins
+  writeStoredPinnedDocuments(nextPins)
 }
 
 function persistAndroidRecoveryDraft(sourceUri: string, markdown: string) {
@@ -1844,6 +1900,191 @@ async function handleAndroidShareDocumentEvent(event: AndroidShareDocumentEvent)
   await openSharedTextDocument(action.document)
 }
 
+function getSelectedDocumentRecords() {
+  const selectedIds = homeSelection.selectedIds.value
+  return documentItems.value.filter(record => selectedIds.has(record.id))
+}
+
+// Pins may only be pruned against everything in storage: the home list hides
+// recovery drafts and setting-disabled drafts without deleting them.
+function getAllStoredDocumentIds() {
+  return [
+    ...localDrafts.value.map(draft => draft.id),
+    ...androidRecentDocuments.value.map(record => record.id),
+  ]
+}
+
+function pinSelectedDocuments() {
+  const selectedIds = [...homeSelection.selectedIds.value]
+  if (selectedIds.length === 0) {
+    return
+  }
+
+  persistPinnedDocuments(
+    togglePinnedDocuments(pinnedDocuments.value, selectedIds, new Date().toISOString()),
+  )
+  appLog.info('toggled home document pins', { count: selectedIds.length })
+  homeSelection.clear()
+}
+
+function deleteSelectedDocuments() {
+  const selectedRecords = getSelectedDocumentRecords()
+  if (selectedRecords.length === 0) {
+    return
+  }
+
+  const draftIds = new Set(
+    selectedRecords.filter(record => record.kind === 'local-draft').map(record => record.id),
+  )
+  const androidRecords = selectedRecords.filter(record => record.kind === 'android-document')
+
+  if (draftIds.size > 0) {
+    persistLocalDrafts(localDrafts.value.filter(draft => !draftIds.has(draft.id)))
+  }
+
+  if (androidRecords.length > 0) {
+    const androidIds = new Set(androidRecords.map(record => record.id))
+    persistAndroidRecentDocuments(
+      androidRecentDocuments.value.filter(record => !androidIds.has(record.id)),
+    )
+  }
+
+  persistPinnedDocuments(prunePinnedDocuments(pinnedDocuments.value, getAllStoredDocumentIds()))
+
+  // A deleted document must not resurrect from the open editor session.
+  if (selectedRecords.some(record => record.id === documentState.value.id)) {
+    documentState.value = createUntitledDocument({ autosaveTarget: 'local-draft' })
+    currentAndroidDocumentCanWrite.value = false
+  }
+
+  appLog.info('deleted home documents', {
+    drafts: draftIds.size,
+    androidDocuments: androidRecords.length,
+  })
+  homeSelection.clear()
+}
+
+async function shareSelectedDocuments() {
+  const selectedRecords = getSelectedDocumentRecords()
+  if (selectedRecords.length === 0) {
+    return
+  }
+
+  const result = await shareRecentDocumentsWorkflow({
+    documents: selectedRecords,
+    readAndroidMarkdownDocument: sourceUri =>
+      readAndroidMarkdownDocument(sourceUri, androidMarkdownSettings.value),
+    shareAndroidMarkdownDocument,
+    shareAndroidMarkdownDocuments,
+    getAndroidDocumentUserMessage,
+    imageSharingSettings: imageSharingSettings.value,
+    markdownSaveSettings: markdownSaveSettings.value,
+    logger: androidDocumentLog,
+  })
+
+  if (result.kind === 'failed') {
+    // Keep the selection so a transient failure can be retried as-is.
+    homeNotice.value = result.status
+    return
+  }
+
+  homeNotice.value = null
+  homeSelection.clear()
+}
+
+async function renameSelectedDocument(id: string, name: string) {
+  const record = documentItems.value.find(item => item.id === id)
+  if (!record) {
+    appLog.warn('rename target not found', { id })
+    return
+  }
+
+  if (record.kind === 'local-draft') {
+    persistLocalDrafts(renameLocalDraft(localDrafts.value, id, name))
+    if (documentState.value.id === id) {
+      // Keeps the new name flowing through the next autosave of an open session.
+      documentState.value = { ...documentState.value, displayName: name.trim() }
+    }
+    appLog.info('renamed local draft', { id })
+    homeNotice.value = null
+    homeSelection.clear()
+    return
+  }
+
+  const result = await renameAndroidRecentDocumentWorkflow({
+    record,
+    newName: name,
+    readAndroidMarkdownDocument: sourceUri =>
+      readAndroidMarkdownDocument(sourceUri, androidMarkdownSettings.value),
+    renameAndroidMarkdownDocument,
+    getAndroidDocumentUserMessage,
+    logger: androidDocumentLog,
+  })
+
+  if (result.kind === 'failed') {
+    homeNotice.value = result.status
+    return
+  }
+
+  const remainingRecentDocuments = androidRecentDocuments.value.filter(
+    item => item.id !== result.previousId,
+  )
+  persistAndroidRecentDocuments(
+    result.accessRetained
+      ? [result.updatedRecord, ...remainingRecentDocuments]
+      : remainingRecentDocuments,
+  )
+
+  // Renaming can change the SAF URI; migrate everything keyed by it.
+  if (result.updatedRecord.id !== result.previousId) {
+    if (result.accessRetained && pinnedDocumentIds.value.has(result.previousId)) {
+      persistPinnedDocuments(
+        pinnedDocuments.value.map(pin =>
+          pin.id === result.previousId ? { ...pin, id: result.updatedRecord.id } : pin,
+        ),
+      )
+    }
+
+    const previousUri = record.sourceUri
+    const nextUri = result.updatedRecord.sourceUri
+    if (previousUri && nextUri && previousUri !== nextUri) {
+      const previousRecoveryId = getAndroidRecoveryDraftId(previousUri)
+      const recoveryDraft = localDrafts.value.find(draft => draft.id === previousRecoveryId)
+      if (recoveryDraft) {
+        persistLocalDrafts([
+          { ...recoveryDraft, id: getAndroidRecoveryDraftId(nextUri) },
+          ...removeLocalDraft(localDrafts.value, previousRecoveryId),
+        ])
+      }
+    }
+  }
+
+  if (!result.accessRetained) {
+    // A session grant cannot back a durable home entry or pin. Recovery
+    // content remains local under the migrated URI until the user reopens the
+    // renamed file through Android and obtains a new persisted grant.
+    persistPinnedDocuments(
+      pinnedDocuments.value.filter(
+        pin => pin.id !== result.previousId && pin.id !== result.updatedRecord.id,
+      ),
+    )
+  }
+
+  if (documentState.value.id === result.previousId) {
+    documentState.value = {
+      ...documentState.value,
+      id: result.updatedRecord.id,
+      sourceUri: result.updatedRecord.sourceUri,
+      displayName: result.updatedRecord.displayName,
+    }
+  }
+
+  // The rename itself succeeded, but a session-scoped URI must not survive in
+  // durable Recents. Tell the user how to restore the entry explicitly.
+  homeNotice.value = result.accessRetained ? null : RENAME_TEMPORARY_ACCESS_MESSAGE
+  homeSelection.clear()
+}
+
 async function openDocument(id: string) {
   const recentDocument = documentItems.value.find(record => record.id === id)
   if (!recentDocument) {
@@ -2086,12 +2327,21 @@ async function handleAppBackButton() {
     linkSheetOpen: linkSheetOpen.value,
     editorMenuOpen: editorMenuOpen.value,
     editorToolbarExpanded: editorToolbarExpanded.value,
+    homeSelectionActive: homeSelection.isActive.value,
+    homeSheetOpen: homeDeleteSheetOpen.value || homeRenameSheetOpen.value,
   })
 
   switch (action) {
     case 'close-android-exit-prompt':
       androidExitPromptOpen.value = false
       status.value = getAndroidEditorStatus()
+      return
+    case 'close-home-sheet':
+      homeDeleteSheetOpen.value = false
+      homeRenameSheetOpen.value = false
+      return
+    case 'clear-home-selection':
+      homeSelection.clear()
       return
     case 'close-local-draft-exit-prompt':
       draftExitPromptOpen.value = false
@@ -2226,6 +2476,7 @@ onMounted(() => {
   const legacyDraft = readLegacyDraft()
 
   androidRecentDocuments.value = restoredRecentDocuments
+  pinnedDocuments.value = readStoredPinnedDocuments()
 
   if (restoredDrafts.length > 0) {
     localDrafts.value = restoredDrafts
@@ -2251,6 +2502,11 @@ onMounted(() => {
     documentState.value = migratedDocument
   } else {
     documentState.value = createUntitledDocument({ autosaveTarget: 'local-draft' })
+  }
+
+  const prunedPins = prunePinnedDocuments(pinnedDocuments.value, getAllStoredDocumentIds())
+  if (prunedPins.length !== pinnedDocuments.value.length) {
+    persistPinnedDocuments(prunedPins)
   }
 
   draftLog.info('local draft checked', {
@@ -2302,14 +2558,30 @@ onBeforeUnmount(() => {
     :active-tab="homeTab"
     :settings-page="settingsPage"
     :continue-document="continueDocument"
+    :pinned-documents="pinnedHomeDocuments"
     :earlier-documents="earlierDocuments"
     :notice="displayHomeNotice"
+    :selection-active="homeSelection.isActive.value"
+    :selection-count="homeSelection.count.value"
+    :selected-ids="homeSelection.selectedIds.value"
+    :all-selected-pinned="allSelectedDocumentsPinned"
+    :delete-sheet-open="homeDeleteSheetOpen"
+    :rename-sheet-open="homeRenameSheetOpen"
     @new-document="newDocument"
     @open-document="openDocument"
     @open-file="openFileFromAndroid"
     @set-tab="setHomeTab"
     @set-settings-page="setSettingsPage"
     @run-maintenance-action="runAdvancedMaintenanceAction"
+    @select-document="homeSelection.beginWith"
+    @toggle-document="homeSelection.toggle"
+    @exit-selection="homeSelection.clear"
+    @pin-selected="pinSelectedDocuments"
+    @delete-selected="deleteSelectedDocuments"
+    @share-selected="shareSelectedDocuments"
+    @rename-selected="renameSelectedDocument"
+    @update:delete-sheet-open="open => (homeDeleteSheetOpen = open)"
+    @update:rename-sheet-open="open => (homeRenameSheetOpen = open)"
   />
 
   <EditorScreen

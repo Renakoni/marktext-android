@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   createUntitledDocument,
+  getCustomDisplayName,
   getDocumentStats,
   getDocumentTitle,
   getSuggestedMarkdownCopyFileName,
@@ -49,6 +50,12 @@ describe('documentState', () => {
   it('keeps real file display names ahead of content-derived titles', () => {
     expect(getDocumentTitle('leading text without heading', 'trip-notes.md'))
       .toBe('trip-notes')
+  })
+
+  it('treats the Untitled placeholder as no custom display name', () => {
+    expect(getCustomDisplayName('Untitled-1')).toBeUndefined()
+    expect(getCustomDisplayName('  ')).toBeUndefined()
+    expect(getCustomDisplayName(' Trip plan ')).toBe('Trip plan')
   })
 
   it('suggests a Markdown file name from the first heading', () => {

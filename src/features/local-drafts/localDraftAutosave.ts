@@ -1,4 +1,5 @@
 import {
+  getCustomDisplayName,
   markDocumentSaved,
   markDocumentSaving,
   updateDocumentMarkdown,
@@ -37,6 +38,9 @@ export function createLocalDraftAutosaveResult(
         createdAt: savedDocument.createdAt,
         updatedAt: savedDocument.updatedAt,
         lastSavedAt: savedDocument.lastSavedAt,
+        // The Untitled-N placeholder is not a name; upsert then keeps any
+        // rename already stored on the draft record.
+        displayName: getCustomDisplayName(savedDocument.displayName),
       })
     : removeLocalDraft(drafts, savedDocument.id)
 
