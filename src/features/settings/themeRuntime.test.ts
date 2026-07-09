@@ -81,6 +81,78 @@ describe('applyAppTheme', () => {
   })
 })
 
+describe('watchSystemColorScheme', () => {
+  type MutableGlobal = { window?: unknown }
+  const mutableGlobal = globalThis as MutableGlobal
+
+  function withMediaQuery(mediaQuery: unknown, run: () => void) {
+    mutableGlobal.window = { matchMedia: () => mediaQuery }
+    try {
+      run()
+    } finally {
+      delete mutableGlobal.window
+    }
+  }
+
+  it('uses the EventTarget API when available and cleans up on it', () => {
+    const calls: string[] = []
+    let handler: ((event: MediaQueryListEvent) => void) | null = null
+    withMediaQuery({
+      matches: false,
+      addEventListener: (_type: string, fn: (event: MediaQueryListEvent) => void) => {
+        calls.push('addEventListener')
+        handler = fn
+      },
+      removeEventListener: () => calls.push('removeEventListener'),
+    }, () => {
+      let seen: boolean | null = null
+      const cleanup = watchSystemColorScheme(prefersDark => {
+        seen = prefersDark
+      })
+
+      expect(calls).toEqual(['addEventListener'])
+      handler!({ matches: true } as MediaQueryListEvent)
+      expect(seen).toBe(true)
+
+      cleanup()
+      expect(calls).toEqual(['addEventListener', 'removeEventListener'])
+    })
+  })
+
+  it('falls back to legacy addListener/removeListener on old WebViews', () => {
+    // Older Android WebViews return a MediaQueryList without the EventTarget
+    // API; this runs early in App mount, so it must not throw there.
+    const calls: string[] = []
+    let handler: ((event: MediaQueryListEvent) => void) | null = null
+    withMediaQuery({
+      matches: false,
+      addListener: (fn: (event: MediaQueryListEvent) => void) => {
+        calls.push('addListener')
+        handler = fn
+      },
+      removeListener: () => calls.push('removeListener'),
+    }, () => {
+      let seen: boolean | null = null
+      const cleanup = watchSystemColorScheme(prefersDark => {
+        seen = prefersDark
+      })
+
+      expect(calls).toEqual(['addListener'])
+      handler!({ matches: true } as MediaQueryListEvent)
+      expect(seen).toBe(true)
+
+      cleanup()
+      expect(calls).toEqual(['addListener', 'removeListener'])
+    })
+  })
+
+  it('returns a safe noop when the MediaQueryList exposes neither API', () => {
+    withMediaQuery({ matches: false }, () => {
+      expect(() => watchSystemColorScheme(() => {})()).not.toThrow()
+    })
+  })
+})
+
 describe('isDarkAppTheme', () => {
   it('classifies shipped themes', () => {
     expect(isDarkAppTheme('graphite-light')).toBe(false)
