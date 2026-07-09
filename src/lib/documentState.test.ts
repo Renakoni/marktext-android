@@ -21,6 +21,36 @@ describe('documentState', () => {
     expect(getDocumentTitle('plain text', 'notes.md')).toBe('notes')
   })
 
+  it('names untitled drafts from their first meaningful line', () => {
+    // Drafts have no real file name, so without a heading they previously
+    // all read "Untitled-1" on the home list.
+    expect(getDocumentTitle('买菜清单，周六之前')).toBe('买菜清单，周六之前')
+    expect(getDocumentTitle('- first item\n- second item')).toBe('first item')
+    expect(getDocumentTitle('> quoted opening line\nbody')).toBe('quoted opening line')
+    expect(getDocumentTitle('**bold start** of a note')).toBe('bold start of a note')
+    expect(getDocumentTitle('[a link](https://example.com) opens this'))
+      .toBe('a link opens this')
+    expect(getDocumentTitle('1. step one\n2. step two')).toBe('step one')
+  })
+
+  it('skips front matter and pure-syntax lines when deriving draft titles', () => {
+    expect(getDocumentTitle('---\ntitle: meta\n---\nActual first line')).toBe('Actual first line')
+    expect(getDocumentTitle('---\n\nBelow a thematic break')).toBe('Below a thematic break')
+    expect(getDocumentTitle('```js\nconst x = 1\n```')).toBe('const x = 1')
+  })
+
+  it('truncates long derived titles and keeps empty drafts untitled', () => {
+    const longLine = 'word '.repeat(30).trim()
+    expect(getDocumentTitle(longLine).length).toBeLessThanOrEqual(48)
+    expect(getDocumentTitle('')).toBe('Untitled-1')
+    expect(getDocumentTitle('   \n\n')).toBe('Untitled-1')
+  })
+
+  it('keeps real file display names ahead of content-derived titles', () => {
+    expect(getDocumentTitle('leading text without heading', 'trip-notes.md'))
+      .toBe('trip-notes')
+  })
+
   it('suggests a Markdown file name from the first heading', () => {
     expect(getSuggestedMarkdownFileName('# Trip notes\n\nbody', 'draft.md')).toBe('Trip notes.md')
   })

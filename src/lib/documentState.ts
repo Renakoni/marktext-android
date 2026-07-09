@@ -131,6 +131,58 @@ function stripMarkdownExtension(displayName: string) {
   return displayName.replace(MARKDOWN_EXTENSION_REGEXP, '')
 }
 
+const UNTITLED_NAME_REGEXP = /^Untitled-\d+$/
+const FRONTMATTER_DELIMITER_REGEXP = /^---\s*$/
+const THEMATIC_BREAK_REGEXP = /^\s*([-*_])(\s*\1){2,}\s*$/
+const CODE_FENCE_REGEXP = /^\s*(?:`{3,}|~{3,})/
+const TITLE_MAX_LENGTH = 48
+
+// Best-effort plain-text reduction of a Markdown line for use as a title:
+// strips the common block prefixes and inline markers without a full parse.
+// Lines that are pure syntax (fences, thematic breaks) reduce to nothing.
+function extractTitleTextFromLine(line: string) {
+  const trimmed = line.trim()
+  if (!trimmed || THEMATIC_BREAK_REGEXP.test(trimmed) || CODE_FENCE_REGEXP.test(trimmed)) {
+    return ''
+  }
+
+  return trimmed
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/^(?:>\s*)+/, '')
+    .replace(/^(?:[-*+]|\d+[.)])\s+/, '')
+    .replace(/^\[[ xX]\]\s+/, '')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[`*_~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// The first line of the document that still reads as text once Markdown
+// syntax is stripped, skipping a leading YAML front matter block.
+function getLeadingTitleText(markdown: string) {
+  const lines = markdown.split(/\r\n|\r|\n/)
+  let index = 0
+
+  if (lines[0] !== undefined && FRONTMATTER_DELIMITER_REGEXP.test(lines[0])) {
+    const closing = lines.findIndex(
+      (line, lineIndex) => lineIndex > 0 && FRONTMATTER_DELIMITER_REGEXP.test(line),
+    )
+    if (closing > 0) {
+      index = closing + 1
+    }
+  }
+
+  for (; index < lines.length; index += 1) {
+    const text = extractTitleTextFromLine(lines[index])
+    if (text) {
+      return text.length > TITLE_MAX_LENGTH ? text.slice(0, TITLE_MAX_LENGTH).trim() : text
+    }
+  }
+
+  return ''
+}
+
 export function normalizeMarkdownForEditor(
   rawMarkdown: string,
   preferredLineEnding: LineEnding = 'lf',
@@ -196,7 +248,19 @@ export function getDocumentTitle(markdown: string, displayName = DEFAULT_UNTITLE
     .map(line => line.match(/^#{1,6}\s+(.+)$/)?.[1]?.trim())
     .find(Boolean)
 
-  return heading || stripMarkdownExtension(displayName) || 'Untitled'
+  if (heading) {
+    return heading
+  }
+
+  // A real display name (an opened file's name) still wins over content, but
+  // the generic Untitled-N placeholder yields to the document's own leading
+  // text so drafts name themselves instead of all reading "Untitled-1".
+  const name = stripMarkdownExtension(displayName)
+  if (name && !UNTITLED_NAME_REGEXP.test(displayName)) {
+    return name
+  }
+
+  return getLeadingTitleText(markdown) || name || 'Untitled'
 }
 
 export function getSuggestedMarkdownFileName(markdown: string, displayName = DEFAULT_UNTITLED_NAME) {
