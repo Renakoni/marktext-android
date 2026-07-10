@@ -9,7 +9,7 @@ import type {
 import type Code from '../../commonMark/codeBlock/code';
 import type HTMLPreview from '../../commonMark/html/htmlPreview';
 import { HTML_TAGS, VOID_HTML_TAGS } from '../../../config';
-import { adjustOffset, escapeHTML } from '../../../utils';
+import { adjustOffset, escapeHTML, firstWordOfInfo } from '../../../utils';
 import { computeLineCount, repositionLineNumberSpans, syncLineNumbersSpans } from '../../../utils/codeBlockLineNumbers';
 import { getHighlightHtml, MARKER_HASH } from '../../../utils/highlightHTML';
 import prism, { loadedLanguages, transformAliasToOrigin, walkTokens } from '../../../utils/prism/index';
@@ -100,7 +100,7 @@ class CodeBlockContent extends Content {
     private get _lang() {
         const { _codeContainer: codeContainer } = this;
 
-        return codeContainer ? codeContainer.lang : this._initialLang;
+        return firstWordOfInfo(codeContainer ? codeContainer.lang : this._initialLang);
     }
 
     /**

@@ -353,12 +353,12 @@ export default class ExportMarkdown {
         const result = [];
         const { text, meta } = state;
         const textList = text.split('\n');
+        // `meta.lang` holds the full info string verbatim, so emit it as-is.
         const { type, lang } = meta;
-        const info = meta.info && meta.info.match(/\S*/)?.[0] === lang ? meta.info : lang;
 
         if (type === 'fenced') {
             const fence = '`'.repeat(this._codeFenceLength(text, meta.fenceLength));
-            result.push(`${indent}${info ? `${fence}${info}\n` : `${fence}\n`}`);
+            result.push(`${indent}${lang ? `${fence}${lang}\n` : `${fence}\n`}`);
             textList.forEach((text) => {
                 result.push(`${indent}${text}\n`);
             });
