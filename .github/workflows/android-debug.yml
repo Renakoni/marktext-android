@@ -35,10 +35,13 @@ jobs:
       - name: Sync Capacitor Android assets
         run: pnpm exec cap sync android
 
-      - name: Build debug APK
+      - name: Run native unit tests
         run: |
           chmod +x android/gradlew
-          ./android/gradlew -p android assembleDebug --no-daemon
+          ./android/gradlew -p android testDebugUnitTest --no-daemon
+
+      - name: Build debug APK
+        run: ./android/gradlew -p android assembleDebug --no-daemon
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
