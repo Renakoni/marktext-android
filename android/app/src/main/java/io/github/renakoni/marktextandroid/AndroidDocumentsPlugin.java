@@ -31,12 +31,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
-import java.nio.charset.CodingErrorAction;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -50,7 +44,6 @@ import java.util.regex.Pattern;
 public class AndroidDocumentsPlugin extends Plugin {
 
     private static final String TAG = "MarkTextAndroid";
-    private static final int MAX_MARKDOWN_BYTES = 5 * 1024 * 1024;
     private static final int MAX_IMAGE_BYTES = 15 * 1024 * 1024;
     private static final String CALLBACK_OPEN_MARKDOWN_DOCUMENT = "openMarkdownDocumentResult";
     private static final String CALLBACK_CREATE_MARKDOWN_DOCUMENT = "createMarkdownDocumentResult";
@@ -59,11 +52,6 @@ public class AndroidDocumentsPlugin extends Plugin {
     private static final String EVENT_SHARE_DOCUMENT = "shareDocument";
     private static final String IMPORTED_IMAGE_DIRECTORY = "images";
     private static final String SHARE_CACHE_DIRECTORY = "shared-markdown";
-    private static final byte[] UTF8_BOM = new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
-    private static final byte[] UTF16BE_BOM = new byte[] { (byte) 0xFE, (byte) 0xFF };
-    private static final byte[] UTF16LE_BOM = new byte[] { (byte) 0xFF, (byte) 0xFE };
-    private static final byte[] UTF32BE_BOM = new byte[] { 0x00, 0x00, (byte) 0xFE, (byte) 0xFF };
-    private static final byte[] UTF32LE_BOM = new byte[] { (byte) 0xFF, (byte) 0xFE, 0x00, 0x00 };
     private static final Pattern MARKTEXT_IMAGE_SOURCE_PATTERN = Pattern.compile(
         "marktext-image://local/([^\\s)]+)",
         Pattern.CASE_INSENSITIVE
@@ -135,7 +123,7 @@ public class AndroidDocumentsPlugin extends Plugin {
 
         MarkdownWriteOptions writeOptions = getMarkdownWriteOptions(call);
         try {
-            validateMarkdownBytes(markdown, writeOptions);
+            MarkdownCodec.validateBytes(markdown, writeOptions);
         } catch (DocumentReadException ex) {
             Log.w(TAG, "Android document create rejected: " + ex.getMessage());
             call.reject(ex.getMessage(), ex.code, ex);
@@ -190,7 +178,7 @@ public class AndroidDocumentsPlugin extends Plugin {
             : new ShareMarkdownPayload(markdown, new LinkedHashMap<>());
         byte[] bytes;
         try {
-            bytes = validateMarkdownBytes(sharePayload.markdown, writeOptions);
+            bytes = MarkdownCodec.validateBytes(sharePayload.markdown, writeOptions);
         } catch (DocumentReadException ex) {
             Log.w(TAG, "Android share rejected: " + ex.getMessage());
             call.reject(ex.getMessage(), ex.code, ex);
@@ -288,7 +276,7 @@ public class AndroidDocumentsPlugin extends Plugin {
                     return;
                 }
 
-                byte[] bytes = validateMarkdownBytes(markdown, writeOptions);
+                byte[] bytes = MarkdownCodec.validateBytes(markdown, writeOptions);
                 String fileName = uniqueShareFileName(
                     normalizeSuggestedMarkdownName(document.optString("suggestedName", "")),
                     usedNames
@@ -712,7 +700,7 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
 
         try {
-            validateMarkdownBytes(markdown);
+            MarkdownCodec.validateBytes(markdown);
             String displayName = getSharedTextDisplayName(intent);
             JSObject document = new JSObject();
             document.put("canceled", false);
@@ -1001,7 +989,7 @@ public class AndroidDocumentsPlugin extends Plugin {
         String markdown,
         MarkdownWriteOptions writeOptions
     ) throws IOException, DocumentReadException {
-        byte[] bytes = validateMarkdownBytes(markdown, writeOptions);
+        byte[] bytes = MarkdownCodec.validateBytes(markdown, writeOptions);
         writeText(uri, bytes);
 
         String displayName = getDisplayName(uri);
@@ -1034,7 +1022,7 @@ public class AndroidDocumentsPlugin extends Plugin {
             );
         }
 
-        byte[] bytes = validateMarkdownBytes(markdown, writeOptions);
+        byte[] bytes = MarkdownCodec.validateBytes(markdown, writeOptions);
         writeText(uri, bytes);
         JSObject result = new JSObject();
         result.put("sourceUri", uri.toString());
@@ -1058,50 +1046,6 @@ public class AndroidDocumentsPlugin extends Plugin {
             return null;
         }
         return uri;
-    }
-
-    private byte[] validateMarkdownBytes(String markdown) throws DocumentReadException {
-        return validateMarkdownBytes(markdown, new MarkdownWriteOptions("utf8", false));
-    }
-
-    private byte[] validateMarkdownBytes(String markdown, MarkdownWriteOptions writeOptions) throws DocumentReadException {
-        byte[] bytes = encodeMarkdown(markdown, writeOptions);
-        if (bytes.length > MAX_MARKDOWN_BYTES) {
-            throw new DocumentReadException(
-                "DOCUMENT_TOO_LARGE",
-                "Markdown document is larger than the current 5 MB limit"
-            );
-        }
-        return bytes;
-    }
-
-    private byte[] encodeMarkdown(String markdown, MarkdownWriteOptions writeOptions) throws DocumentReadException {
-        Charset charset = getMarkdownCharset(writeOptions.encoding);
-        byte[] body;
-        try {
-            ByteBuffer buffer = charset
-                .newEncoder()
-                .onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT)
-                .encode(CharBuffer.wrap(markdown));
-            body = new byte[buffer.remaining()];
-            buffer.get(body);
-        } catch (CharacterCodingException ex) {
-            throw new DocumentReadException(
-                "DOCUMENT_ENCODING_FAILED",
-                "Could not encode Markdown with the selected encoding"
-            );
-        }
-
-        byte[] bom = getEncodingBom(writeOptions);
-        if (bom.length == 0) {
-            return body;
-        }
-
-        byte[] bytes = new byte[bom.length + body.length];
-        System.arraycopy(bom, 0, bytes, 0, bom.length);
-        System.arraycopy(body, 0, bytes, bom.length, body.length);
-        return bytes;
     }
 
     private String normalizeSuggestedMarkdownName(String suggestedName) {
@@ -1337,7 +1281,7 @@ public class AndroidDocumentsPlugin extends Plugin {
             int read;
             while ((read = input.read(buffer)) != -1) {
                 totalBytes += read;
-                if (totalBytes > MAX_MARKDOWN_BYTES) {
+                if (totalBytes > MarkdownCodec.MAX_MARKDOWN_BYTES) {
                     throw new DocumentReadException(
                         "DOCUMENT_TOO_LARGE",
                         "Markdown document is larger than the current 5 MB limit"
@@ -1345,233 +1289,19 @@ public class AndroidDocumentsPlugin extends Plugin {
                 }
                 output.write(buffer, 0, read);
             }
-            return decodeMarkdown(output.toByteArray());
-        }
-    }
-
-    private DecodedMarkdown decodeMarkdown(byte[] bytes) throws DocumentReadException {
-        MarkdownBom bom = detectMarkdownBom(bytes);
-        boolean useBom = bom.hasBom && (
-            autoDetectMarkdownEncoding ||
-            normalizeMarkdownEncoding(defaultMarkdownEncoding).equals(bom.encoding)
-        );
-        String encoding = useBom ? bom.encoding : normalizeMarkdownEncoding(defaultMarkdownEncoding);
-        int offset = useBom ? bom.offset : 0;
-        Charset charset = getMarkdownCharset(encoding);
-
-        try {
-            String markdown = charset
-                .newDecoder()
-                .onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT)
-                .decode(ByteBuffer.wrap(bytes, offset, bytes.length - offset))
-                .toString();
-            // TODO: Add full non-BOM charset detection for Advanced > Encoding.
-            return new DecodedMarkdown(markdown, encoding, useBom);
-        } catch (CharacterCodingException | IndexOutOfBoundsException ex) {
-            throw new DocumentReadException(
-                "DOCUMENT_ENCODING_FAILED",
-                "Could not decode Markdown with the selected encoding"
-            );
+            return MarkdownCodec.decode(output.toByteArray(), defaultMarkdownEncoding, autoDetectMarkdownEncoding);
         }
     }
 
     private void applyMarkdownSettingsFromCall(PluginCall call) {
-        defaultMarkdownEncoding = normalizeMarkdownEncoding(call.getString("defaultEncoding", defaultMarkdownEncoding));
+        defaultMarkdownEncoding = MarkdownCodec.normalizeEncoding(call.getString("defaultEncoding", defaultMarkdownEncoding));
         autoDetectMarkdownEncoding = call.getBoolean("autoDetectEncoding", autoDetectMarkdownEncoding);
     }
 
     private MarkdownWriteOptions getMarkdownWriteOptions(PluginCall call) {
-        String encoding = normalizeMarkdownEncoding(call.getString("encoding", defaultMarkdownEncoding));
+        String encoding = MarkdownCodec.normalizeEncoding(call.getString("encoding", defaultMarkdownEncoding));
         boolean writeBom = call.getBoolean("writeBom", false);
         return new MarkdownWriteOptions(encoding, writeBom);
-    }
-
-    private String normalizeMarkdownEncoding(String encoding) {
-        String normalized = encoding == null ? "" : encoding.trim().toLowerCase(Locale.US);
-        switch (normalized) {
-            case "ascii":
-            case "utf8":
-            case "utf16be":
-            case "utf16le":
-            case "utf32be":
-            case "utf32le":
-            case "latin3":
-            case "iso885915":
-            case "cp1252":
-            case "arabic":
-            case "cp1256":
-            case "latin4":
-            case "cp1257":
-            case "iso88592":
-            case "windows1250":
-            case "cp866":
-            case "iso88595":
-            case "koi8r":
-            case "koi8u":
-            case "cp1251":
-            case "iso885913":
-            case "greek":
-            case "cp1253":
-            case "hebrew":
-            case "cp1255":
-            case "latin5":
-            case "cp1254":
-            case "gb2312":
-            case "gb18030":
-            case "gbk":
-            case "big5":
-            case "big5hkscs":
-            case "shiftjis":
-            case "eucjp":
-            case "euckr":
-            case "latin6":
-                return normalized;
-            default:
-                return "utf8";
-        }
-    }
-
-    private Charset getMarkdownCharset(String encoding) throws DocumentReadException {
-        try {
-            return Charset.forName(getMarkdownCharsetName(encoding));
-        } catch (IllegalArgumentException ex) {
-            throw new DocumentReadException(
-                "DOCUMENT_ENCODING_UNSUPPORTED",
-                "Selected Markdown encoding is not supported on this device"
-            );
-        }
-    }
-
-    private String getMarkdownCharsetName(String encoding) {
-        switch (normalizeMarkdownEncoding(encoding)) {
-            case "ascii":
-                return StandardCharsets.US_ASCII.name();
-            case "utf8":
-                return StandardCharsets.UTF_8.name();
-            case "utf16be":
-                return StandardCharsets.UTF_16BE.name();
-            case "utf16le":
-                return StandardCharsets.UTF_16LE.name();
-            case "utf32be":
-                return "UTF-32BE";
-            case "utf32le":
-                return "UTF-32LE";
-            case "latin3":
-                return "ISO-8859-3";
-            case "iso885915":
-                return "ISO-8859-15";
-            case "cp1252":
-                return "windows-1252";
-            case "arabic":
-                return "ISO-8859-6";
-            case "cp1256":
-                return "windows-1256";
-            case "latin4":
-                return "ISO-8859-4";
-            case "cp1257":
-                return "windows-1257";
-            case "iso88592":
-                return "ISO-8859-2";
-            case "windows1250":
-                return "windows-1250";
-            case "cp866":
-                return "IBM866";
-            case "iso88595":
-                return "ISO-8859-5";
-            case "koi8r":
-                return "KOI8-R";
-            case "koi8u":
-                return "KOI8-U";
-            case "cp1251":
-                return "windows-1251";
-            case "iso885913":
-                return "ISO-8859-13";
-            case "greek":
-                return "ISO-8859-7";
-            case "cp1253":
-                return "windows-1253";
-            case "hebrew":
-                return "ISO-8859-8";
-            case "cp1255":
-                return "windows-1255";
-            case "latin5":
-                return "ISO-8859-9";
-            case "cp1254":
-                return "windows-1254";
-            case "gb2312":
-                return "GB2312";
-            case "gb18030":
-                return "GB18030";
-            case "gbk":
-                return "GBK";
-            case "big5":
-                return "Big5";
-            case "big5hkscs":
-                return "Big5-HKSCS";
-            case "shiftjis":
-                return "Shift_JIS";
-            case "eucjp":
-                return "EUC-JP";
-            case "euckr":
-                return "EUC-KR";
-            case "latin6":
-                return "ISO-8859-10";
-            default:
-                return StandardCharsets.UTF_8.name();
-        }
-    }
-
-    private byte[] getEncodingBom(MarkdownWriteOptions writeOptions) {
-        if (!writeOptions.writeBom) {
-            return new byte[0];
-        }
-
-        switch (writeOptions.encoding) {
-            case "utf8":
-                return UTF8_BOM;
-            case "utf16be":
-                return UTF16BE_BOM;
-            case "utf16le":
-                return UTF16LE_BOM;
-            case "utf32be":
-                return UTF32BE_BOM;
-            case "utf32le":
-                return UTF32LE_BOM;
-            default:
-                return new byte[0];
-        }
-    }
-
-    private MarkdownBom detectMarkdownBom(byte[] bytes) {
-        if (startsWith(bytes, UTF8_BOM)) {
-            return new MarkdownBom("utf8", UTF8_BOM.length, true);
-        }
-        if (startsWith(bytes, UTF32BE_BOM)) {
-            return new MarkdownBom("utf32be", UTF32BE_BOM.length, true);
-        }
-        if (startsWith(bytes, UTF32LE_BOM)) {
-            return new MarkdownBom("utf32le", UTF32LE_BOM.length, true);
-        }
-        if (startsWith(bytes, UTF16BE_BOM)) {
-            return new MarkdownBom("utf16be", UTF16BE_BOM.length, true);
-        }
-        if (startsWith(bytes, UTF16LE_BOM)) {
-            return new MarkdownBom("utf16le", UTF16LE_BOM.length, true);
-        }
-        return new MarkdownBom(defaultMarkdownEncoding, 0, false);
-    }
-
-    private boolean startsWith(byte[] bytes, byte[] prefix) {
-        if (bytes.length < prefix.length) {
-            return false;
-        }
-        for (int index = 0; index < prefix.length; index++) {
-            if (bytes[index] != prefix[index]) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private void putMarkdownEncodingMetadata(JSObject result, DecodedMarkdown decoded) {
@@ -1579,7 +1309,7 @@ public class AndroidDocumentsPlugin extends Plugin {
     }
 
     private void putMarkdownEncodingMetadata(JSObject result, String encoding, boolean hasBom) {
-        result.put("encoding", normalizeMarkdownEncoding(encoding));
+        result.put("encoding", MarkdownCodec.normalizeEncoding(encoding));
         result.put("hasEncodingBom", hasBom);
     }
 
@@ -1952,53 +1682,6 @@ public class AndroidDocumentsPlugin extends Plugin {
             return "";
         }
         return value.replace('\r', ' ').replace('\n', ' ').trim();
-    }
-
-    private static class DocumentReadException extends Exception {
-
-        final String code;
-
-        DocumentReadException(String code, String message) {
-            super(message);
-            this.code = code;
-        }
-    }
-
-    private static class MarkdownWriteOptions {
-
-        final String encoding;
-        final boolean writeBom;
-
-        MarkdownWriteOptions(String encoding, boolean writeBom) {
-            this.encoding = encoding;
-            this.writeBom = writeBom;
-        }
-    }
-
-    private static class DecodedMarkdown {
-
-        final String markdown;
-        final String encoding;
-        final boolean hasBom;
-
-        DecodedMarkdown(String markdown, String encoding, boolean hasBom) {
-            this.markdown = markdown;
-            this.encoding = encoding;
-            this.hasBom = hasBom;
-        }
-    }
-
-    private static class MarkdownBom {
-
-        final String encoding;
-        final int offset;
-        final boolean hasBom;
-
-        MarkdownBom(String encoding, int offset, boolean hasBom) {
-            this.encoding = encoding;
-            this.offset = offset;
-            this.hasBom = hasBom;
-        }
     }
 
     private static class ShareMarkdownPayload {
