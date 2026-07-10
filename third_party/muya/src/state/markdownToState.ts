@@ -14,11 +14,6 @@ import logger from '../utils/logger';
 import { lexBlock } from '../utils/marked';
 
 const debug = logger('import markdown: ');
-function restoreTableEscapeCharacters(text: string) {
-    // NOTE: markedjs replaces all escaped "|" ("\|") characters inside a cell with "|".
-    //       We have to re-escape the character to not break the table.
-    return text.replace(/\|/g, '\\|');
-}
 
 function getOrderedListItemMarker(token: TBlockToken) {
     if (token.type !== 'list_item')
@@ -313,7 +308,7 @@ export class MarkdownToState {
                     children: header.map((h, i) => ({
                         name: 'table.cell' as const,
                         meta: { align: align[i] || 'none' },
-                        text: restoreTableEscapeCharacters(h.text),
+                        text: h.text,
                     })),
                 });
 
@@ -323,7 +318,7 @@ export class MarkdownToState {
                         children: row.map((c, i) => ({
                             name: 'table.cell' as const,
                             meta: { align: align[i] || 'none' },
-                            text: restoreTableEscapeCharacters(c.text),
+                            text: c.text,
                         })),
                     })),
                 );
