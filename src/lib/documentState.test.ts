@@ -6,6 +6,7 @@ import {
   getDocumentTitle,
   getSuggestedMarkdownCopyFileName,
   getSuggestedMarkdownFileName,
+  getSuggestedPdfFileName,
   normalizeMarkdownForEditor,
   prepareMarkdownForSave,
   updateDocumentMarkdown,
@@ -101,6 +102,13 @@ describe('documentState', () => {
 
   it('sanitizes suggested Markdown file names for Android document creation', () => {
     expect(getSuggestedMarkdownFileName('# Meeting: A/B?')).toBe('Meeting A B.md')
+  })
+
+  it('suggests a PDF file name from the document title', () => {
+    expect(getSuggestedPdfFileName('# Trip notes\n\nbody', 'draft.md')).toBe('Trip notes.pdf')
+    expect(getSuggestedPdfFileName('# Meeting: A/B?')).toBe('Meeting A B.pdf')
+    expect(getSuggestedPdfFileName('plain text', 'notes.md')).toBe('notes.pdf')
+    expect(getSuggestedPdfFileName('')).toBe('Untitled-1.pdf')
   })
 
   it('suggests a copy file name without changing the source Markdown title', () => {

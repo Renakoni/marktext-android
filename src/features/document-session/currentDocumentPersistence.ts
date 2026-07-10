@@ -6,6 +6,7 @@ import {
 import { saveAndroidDocumentCopyWorkflow } from '../android-documents/saveAndroidDocumentCopyWorkflow'
 import { saveLocalDraftToAndroidDocumentWorkflow } from '../android-documents/saveLocalDraftToAndroidDocumentWorkflow'
 import { shareAndroidMarkdownDocumentWorkflow } from '../android-documents/shareAndroidMarkdownDocumentWorkflow'
+import { exportAndroidPdfWorkflow } from '../android-documents/exportAndroidPdfWorkflow'
 import {
   createAndroidRecoveryDraft,
   getAndroidRecoveryDraftId,
@@ -15,6 +16,7 @@ import type { ImageSharingSettings } from '../android-documents/imageSharingSett
 import { createLocalDraftAutosaveResult } from '../local-drafts/localDraftAutosave'
 import type { MarkdownSaveSettings } from '../settings/advancedSettings'
 import type {
+  AndroidPdfExportResult,
   AndroidShareResult,
   OpenedAndroidDocument,
 } from '../../lib/androidDocuments'
@@ -60,6 +62,7 @@ export interface CurrentDocumentPersistenceOptions {
   savingLocalDraftToAndroid: Ref<boolean>
   savingAndroidDocumentCopy: Ref<boolean>
   sharingCurrentDocument: Ref<boolean>
+  exportingPdfDocument: Ref<boolean>
   // Editor access and chrome, owned by App.
   hasEditor: () => boolean
   getEditorMarkdownSnapshot: (flushPending?: boolean) => string
@@ -91,6 +94,16 @@ export interface CurrentDocumentPersistenceOptions {
     suggestedName: string,
     options: { attachImages: boolean, encoding: MarkdownSaveSettings['encoding'] },
   ) => Promise<AndroidShareResult>
+  renderPdfExportHtml: (options: {
+    markdown: string
+    title: string
+    textDirection: 'ltr' | 'rtl'
+  }) => Promise<string>
+  exportAndroidMarkdownPdf: (
+    html: string,
+    suggestedName: string,
+  ) => Promise<AndroidPdfExportResult>
+  getPdfTextDirection: () => 'ltr' | 'rtl'
   getAndroidDocumentUserMessage: (error: unknown) => string
   // Settings and messages.
   markdownSaveSettings: Ref<MarkdownSaveSettings>
@@ -109,6 +122,7 @@ export interface CurrentDocumentPersistence {
   saveLocalDraftToAndroidDocument(options?: { returnHomeAfterSave?: boolean }): Promise<boolean>
   saveAndroidDocumentCopy(options?: { returnHomeAfterSave?: boolean }): Promise<boolean>
   shareCurrentMarkdownDocument(): Promise<boolean>
+  exportCurrentDocumentPdf(): Promise<boolean>
   flushCurrentDocument(reason: string): Promise<void>
 }
 
@@ -508,6 +522,45 @@ export function createCurrentDocumentPersistence(
     }
   }
 
+  async function exportCurrentDocumentPdf() {
+    options.closeEditorMenu()
+
+    if (
+      !options.hasEditor()
+      || !options.canShareCurrentDocument()
+      || options.exportingPdfDocument.value
+    ) {
+      return false
+    }
+
+    const currentDocument = options.syncDocumentFromEditor(
+      options.documentState.value.isDirty,
+      true,
+    )
+    if (currentDocument.autosaveTarget === 'local-draft') {
+      saveDraft()
+    }
+
+    options.exportingPdfDocument.value = true
+    options.status.value = 'Exporting PDF'
+
+    try {
+      const result = await exportAndroidPdfWorkflow({
+        currentDocument,
+        textDirection: options.getPdfTextDirection(),
+        renderPdfExportHtml: options.renderPdfExportHtml,
+        exportAndroidMarkdownPdf: options.exportAndroidMarkdownPdf,
+        getAndroidDocumentUserMessage: options.getAndroidDocumentUserMessage,
+        logger: options.documentLogger,
+      })
+
+      options.status.value = result.status
+      return result.kind === 'exported'
+    } finally {
+      options.exportingPdfDocument.value = false
+    }
+  }
+
   async function flushCurrentDocument(reason: string) {
     if (options.currentScreen.value !== 'editor' || !options.hasEditor()) {
       return
@@ -535,6 +588,7 @@ export function createCurrentDocumentPersistence(
     saveLocalDraftToAndroidDocument,
     saveAndroidDocumentCopy,
     shareCurrentMarkdownDocument,
+    exportCurrentDocumentPdf,
     flushCurrentDocument,
   }
 }

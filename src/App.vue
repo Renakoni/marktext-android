@@ -6,6 +6,7 @@ import EditorScreen from './features/editor/EditorScreen.vue'
 import {
   createAndroidMarkdownDocument,
   configureAndroidMarkdownSettings,
+  exportAndroidMarkdownPdf,
   getAndroidDocumentErrorCode,
   getAndroidDocumentUserMessage,
   isAndroidDocumentAccessAvailable,
@@ -36,6 +37,7 @@ import {
 } from './lib/androidSelection'
 import { createEditorSelectionLifecycle } from './features/editor/selectionLifecycle'
 import { createEditorSession, normalizeEditorMarkdown } from './features/editor/editorSession'
+import { renderMarkdownToPdfExportHtml } from './features/editor/pdfExportHtml'
 import {
   getAppBackButtonAction,
   getShowHomeAfterAndroidSaveAction,
@@ -192,6 +194,7 @@ const promptLocalDraftSaveOnExit = ref(false)
 const savingLocalDraftToAndroid = ref(false)
 const savingAndroidDocumentCopy = ref(false)
 const sharingCurrentDocument = ref(false)
+const exportingPdfDocument = ref(false)
 const {
   editorMenuOpen,
   editorToolbarExpanded,
@@ -791,6 +794,7 @@ const {
   saveLocalDraftToAndroidDocument,
   saveAndroidDocumentCopy,
   shareCurrentMarkdownDocument,
+  exportCurrentDocumentPdf,
   flushCurrentDocument,
 } = createCurrentDocumentPersistence({
   currentScreen,
@@ -806,6 +810,7 @@ const {
   savingLocalDraftToAndroid,
   savingAndroidDocumentCopy,
   sharingCurrentDocument,
+  exportingPdfDocument,
   hasEditor,
   getEditorMarkdownSnapshot,
   syncDocumentFromEditor,
@@ -832,6 +837,13 @@ const {
   writeAndroidMarkdownDocument,
   createAndroidMarkdownDocument,
   shareAndroidMarkdownDocument,
+  // The live editor instance carries the user's rendering settings
+  // (footnotes, super/subscript, GitLab compatibility, diagram options), so
+  // the PDF renders with editor parity.
+  renderPdfExportHtml: options =>
+    renderMarkdownToPdfExportHtml({ ...options, muya: getEditor() }),
+  exportAndroidMarkdownPdf,
+  getPdfTextDirection: () => appearanceTextSettings.value.textDirection,
   getAndroidDocumentUserMessage,
   markdownSaveSettings,
   imageSharingSettings,
@@ -1414,9 +1426,11 @@ onBeforeUnmount(() => {
     :character-count="characterCount"
     :line-count="lineCount"
     :can-share="canShareCurrentDocument()"
+    :can-export-pdf="canShareCurrentDocument()"
     :can-save-to-device="canSaveLocalDraftToAndroidDocument()"
     :can-save-copy="canSaveAndroidDocumentCopy()"
     :sharing="sharingCurrentDocument"
+    :exporting-pdf="exportingPdfDocument"
     :saving-to-device="savingLocalDraftToAndroid"
     :saving-copy="savingAndroidDocumentCopy"
     :link-sheet-open="linkSheetOpen"
@@ -1437,6 +1451,7 @@ onBeforeUnmount(() => {
     @toggle-menu="toggleEditorMenu"
     @close-menu="closeEditorMenu"
     @share="shareCurrentMarkdownDocument"
+    @export-pdf="exportCurrentDocumentPdf"
     @save-to-device="saveLocalDraftToAndroidDocument"
     @save-copy="saveAndroidDocumentCopy"
     @run-toolbar-command="runEditorToolbarCommand"

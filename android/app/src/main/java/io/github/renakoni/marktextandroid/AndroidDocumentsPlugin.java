@@ -327,6 +327,97 @@ public class AndroidDocumentsPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void exportMarkdownPdf(PluginCall call) {
+        Activity activity = getActivity();
+        if (activity == null) {
+            call.reject("No Android activity is available for sharing", "SHARE_TARGET_UNAVAILABLE");
+            return;
+        }
+
+        String html = call.getString("html", null);
+        if (html == null || html.trim().length() == 0) {
+            call.reject("Rendered document content is required", "PDF_EXPORT_FAILED");
+            return;
+        }
+
+        String suggestedName = SharePreparation.normalizeSuggestedPdfName(call.getString("suggestedName", ""));
+        File outputFile;
+        try {
+            File exportDirectory = SharePreparation.getPdfExportCacheDirectory(getContext());
+            outputFile = new File(exportDirectory, suggestedName);
+            if (!SharePreparation.isFileInDirectory(outputFile, exportDirectory)) {
+                throw new SecurityException("PDF export path escaped the expected directory");
+            }
+        } catch (IOException | SecurityException ex) {
+            Log.e(TAG, "Failed to prepare PDF export directory", ex);
+            call.reject("Could not prepare the PDF file for sharing", "PDF_WRITE_FAILED", ex);
+            return;
+        }
+
+        final File pdfFile = outputFile;
+        final String displayName = suggestedName;
+        activity.runOnUiThread(() ->
+            PdfExporter.export(activity, html, displayName, pdfFile, new PdfExporter.Callback() {
+                @Override
+                public void onSuccess() {
+                    sharePdfExport(call, activity, pdfFile, displayName);
+                }
+
+                @Override
+                public void onFailure(String code, String message) {
+                    call.reject(message, code);
+                }
+            })
+        );
+    }
+
+    private void sharePdfExport(PluginCall call, Activity activity, File pdfFile, String displayName) {
+        try {
+            Uri pdfUri = FileProvider.getUriForFile(
+                getContext(),
+                getContext().getPackageName() + ".fileprovider",
+                pdfFile
+            );
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("application/pdf");
+            shareIntent.putExtra(Intent.EXTRA_STREAM, pdfUri);
+            shareIntent.putExtra(Intent.EXTRA_TITLE, displayName);
+            shareIntent.putExtra(Intent.EXTRA_SUBJECT, displayName);
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            ArrayList<Uri> streamUris = new ArrayList<>();
+            streamUris.add(pdfUri);
+            shareIntent.setClipData(SharePreparation.buildShareClipData(getContext(), displayName, streamUris));
+
+            Intent chooser = Intent.createChooser(shareIntent, "Share PDF");
+            chooser.putExtra(
+                Intent.EXTRA_EXCLUDE_COMPONENTS,
+                new ComponentName[] { new ComponentName(getContext(), MainActivity.class) }
+            );
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            activity.startActivity(chooser);
+
+            JSObject result = new JSObject();
+            result.put("displayName", displayName);
+            result.put("mimeType", "application/pdf");
+            result.put("bytes", pdfFile.length());
+            Log.i(
+                TAG,
+                "Opened Android share sheet for exported PDF: " +
+                safeForLog(displayName) +
+                ", bytes=" +
+                pdfFile.length()
+            );
+            call.resolve(result);
+        } catch (ActivityNotFoundException ex) {
+            Log.w(TAG, "No Android share target is available", ex);
+            call.reject("No Android share target is available", "SHARE_TARGET_UNAVAILABLE", ex);
+        } catch (RuntimeException ex) {
+            Log.e(TAG, "Failed to share exported PDF", ex);
+            call.reject("Could not prepare the PDF file for sharing", "PDF_WRITE_FAILED", ex);
+        }
+    }
+
+    @PluginMethod
     public void renameMarkdownDocument(PluginCall call) {
         String sourceUri = call.getString("sourceUri", "");
         Uri uri = parseContentUri(sourceUri);

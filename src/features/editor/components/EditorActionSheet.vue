@@ -3,9 +3,11 @@ import { useI18n } from '../../../lib/i18n'
 
 defineProps<{
   canShare: boolean
+  canExportPdf: boolean
   canSaveToDevice: boolean
   canSaveCopy: boolean
   sharing: boolean
+  exportingPdf: boolean
   savingToDevice: boolean
   savingCopy: boolean
 }>()
@@ -13,6 +15,7 @@ defineProps<{
 const emit = defineEmits<{
   close: []
   share: []
+  'export-pdf': []
   'save-to-device': []
   'save-copy': []
 }>()
@@ -52,6 +55,26 @@ const { t } = useI18n()
             </svg>
           </span>
           <span class="editor-action-label">{{ t('editor.actions.share') }}</span>
+        </button>
+        <button
+          v-if="canExportPdf"
+          class="editor-action-row"
+          type="button"
+          role="menuitem"
+          data-testid="export-pdf-button"
+          :disabled="exportingPdf"
+          @click="emit('export-pdf')"
+        >
+          <span class="editor-action-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M6 4h9l3 3v13H6z" />
+              <path d="M9 4v5h6" />
+              <path d="M8.6 17.5v-4h1.5a1.25 1.25 0 0 1 0 2.5H8.6" />
+              <path d="M12.9 17.5v-4h1a1.7 2 0 0 1 0 4z" />
+              <path d="M17.6 17.5v-4h2.1M17.6 15.7h1.7" />
+            </svg>
+          </span>
+          <span class="editor-action-label">{{ t('editor.actions.exportPdf') }}</span>
         </button>
         <button
           v-if="canSaveToDevice"
