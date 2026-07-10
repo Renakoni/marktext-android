@@ -74,6 +74,7 @@ import {
   getDocumentSettings,
   getSortedRecentDocumentListItems,
 } from './features/document-session/documentSettings'
+import { createAutosaveScheduler } from './features/document-session/autosaveScheduler'
 import {
   createAndroidDocumentOpenResult,
   openAndroidMarkdownDocumentWorkflow,
@@ -293,8 +294,6 @@ function setEditorElement(element: HTMLElement | null) {
 let editor: MuyaEditor | null = null
 let editorInitToken = 0
 let lastContentLogAt = 0
-let draftSaveTimer: number | null = null
-let androidSaveTimer: number | null = null
 let androidSaveInFlight = false
 let androidSaveRequestedAfterCurrent = false
 let appLifecycleListeners: AppLifecycleListeners | null = null
@@ -341,29 +340,7 @@ watch(
 )
 
 watch(documentSettings, (settings, previousSettings) => {
-  if (!settings.localDrafts) {
-    clearDraftSaveTimer()
-  }
-
-  if (!settings.autoSave) {
-    clearDraftSaveTimer()
-    clearAndroidDocumentSaveTimer()
-    return
-  }
-
-  if (!editor || currentScreen.value !== 'editor' || !documentState.value.isDirty) {
-    return
-  }
-
-  const autoSaveWasEnabled = previousSettings?.autoSave ?? settings.autoSave
-  const delayChanged = previousSettings?.autoSaveDelayMs !== settings.autoSaveDelayMs
-  if (!autoSaveWasEnabled || delayChanged) {
-    if (documentState.value.autosaveTarget === 'android-document') {
-      scheduleAndroidDocumentSave()
-    } else if (settings.localDrafts) {
-      scheduleDraftSave()
-    }
-  }
+  applyDocumentSettingsChange(settings, previousSettings)
 })
 
 watch(
@@ -498,13 +475,22 @@ function canPersistAndroidRecoveryDrafts() {
   return documentSettings.value.recoveryDrafts
 }
 
-function canRunIdleLocalDraftAutosave() {
-  return documentSettings.value.autoSave && canPersistLocalDrafts()
-}
-
-function canRunIdleAndroidDocumentAutosave() {
-  return documentSettings.value.autoSave
-}
+const {
+  canRunIdleLocalDraftAutosave,
+  canRunIdleAndroidDocumentAutosave,
+  scheduleDraftSave,
+  clearDraftSaveTimer,
+  scheduleAndroidDocumentSave,
+  clearAndroidDocumentSaveTimer,
+  applyDocumentSettingsChange,
+} = createAutosaveScheduler({
+  documentSettings,
+  documentState,
+  isEditingActive: () => Boolean(editor) && currentScreen.value === 'editor',
+  canPersistLocalDrafts,
+  saveDraft,
+  saveAndroidDocument,
+})
 
 function getTransientAndroidSaveMessage() {
   return canPersistLocalDrafts()
@@ -1081,46 +1067,6 @@ function logContentSnapshot(reason: string) {
     words: wordCount.value,
     lines: lineCount.value,
   })
-}
-
-function scheduleDraftSave() {
-  if (!canRunIdleLocalDraftAutosave()) {
-    return
-  }
-
-  if (draftSaveTimer !== null) {
-    window.clearTimeout(draftSaveTimer)
-  }
-
-  draftSaveTimer = window.setTimeout(saveDraft, documentSettings.value.autoSaveDelayMs)
-}
-
-function clearDraftSaveTimer() {
-  if (draftSaveTimer !== null) {
-    window.clearTimeout(draftSaveTimer)
-    draftSaveTimer = null
-  }
-}
-
-function scheduleAndroidDocumentSave() {
-  if (!canRunIdleAndroidDocumentAutosave()) {
-    return
-  }
-
-  if (androidSaveTimer !== null) {
-    window.clearTimeout(androidSaveTimer)
-  }
-
-  androidSaveTimer = window.setTimeout(() => {
-    void saveAndroidDocument()
-  }, documentSettings.value.autoSaveDelayMs)
-}
-
-function clearAndroidDocumentSaveTimer() {
-  if (androidSaveTimer !== null) {
-    window.clearTimeout(androidSaveTimer)
-    androidSaveTimer = null
-  }
 }
 
 function persistLocalDrafts(nextDrafts: LocalDraftRecord[]) {
