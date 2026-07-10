@@ -52,19 +52,11 @@ import {
   getShowHomeDocumentSaveAction,
   type AppScreen,
 } from './lib/appExitDecisions'
-import {
-  createAndroidRecoveryDraft,
-  getAndroidRecoveryDraftId,
-  isAndroidRecoveryDraftId,
-} from './features/android-documents/androidRecoveryDrafts'
-import {
-  markSavedAndroidRecentDocument,
-  rememberAndroidRecentDocument,
-} from './features/android-documents/androidRecentDocuments'
+import { isAndroidRecoveryDraftId } from './features/android-documents/androidRecoveryDrafts'
+import { rememberAndroidRecentDocument } from './features/android-documents/androidRecentDocuments'
 import { getImageSharingSettings } from './features/android-documents/imageSharingSettings'
 import {
   createUntitledDocument,
-  markDocumentSaveFailed,
   updateDocumentMarkdown,
 } from './lib/documentState'
 import {
@@ -75,18 +67,12 @@ import {
   getSortedRecentDocumentListItems,
 } from './features/document-session/documentSettings'
 import { createAutosaveScheduler } from './features/document-session/autosaveScheduler'
+import { createCurrentDocumentPersistence } from './features/document-session/currentDocumentPersistence'
 import {
   createAndroidDocumentOpenResult,
   openAndroidMarkdownDocumentWorkflow,
   type AndroidDocumentOpenSource,
 } from './features/android-documents/androidDocumentOpenWorkflow'
-import {
-  createSaveAndroidDocumentWorkflowStart,
-  saveAndroidDocumentWorkflow,
-} from './features/android-documents/saveAndroidDocumentWorkflow'
-import { saveAndroidDocumentCopyWorkflow } from './features/android-documents/saveAndroidDocumentCopyWorkflow'
-import { saveLocalDraftToAndroidDocumentWorkflow } from './features/android-documents/saveLocalDraftToAndroidDocumentWorkflow'
-import { shareAndroidMarkdownDocumentWorkflow } from './features/android-documents/shareAndroidMarkdownDocumentWorkflow'
 import {
   createAndroidImageInsertStart,
   createLinkInsertSheetWorkflow,
@@ -116,10 +102,8 @@ import {
 } from './features/editor/editorRuntime'
 import {
   removeLocalDraft,
-  upsertLocalDraft,
   type LocalDraftRecord,
 } from './lib/localDrafts'
-import { createLocalDraftAutosaveResult } from './features/local-drafts/localDraftAutosave'
 import {
   readLegacyDraft,
   readStoredAndroidRecentDocuments,
@@ -294,8 +278,6 @@ function setEditorElement(element: HTMLElement | null) {
 let editor: MuyaEditor | null = null
 let editorInitToken = 0
 let lastContentLogAt = 0
-let androidSaveInFlight = false
-let androidSaveRequestedAfterCurrent = false
 let appLifecycleListeners: AppLifecycleListeners | null = null
 let pendingInlineInsertRange: Range | null = null
 let startupActionTimer: number | null = null
@@ -488,8 +470,10 @@ const {
   documentState,
   isEditingActive: () => Boolean(editor) && currentScreen.value === 'editor',
   canPersistLocalDrafts,
-  saveDraft,
-  saveAndroidDocument,
+  // Deferred lookups: the persistence factory below provides these, and its
+  // own options reference this scheduler's timer handles.
+  saveDraft: () => saveDraft(),
+  saveAndroidDocument: () => saveAndroidDocument(),
 })
 
 function getTransientAndroidSaveMessage() {
@@ -1084,364 +1068,63 @@ function persistPinnedDocuments(nextPins: PinnedDocumentRecord[]) {
   writeStoredPinnedDocuments(nextPins)
 }
 
-function persistAndroidRecoveryDraft(sourceUri: string, markdown: string) {
-  if (!canPersistAndroidRecoveryDrafts()) {
-    androidDocumentLog.warn('skip Android recovery draft because recovery drafts are disabled', {
-      sourceUri,
-      characters: markdown.length,
-    })
-    return
-  }
-
-  const recoveryDraft = createAndroidRecoveryDraft(sourceUri, markdown, new Date().toISOString())
-  if (!recoveryDraft) {
-    return
-  }
-
-  persistLocalDrafts(upsertLocalDraft(localDrafts.value, recoveryDraft))
-  draftLog.warn('kept Android document edits as a local recovery draft', {
-    sourceUri,
-    characters: markdown.length,
-  })
-}
-
-function removeAndroidRecoveryDraft(sourceUri: string) {
-  const recoveryDraftId = getAndroidRecoveryDraftId(sourceUri)
-  if (localDrafts.value.some(draft => draft.id === recoveryDraftId)) {
-    persistLocalDrafts(removeLocalDraft(localDrafts.value, recoveryDraftId))
-  }
-}
-
-function markAndroidRecentDocumentSaved(savedAt: string) {
-  const sourceUri = documentState.value.sourceUri
-  if (!sourceUri) {
-    return
-  }
-
-  const nextDocuments = markSavedAndroidRecentDocument(androidRecentDocuments.value, sourceUri, {
-    markdown: documentState.value.markdown,
-    savedAt,
-    canWrite: currentAndroidDocumentCanWrite.value,
-  })
-  if (!nextDocuments) {
-    androidDocumentLog.warn('saved Android recent document not found', { sourceUri })
-    return
-  }
-
-  persistAndroidRecentDocuments(nextDocuments)
-  removeAndroidRecoveryDraft(sourceUri)
-}
-
-async function saveAndroidDocument() {
-  clearAndroidDocumentSaveTimer()
-
-  if (!editor) {
-    return true
-  }
-
-  const value = getEditorMarkdownSnapshot(true)
-  const startResult = createSaveAndroidDocumentWorkflowStart({
-    documentState: documentState.value,
-    markdown: value,
-    canWrite: currentAndroidDocumentCanWrite.value,
-    markdownSaveSettings: markdownSaveSettings.value,
-  })
-
-  if (startResult.kind === 'not-android-document' || startResult.kind === 'clean') {
-    return true
-  }
-
-  if (startResult.kind === 'missing-source') {
-    status.value = startResult.status
-    androidDocumentLog.error('Android document save missing source URI', {
-      id: startResult.documentId,
-    })
-    return false
-  }
-
-  if (startResult.kind === 'read-only') {
-    status.value = startResult.status
-    androidDocumentLog.debug('skip Android document autosave without write access', {
-      id: startResult.documentId,
-      sourceUri: startResult.sourceUri,
-    })
-    return startResult.saved
-  }
-
-  if (androidSaveInFlight) {
-    androidSaveRequestedAfterCurrent = true
-    return false
-  }
-
-  androidSaveInFlight = true
-  documentState.value = startResult.request.savingDocument
-  status.value = startResult.status
-
-  try {
-    const result = await saveAndroidDocumentWorkflow({
-      request: startResult.request,
-      getCurrentDocumentState: () => documentState.value,
-      writeAndroidMarkdownDocument,
-      getAndroidDocumentUserMessage,
-      recoveryMessage: ANDROID_SAVE_RECOVERY_MESSAGE,
-      logger: androidDocumentLog,
-    })
-
-    if (result.kind === 'saved') {
-      documentState.value = result.savedDocument
-      markAndroidRecentDocumentSaved(result.savedAt)
-      status.value = result.status
-      return true
-    }
-
-    if (result.kind === 'changed-during-save') {
-      androidSaveRequestedAfterCurrent = true
-      return false
-    }
-
-    documentState.value = result.failedDocument
-    if (canPersistAndroidRecoveryDrafts()) {
-      persistAndroidRecoveryDraft(result.recoveryDraft.sourceUri, result.recoveryDraft.markdown)
-      status.value = result.status
-    } else {
-      status.value = getAndroidDocumentUserMessage(result.error)
-    }
-    return false
-  } finally {
-    androidSaveInFlight = false
-    if (androidSaveRequestedAfterCurrent) {
-      androidSaveRequestedAfterCurrent = false
-      if (
-        editor &&
-        documentState.value.autosaveTarget === 'android-document' &&
-        currentAndroidDocumentCanWrite.value
-      ) {
-        scheduleAndroidDocumentSave()
-      }
-    }
-  }
-}
-
-async function saveLocalDraftToAndroidDocument(options: { returnHomeAfterSave?: boolean } = {}) {
-  closeEditorMenu()
-
-  if (!editor || !isLocalDraftDocument() || savingLocalDraftToAndroid.value) {
-    return false
-  }
-
-  saveDraft()
-  const draftDocument = syncDocumentFromEditor(false, true)
-
-  const reopenPromptOnCancel = draftExitPromptOpen.value && options.returnHomeAfterSave === true
-  draftExitPromptOpen.value = false
-  savingLocalDraftToAndroid.value = true
-  status.value = 'Choose a location'
-
-  const result = await saveLocalDraftToAndroidDocumentWorkflow({
-    draftDocument,
-    returnHomeAfterSave: options.returnHomeAfterSave === true,
-    reopenPromptOnCancel,
-    transientAccessMessage: getTransientAndroidSaveMessage(),
-    createAndroidMarkdownDocument,
-    getAndroidDocumentUserMessage,
-    markdownSaveSettings: markdownSaveSettings.value,
-    logger: androidDocumentLog,
-  })
-
-  try {
-    if (result.kind === 'empty') {
-      status.value = result.status
-      return false
-    }
-
-    if (result.kind === 'canceled') {
-      status.value = canPersistLocalDrafts() ? result.status : 'Edited'
-      if (reopenPromptOnCancel) {
-        draftExitPromptOpen.value = true
-      }
-      return false
-    }
-
-    if (result.kind === 'transient') {
-      status.value = result.status
-      homeNotice.value = result.homeNotice
-      currentAndroidDocumentCanWrite.value = false
-      if (result.closeEditorToHome) {
-        closeEditorToHome()
-      }
-      return false
-    }
-
-    if (result.kind === 'saved') {
-      persistLocalDrafts(removeLocalDraft(localDrafts.value, result.removeLocalDraftId))
-      rememberAndroidDocument(result.createdDocument)
-      currentAndroidDocumentCanWrite.value = result.canWrite
-      promptLocalDraftSaveOnExit.value = false
-      documentState.value = result.savedDocument
-      status.value = getAndroidEditorStatus()
-      if (result.closeEditorToHome) {
-        closeEditorToHome()
-      }
-      return true
-    }
-
-    documentState.value = result.failedDocument
-    status.value = result.status
-    if (result.reopenPrompt) {
-      draftExitPromptOpen.value = true
-    }
-    return false
-  } finally {
-    savingLocalDraftToAndroid.value = false
-  }
-}
-
-async function saveAndroidDocumentCopy(options: { returnHomeAfterSave?: boolean } = {}) {
-  closeEditorMenu()
-
-  if (!editor || !canSaveAndroidDocumentCopy() || savingAndroidDocumentCopy.value) {
-    return false
-  }
-
-  const originalSourceUri = documentState.value.sourceUri
-  const copySourceDocument = syncDocumentFromEditor(documentState.value.isDirty, true)
-
-  savingAndroidDocumentCopy.value = true
-  status.value = 'Choose a location'
-
-  try {
-    const result = await saveAndroidDocumentCopyWorkflow({
-      copySourceDocument,
-      originalSourceUri,
-      reservedDisplayNames: androidRecentDocuments.value.map(document => document.displayName),
-      returnHomeAfterSave: options.returnHomeAfterSave === true,
-      transientAccessMessage: getTransientAndroidSaveMessage(),
-      createAndroidMarkdownDocument,
-      getAndroidDocumentUserMessage,
-      markdownSaveSettings: markdownSaveSettings.value,
-      logger: androidDocumentLog,
-    })
-
-    if (result.kind === 'canceled') {
-      status.value = getAndroidEditorStatus()
-      return false
-    }
-
-    if (result.kind === 'transient') {
-      if (result.recoveryDraft && canPersistAndroidRecoveryDrafts()) {
-        persistAndroidRecoveryDraft(result.recoveryDraft.sourceUri, result.recoveryDraft.markdown)
-      }
-      status.value = result.status
-      return false
-    }
-
-    if (result.kind === 'saved') {
-      if (result.removeRecoveryDraftSourceUri) {
-        removeAndroidRecoveryDraft(result.removeRecoveryDraftSourceUri)
-      }
-      rememberAndroidDocument(result.createdDocument)
-      currentAndroidDocumentCanWrite.value = result.canWrite
-      promptLocalDraftSaveOnExit.value = false
-      documentState.value = result.savedDocument
-      status.value = getAndroidEditorStatus()
-      androidExitPromptOpen.value = false
-      if (result.closeEditorToHome) {
-        closeEditorToHome()
-      }
-      return true
-    }
-
-    if (result.recoveryDraft && canPersistAndroidRecoveryDrafts()) {
-      persistAndroidRecoveryDraft(result.recoveryDraft.sourceUri, result.recoveryDraft.markdown)
-    }
-    documentState.value = result.failedDocument
-    status.value = result.status
-    return false
-  } finally {
-    savingAndroidDocumentCopy.value = false
-  }
-}
-
-async function shareCurrentMarkdownDocument() {
-  closeEditorMenu()
-
-  if (!editor || !canShareCurrentDocument() || sharingCurrentDocument.value) {
-    return false
-  }
-
-  const currentDocument = syncDocumentFromEditor(documentState.value.isDirty, true)
-  if (currentDocument.autosaveTarget === 'local-draft') {
-    saveDraft()
-  }
-
-  sharingCurrentDocument.value = true
-  status.value = 'Sharing'
-
-  try {
-    const result = await shareAndroidMarkdownDocumentWorkflow({
-      currentDocument,
-      shareAndroidMarkdownDocument,
-      getAndroidDocumentUserMessage,
-      imageSharingSettings: imageSharingSettings.value,
-      markdownSaveSettings: markdownSaveSettings.value,
-      logger: androidDocumentLog,
-    })
-
-    status.value = result.status
-    return result.kind === 'shared'
-  } finally {
-    sharingCurrentDocument.value = false
-  }
-}
-
-function saveDraft() {
-  clearDraftSaveTimer()
-
-  if (!editor) {
-    return
-  }
-
-  if (documentState.value.autosaveTarget !== 'local-draft') {
-    androidDocumentLog.debug('skip local draft autosave for Android document', {
-      id: documentState.value.id,
-      sourceUri: documentState.value.sourceUri,
-      autosaveState: documentState.value.autosaveState,
-    })
-    return
-  }
-
-  if (!canPersistLocalDrafts()) {
-    clearDraftSaveTimer()
-    draftLog.debug('skip local draft save because local drafts are disabled', {
-      id: documentState.value.id,
-    })
-    return
-  }
-
-  const value = getEditorMarkdownSnapshot(true)
-  const localDraftAutosave = createLocalDraftAutosaveResult(
-    documentState.value,
-    value,
-    localDrafts.value,
-  )
-  documentState.value = localDraftAutosave.savingDocument
-
-  try {
-    persistLocalDrafts(localDraftAutosave.nextDrafts)
-    documentState.value = localDraftAutosave.savedDocument
-    status.value = localDraftAutosave.hasContent ? 'Autosaved locally' : 'Ready'
-    draftLog.debug('local draft saved', {
-      characters: characterCount.value,
-      words: wordCount.value,
-      lines: lineCount.value,
-    })
-  } catch (error) {
-    documentState.value = markDocumentSaveFailed(documentState.value, error)
-    status.value = 'Autosave failed'
-    draftLog.error('local draft save failed', error)
-  }
-}
-
+const {
+  persistAndroidRecoveryDraft,
+  removeAndroidRecoveryDraft,
+  saveDraft,
+  saveAndroidDocument,
+  saveLocalDraftToAndroidDocument,
+  saveAndroidDocumentCopy,
+  shareCurrentMarkdownDocument,
+  flushCurrentDocument,
+} = createCurrentDocumentPersistence({
+  currentScreen,
+  documentState,
+  status,
+  homeNotice,
+  localDrafts,
+  androidRecentDocuments,
+  currentAndroidDocumentCanWrite,
+  promptLocalDraftSaveOnExit,
+  draftExitPromptOpen,
+  androidExitPromptOpen,
+  savingLocalDraftToAndroid,
+  savingAndroidDocumentCopy,
+  sharingCurrentDocument,
+  hasEditor: () => Boolean(editor),
+  getEditorMarkdownSnapshot,
+  syncDocumentFromEditor,
+  closeEditorMenu,
+  closeEditorToHome,
+  isLocalDraftDocument,
+  canSaveAndroidDocumentCopy,
+  canShareCurrentDocument,
+  canPersistLocalDrafts,
+  canPersistAndroidRecoveryDrafts,
+  getTransientAndroidSaveMessage,
+  getAndroidEditorStatus,
+  getDraftLogStats: () => ({
+    characters: characterCount.value,
+    words: wordCount.value,
+    lines: lineCount.value,
+  }),
+  persistLocalDrafts,
+  persistAndroidRecentDocuments,
+  rememberAndroidDocument,
+  clearDraftSaveTimer,
+  clearAndroidDocumentSaveTimer,
+  scheduleAndroidDocumentSave,
+  writeAndroidMarkdownDocument,
+  createAndroidMarkdownDocument,
+  shareAndroidMarkdownDocument,
+  getAndroidDocumentUserMessage,
+  markdownSaveSettings,
+  imageSharingSettings,
+  androidSaveRecoveryMessage: ANDROID_SAVE_RECOVERY_MESSAGE,
+  appLogger: appLog,
+  documentLogger: androidDocumentLog,
+  draftLogger: draftLog,
+})
 async function initEditor(initialMarkdown: string) {
   const element = editorElement.value
   if (!element) {
@@ -1963,25 +1646,6 @@ function discardAndroidChangesAndShowHome() {
 
   homeNotice.value = ANDROID_EXIT_DISCARD_MESSAGE
   closeEditorToHome()
-}
-
-async function flushCurrentDocument(reason: string) {
-  if (currentScreen.value !== 'editor' || !editor) {
-    return
-  }
-
-  appLog.info('flush current editor document', {
-    reason,
-    autosaveTarget: documentState.value.autosaveTarget,
-    isDirty: documentState.value.isDirty,
-    autosaveState: documentState.value.autosaveState,
-  })
-
-  if (documentState.value.autosaveTarget === 'android-document') {
-    await saveAndroidDocument()
-  } else {
-    saveDraft()
-  }
 }
 
 function requestLifecycleFlush(reason: string) {
