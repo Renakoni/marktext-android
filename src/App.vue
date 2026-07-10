@@ -31,20 +31,11 @@ import {
   createIncomingDocumentOrchestration,
 } from './features/android-documents/incomingDocumentOrchestration'
 import {
-  addAndroidSelectionTapListener,
-  finishAndroidEditorSelectionActionMode,
   isAndroidSelectionControlAvailable,
-  performAndroidNativeSelectAll,
   readAndroidClipboardText,
-  setAndroidEditorSelectionMenuSuppressed,
-  writeAndroidClipboardText,
-  type AndroidSelectionTapEvent,
 } from './lib/androidSelection'
 import { installAndroidSelectionDiagnostics } from './lib/androidSelectionDiagnostics'
-import {
-  caretRangeAtPoint,
-  type SelectionToolbarCommandId,
-} from './features/editor/selectionToolbar'
+import { createEditorSelectionLifecycle } from './features/editor/selectionLifecycle'
 import {
   getAppBackButtonAction,
   getShowHomeAfterAndroidSaveAction,
@@ -88,7 +79,6 @@ import {
 } from './features/editor/editorToolbarSettings'
 import { useEditorToolbar } from './features/editor/useEditorToolbar'
 import {
-  captureSelectionWithin,
   insertTextAtRestoredSelection,
   resolveEditorDomNode,
 } from './features/editor/editorInlineInsert'
@@ -283,7 +273,6 @@ let pendingInlineInsertRange: Range | null = null
 let startupActionTimer: number | null = null
 let editorSelectionDiagnosticCleanup: (() => void) | null = null
 let editorInputDiagnosticCleanup: (() => void) | null = null
-let nativeSelectionTapCleanup: (() => Promise<void>) | null = null
 let systemColorSchemeCleanup: (() => void) | null = null
 
 const appLog = createLogger('app')
@@ -585,10 +574,23 @@ function getEditorCommandTarget(): MobileEditorCommandTarget | null {
   return createMuyaMobileEditorCommandTarget(editor)
 }
 
-function captureEditorSelection() {
-  return captureSelectionWithin(resolveEditorDomNode(editor, editorElement.value))
-}
-
+const {
+  captureEditorSelection,
+  restoreEditorSelectionRange,
+  finishSelectionToolbarOutsideTap,
+  runSelectionToolbarCommand,
+  setEditorSelectionMenuSuppression,
+  installNativeSelectionTapListener,
+  uninstallNativeSelectionTapListener,
+} = createEditorSelectionLifecycle({
+  currentScreen,
+  editorReady,
+  androidInputDiagnosticsEnabled,
+  getEditor: () => editor,
+  getEditorElement: () => editorElement.value,
+  describeEditorInputState: () => describeEditorInputState(),
+  logger: editorLog,
+})
 function insertMarkdownAtPendingSelection(markdown: string) {
   editor?.focus()
   return insertTextAtRestoredSelection(markdown, pendingInlineInsertRange)
@@ -705,304 +707,6 @@ function syncAfterToolbarCommand(beforeMarkdown: string) {
 const canPasteSelection =
   isAndroidSelectionControlAvailable() ||
   (typeof navigator !== 'undefined' && Boolean(navigator.clipboard?.readText))
-
-// The Android tap that presses a toolbar button can collapse the selection
-// before the command handler runs; put the captured selection back so the
-// clipboard commands still have a range to operate on.
-function restoreEditorSelectionIfCollapsed(restoreRange: Range | null) {
-  if (!restoreRange || restoreRange.collapsed) {
-    return
-  }
-
-  const selection = document.getSelection()
-  if (!selection || (selection.rangeCount > 0 && !selection.isCollapsed)) {
-    return
-  }
-
-  try {
-    selection.removeAllRanges()
-    selection.addRange(restoreRange)
-  } catch (error) {
-    editorLog.debug('selection restore skipped', { error })
-  }
-}
-
-function restoreEditorSelectionRange(activeEditor: MuyaEditor, restoreRange: Range | null) {
-  if (!restoreRange || restoreRange.collapsed) {
-    return false
-  }
-
-  const selection = document.getSelection()
-  if (!selection) {
-    return false
-  }
-
-  try {
-    selection.removeAllRanges()
-    selection.addRange(restoreRange.cloneRange())
-    syncMuyaSelectionFromDom(activeEditor)
-    return true
-  } catch (error) {
-    editorLog.debug('selection range restore skipped', { error })
-    return false
-  }
-}
-
-function getCurrentSelectionRangeClone() {
-  const selection = document.getSelection()
-  if (!selection || selection.rangeCount === 0) {
-    return null
-  }
-
-  try {
-    return selection.getRangeAt(0).cloneRange()
-  } catch {
-    return null
-  }
-}
-
-function focusEditorDomNode(activeEditor: MuyaEditor) {
-  try {
-    activeEditor.domNode.focus({ preventScroll: true })
-  } catch {
-    activeEditor.domNode.focus()
-  }
-}
-
-function syncMuyaSelectionFromDom(activeEditor: MuyaEditor) {
-  const selectionController = activeEditor.editor.selection
-  const liveSelection = selectionController.getSelection()
-  if (!liveSelection) {
-    return false
-  }
-
-  selectionController.setSelection(liveSelection.anchor, liveSelection.focus)
-  activeEditor.editor.activeContentBlock = liveSelection.focus.block
-  return true
-}
-
-function restoreCollapsedEditorRange(activeEditor: MuyaEditor, range: Range | null) {
-  if (!range || !range.collapsed) {
-    return false
-  }
-
-  const selection = document.getSelection()
-  if (!selection) {
-    return false
-  }
-
-  try {
-    selection.removeAllRanges()
-    selection.addRange(range.cloneRange())
-    focusEditorDomNode(activeEditor)
-    syncMuyaSelectionFromDom(activeEditor)
-    return true
-  } catch (error) {
-    editorLog.debug('collapsed selection restore skipped', { error })
-    return false
-  }
-}
-
-function collapseEditorSelectionToRangeEdge(
-  activeEditor: MuyaEditor,
-  range: Range | null,
-  edge: 'start' | 'end',
-) {
-  if (!range) {
-    return false
-  }
-
-  const selection = document.getSelection()
-  if (!selection) {
-    return false
-  }
-
-  try {
-    const collapsedRange = range.cloneRange()
-    collapsedRange.collapse(edge === 'start')
-    selection.removeAllRanges()
-    selection.addRange(collapsedRange)
-    focusEditorDomNode(activeEditor)
-    syncMuyaSelectionFromDom(activeEditor)
-    return true
-  } catch (error) {
-    editorLog.debug('selection collapse skipped', { edge, error })
-    return false
-  }
-}
-
-function clearEditorSelectionIfStillExpanded(activeEditor: MuyaEditor) {
-  const selection = document.getSelection()
-  if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
-    selection.removeAllRanges()
-    activeEditor.editor.selection.clear()
-  }
-}
-
-async function finishEditorSelectionActionMode(reason: string) {
-  const finished = await finishAndroidEditorSelectionActionMode(reason)
-  if (finished) {
-    editorLog.debug('Android editor selection action mode finished', { reason })
-  }
-  return finished
-}
-
-async function finishEditorSelectionActionModeAndRestoreCaret(
-  reason: string,
-  activeEditor: MuyaEditor,
-  caretRange: Range | null,
-) {
-  const finished = await finishEditorSelectionActionMode(reason)
-  if (finished && caretRange) {
-    restoreCollapsedEditorRange(activeEditor, caretRange)
-  }
-  return finished
-}
-
-function finishSelectionToolbarOutsideTap(caretRange: Range | null) {
-  const activeEditor = editorReady.value ? editor : null
-  if (!activeEditor) {
-    void finishEditorSelectionActionMode('selection-toolbar-outside-tap')
-    return
-  }
-
-  if (caretRange) {
-    restoreCollapsedEditorRange(activeEditor, caretRange)
-  }
-  void finishEditorSelectionActionModeAndRestoreCaret(
-    'selection-toolbar-outside-tap',
-    activeEditor,
-    caretRange,
-  ).then(finished => {
-    if (finished) {
-      editorLog.debug('selection toolbar outside tap dismissed', {
-        restoredCaret: Boolean(caretRange),
-      })
-    }
-  })
-}
-
-function getSelectionTextFallback(range: Range | null) {
-  const rangeText = range?.toString() ?? ''
-  if (rangeText.length > 0) {
-    return rangeText
-  }
-
-  return document.getSelection()?.toString() ?? ''
-}
-
-async function runSelectionToolbarCommand(
-  commandId: SelectionToolbarCommandId,
-  restoreRange: Range | null,
-) {
-  const activeEditor = editorReady.value ? editor : null
-  if (!activeEditor) {
-    return
-  }
-
-  try {
-    const rangeBeforeCommand = restoreRange?.cloneRange() ?? getCurrentSelectionRangeClone()
-    if (androidInputDiagnosticsEnabled.value) {
-      editorLog.debug('selection command state', {
-        commandId,
-        phase: 'before',
-        rangeText: (rangeBeforeCommand?.toString() ?? '').slice(0, 32),
-        ...describeEditorInputState(),
-      })
-    }
-    if (commandId === 'copy' || commandId === 'cut') {
-      const restoredRange = restoreEditorSelectionRange(activeEditor, rangeBeforeCommand)
-      if (!restoredRange) {
-        restoreEditorSelectionIfCollapsed(restoreRange)
-      }
-
-      if (isAndroidSelectionControlAvailable()) {
-        // Deterministic Android path: serialize the selection with Muya's own
-        // clipboard pipeline and write it through the native clipboard bridge.
-        // This avoids depending on execCommand + ClipboardEvent behavior in
-        // OEM WebViews, which cannot be debugged remotely.
-        const fallbackSelectionText = getSelectionTextFallback(rangeBeforeCommand)
-        const payload =
-          commandId === 'cut'
-            ? activeEditor.editor.clipboard.cutSelectionToClipboardData()
-            : activeEditor.editor.clipboard.getClipboardData()
-        const clipboardText = payload.text || fallbackSelectionText
-        if (!clipboardText) {
-          editorLog.warn('selection clipboard payload empty, command skipped', {
-            commandId,
-            hadRestoreRange: Boolean(rangeBeforeCommand),
-          })
-          return
-        }
-
-        const written = await writeAndroidClipboardText(clipboardText)
-        if (!written) {
-          editorLog.warn('android clipboard write failed', { commandId })
-          return
-        }
-      } else {
-        // Web path: execCommand routes through Muya's document-level copy/cut
-        // handlers, which own Markdown serialization and history-safe deletion.
-        const executed = document.execCommand(commandId)
-        if (!executed) {
-          const selectionText = document.getSelection()?.toString() ?? ''
-          const written =
-            selectionText.length > 0 && (await writeAndroidClipboardText(selectionText))
-          if (commandId === 'cut' && written) {
-            activeEditor.editor.clipboard.cutHandler()
-          }
-          editorLog.warn('selection execCommand rejected, used clipboard fallback', {
-            commandId,
-            written,
-          })
-        }
-      }
-
-      if (commandId === 'copy') {
-        collapseEditorSelectionToRangeEdge(activeEditor, rangeBeforeCommand, 'end')
-      } else if (!document.getSelection()?.isCollapsed) {
-        const collapsed = collapseEditorSelectionToRangeEdge(
-          activeEditor,
-          rangeBeforeCommand,
-          'start',
-        )
-        if (!collapsed) {
-          clearEditorSelectionIfStillExpanded(activeEditor)
-        }
-      }
-      await finishEditorSelectionActionModeAndRestoreCaret(
-        `selection-toolbar-${commandId}`,
-        activeEditor,
-        getCurrentSelectionRangeClone(),
-      )
-    } else if (commandId === 'paste') {
-      restoreEditorSelectionRange(activeEditor, restoreRange)
-      await activeEditor.editor.clipboard.pasteAsPlainText()
-      await finishEditorSelectionActionModeAndRestoreCaret(
-        'selection-toolbar-paste',
-        activeEditor,
-        getCurrentSelectionRangeClone(),
-      )
-    } else {
-      // Prefer the native select-all: it keeps Chromium's touch-selection
-      // session (and its drag handles) alive. Muya's JS select-all replaces
-      // the range programmatically, which never shows handles on Android.
-      const nativeSelectAll =
-        isAndroidSelectionControlAvailable() &&
-        (await performAndroidNativeSelectAll('selection-toolbar'))
-      if (!nativeSelectAll) {
-        activeEditor.selectAll()
-      }
-    }
-
-    editorLog.debug('selection toolbar command handled', {
-      commandId,
-      modelCharacters: activeEditor.getMarkdown().length,
-    })
-  } catch (error) {
-    editorLog.warn('selection toolbar command failed', { commandId, error })
-  }
-}
 
 function runEditorToolbarCommand(commandId: MobileCommandId, restoreRange: Range | null = null) {
   const activeEditor = editorReady.value ? editor : null
@@ -1194,17 +898,6 @@ async function initEditor(initialMarkdown: string) {
   }
 }
 
-async function setEditorSelectionMenuSuppression(suppressed: boolean, reason: string) {
-  try {
-    const state = await setAndroidEditorSelectionMenuSuppressed(suppressed, reason)
-    if (state.native) {
-      editorLog.debug('Android editor selection menu suppression updated', state)
-    }
-  } catch (error) {
-    editorLog.warn('Android editor selection menu suppression update failed', error)
-  }
-}
-
 function installEditorSelectionDiagnostics() {
   uninstallEditorSelectionDiagnostics()
 
@@ -1307,47 +1000,6 @@ function installEditorInputDiagnostics() {
 function uninstallEditorInputDiagnostics() {
   editorInputDiagnosticCleanup?.()
   editorInputDiagnosticCleanup = null
-}
-
-function handleNativeSelectionTap(event: AndroidSelectionTapEvent) {
-  if (currentScreen.value !== 'editor' || !editorReady.value) {
-    return
-  }
-
-  const selection = document.getSelection()
-  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-    return
-  }
-
-  const hitElement = document.elementFromPoint(event.x, event.y)
-  if (hitElement?.closest('[data-testid="mobile-selection-toolbar"]')) {
-    return
-  }
-
-  const caret = caretRangeAtPoint(event.x, event.y)
-  editorLog.debug('native selection tap dismissal', {
-    x: Math.round(event.x),
-    y: Math.round(event.y),
-    hasCaret: Boolean(caret),
-  })
-  finishSelectionToolbarOutsideTap(caret)
-}
-
-async function installNativeSelectionTapListener() {
-  await uninstallNativeSelectionTapListener()
-  nativeSelectionTapCleanup = await addAndroidSelectionTapListener(handleNativeSelectionTap)
-}
-
-async function uninstallNativeSelectionTapListener() {
-  const cleanup = nativeSelectionTapCleanup
-  nativeSelectionTapCleanup = null
-  if (cleanup) {
-    try {
-      await cleanup()
-    } catch (error) {
-      editorLog.debug('native selection tap listener cleanup failed', { error })
-    }
-  }
 }
 
 function releaseEditorFocusAfterOpen() {
