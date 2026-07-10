@@ -24,6 +24,16 @@ public class SharePreparationTest {
     }
 
     @Test
+    public void normalizesSuggestedNamesToSafePdfFiles() {
+        assertEquals("Meeting A B.pdf", SharePreparation.normalizeSuggestedPdfName("Meeting: A/B?"));
+        assertEquals("Untitled.pdf", SharePreparation.normalizeSuggestedPdfName("   "));
+        assertEquals("Untitled.pdf", SharePreparation.normalizeSuggestedPdfName(null));
+        assertEquals("Trip notes.PDF", SharePreparation.normalizeSuggestedPdfName("Trip notes.PDF"));
+        assertEquals("notes.md.pdf", SharePreparation.normalizeSuggestedPdfName("notes.md"));
+        assertEquals("Trip plan.pdf", SharePreparation.normalizeSuggestedPdfName("  Trip   plan  "));
+    }
+
+    @Test
     public void deduplicatesBatchFileNamesCaseInsensitively() {
         Set<String> used = new HashSet<>();
 

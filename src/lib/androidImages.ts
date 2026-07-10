@@ -69,6 +69,36 @@ export function resolveMarkTextImageSource(
   return Capacitor.convertFileSrc(`${directory.fileUri.replace(/\/+$/, '')}/${encodeURIComponent(fileName)}`)
 }
 
+// Resolves a MarkText image source to a URI loadable outside the Capacitor
+// WebView (the native PDF print WebView reads plain file:// URIs; the
+// convertFileSrc form only resolves inside the app's own WebView). Android
+// content URIs are returned as-is. Returns null when the source cannot be
+// mapped.
+export function getMarkTextImageExportFileSource(
+  source: string,
+  directory: ImportedAndroidImageDirectory | null,
+) {
+  const androidUri = getMarkTextAndroidImageUri(source)
+  if (androidUri) {
+    return androidUri
+  }
+
+  if (!directory) {
+    return null
+  }
+
+  const fileName = getMarkTextLocalImageFileName(source)
+  if (!fileName) {
+    return null
+  }
+
+  return `${directory.fileUri.replace(/\/+$/, '')}/${encodeURIComponent(fileName)}`
+}
+
+export function getImportedAndroidImageDirectory() {
+  return imageDirectory
+}
+
 export async function ensureAndroidImageResolver() {
   const win = window as AndroidImageResolverWindow
   if (!isAndroidImageImportAvailable()) {

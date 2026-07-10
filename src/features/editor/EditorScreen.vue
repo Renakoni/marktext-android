@@ -29,9 +29,11 @@ const props = defineProps<{
   characterCount: number
   lineCount: number
   canShare: boolean
+  canExportPdf: boolean
   canSaveToDevice: boolean
   canSaveCopy: boolean
   sharing: boolean
+  exportingPdf: boolean
   savingToDevice: boolean
   savingCopy: boolean
   linkSheetOpen: boolean
@@ -57,6 +59,7 @@ const emit = defineEmits<{
   'toggle-menu': []
   'close-menu': []
   share: []
+  'export-pdf': []
   'save-to-device': []
   'save-copy': []
   'run-toolbar-command': [commandId: MobileCommandId, restoreRange: Range | null]
@@ -194,13 +197,16 @@ onBeforeUnmount(() => {
       <EditorActionSheet
         v-if="editorMenuOpen"
         :can-share="canShare"
+        :can-export-pdf="canExportPdf"
         :can-save-to-device="canSaveToDevice"
         :can-save-copy="canSaveCopy"
         :sharing="sharing"
+        :exporting-pdf="exportingPdf"
         :saving-to-device="savingToDevice"
         :saving-copy="savingCopy"
         @close="emit('close-menu')"
         @share="emit('share')"
+        @export-pdf="emit('export-pdf')"
         @save-to-device="emit('save-to-device')"
         @save-copy="emit('save-copy')"
       />

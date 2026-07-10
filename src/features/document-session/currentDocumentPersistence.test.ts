@@ -92,6 +92,7 @@ function createPersistence(overrides: {
     savingLocalDraftToAndroid: ref(false),
     savingAndroidDocumentCopy: ref(false),
     sharingCurrentDocument: ref(false),
+    exportingPdfDocument: ref(false),
     hasEditor: () => overrides.hasEditor ?? true,
     getEditorMarkdownSnapshot: vi.fn(
       () => overrides.markdownSnapshot ?? documentState.value.markdown,
@@ -126,6 +127,13 @@ function createPersistence(overrides: {
       imageCount: 0,
       sharedFileCount: 1,
     }),
+    renderPdfExportHtml: vi.fn().mockResolvedValue('<!DOCTYPE html><html></html>'),
+    exportAndroidMarkdownPdf: vi.fn().mockResolvedValue({
+      displayName: 'x.pdf',
+      mimeType: 'application/pdf',
+      bytes: 1,
+    }),
+    getPdfTextDirection: () => 'ltr' as const,
     getAndroidDocumentUserMessage: (error: unknown) =>
       `user message: ${(error as Error)?.message ?? 'unknown'}`,
     markdownSaveSettings: ref(DEFAULT_MARKDOWN_SAVE_SETTINGS),
@@ -342,5 +350,62 @@ describe('currentDocumentPersistence', () => {
 
     expect(shared).toBe(false)
     expect(options.shareAndroidMarkdownDocument).not.toHaveBeenCalled()
+  })
+
+  it('exports the current document as a PDF and restores the busy flag', async () => {
+    const { persistence, options } = createPersistence({
+      documentState: dirtyAndroidDocumentState(),
+    })
+
+    const exported = await persistence.exportCurrentDocumentPdf()
+
+    expect(exported).toBe(true)
+    expect(options.closeEditorMenu).toHaveBeenCalled()
+    expect(options.syncDocumentFromEditor).toHaveBeenCalledWith(true, true)
+    expect(options.renderPdfExportHtml).toHaveBeenCalledWith(
+      expect.objectContaining({ textDirection: 'ltr' }),
+    )
+    expect(options.exportAndroidMarkdownPdf).toHaveBeenCalled()
+    expect(options.status.value).toBe('Share sheet opened')
+    expect(options.exportingPdfDocument.value).toBe(false)
+  })
+
+  it('autosaves a local draft before exporting it as a PDF', async () => {
+    const dirtyDraft = updateDocumentMarkdown(
+      createUntitledDocument({ markdown: '', autosaveTarget: 'local-draft' }),
+      '# Draft body',
+      { markDirty: true },
+    )
+    const { persistence, options } = createPersistence({ documentState: dirtyDraft })
+
+    await persistence.exportCurrentDocumentPdf()
+
+    expect(options.localDrafts.value[0]?.markdown).toBe('# Draft body')
+    expect(options.exportAndroidMarkdownPdf).toHaveBeenCalled()
+  })
+
+  it('surfaces PDF export failures as status text and clears the busy flag', async () => {
+    const { persistence, options } = createPersistence({
+      documentState: dirtyAndroidDocumentState(),
+    })
+    options.exportAndroidMarkdownPdf.mockRejectedValue(new Error('print failed'))
+
+    const exported = await persistence.exportCurrentDocumentPdf()
+
+    expect(exported).toBe(false)
+    expect(options.status.value).toBe('user message: print failed')
+    expect(options.exportingPdfDocument.value).toBe(false)
+  })
+
+  it('refuses to export while a PDF export is already in flight', async () => {
+    const { persistence, options } = createPersistence({
+      documentState: dirtyAndroidDocumentState(),
+    })
+    options.exportingPdfDocument.value = true
+
+    const exported = await persistence.exportCurrentDocumentPdf()
+
+    expect(exported).toBe(false)
+    expect(options.renderPdfExportHtml).not.toHaveBeenCalled()
   })
 })

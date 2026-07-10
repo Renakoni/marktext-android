@@ -29,6 +29,7 @@ final class SharePreparation {
 
     private static final String TAG = "MarkTextAndroid";
     private static final String SHARE_CACHE_DIRECTORY = "shared-markdown";
+    private static final String PDF_EXPORT_CACHE_DIRECTORY = "shared-pdf";
     private static final Pattern MARKTEXT_IMAGE_SOURCE_PATTERN = Pattern.compile(
         "marktext-image://local/([^\\s)]+)",
         Pattern.CASE_INSENSITIVE
@@ -55,6 +56,20 @@ final class SharePreparation {
             return cleaned;
         }
         return cleaned + ".md";
+    }
+
+    static String normalizeSuggestedPdfName(String suggestedName) {
+        String cleaned = suggestedName == null ? "" : suggestedName.trim();
+        cleaned = cleaned.replaceAll("[\\\\/:*?\"<>|\\r\\n]+", " ");
+        cleaned = cleaned.replaceAll("\\s+", " ").trim();
+        if (cleaned.length() == 0) {
+            cleaned = "Untitled";
+        }
+
+        if (cleaned.toLowerCase(Locale.US).endsWith(".pdf")) {
+            return cleaned;
+        }
+        return cleaned + ".pdf";
     }
 
     static String uniqueShareFileName(String fileName, Set<String> usedNames) {
@@ -111,6 +126,14 @@ final class SharePreparation {
         File directory = new File(context.getCacheDir(), SHARE_CACHE_DIRECTORY);
         if (!directory.exists() && !directory.mkdirs()) {
             throw new IOException("Could not create share cache directory");
+        }
+        return directory;
+    }
+
+    static File getPdfExportCacheDirectory(Context context) throws IOException {
+        File directory = new File(context.getCacheDir(), PDF_EXPORT_CACHE_DIRECTORY);
+        if (!directory.exists() && !directory.mkdirs()) {
+            throw new IOException("Could not create PDF export cache directory");
         }
         return directory;
     }
@@ -189,7 +212,7 @@ final class SharePreparation {
         return normalized;
     }
 
-    private static boolean isFileInDirectory(File file, File directory) {
+    static boolean isFileInDirectory(File file, File directory) {
         try {
             String directoryPath = directory.getCanonicalPath();
             String filePath = file.getCanonicalPath();

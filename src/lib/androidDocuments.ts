@@ -79,6 +79,12 @@ export interface AndroidShareOptions {
   encoding: MarkdownEncoding
 }
 
+export interface AndroidPdfExportResult {
+  displayName: string
+  mimeType: string
+  bytes: number
+}
+
 export interface AndroidShareDocumentPayload {
   markdown: string
   suggestedName: string
@@ -144,6 +150,10 @@ interface AndroidDocumentsPlugin {
     documents: AndroidShareDocumentPayload[]
     encoding?: string
   }): Promise<AndroidShareResult>
+  exportMarkdownPdf(options: {
+    html: string
+    suggestedName: string
+  }): Promise<AndroidPdfExportResult>
   renameMarkdownDocument(options: {
     sourceUri: string
     newName: string
@@ -270,6 +280,13 @@ export async function shareAndroidMarkdownDocuments(
   )
 }
 
+export async function exportAndroidMarkdownPdf(html: string, suggestedName: string) {
+  ensureAndroidDocumentsAvailable()
+  return normalizePdfExportResult(
+    await AndroidDocuments.exportMarkdownPdf({ html, suggestedName }),
+  )
+}
+
 export async function renameAndroidMarkdownDocument(sourceUri: string, newName: string) {
   ensureAndroidDocumentsAvailable()
   return normalizeRenamedDocument(
@@ -348,6 +365,14 @@ export function getAndroidDocumentUserMessage(error: unknown) {
 
   if (code === 'SHARE_WRITE_FAILED') {
     return 'Could not prepare this Markdown file for sharing.'
+  }
+
+  if (code === 'PDF_EXPORT_FAILED') {
+    return 'Could not export this document as a PDF.'
+  }
+
+  if (code === 'PDF_WRITE_FAILED') {
+    return 'Could not prepare the PDF file for sharing.'
   }
 
   if (code === 'DOCUMENT_TOO_LARGE') {
@@ -506,6 +531,18 @@ function normalizeShareResult(value: AndroidShareResult): AndroidShareResult {
     bytes: value.bytes,
     imageCount: typeof value.imageCount === 'number' ? value.imageCount : 0,
     sharedFileCount: typeof value.sharedFileCount === 'number' ? value.sharedFileCount : 1,
+  }
+}
+
+function normalizePdfExportResult(value: AndroidPdfExportResult): AndroidPdfExportResult {
+  if (!value.displayName || !value.mimeType || typeof value.bytes !== 'number') {
+    throw new AndroidDocumentError('INVALID_DOCUMENT_RESULT', 'Android document plugin returned an invalid result')
+  }
+
+  return {
+    displayName: value.displayName,
+    mimeType: value.mimeType,
+    bytes: value.bytes,
   }
 }
 

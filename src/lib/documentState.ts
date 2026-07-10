@@ -312,6 +312,12 @@ export function getSuggestedMarkdownFileName(markdown: string, displayName = DEF
   return MARKDOWN_EXTENSION_REGEXP.test(safeName) ? safeName : `${safeName}.md`
 }
 
+export function getSuggestedPdfFileName(markdown: string, displayName = DEFAULT_UNTITLED_NAME) {
+  const suggestedName = getSuggestedMarkdownFileName(markdown, displayName)
+  const baseName = stripMarkdownExtension(suggestedName) || 'Untitled'
+  return `${baseName}.pdf`
+}
+
 export function getSuggestedMarkdownCopyFileName(
   markdown: string,
   displayName = DEFAULT_UNTITLED_NAME,
