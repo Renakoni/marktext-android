@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { expectEditorReady } from './helpers/editor'
+import { getStoredDraftMarkdown, newBlankDocument } from './helpers/drafts'
 
 // Android IME clipboard chips insert text via InputConnection.commitText,
 // which reaches the page as an insertText beforeinput (the same path
@@ -7,19 +7,8 @@ import { expectEditorReady } from './helpers/editor'
 // block model entirely: the browser cloned unlinked content spans and the
 // text became invisible to cut/delete/save.
 
-async function newBlankDocument(page: Page) {
-  await page.goto('/')
-  await page.evaluate(() => localStorage.clear())
-  await page.reload()
-  await page.getByTestId('new-document-button').click()
-  await expectEditorReady(page)
-}
-
 function getDraftMarkdown(page: Page) {
-  return page.evaluate(() => {
-    const drafts = JSON.parse(localStorage.getItem('marktext-for-android:drafts') ?? '[]')
-    return drafts.length ? String(drafts[0].markdown) : ''
-  })
+  return getStoredDraftMarkdown(page)
 }
 
 test('multi-line IME text insert reaches the Muya model', async ({ page }) => {

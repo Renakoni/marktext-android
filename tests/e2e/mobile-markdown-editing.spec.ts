@@ -1,56 +1,23 @@
-import { expect, test, type Page } from '@playwright/test'
-import { expectEditorReady } from './helpers/editor'
+import { expect, test } from '@playwright/test'
+import {
+  getDraftStorage,
+  newBlankDocument,
+  openLocalDraft,
+} from './helpers/drafts'
 
 test.describe.configure({ timeout: 60000 })
-
-const DRAFTS_STORAGE_KEY = 'marktext-for-android:drafts'
-
-async function newBlankDocument(page: Page) {
-  await page.goto('/')
-  await page.evaluate(() => localStorage.clear())
-  await page.reload()
-  await page.getByTestId('new-document-button').click()
-  await expectEditorReady(page)
-}
-
-async function openLocalDraft(page: Page, markdown: string, title: RegExp) {
-  const now = '2026-07-01T09:00:00.000Z'
-  await page.goto('/')
-  await page.evaluate(
-    ({ markdown, now }) => {
-      localStorage.clear()
-      localStorage.setItem(
-        'marktext-for-android:drafts',
-        JSON.stringify([
-          {
-            id: 'markdown-editing-draft',
-            markdown,
-            updatedAt: now,
-            lastSavedAt: now,
-          },
-        ]),
-      )
-    },
-    { markdown, now },
-  )
-  await page.reload()
-
-  await page.getByRole('button', { name: title }).click()
-  await expectEditorReady(page)
-}
-
-async function getDraftStorage(page: Page) {
-  return page.evaluate(key => localStorage.getItem(key) ?? '', DRAFTS_STORAGE_KEY)
-}
 
 test('toggles a task list checkbox and persists the checked markdown state', async ({ page }) => {
   await openLocalDraft(
     page,
-    `# Task Probe
+    {
+      id: 'markdown-editing-draft',
+      markdown: `# Task Probe
 
 - [ ] Tap this task
 `,
-    /Task Probe/,
+      title: /Task Probe/,
+    },
   )
 
   const checkbox = page.locator('.mu-task-list-checkbox').first()
@@ -100,16 +67,32 @@ test('converts a typed pipe row into a persisted Markdown table', async ({ page 
   await expect.poll(() => getDraftStorage(page)).toContain('| alpha')
 })
 
+test('converts typed dollar fences into a persisted math block', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('$$')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('a^2 + b^2 = c^2')
+
+  await expect(page.locator('.mu-math-block')).toHaveCount(1)
+  await expect.poll(() => page.locator('.katex').count()).toBeGreaterThan(0)
+  await expect.poll(() => getDraftStorage(page)).toContain('a^2 + b^2 = c^2')
+})
+
 test('shows the MarkText selection toolbar only while editor text is selected', async ({
   page,
 }) => {
   await openLocalDraft(
     page,
-    `# Selection Probe
+    {
+      id: 'markdown-editing-draft',
+      markdown: `# Selection Probe
 
 Select this paragraph to reveal the toolbar
 `,
-    /Selection Probe/,
+      title: /Selection Probe/,
+    },
   )
 
   const toolbar = page.getByTestId('mobile-selection-toolbar')

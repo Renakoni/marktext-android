@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { getDraftStorage, newBlankDocument } from './helpers/drafts'
 import { expectEditorReady } from './helpers/editor'
 
 test.describe.configure({ timeout: 60000 })
@@ -25,23 +26,6 @@ interface MockCapacitorWindow {
       callback?: (data: unknown) => void,
     ) => Promise<string>
   }
-}
-
-async function newBlankDocument(page: Page, settings: Record<string, unknown> = {}) {
-  await page.goto('/')
-  await page.evaluate(settingsValue => {
-    localStorage.clear()
-    if (Object.keys(settingsValue).length > 0) {
-      localStorage.setItem('marktext-for-android:settings-ui', JSON.stringify(settingsValue))
-    }
-  }, settings)
-  await page.reload()
-  await page.getByTestId('new-document-button').click()
-  await expectEditorReady(page)
-}
-
-async function getDraftStorage(page: Page) {
-  return page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
 }
 
 async function selectTextInFirstParagraph(page: Page, text: string) {

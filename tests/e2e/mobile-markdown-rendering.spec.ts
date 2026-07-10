@@ -1,66 +1,14 @@
-import { expect, test, type Page } from '@playwright/test'
-import { expectEditorReady } from './helpers/editor'
+import { expect, test } from '@playwright/test'
+import { getStoredDraftMarkdown, openLocalDraft } from './helpers/drafts'
 
 test.describe.configure({ timeout: 60000 })
-
-const DRAFTS_STORAGE_KEY = 'marktext-for-android:drafts'
-const SETTINGS_STORAGE_KEY = 'marktext-for-android:settings-ui'
-
-async function openLocalDraft(
-  page: Page,
-  markdown: string,
-  title: RegExp,
-  settings: Record<string, boolean | number | string> = {},
-) {
-  const now = '2026-07-01T10:00:00.000Z'
-  await page.goto('/')
-  await page.evaluate(
-    ({ draftsStorageKey, markdown, now, settings, settingsStorageKey }) => {
-      localStorage.clear()
-      localStorage.setItem(
-        draftsStorageKey,
-        JSON.stringify([
-          {
-            id: 'markdown-rendering-draft',
-            markdown,
-            updatedAt: now,
-            lastSavedAt: now,
-          },
-        ]),
-      )
-      if (Object.keys(settings).length > 0) {
-        localStorage.setItem(settingsStorageKey, JSON.stringify(settings))
-      }
-    },
-    {
-      draftsStorageKey: DRAFTS_STORAGE_KEY,
-      markdown,
-      now,
-      settings,
-      settingsStorageKey: SETTINGS_STORAGE_KEY,
-    },
-  )
-  await page.reload()
-
-  await page.getByRole('button', { name: title }).click()
-  await expectEditorReady(page)
-}
-
-async function getStoredMarkdown(page: Page) {
-  return page.evaluate((key) => {
-    const raw = localStorage.getItem(key)
-    if (!raw) {
-      return ''
-    }
-    const [draft] = JSON.parse(raw) as Array<{ markdown: string }>
-    return draft?.markdown ?? ''
-  }, DRAFTS_STORAGE_KEY)
-}
 
 test('renders loaded CommonMark and GFM blocks as Muya editor structures', async ({ page }) => {
   await openLocalDraft(
     page,
-    `# Rendering Matrix
+    {
+      id: 'markdown-rendering-draft',
+      markdown: `# Rendering Matrix
 
 > Quoted **strong** and *emphasized* text with \`inline code\`.
 
@@ -79,7 +27,9 @@ test('renders loaded CommonMark and GFM blocks as Muya editor structures', async
 | --- | --- |
 | Table | Ready |
 `,
-    /Rendering Matrix/,
+      title: /Rendering Matrix/,
+      now: '2026-07-01T10:00:00.000Z',
+    },
   )
 
   const editor = page.getByTestId('editor-host')
@@ -98,7 +48,9 @@ test('renders loaded CommonMark and GFM blocks as Muya editor structures', async
 test('renders loaded math, fenced code, and Mermaid previews', async ({ page }) => {
   await openLocalDraft(
     page,
-    `# Preview Matrix
+    {
+      id: 'markdown-rendering-draft',
+      markdown: `# Preview Matrix
 
 Inline math $x^2 + y^2$.
 
@@ -115,7 +67,9 @@ graph TD
   A[Start] --> B[Done]
 \`\`\`
 `,
-    /Preview Matrix/,
+      title: /Preview Matrix/,
+      now: '2026-07-01T10:00:00.000Z',
+    },
   )
 
   const editor = page.getByTestId('editor-host')
@@ -123,6 +77,7 @@ graph TD
   await expect(editor.locator('.mu-math-block')).toHaveCount(1)
   await expect(editor.locator('.mu-math-error')).toHaveCount(0)
   await expect(editor.locator('.mu-code-block')).toHaveCount(1)
+  await expect(editor.locator('.mu-code-block .mu-code-copy')).toBeVisible()
   await expect(editor.locator('.mu-code-block .token.keyword').first()).toBeVisible()
   await expect(editor.locator('.mu-diagram-block')).toHaveCount(1)
   await expect(editor.locator('.mu-diagram-error')).toHaveCount(0)
@@ -176,7 +131,12 @@ Bob-->Alice: Hello Alice
 \`\`\`
 `
 
-  await openLocalDraft(page, markdown, /Diagram Matrix/)
+  await openLocalDraft(page, {
+    id: 'markdown-rendering-draft',
+    markdown,
+    title: /Diagram Matrix/,
+    now: '2026-07-01T10:00:00.000Z',
+  })
 
   const editor = page.getByTestId('editor-host')
   await expect(editor.locator('.mu-diagram-block')).toHaveCount(5)
@@ -186,7 +146,7 @@ Bob-->Alice: Hello Alice
   await expect
     .poll(() => editor.locator('.mu-diagram-preview svg').count(), { timeout: 45000 })
     .toBeGreaterThanOrEqual(4)
-  await expect.poll(() => getStoredMarkdown(page)).toBe(markdown)
+  await expect.poll(() => getStoredDraftMarkdown(page)).toBe(markdown)
 })
 
 test('applies Editing runtime settings on editor startup without rewriting source', async ({
@@ -206,12 +166,18 @@ Footnote marker.[^note]
 [^note]: Footnote body.
 `
 
-  await openLocalDraft(page, markdown, /Settings Matrix/, {
-    codeBlockLineNumbers: true,
-    footnote: true,
-    isHtmlEnabled: false,
-    spellcheckerEnabled: true,
-    spellcheckerLanguage: 'de-DE',
+  await openLocalDraft(page, {
+    id: 'markdown-rendering-draft',
+    markdown,
+    title: /Settings Matrix/,
+    now: '2026-07-01T10:00:00.000Z',
+    settings: {
+      codeBlockLineNumbers: true,
+      footnote: true,
+      isHtmlEnabled: false,
+      spellcheckerEnabled: true,
+      spellcheckerLanguage: 'de-DE',
+    },
   })
 
   const editor = page.getByTestId('editor-host')
@@ -220,7 +186,7 @@ Footnote marker.[^note]
   await expect(editor.locator('.mu-footnote')).toHaveCount(1)
   await expect(editor.locator('.mu-html-block.mu-disable-html-render')).toHaveCount(1)
   await expect(editor.locator('[lang="de-DE"]')).toHaveCount(1)
-  await expect.poll(() => getStoredMarkdown(page)).toBe(markdown)
+  await expect.poll(() => getStoredDraftMarkdown(page)).toBe(markdown)
 })
 
 test('renders loaded front matter, footnotes, HTML blocks, and inline images', async ({ page }) => {
@@ -229,7 +195,9 @@ test('renders loaded front matter, footnotes, HTML blocks, and inline images', a
 
   await openLocalDraft(
     page,
-    `---
+    {
+      id: 'markdown-rendering-draft',
+      markdown: `---
 title: Mobile Render Probe
 ---
 
@@ -243,8 +211,10 @@ Inline image: ![App icon](${appIconUrl})
 
 [^note]: Footnote body text.
 `,
-    /Extended Matrix/,
-    { footnote: true },
+      title: /Extended Matrix/,
+      now: '2026-07-01T10:00:00.000Z',
+      settings: { footnote: true },
+    },
   )
 
   const editor = page.getByTestId('editor-host')
