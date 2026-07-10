@@ -137,6 +137,34 @@ const THEMATIC_BREAK_REGEXP = /^\s*([-*_])(\s*\1){2,}\s*$/
 const CODE_FENCE_REGEXP = /^\s*(?:`{3,}|~{3,})/
 const TITLE_MAX_LENGTH = 48
 
+// Matches inline HTML tags the way CommonMark treats raw HTML: a letter-led
+// tag name (hyphenated custom elements included), attributes whose quoted
+// values may contain '>', optional self-close. Autolinks like
+// <https://example.com> and <user@example.com> do not match because ':' and
+// '@' follow the leading letters directly.
+const INLINE_HTML_TAG_REGEXP = /<\/?[a-z][a-z0-9-]*(?:[\s/](?:[^<>"']|"[^"]*"|'[^']*')*)?>/gi
+
+// Best-effort plain-text reduction of inline Markdown for use as a title:
+// keeps link/image text, drops inline HTML tags, and unwraps paired
+// delimiters only — literal punctuation like `file_name`, `2*3`, or
+// `foo~bar` is content, not markup, and survives. Underscores follow
+// CommonMark's rule that intraword `_` never emphasizes.
+function stripInlineMarkdown(text: string) {
+  const reduced = text
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(INLINE_HTML_TAG_REGEXP, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+    .replace(/(?<![\p{L}\p{N}])_{1,3}([^_]+)_{1,3}(?![\p{L}\p{N}])/gu, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  // Unpaired marker runs ("***", "**") carry no title content.
+  return /^[`*_~\s]+$/.test(reduced) ? '' : reduced
+}
+
 // Best-effort plain-text reduction of a Markdown line for use as a title:
 // strips the common block prefixes and inline markers without a full parse.
 // Lines that are pure syntax (fences, thematic breaks) reduce to nothing.
@@ -146,16 +174,13 @@ function extractTitleTextFromLine(line: string) {
     return ''
   }
 
-  return trimmed
-    .replace(/^#{1,6}\s+/, '')
-    .replace(/^(?:>\s*)+/, '')
-    .replace(/^(?:[-*+]|\d+[.)])\s+/, '')
-    .replace(/^\[[ xX]\]\s+/, '')
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/[`*_~]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+  return stripInlineMarkdown(
+    trimmed
+      .replace(/^#{1,6}\s+/, '')
+      .replace(/^(?:>\s*)+/, '')
+      .replace(/^(?:[-*+]|\d+[.)])\s+/, '')
+      .replace(/^\[[ xX]\]\s+/, ''),
+  )
 }
 
 // The first line of the document that still reads as text once Markdown
@@ -257,8 +282,12 @@ export function getDocumentTitle(markdown: string, displayName = DEFAULT_UNTITLE
     .map(line => line.match(/^#{1,6}\s+(.+)$/)?.[1]?.trim())
     .find(Boolean)
 
-  if (heading) {
-    return heading
+  // Titles are plain text: a styled heading like `# ***<u>alpha</u>***` must
+  // not leak its markers or tags. A pure-markup heading reduces to nothing
+  // and falls through to the display-name / leading-text fallbacks.
+  const headingText = heading ? stripInlineMarkdown(heading) : ''
+  if (headingText) {
+    return headingText
   }
 
   // A real display name (an opened file's name) still wins over content, but

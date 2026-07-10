@@ -34,6 +34,43 @@ describe('documentState', () => {
     expect(getDocumentTitle('1. step one\n2. step two')).toBe('step one')
   })
 
+  it('drops inline HTML tags from derived titles', () => {
+    // Styled first lines always resolve to plain text — with or without
+    // emphasis around the tags, the title is the same readable content.
+    expect(getDocumentTitle('***<u>alpha</u>*** bravo charlie delta'))
+      .toBe('alpha bravo charlie delta')
+    expect(getDocumentTitle('<u>alpha</u> bravo charlie delta'))
+      .toBe('alpha bravo charlie delta')
+    expect(getDocumentTitle('<mark>note</mark> for later')).toBe('note for later')
+    expect(getDocumentTitle('alpha<br>beta')).toBe('alpha beta')
+    // Autolinks are content, not markup.
+    expect(getDocumentTitle('<https://example.com> reading list'))
+      .toBe('<https://example.com> reading list')
+  })
+
+  it('reduces styled headings to plain-text titles', () => {
+    expect(getDocumentTitle('# **Trip** to <u>Paris</u>')).toBe('Trip to Paris')
+    // A pure-markup heading names nothing; the content below wins.
+    expect(getDocumentTitle('# ***\n\nreal text')).toBe('real text')
+  })
+
+  it('keeps literal Markdown punctuation that is not paired markup', () => {
+    expect(getDocumentTitle('# file_name')).toBe('file_name')
+    expect(getDocumentTitle('# snake_case_name here')).toBe('snake_case_name here')
+    expect(getDocumentTitle('# `file_name`')).toBe('file_name')
+    expect(getDocumentTitle('# 2*3 benchmark')).toBe('2*3 benchmark')
+    expect(getDocumentTitle('# foo~bar')).toBe('foo~bar')
+    expect(getDocumentTitle('# ~~done~~ next steps')).toBe('done next steps')
+    expect(getDocumentTitle('# _emphasized_ word')).toBe('emphasized word')
+  })
+
+  it('strips custom elements and tags with quoted attribute values', () => {
+    expect(getDocumentTitle('<my-widget>alpha</my-widget> beta')).toBe('alpha beta')
+    expect(getDocumentTitle('<span title="a>b">alpha</span> beta')).toBe('alpha beta')
+    expect(getDocumentTitle('<user@example.com> contact line'))
+      .toBe('<user@example.com> contact line')
+  })
+
   it('skips front matter and pure-syntax lines when deriving draft titles', () => {
     expect(getDocumentTitle('---\ntitle: meta\n---\nActual first line')).toBe('Actual first line')
     expect(getDocumentTitle('---\n\nBelow a thematic break')).toBe('Below a thematic break')
