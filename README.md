@@ -13,6 +13,9 @@ Android app scaffold for a MarkText-like editor. The first version uses Vue, Vit
 ```sh
 pnpm install
 pnpm dev
+pnpm test
+pnpm test:muya
+pnpm test:e2e
 pnpm lint
 pnpm typecheck
 pnpm build
@@ -21,6 +24,8 @@ pnpm android:open
 pnpm logs:android
 ```
 
+`pnpm test` runs the app unit tests, `pnpm test:muya` runs the vendored editor-core
+gate, and `pnpm test:e2e` runs the mobile WebView journeys in Playwright.
 `pnpm lint` runs ESLint. `pnpm typecheck` runs `vue-tsc`.
 `pnpm android:sync` builds the web app and copies it into the Android project. Use `pnpm android:open` to open the generated Android project in Android Studio.
 `pnpm logs:android` captures MuMu/ADB diagnostics into the ignored local `logs/` directory.
@@ -66,4 +71,4 @@ This repository keeps a small Android-specific CI setup inspired by upstream Mar
 - `.github/workflows/dependency-review.yml` reviews `package.json` and `pnpm-lock.yaml` changes on pull requests.
 - Successful Android debug runs upload `android/app/build/outputs/apk/debug/app-debug.apk` as a short-lived artifact.
 
-The upstream desktop/Electron build workflows are intentionally not copied. This project validates the Android web shell and Capacitor Android debug build first; release signing, Playwright coverage, Android device smoke tests, and license validation can be added when those surfaces exist.
+The upstream desktop/Electron build workflows are intentionally not copied. This project validates the Android web shell with unit, Muya, and Playwright suites plus the Capacitor Android debug build; release signing, Android device smoke tests, and license validation can be added when those surfaces exist.
