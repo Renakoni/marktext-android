@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { App } from '@capacitor/app'
 import HomeScreen from './features/home/HomeScreen.vue'
 import EditorScreen from './features/editor/EditorScreen.vue'
@@ -34,8 +34,8 @@ import {
   isAndroidSelectionControlAvailable,
   readAndroidClipboardText,
 } from './lib/androidSelection'
-import { installAndroidSelectionDiagnostics } from './lib/androidSelectionDiagnostics'
 import { createEditorSelectionLifecycle } from './features/editor/selectionLifecycle'
+import { createEditorSession, normalizeEditorMarkdown } from './features/editor/editorSession'
 import {
   getAppBackButtonAction,
   getShowHomeAfterAndroidSaveAction,
@@ -46,10 +46,7 @@ import {
 import { isAndroidRecoveryDraftId } from './features/android-documents/androidRecoveryDrafts'
 import { rememberAndroidRecentDocument } from './features/android-documents/androidRecentDocuments'
 import { getImageSharingSettings } from './features/android-documents/imageSharingSettings'
-import {
-  createUntitledDocument,
-  updateDocumentMarkdown,
-} from './lib/documentState'
+import { createUntitledDocument } from './lib/documentState'
 import {
   createDocumentStateFromLocalDraft,
 } from './features/document-session/documentSessionState'
@@ -73,22 +70,17 @@ import {
   runEditorToolbarCommandWorkflow,
   scheduleEditorToolbarSync,
 } from './features/editor/editorToolbarWorkflow'
-import { readEditorMarkdownSnapshot } from './features/editor/editorMarkdownSnapshot'
 import {
   getEditorToolbarSettings,
 } from './features/editor/editorToolbarSettings'
 import { useEditorToolbar } from './features/editor/useEditorToolbar'
-import {
-  insertTextAtRestoredSelection,
-  resolveEditorDomNode,
-} from './features/editor/editorInlineInsert'
+import { insertTextAtRestoredSelection } from './features/editor/editorInlineInsert'
 import {
   applyMuyaAppearanceSettings,
   applyMuyaEditingSettings,
   applyMuyaEditorLocale,
   createMuyaEditor,
   destroyMuyaEditor,
-  type MuyaEditor,
 } from './features/editor/editorRuntime'
 import {
   removeLocalDraft,
@@ -181,11 +173,6 @@ const SHARED_TEXT_IMPORTED_MESSAGE = 'Imported shared text as a local draft.'
 const ANDROID_SAVE_RECOVERY_MESSAGE = 'Save failed. A local recovery draft was kept.'
 const ANDROID_EXIT_RECOVERY_MESSAGE = 'Unsaved changes were kept as a recovery draft.'
 const ANDROID_EXIT_DISCARD_MESSAGE = 'Unsaved changes were discarded.'
-const ENABLE_ANDROID_SELECTION_ACTION_MODE_SUPPRESSION = true
-// Heavy per-event selection checkpoints are a debugging tool, not a product
-// behavior: leave off unless actively diagnosing selection lifecycle issues.
-const ENABLE_ANDROID_SELECTION_DIAGNOSTICS = false
-const editorElement = ref<HTMLElement | null>(null)
 const documentState = ref(createUntitledDocument())
 const localDrafts = ref<LocalDraftRecord[]>([])
 const androidRecentDocuments = ref<RecentDocumentRecord[]>([])
@@ -199,7 +186,6 @@ const homeNotice = ref<string | null>(null)
 const currentScreen = ref<AppScreen>('home')
 const homeTab = ref<HomeTab>(DEFAULT_HOME_TAB)
 const settingsPage = ref<SettingsPage>(DEFAULT_SETTINGS_PAGE)
-const editorReady = ref(false)
 const draftExitPromptOpen = ref(false)
 const androidExitPromptOpen = ref(false)
 const promptLocalDraftSaveOnExit = ref(false)
@@ -261,18 +247,10 @@ const homeDocumentText = computed<HomeDocumentText>(() => ({
     t(count === 1 ? 'home.wordCount.one' : 'home.wordCount.other', { count }),
 }))
 
-function setEditorElement(element: HTMLElement | null) {
-  editorElement.value = element
-}
-
-let editor: MuyaEditor | null = null
-let editorInitToken = 0
 let lastContentLogAt = 0
 let appLifecycleListeners: AppLifecycleListeners | null = null
 let pendingInlineInsertRange: Range | null = null
 let startupActionTimer: number | null = null
-let editorSelectionDiagnosticCleanup: (() => void) | null = null
-let editorInputDiagnosticCleanup: (() => void) | null = null
 let systemColorSchemeCleanup: (() => void) | null = null
 
 const appLog = createLogger('app')
@@ -282,7 +260,7 @@ const androidDocumentLog = createLogger('android-document')
 const loggingLog = createLogger('logging')
 
 watch(appearanceTextSettings, settings => {
-  applyMuyaAppearanceSettings(editor, settings)
+  applyMuyaAppearanceSettings(getEditor(), settings)
 })
 
 // Runs synchronously during setup so the stored theme lands before first paint.
@@ -296,7 +274,7 @@ watch(
 )
 
 watch(editingSettings, (settings, previousSettings) => {
-  applyMuyaEditingSettings(editor, settings, previousSettings)
+  applyMuyaEditingSettings(getEditor(), settings, previousSettings)
 })
 
 watch(
@@ -341,7 +319,7 @@ watch(androidInputDiagnosticsEnabled, enabled => {
 })
 
 watch(locale, nextLocale => {
-  void applyMuyaEditorLocale(editor, nextLocale, editorLog)
+  void applyMuyaEditorLocale(getEditor(), nextLocale, editorLog)
 })
 
 const lineCount = computed(() => documentState.value.stats.lines)
@@ -457,12 +435,69 @@ const {
 } = createAutosaveScheduler({
   documentSettings,
   documentState,
-  isEditingActive: () => Boolean(editor) && currentScreen.value === 'editor',
+  // Deferred lookup: the editor session below owns the editor instance, and
+  // its own options reference this scheduler's timer handles.
+  isEditingActive: () => Boolean(getEditor()) && currentScreen.value === 'editor',
   canPersistLocalDrafts,
   // Deferred lookups: the persistence factory below provides these, and its
   // own options reference this scheduler's timer handles.
   saveDraft: () => saveDraft(),
   saveAndroidDocument: () => saveAndroidDocument(),
+})
+
+const {
+  editorReady,
+  setEditorElement,
+  getEditorElement,
+  getEditor,
+  hasEditor,
+  getEditorMarkdownSnapshot,
+  syncDocumentFromEditor,
+  openEditor,
+  destroyEditor,
+  releaseEditorFocusAfterOpen,
+  installEditorInputDiagnostics,
+  uninstallEditorInputDiagnostics,
+  describeEditorInputState,
+} = createEditorSession({
+  currentScreen,
+  documentState,
+  status,
+  locale,
+  appearanceTextSettings,
+  editingSettings,
+  androidInputDiagnosticsEnabled,
+  createMuyaEditor,
+  destroyMuyaEditor,
+  syncMarkdown: nextStatus => syncMarkdown(nextStatus),
+  onEditorFocus: () => {
+    status.value =
+      documentState.value.autosaveTarget === 'android-document' &&
+      !currentAndroidDocumentCanWrite.value
+        ? 'Read only'
+        : 'Editing'
+    editorLog.debug('editor focused')
+  },
+  onEditorBlur: () => {
+    status.value =
+      documentState.value.autosaveTarget === 'android-document'
+        ? getAndroidEditorStatus()
+        : 'Ready'
+    editorLog.debug('editor blurred')
+  },
+  ensureAndroidImageResolver,
+  getClipboardText: () =>
+    isAndroidSelectionControlAvailable() ? readAndroidClipboardText : undefined,
+  // Deferred lookups: the selection lifecycle below is created after this
+  // session, and its own options reference the session's editor accessors.
+  setEditorSelectionMenuSuppression: (suppressed, reason) =>
+    setEditorSelectionMenuSuppression(suppressed, reason),
+  installNativeSelectionTapListener: () => installNativeSelectionTapListener(),
+  uninstallNativeSelectionTapListener: () => uninstallNativeSelectionTapListener(),
+  clearDraftSaveTimer,
+  clearAndroidDocumentSaveTimer,
+  closeEditorToolbar,
+  logger: editorLog,
 })
 
 function getTransientAndroidSaveMessage() {
@@ -512,40 +547,14 @@ function getAndroidExitPromptMessage() {
   return t('editor.exit.androidSaveFailedMessage')
 }
 
-function normalizeEditorMarkdown(markdown: string) {
-  return markdown === '\n' ? '' : markdown
-}
-
-function getEditorMarkdownSnapshot(flushPending = false) {
-  if (!editor) {
-    return ''
-  }
-
-  return readEditorMarkdownSnapshot(editor, {
-    flushPending,
-    normalizeMarkdown: normalizeEditorMarkdown,
-  })
-}
-
-function syncDocumentFromEditor(markDirty = false, flushPending = false) {
-  if (!editor) {
-    return documentState.value
-  }
-
-  const value = getEditorMarkdownSnapshot(flushPending)
-  documentState.value = updateDocumentMarkdown(documentState.value, value, { markDirty })
-  return documentState.value
-}
-
 function syncMarkdown(nextStatus: unknown = 'Edited') {
-  if (!editor) {
+  if (!hasEditor()) {
     return
   }
 
   const resolvedStatus = typeof nextStatus === 'string' ? nextStatus : 'Edited'
-  const nextMarkdown = getEditorMarkdownSnapshot()
   const markDirty = resolvedStatus === 'Edited'
-  documentState.value = updateDocumentMarkdown(documentState.value, nextMarkdown, { markDirty })
+  syncDocumentFromEditor(markDirty)
   if (markDirty && documentState.value.autosaveTarget === 'android-document') {
     status.value = getAndroidEditorStatus()
     if (currentAndroidDocumentCanWrite.value && canRunIdleAndroidDocumentAutosave()) {
@@ -567,11 +576,12 @@ function syncMarkdown(nextStatus: unknown = 'Edited') {
 }
 
 function getEditorCommandTarget(): MobileEditorCommandTarget | null {
-  if (!editor) {
+  const activeEditor = getEditor()
+  if (!activeEditor) {
     return null
   }
 
-  return createMuyaMobileEditorCommandTarget(editor)
+  return createMuyaMobileEditorCommandTarget(activeEditor)
 }
 
 const {
@@ -586,25 +596,25 @@ const {
   currentScreen,
   editorReady,
   androidInputDiagnosticsEnabled,
-  getEditor: () => editor,
-  getEditorElement: () => editorElement.value,
-  describeEditorInputState: () => describeEditorInputState(),
+  getEditor,
+  getEditorElement,
+  describeEditorInputState,
   logger: editorLog,
 })
 function insertMarkdownAtPendingSelection(markdown: string) {
-  editor?.focus()
+  getEditor()?.focus()
   return insertTextAtRestoredSelection(markdown, pendingInlineInsertRange)
 }
 
 function openLinkSheet(restoreRange: Range | null = null) {
-  const hasEditor = Boolean(editor)
+  const editorPresent = hasEditor()
   const capturedRange =
-    editorReady.value && hasEditor
+    editorReady.value && editorPresent
       ? restoreRange?.cloneRange() ?? captureEditorSelection()
       : null
   const nextLinkSheet = createLinkInsertSheetWorkflow({
     editorReady: editorReady.value,
-    hasEditor,
+    hasEditor: editorPresent,
     selectedText: capturedRange?.toString() ?? '',
   })
   if (nextLinkSheet.kind !== 'open') {
@@ -624,9 +634,9 @@ function closeLinkSheet() {
 }
 
 function insertLinkFromSheet() {
-  const beforeMarkdown = editor?.getMarkdown() ?? ''
+  const beforeMarkdown = getEditor()?.getMarkdown() ?? ''
   const result = insertLinkFromSheetWorkflow({
-    hasEditor: Boolean(editor),
+    hasEditor: hasEditor(),
     linkText: linkText.value,
     linkUrl: linkUrl.value,
     beforeMarkdown,
@@ -645,7 +655,7 @@ function insertLinkFromSheet() {
 async function insertImageFromAndroidPicker(restoreRange: Range | null = null) {
   const startResult = createAndroidImageInsertStart({
     editorReady: editorReady.value,
-    hasEditor: Boolean(editor),
+    hasEditor: hasEditor(),
     importing: importingAndroidImage.value,
     isAvailable: isAndroidImageImportAvailable(),
     unavailableStatus: getAndroidImageUserMessage({ code: 'UNAVAILABLE' }),
@@ -660,11 +670,12 @@ async function insertImageFromAndroidPicker(restoreRange: Range | null = null) {
     return
   }
 
-  if (!editor) {
+  const activeEditor = getEditor()
+  if (!activeEditor) {
     return
   }
 
-  const beforeMarkdown = editor.getMarkdown()
+  const beforeMarkdown = activeEditor.getMarkdown()
   pendingInlineInsertRange = restoreRange?.cloneRange() ?? captureEditorSelection()
   const selectedText = normalizeToolbarSelectionText(pendingInlineInsertRange?.toString() ?? '')
   closeEditorMenu()
@@ -697,7 +708,7 @@ function syncAfterToolbarCommand(beforeMarkdown: string) {
   scheduleEditorToolbarSync({
     beforeMarkdown,
     requestFrame: callback => window.requestAnimationFrame(callback),
-    getMarkdown: () => editor?.getMarkdown() ?? null,
+    getMarkdown: () => getEditor()?.getMarkdown() ?? null,
     normalizeMarkdown: normalizeEditorMarkdown,
     onEdited: () => syncMarkdown('Edited'),
     onUnchanged: () => syncDocumentFromEditor(documentState.value.isDirty),
@@ -709,7 +720,7 @@ const canPasteSelection =
   (typeof navigator !== 'undefined' && Boolean(navigator.clipboard?.readText))
 
 function runEditorToolbarCommand(commandId: MobileCommandId, restoreRange: Range | null = null) {
-  const activeEditor = editorReady.value ? editor : null
+  const activeEditor = editorReady.value ? getEditor() : null
   const commandRange =
     activeEditor && isSelectionDependentMobileCommand(commandId)
       ? restoreRange?.cloneRange() ?? captureEditorSelection()
@@ -795,7 +806,7 @@ const {
   savingLocalDraftToAndroid,
   savingAndroidDocumentCopy,
   sharingCurrentDocument,
-  hasEditor: () => Boolean(editor),
+  hasEditor,
   getEditorMarkdownSnapshot,
   syncDocumentFromEditor,
   closeEditorMenu,
@@ -829,204 +840,6 @@ const {
   documentLogger: androidDocumentLog,
   draftLogger: draftLog,
 })
-async function initEditor(initialMarkdown: string) {
-  const element = editorElement.value
-  if (!element) {
-    return
-  }
-
-  try {
-    const token = ++editorInitToken
-    try {
-      await ensureAndroidImageResolver()
-    } catch (error) {
-      editorLog.warn('Android image resolver unavailable during editor init', error)
-    }
-    const nextEditor = await createMuyaEditor({
-      element,
-      markdown: initialMarkdown,
-      onContentChange: syncMarkdown,
-      onJsonChange: syncMarkdown,
-      onFocus: () => {
-        status.value =
-          documentState.value.autosaveTarget === 'android-document' &&
-          !currentAndroidDocumentCanWrite.value
-            ? 'Read only'
-            : 'Editing'
-        editorLog.debug('editor focused')
-      },
-      onBlur: () => {
-        status.value =
-          documentState.value.autosaveTarget === 'android-document'
-            ? getAndroidEditorStatus()
-            : 'Ready'
-        editorLog.debug('editor blurred')
-      },
-      appLocale: locale.value,
-      appearanceTextSettings: appearanceTextSettings.value,
-      editingSettings: editingSettings.value,
-      clipboardText: isAndroidSelectionControlAvailable() ? readAndroidClipboardText : undefined,
-      isStale: () => token !== editorInitToken || !editorElement.value,
-      logger: editorLog,
-    })
-    if (!nextEditor) {
-      await setEditorSelectionMenuSuppression(false, 'editor-init-stale')
-      return
-    }
-
-    editor = nextEditor
-    installEditorSelectionDiagnostics()
-    installEditorInputDiagnostics()
-    void installNativeSelectionTapListener()
-    await setEditorSelectionMenuSuppression(
-      ENABLE_ANDROID_SELECTION_ACTION_MODE_SUPPRESSION,
-      ENABLE_ANDROID_SELECTION_ACTION_MODE_SUPPRESSION
-        ? 'editor-init'
-        : 'editor-init-baseline-disabled',
-    )
-    syncMarkdown('Ready')
-    editorReady.value = true
-    editorLog.info('Muya init complete', {
-      characters: characterCount.value,
-      words: wordCount.value,
-      lines: lineCount.value,
-    })
-  } catch (error) {
-    status.value = 'Editor failed'
-    editorLog.error('Muya init failed', error)
-    await setEditorSelectionMenuSuppression(false, 'editor-init-failed')
-  }
-}
-
-function installEditorSelectionDiagnostics() {
-  uninstallEditorSelectionDiagnostics()
-
-  if (!ENABLE_ANDROID_SELECTION_DIAGNOSTICS) {
-    return
-  }
-
-  const root = resolveEditorDomNode(editor, editorElement.value)
-  if (!root) {
-    return
-  }
-
-  editorSelectionDiagnosticCleanup = installAndroidSelectionDiagnostics({
-    root,
-    getFallbackRoot: () => editorElement.value,
-    logger: editorLog,
-  })
-}
-
-function uninstallEditorSelectionDiagnostics() {
-  editorSelectionDiagnosticCleanup?.()
-  editorSelectionDiagnosticCleanup = null
-}
-
-function describeEditorInputState() {
-  const selection = document.getSelection()
-  const anchorNode = selection?.anchorNode ?? null
-  const anchorElement =
-    anchorNode instanceof Element ? anchorNode : anchorNode?.parentElement ?? null
-  const muyaSelection = editor?.editor.selection.getSelection() ?? null
-
-  return {
-    anchor: anchorNode
-      ? `${anchorNode.nodeName}[${String(anchorElement?.className ?? '').slice(0, 44)}]@${selection?.anchorOffset}`
-      : 'none',
-    anchorInContent: Boolean(anchorElement?.closest?.('span.mu-content')),
-    collapsed: selection?.isCollapsed ?? null,
-    muyaSelection: muyaSelection
-      ? {
-          sameBlock: muyaSelection.isSelectionInSameBlock,
-          anchorOffset: muyaSelection.anchor.offset,
-          focusOffset: muyaSelection.focus.offset,
-        }
-      : null,
-    hasActiveBlock: Boolean(editor?.editor.activeContentBlock),
-    modelCharacters: editor?.getMarkdown().length ?? -1,
-  }
-}
-
-function installEditorInputDiagnostics() {
-  uninstallEditorInputDiagnostics()
-
-  if (!androidInputDiagnosticsEnabled.value) {
-    return
-  }
-
-  const root = resolveEditorDomNode(editor, editorElement.value)
-  if (!root) {
-    return
-  }
-
-  const handler = (event: Event) => {
-    const inputEvent = event as InputEvent
-    const inputType = inputEvent.inputType ?? ''
-    const eventText = inputEvent.dataTransfer?.getData('text/plain') ?? inputEvent.data ?? ''
-    const isDelete = inputType.startsWith('delete')
-    // Paste-like inserts (IME clipboard chips commit these) are the known
-    // model-divergence trigger, so keep them in the diagnostic trail too.
-    const isPasteLike =
-      inputType === 'insertFromPaste' ||
-      inputType === 'insertReplacementText' ||
-      (inputType.startsWith('insert') && /[\r\n]/.test(eventText))
-    if (!isDelete && !isPasteLike) {
-      return
-    }
-
-    const target = event.target
-    const targetName =
-      target instanceof Element
-        ? `${target.nodeName}[${String(target.className).slice(0, 44)}]`
-        : 'none'
-    editorLog.debug('editor input event', {
-      phase: event.type,
-      inputType,
-      cancelable: event.cancelable,
-      dataLength: eventText.length,
-      target: targetName,
-      ...describeEditorInputState(),
-    })
-  }
-
-  root.addEventListener('beforeinput', handler, true)
-  root.addEventListener('input', handler, true)
-  editorInputDiagnosticCleanup = () => {
-    root.removeEventListener('beforeinput', handler, true)
-    root.removeEventListener('input', handler, true)
-  }
-}
-
-function uninstallEditorInputDiagnostics() {
-  editorInputDiagnosticCleanup?.()
-  editorInputDiagnosticCleanup = null
-}
-
-function releaseEditorFocusAfterOpen() {
-  window.requestAnimationFrame(() => {
-    const activeElement = document.activeElement
-    if (activeElement instanceof HTMLElement && editorElement.value?.contains(activeElement)) {
-      activeElement.blur()
-      editorLog.debug('editor focus released after document open')
-    }
-  })
-}
-
-async function openEditor(markdown: string) {
-  editorReady.value = false
-  closeEditorToolbar()
-  const wasEditorOpen = currentScreen.value === 'editor'
-  destroyEditor({ updateSelectionMenuSuppression: !wasEditorOpen })
-  if (wasEditorOpen) {
-    currentScreen.value = 'home'
-    await nextTick()
-  }
-
-  currentScreen.value = 'editor'
-  await nextTick()
-  await initEditor(markdown)
-}
-
 function rememberAndroidDocument(document: OpenedAndroidDocument) {
   persistAndroidRecentDocuments(rememberAndroidRecentDocument(androidRecentDocuments.value, document))
 }
@@ -1202,21 +1015,6 @@ async function installCjkBoldCompensation() {
   applyCjkBoldCompensation(compensate)
   if (compensate) {
     appLog.info('cjk bold compensation enabled', { manufacturer: diagnostics.manufacturer })
-  }
-}
-
-function destroyEditor(options: { updateSelectionMenuSuppression?: boolean } = {}) {
-  editorInitToken += 1
-  editorReady.value = false
-  clearDraftSaveTimer()
-  clearAndroidDocumentSaveTimer()
-  uninstallEditorSelectionDiagnostics()
-  uninstallEditorInputDiagnostics()
-  void uninstallNativeSelectionTapListener()
-  destroyMuyaEditor(editor)
-  editor = null
-  if (options.updateSelectionMenuSuppression !== false) {
-    void setEditorSelectionMenuSuppression(false, 'editor-destroy')
   }
 }
 
@@ -1398,7 +1196,7 @@ const incomingDocuments = createIncomingDocumentOrchestration({
   promptLocalDraftSaveOnExit,
   currentAndroidDocumentCanWrite,
   sharedTextImportedMessage: SHARED_TEXT_IMPORTED_MESSAGE,
-  hasEditor: () => Boolean(editor),
+  hasEditor,
   openEditor,
   releaseEditorFocusAfterOpen,
   closeEditorMenu,

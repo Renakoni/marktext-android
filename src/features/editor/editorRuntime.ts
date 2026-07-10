@@ -18,7 +18,7 @@ interface EditorRuntimeLogger {
   info?(message: string, context?: Record<string, unknown>): void
 }
 
-interface CreateMuyaEditorOptions {
+export interface CreateMuyaEditorOptions {
   element: HTMLElement
   markdown: string
   onContentChange: (...args: unknown[]) => void
