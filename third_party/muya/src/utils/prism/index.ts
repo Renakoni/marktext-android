@@ -9,11 +9,14 @@ import('prismjs/plugins/keep-markup/prism-keep-markup');
 
 if (languages.cpp) {
     const existing = languages.cpp.alias;
-    languages.cpp.alias = Array.isArray(existing)
-        ? [...existing, 'c++', 'h++']
-        : existing
-            ? [existing, 'c++', 'h++']
-            : ['c++', 'h++'];
+    // components.languages survives test/HMR module reloads, so aliases must
+    // not be appended again each time this module is evaluated.
+    const alias = Array.isArray(existing) ? [...existing] : existing ? [existing] : [];
+    for (const name of ['c++', 'h++']) {
+        if (!alias.includes(name))
+            alias.push(name);
+    }
+    languages.cpp.alias = alias;
 }
 
 const langs: {

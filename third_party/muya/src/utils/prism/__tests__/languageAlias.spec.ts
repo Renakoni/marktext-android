@@ -1,5 +1,6 @@
 // @vitest-environment node
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { languages } from 'prismjs/components.js';
 
 vi.mock('../loadLanguage', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../loadLanguage')>();
@@ -17,7 +18,16 @@ async function loadPrismModule() {
     return import('../index');
 }
 
+function cppAliases(): string[] {
+    const alias = languages.cpp.alias;
+    return Array.isArray(alias) ? alias : alias ? [alias] : [];
+}
+
 describe('c++ language alias (#2910)', () => {
+    beforeEach(() => {
+        vi.resetModules();
+    });
+
     it('resolves `c++` to the cpp grammar', async () => {
         const { transformAliasToOrigin } = await loadPrismModule();
         expect(transformAliasToOrigin(['c++'])[0]).toBe('cpp');
@@ -42,5 +52,14 @@ describe('c++ language alias (#2910)', () => {
         expect(prism.languages[resolved]).toBeTruthy();
         expect(prism.languages['c++']).toBeUndefined();
         expect(() => prism.tokenize('int main(){}', prism.languages[resolved])).not.toThrow();
+    });
+
+    it('registers aliases only once across repeated module evaluation (#4816)', async () => {
+        await loadPrismModule();
+        vi.resetModules();
+        await loadPrismModule();
+
+        expect(cppAliases().filter(alias => alias === 'c++')).toHaveLength(1);
+        expect(cppAliases().filter(alias => alias === 'h++')).toHaveLength(1);
     });
 });
