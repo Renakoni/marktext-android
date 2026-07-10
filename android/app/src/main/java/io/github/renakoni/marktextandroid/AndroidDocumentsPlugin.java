@@ -518,16 +518,7 @@ public class AndroidDocumentsPlugin extends Plugin {
     }
 
     private void handleIncomingIntent(Intent intent) {
-        if (intent == null) {
-            return;
-        }
-
-        String action = intent.getAction();
-        if (
-            !Intent.ACTION_VIEW.equals(action) &&
-            !Intent.ACTION_SEND.equals(action) &&
-            !Intent.ACTION_SEND_MULTIPLE.equals(action)
-        ) {
+        if (intent == null || !IncomingIntentParser.isIncomingAction(intent.getAction())) {
             return;
         }
 
@@ -535,19 +526,24 @@ public class AndroidDocumentsPlugin extends Plugin {
             return;
         }
 
-        if (Intent.ACTION_VIEW.equals(action)) {
-            handleOpenWithIntent(intent);
-            return;
-        }
-
-        if (Intent.ACTION_SEND.equals(action)) {
-            handleShareIntent(intent);
-            return;
-        }
-
-        if (Intent.ACTION_SEND_MULTIPLE.equals(action)) {
-            Log.w(TAG, "Rejected Android multi-share intent");
-            notifyShareRejected("UNSUPPORTED_SHARE_DOCUMENT", "Share one Markdown file at a time");
+        IncomingIntentParser.Result result = IncomingIntentParser.parse(intent);
+        switch (result.kind) {
+            case OPEN_WITH_DOCUMENT:
+                emitOpenWithDocument(result.uri, intent);
+                return;
+            case SHARE_STREAM:
+                emitSharedStream(result.uri, intent);
+                return;
+            case SHARE_TEXT:
+                emitSharedText(result.text, result.mimeType, result.rawTitle);
+                return;
+            case REJECTED_OPEN_WITH:
+                notifyOpenWithRejected(result.code, result.message);
+                return;
+            case REJECTED_SHARE:
+                notifyShareRejected(result.code, result.message);
+                return;
+            default:
         }
     }
 
@@ -562,29 +558,7 @@ public class AndroidDocumentsPlugin extends Plugin {
         return true;
     }
 
-    private void handleOpenWithIntent(Intent intent) {
-        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) {
-            return;
-        }
-
-        Uri uri = intent.getData();
-        if (uri == null) {
-            notifyOpenWithRejected("DOCUMENT_URI_MISSING", "Android open-with intent returned no URI");
-            return;
-        }
-
-        if (!hasOnlyAllowedViewCategories(intent)) {
-            Log.w(TAG, "Rejected Android open-with intent with unsupported categories");
-            notifyOpenWithRejected("INVALID_OPEN_WITH_INTENT", "This Android open-with request is not supported");
-            return;
-        }
-
-        if (!"content".equals(uri.getScheme())) {
-            Log.w(TAG, "Rejected Android open-with URI with unsupported scheme: " + safeForLog(uri.getScheme()));
-            notifyOpenWithRejected("INVALID_SOURCE_URI", "A valid content URI is required");
-            return;
-        }
-
+    private void emitOpenWithDocument(Uri uri, Intent intent) {
         try {
             JSObject document = buildOpenWithDocumentResult(uri, intent);
             if ((intent.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
@@ -611,59 +585,7 @@ public class AndroidDocumentsPlugin extends Plugin {
             notifyOpenWithRejected("DOCUMENT_READ_FAILED", "Failed to read Android document");
         }
     }
-
-    private void handleShareIntent(Intent intent) {
-        if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())) {
-            return;
-        }
-
-        if (!hasOnlyAllowedShareCategories(intent)) {
-            Log.w(TAG, "Rejected Android share intent with unsupported categories");
-            notifyShareRejected("INVALID_SHARE_INTENT", "This Android share request is not supported");
-            return;
-        }
-
-        Uri streamUri;
-        try {
-            streamUri = getSharedStreamUri(intent);
-        } catch (DocumentReadException ex) {
-            Log.w(TAG, "Android share stream extra rejected: " + ex.getMessage());
-            notifyShareRejected(ex.code, ex.getMessage());
-            return;
-        }
-
-        if (streamUri != null) {
-            handleSharedStream(streamUri, intent);
-            return;
-        }
-
-        CharSequence sharedText;
-        try {
-            sharedText = getSharedText(intent);
-        } catch (DocumentReadException ex) {
-            Log.w(TAG, "Android share text extra rejected: " + ex.getMessage());
-            notifyShareRejected(ex.code, ex.getMessage());
-            return;
-        }
-
-        if (sharedText != null && sharedText.length() > 0) {
-            handleSharedText(sharedText.toString(), intent);
-            return;
-        }
-
-        notifyShareRejected("SHARE_CONTENT_MISSING", "This Android share did not include Markdown content");
-    }
-
-    private void handleSharedStream(Uri uri, Intent intent) {
-        if (!"content".equals(uri.getScheme())) {
-            Log.w(TAG, "Rejected Android shared URI with unsupported scheme: " + safeForLog(uri.getScheme()));
-            notifyShareRejected(
-                "INVALID_SHARE_SOURCE_URI",
-                "This Android share did not provide a supported file URI"
-            );
-            return;
-        }
-
+    private void emitSharedStream(Uri uri, Intent intent) {
         try {
             JSObject document = buildSharedStreamDocumentResult(uri, intent);
             if ((intent.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
@@ -691,39 +613,27 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
     }
 
-    private void handleSharedText(String markdown, Intent intent) {
-        String mimeType = normalizeMimeType(intent.getType());
-        if (!isSharedTextMimeType(mimeType)) {
-            Log.w(TAG, "Rejected Android shared text with unsupported MIME type: " + safeForLog(mimeType));
-            notifyShareRejected("UNSUPPORTED_SHARE_DOCUMENT", "Share Markdown text or a Markdown file");
-            return;
-        }
+    private void emitSharedText(String markdown, String mimeType, String rawTitle) {
+        // The parser already gated the MIME type and validated the byte size.
+        String displayName = normalizeSuggestedMarkdownName(rawTitle);
+        JSObject document = new JSObject();
+        document.put("canceled", false);
+        document.put("sourceUri", JSObject.NULL);
+        document.put("displayName", displayName);
+        document.put("providerName", "Android share");
+        document.put("pathHint", displayName);
+        document.put("mimeType", mimeType.length() > 0 ? mimeType : "text/plain");
+        document.put("markdown", markdown);
+        putMarkdownEncodingMetadata(document, defaultMarkdownEncoding, false);
+        document.put("canWrite", false);
+        document.put("persisted", false);
+        document.put("shareKind", "text");
 
-        try {
-            MarkdownCodec.validateBytes(markdown);
-            String displayName = getSharedTextDisplayName(intent);
-            JSObject document = new JSObject();
-            document.put("canceled", false);
-            document.put("sourceUri", JSObject.NULL);
-            document.put("displayName", displayName);
-            document.put("providerName", "Android share");
-            document.put("pathHint", displayName);
-            document.put("mimeType", mimeType.length() > 0 ? mimeType : "text/plain");
-            document.put("markdown", markdown);
-            putMarkdownEncodingMetadata(document, defaultMarkdownEncoding, false);
-            document.put("canWrite", false);
-            document.put("persisted", false);
-            document.put("shareKind", "text");
-
-            JSObject event = new JSObject();
-            event.put("document", document);
-            event.put("source", "share");
-            Log.i(TAG, "Received Android shared Markdown text: " + safeForLog(displayName));
-            notifyListeners(EVENT_SHARE_DOCUMENT, event, true);
-        } catch (DocumentReadException ex) {
-            Log.w(TAG, "Android shared text rejected: " + ex.getMessage());
-            notifyShareRejected(ex.code, ex.getMessage());
-        }
+        JSObject event = new JSObject();
+        event.put("document", document);
+        event.put("source", "share");
+        Log.i(TAG, "Received Android shared Markdown text: " + safeForLog(displayName));
+        notifyListeners(EVENT_SHARE_DOCUMENT, event, true);
     }
 
     @ActivityCallback
@@ -859,7 +769,7 @@ public class AndroidDocumentsPlugin extends Plugin {
     private JSObject buildDocumentResult(Uri uri, Intent grantIntent) throws IOException, DocumentReadException {
         String displayName = getDisplayName(uri);
         String mimeType = getMimeType(uri);
-        if (!isMarkdownCandidate(displayName, mimeType)) {
+        if (!IncomingIntentParser.isMarkdownCandidate(displayName, mimeType)) {
             throw new DocumentReadException(
                 "UNSUPPORTED_DOCUMENT",
                 "Choose a Markdown or plain text document"
@@ -935,7 +845,7 @@ public class AndroidDocumentsPlugin extends Plugin {
     private JSObject buildOpenWithDocumentResult(Uri uri, Intent grantIntent) throws IOException, DocumentReadException {
         String displayName = getDisplayName(uri);
         String mimeType = getMimeType(uri, grantIntent);
-        if (!isOpenWithMarkdownCandidate(uri, displayName, mimeType)) {
+        if (!IncomingIntentParser.isOpenWithMarkdownCandidate(uri, displayName, mimeType)) {
             throw new DocumentReadException(
                 "UNSUPPORTED_OPEN_WITH_DOCUMENT",
                 "Open a Markdown document"
@@ -960,7 +870,7 @@ public class AndroidDocumentsPlugin extends Plugin {
     private JSObject buildSharedStreamDocumentResult(Uri uri, Intent grantIntent) throws IOException, DocumentReadException {
         String displayName = getDisplayName(uri);
         String mimeType = getMimeType(uri, grantIntent);
-        if (!isSharedStreamMarkdownCandidate(uri, displayName, mimeType)) {
+        if (!IncomingIntentParser.isSharedStreamMarkdownCandidate(uri, displayName, mimeType)) {
             throw new DocumentReadException(
                 "UNSUPPORTED_SHARE_DOCUMENT",
                 "Share a Markdown file"
@@ -1015,7 +925,7 @@ public class AndroidDocumentsPlugin extends Plugin {
     ) throws IOException, DocumentReadException {
         String displayName = getDisplayName(uri);
         String mimeType = getMimeType(uri);
-        if (!isMarkdownCandidate(displayName, mimeType)) {
+        if (!IncomingIntentParser.isMarkdownCandidate(displayName, mimeType)) {
             throw new DocumentReadException(
                 "UNSUPPORTED_DOCUMENT",
                 "Choose a Markdown or plain text document"
@@ -1352,8 +1262,8 @@ public class AndroidDocumentsPlugin extends Plugin {
     private String getMimeType(Uri uri, Intent grantIntent) {
         String resolverType = getMimeType(uri);
         String intentType = grantIntent == null ? null : grantIntent.getType();
-        String normalizedIntentType = normalizeMimeType(intentType);
-        if (isMarkdownMimeType(normalizedIntentType)) {
+        String normalizedIntentType = IncomingIntentParser.normalizeMimeType(intentType);
+        if (IncomingIntentParser.isMarkdownMimeType(normalizedIntentType)) {
             return normalizedIntentType;
         }
 
@@ -1362,23 +1272,6 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
 
         return normalizedIntentType;
-    }
-
-    private String normalizeMimeType(String mimeType) {
-        return mimeType == null ? "" : mimeType.toLowerCase(Locale.US);
-    }
-
-    private String getSharedTextDisplayName(Intent intent) {
-        CharSequence titleValue = getOptionalCharSequenceExtra(intent, Intent.EXTRA_TITLE);
-        String title = titleValue == null ? "" : titleValue.toString();
-        CharSequence subjectValue = getOptionalCharSequenceExtra(intent, Intent.EXTRA_SUBJECT);
-        if (title.trim().length() == 0 && subjectValue != null) {
-            title = subjectValue.toString();
-        }
-        if (title == null || title.trim().length() == 0) {
-            title = "Shared Markdown";
-        }
-        return normalizeSuggestedMarkdownName(title);
     }
 
     private String getProviderName(Uri uri) {
@@ -1396,44 +1289,6 @@ public class AndroidDocumentsPlugin extends Plugin {
             }
         }
         return authority;
-    }
-
-    private boolean isMarkdownCandidate(String displayName, String mimeType) {
-        if (hasMarkdownExtension(displayName)) {
-            return true;
-        }
-
-        return (
-            isMarkdownMimeType(mimeType) ||
-            "text/plain".equals(mimeType)
-        );
-    }
-
-    private boolean isOpenWithMarkdownCandidate(Uri uri, String displayName, String mimeType) {
-        return (
-            hasMarkdownExtension(displayName) ||
-            hasMarkdownExtension(uri.getLastPathSegment()) ||
-            isMarkdownMimeType(mimeType)
-        );
-    }
-
-    private boolean isSharedStreamMarkdownCandidate(Uri uri, String displayName, String mimeType) {
-        return (
-            hasMarkdownExtension(displayName) ||
-            hasMarkdownExtension(uri.getLastPathSegment()) ||
-            isMarkdownMimeType(mimeType)
-        );
-    }
-
-    private boolean hasMarkdownExtension(String value) {
-        String lowerName = value == null ? "" : value.toLowerCase(Locale.US);
-        return (
-            lowerName.endsWith(".md") ||
-            lowerName.endsWith(".markdown") ||
-            lowerName.endsWith(".mdown") ||
-            lowerName.endsWith(".mkdn") ||
-            lowerName.endsWith(".mkd")
-        );
     }
 
     private boolean isSupportedImage(String displayName, String mimeType) {
@@ -1555,90 +1410,6 @@ public class AndroidDocumentsPlugin extends Plugin {
         return ".png";
     }
 
-    private boolean isMarkdownMimeType(String mimeType) {
-        return (
-            "text/markdown".equals(mimeType) ||
-            "text/x-markdown".equals(mimeType) ||
-            "text/vnd.daringfireball.markdown".equals(mimeType)
-        );
-    }
-
-    private boolean isSharedTextMimeType(String mimeType) {
-        return (
-            mimeType.length() == 0 ||
-            "text/plain".equals(mimeType) ||
-            mimeType.startsWith("text/") ||
-            isMarkdownMimeType(mimeType)
-        );
-    }
-
-    @SuppressWarnings("deprecation")
-    private CharSequence getSharedText(Intent intent) throws DocumentReadException {
-        try {
-            return intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
-        } catch (RuntimeException ex) {
-            throw new DocumentReadException(
-                "INVALID_SHARE_INTENT",
-                "This Android share request is not supported"
-            );
-        }
-    }
-
-    private CharSequence getOptionalCharSequenceExtra(Intent intent, String key) {
-        try {
-            return intent.getCharSequenceExtra(key);
-        } catch (RuntimeException ex) {
-            Log.w(TAG, "Ignored malformed Android share text metadata: " + safeForLog(key));
-            return null;
-        }
-    }
-
-    private Uri getSharedStreamUri(Intent intent) throws DocumentReadException {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                return intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri.class);
-            }
-            return intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        } catch (RuntimeException ex) {
-            throw new DocumentReadException(
-                "INVALID_SHARE_INTENT",
-                "This Android share request is not supported"
-            );
-        }
-    }
-
-    private boolean hasOnlyAllowedViewCategories(Intent intent) {
-        Set<String> categories = intent.getCategories();
-        if (categories == null) {
-            return true;
-        }
-
-        for (String category : categories) {
-            if (
-                !Intent.CATEGORY_DEFAULT.equals(category) &&
-                !Intent.CATEGORY_BROWSABLE.equals(category) &&
-                !Intent.CATEGORY_OPENABLE.equals(category)
-            ) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean hasOnlyAllowedShareCategories(Intent intent) {
-        Set<String> categories = intent.getCategories();
-        if (categories == null) {
-            return true;
-        }
-
-        for (String category : categories) {
-            if (!Intent.CATEGORY_DEFAULT.equals(category)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     private void notifyOpenWithRejected(String code, String message) {
         JSObject event = new JSObject();
         event.put("source", "open-with");
@@ -1654,7 +1425,6 @@ public class AndroidDocumentsPlugin extends Plugin {
         event.put("message", message);
         notifyListeners(EVENT_SHARE_DOCUMENT, event, true);
     }
-
     private boolean canWrite(Uri uri, Intent grantIntent) {
         if (grantIntent != null && (grantIntent.getFlags() & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) != 0) {
             return true;
