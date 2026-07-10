@@ -15,10 +15,7 @@ import {
   shareAndroidMarkdownDocument,
   shareAndroidMarkdownDocuments,
   writeAndroidMarkdownDocument,
-  type AndroidOpenWithDocumentEvent,
-  type AndroidShareDocumentEvent,
   type OpenedAndroidDocument,
-  type SharedAndroidDocument,
 } from './lib/androidDocuments'
 import {
   ensureAndroidImageResolver,
@@ -31,9 +28,8 @@ import {
   type AppLifecycleListeners,
 } from './lib/appLifecycleListeners'
 import {
-  installAndroidDocumentIntentListeners as installAndroidDocumentIntentListenerHandles,
-  type AndroidDocumentIntentListeners,
-} from './features/android-documents/androidDocumentIntentListeners'
+  createIncomingDocumentOrchestration,
+} from './features/android-documents/incomingDocumentOrchestration'
 import {
   addAndroidSelectionTapListener,
   finishAndroidEditorSelectionActionMode,
@@ -80,12 +76,7 @@ import {
 } from './features/document-session/documentSettings'
 import {
   createAndroidDocumentOpenResult,
-  createAndroidOpenWithDocumentEventAction,
-  createAndroidShareDocumentEventAction,
-  createSharedTextDocumentOpenResult,
-  getIncomingDocumentPreservationAction,
   openAndroidMarkdownDocumentWorkflow,
-  shouldKeepAndroidRecoveryAfterPreserveFailure,
   type AndroidDocumentOpenSource,
 } from './features/android-documents/androidDocumentOpenWorkflow'
 import {
@@ -310,7 +301,6 @@ let androidSaveTimer: number | null = null
 let androidSaveInFlight = false
 let androidSaveRequestedAfterCurrent = false
 let appLifecycleListeners: AppLifecycleListeners | null = null
-let androidDocumentIntentListeners: AndroidDocumentIntentListeners | null = null
 let pendingInlineInsertRange: Range | null = null
 let startupActionTimer: number | null = null
 let editorSelectionDiagnosticCleanup: (() => void) | null = null
@@ -1787,24 +1777,6 @@ async function openAndroidDocumentResult(
   releaseEditorFocusAfterOpen()
 }
 
-async function openSharedTextDocument(document: SharedAndroidDocument) {
-  const openResult = createSharedTextDocumentOpenResult(document, {
-    sharedTextImportedMessage: SHARED_TEXT_IMPORTED_MESSAGE,
-    logger: androidDocumentLog,
-  })
-
-  if (canPersistLocalDrafts()) {
-    persistLocalDrafts(upsertLocalDraft(localDrafts.value, openResult.localDraft))
-  }
-  homeNotice.value = openResult.homeNotice
-  promptLocalDraftSaveOnExit.value = openResult.promptLocalDraftSaveOnExit
-  currentAndroidDocumentCanWrite.value = openResult.currentAndroidDocumentCanWrite
-  documentState.value = openResult.documentState
-  await openEditor(openResult.markdown)
-  status.value = openResult.statusAfterOpen
-  releaseEditorFocusAfterOpen()
-}
-
 async function openFileFromAndroid() {
   homeNotice.value = null
 
@@ -1820,84 +1792,6 @@ async function openFileFromAndroid() {
   } else if (result.kind === 'failed') {
     homeNotice.value = result.homeNotice
   }
-}
-
-async function preserveCurrentDocumentBeforeIncomingOpen() {
-  const preservationAction = getIncomingDocumentPreservationAction({
-    currentScreen: currentScreen.value,
-    hasEditor: Boolean(editor),
-    autosaveTarget: documentState.value.autosaveTarget,
-  })
-
-  if (preservationAction.kind === 'none') {
-    return
-  }
-
-  appLog.info('preserve current document before incoming Android document')
-
-  if (preservationAction.kind === 'save-android-document') {
-    syncDocumentFromEditor(documentState.value.isDirty, true)
-    const sourceUri = documentState.value.sourceUri
-    const saved = await saveAndroidDocument()
-    if (sourceUri && shouldKeepAndroidRecoveryAfterPreserveFailure(saved, sourceUri, documentState.value.markdown)) {
-      persistAndroidRecoveryDraft(sourceUri, documentState.value.markdown)
-    }
-    return
-  }
-
-  saveDraft()
-}
-
-async function handleAndroidOpenWithDocumentEvent(event: AndroidOpenWithDocumentEvent) {
-  const action = createAndroidOpenWithDocumentEventAction(event, {
-    getAndroidDocumentUserMessage,
-    logger: androidDocumentLog,
-  })
-
-  if (action.kind === 'rejected') {
-    homeNotice.value = action.message
-    status.value = action.message
-    return
-  }
-
-  await preserveCurrentDocumentBeforeIncomingOpen()
-  draftExitPromptOpen.value = false
-  androidExitPromptOpen.value = false
-  closeEditorMenu()
-  closeEditorToolbar()
-  await openAndroidDocumentResult(action.document, {
-    source: action.source,
-    remember: action.remember,
-  })
-}
-
-async function handleAndroidShareDocumentEvent(event: AndroidShareDocumentEvent) {
-  const action = createAndroidShareDocumentEventAction(event, {
-    getAndroidDocumentUserMessage,
-    logger: androidDocumentLog,
-  })
-
-  if (action.kind === 'rejected') {
-    homeNotice.value = action.message
-    status.value = action.message
-    return
-  }
-
-  await preserveCurrentDocumentBeforeIncomingOpen()
-  draftExitPromptOpen.value = false
-  androidExitPromptOpen.value = false
-  closeEditorMenu()
-  closeEditorToolbar()
-
-  if (action.kind === 'open-document') {
-    await openAndroidDocumentResult(action.document, {
-      source: action.source,
-      remember: action.remember,
-    })
-    return
-  }
-
-  await openSharedTextDocument(action.document)
 }
 
 function getSelectedDocumentRecords() {
@@ -2390,28 +2284,39 @@ function installAppLifecycleListeners() {
   })
 }
 
-function installAndroidDocumentIntentListeners() {
-  if (androidDocumentIntentListeners) {
-    return
-  }
-
-  androidDocumentIntentListeners = installAndroidDocumentIntentListenerHandles({
-    onOpenWithDocument: event => {
-      void handleAndroidOpenWithDocumentEvent(event)
-    },
-    onShareDocument: event => {
-      void handleAndroidShareDocumentEvent(event)
-    },
-    logger: androidDocumentLog,
-  })
-}
+const incomingDocuments = createIncomingDocumentOrchestration({
+  currentScreen,
+  documentState,
+  localDrafts,
+  homeNotice,
+  status,
+  draftExitPromptOpen,
+  androidExitPromptOpen,
+  promptLocalDraftSaveOnExit,
+  currentAndroidDocumentCanWrite,
+  sharedTextImportedMessage: SHARED_TEXT_IMPORTED_MESSAGE,
+  hasEditor: () => Boolean(editor),
+  openEditor,
+  releaseEditorFocusAfterOpen,
+  closeEditorMenu,
+  closeEditorToolbar,
+  openAndroidDocumentResult,
+  saveAndroidDocument,
+  saveDraft,
+  syncDocumentFromEditor,
+  persistAndroidRecoveryDraft,
+  canPersistLocalDrafts,
+  persistLocalDrafts,
+  getAndroidDocumentUserMessage,
+  appLogger: appLog,
+  documentLogger: androidDocumentLog,
+})
 
 function removeAppLifecycleListeners() {
   appLifecycleListeners?.remove()
   appLifecycleListeners = null
 
-  androidDocumentIntentListeners?.remove()
-  androidDocumentIntentListeners = null
+  incomingDocuments.removeListeners()
 }
 
 function keepLocalDraftAndShowHome() {
@@ -2515,7 +2420,7 @@ onMounted(() => {
     characters: characterCount.value,
   })
 
-  installAndroidDocumentIntentListeners()
+  incomingDocuments.installListeners()
   startupActionTimer = window.setTimeout(() => {
     startupActionTimer = null
     applyDocumentStartupAction()
