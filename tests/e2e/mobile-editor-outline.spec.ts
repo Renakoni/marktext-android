@@ -125,6 +125,93 @@ test('outline shows a restrained empty state without headings', async ({ page })
   await expect(page.getByTestId('outline-sheet')).toHaveCount(0)
 })
 
+test('opening Search while the outline open is pending cancels it — never both', async ({
+  page,
+}) => {
+  await openHeadingsDraft(page)
+
+  // Fire both taps inside one task so Search opens while the outline is
+  // still waiting for the viewport to settle.
+  await page.evaluate(() => {
+    const outline = document.querySelector<HTMLElement>('[data-testid="outline-open-button"]')!
+    const search = document.querySelector<HTMLElement>('[data-testid="search-open-button"]')!
+    outline.click()
+    search.click()
+  })
+
+  await expect(page.getByTestId('editor-search-bar')).toBeVisible()
+  // Give the cancelled outline open more than its full settle bound.
+  await page.waitForTimeout(700)
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(0)
+  await expect(page.getByTestId('editor-search-bar')).toBeVisible()
+})
+
+test('rapid repeated outline taps produce a single sheet', async ({ page }) => {
+  await openHeadingsDraft(page)
+
+  await page.evaluate(() => {
+    const outline = document.querySelector<HTMLElement>('[data-testid="outline-open-button"]')!
+    outline.click()
+    outline.click()
+    outline.click()
+  })
+
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(1)
+  await page.waitForTimeout(700)
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(1)
+})
+
+test('Tab and Shift+Tab cannot move focus outside the dialog', async ({ page }) => {
+  await openHeadingsDraft(page)
+  await openOutline(page)
+  await expect(page.getByTestId('outline-sheet')).toBeFocused()
+
+  const focusStaysInside = async () =>
+    page.evaluate(() =>
+      Boolean(document.activeElement?.closest('[data-testid="outline-sheet"]')),
+    )
+
+  // Shift+Tab from the panel wraps to the last row instead of escaping.
+  await page.keyboard.press('Shift+Tab')
+  expect(await focusStaysInside()).toBe(true)
+
+  // Tab forward through every focusable and past the end: still contained.
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press('Tab')
+    expect(await focusStaysInside()).toBe(true)
+  }
+})
+
+test('every close path returns focus to the outline button without refocusing the editor', async ({
+  page,
+}) => {
+  await openHeadingsDraft(page)
+
+  const expectFocusOnOutlineButton = async () => {
+    await expect(page.getByTestId('outline-open-button')).toBeFocused()
+    const inEditor = await page.evaluate(() =>
+      Boolean(document.activeElement?.closest('[data-testid="editor-host"]')),
+    )
+    expect(inEditor).toBe(false)
+  }
+
+  await openOutline(page)
+  await page.getByTestId('outline-close-button').click()
+  await expectFocusOnOutlineButton()
+
+  await openOutline(page)
+  await page.getByTestId('outline-sheet-scrim').click({ position: { x: 10, y: 10 } })
+  await expectFocusOnOutlineButton()
+
+  await openOutline(page)
+  await page.keyboard.press('Escape')
+  await expectFocusOnOutlineButton()
+
+  await openOutline(page)
+  await page.getByTestId('outline-row').nth(1).click()
+  await expectFocusOnOutlineButton()
+})
+
 test('opening the outline dismisses editor focus so the keyboard closes', async ({ page }) => {
   await openHeadingsDraft(page)
 

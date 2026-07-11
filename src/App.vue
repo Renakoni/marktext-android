@@ -1110,6 +1110,9 @@ function openEditorSearch() {
   }
 
   closeEditorMenu()
+  // Also cancels an outline open that is still waiting for the viewport,
+  // so the two surfaces can never end up open at the same time.
+  closeEditorOutline()
   openEditorSearchBar()
   appLog.info('editor search opened')
 }

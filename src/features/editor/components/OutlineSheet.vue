@@ -24,6 +24,36 @@ watch(panel, element => {
     void nextTick(() => element.focus({ preventScroll: true }))
   }
 })
+
+// The background is inert while the sheet is open, but hardware Tab could
+// still walk focus out of the dialog to the document body. Cycle it inside
+// the panel instead (aria-modal alone does not contain keyboard focus).
+function trapTabKey(event: KeyboardEvent) {
+  const root = panel.value
+  if (!root) {
+    return
+  }
+
+  const focusables = Array.from(root.querySelectorAll<HTMLElement>('button:not(:disabled)'))
+  if (focusables.length === 0) {
+    event.preventDefault()
+    return
+  }
+
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  const active = document.activeElement
+
+  if (event.shiftKey) {
+    if (active === first || active === root) {
+      event.preventDefault()
+      last.focus()
+    }
+  } else if (active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
 </script>
 
 <template>
@@ -43,6 +73,7 @@ watch(panel, element => {
       data-testid="outline-sheet"
       @click.stop
       @keydown.esc="emit('close')"
+      @keydown.tab="trapTabKey"
     >
       <header class="outline-header">
         <div class="editor-action-grabber" aria-hidden="true" />

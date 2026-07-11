@@ -168,29 +168,55 @@ export function createDocumentOutline({
   const outlineItems = ref<OutlineItem[]>([])
 
   let tocSnapshot: MuyaTocItem[] = []
+  // The open sequence is asynchronous (viewport settling). The generation
+  // token cancels an unfinished open whenever a competing surface closes or
+  // resets the outline; the pending flag rejects duplicate concurrent opens.
+  let openGeneration = 0
+  let openPending = false
+
+  function cancelPendingOpen() {
+    openGeneration += 1
+  }
 
   async function openOutline() {
     const editor = getEditor()
-    if (!editor || outlineOpen.value) {
+    if (!editor || outlineOpen.value || openPending) {
       return
     }
 
-    dismissKeyboard()
-    await settleViewport()
+    openPending = true
+    const generation = ++openGeneration
 
-    // The editor may have been destroyed while the viewport settled.
-    const liveEditor = getEditor()
-    if (!liveEditor) {
-      return
+    try {
+      dismissKeyboard()
+      await settleViewport()
+
+      // The request may have been cancelled (close/reset/competing surface)
+      // or the editor replaced/destroyed while the viewport settled. Only a
+      // still-current request against the SAME editor instance may open.
+      if (generation !== openGeneration) {
+        logger?.debug('document outline open cancelled')
+        return
+      }
+
+      const liveEditor = getEditor()
+      if (!liveEditor || liveEditor !== editor) {
+        logger?.debug('document outline open aborted: editor replaced')
+        return
+      }
+
+      tocSnapshot = liveEditor.getTOC()
+      outlineItems.value = projectOutlineItems(tocSnapshot)
+      outlineOpen.value = true
+      logger?.debug('document outline opened', { headings: tocSnapshot.length })
+    } finally {
+      openPending = false
     }
-
-    tocSnapshot = liveEditor.getTOC()
-    outlineItems.value = projectOutlineItems(tocSnapshot)
-    outlineOpen.value = true
-    logger?.debug('document outline opened', { headings: tocSnapshot.length })
   }
 
   function closeOutline() {
+    cancelPendingOpen()
+
     if (!outlineOpen.value) {
       return
     }
@@ -222,6 +248,8 @@ export function createDocumentOutline({
   }
 
   function resetForNewDocument() {
+    cancelPendingOpen()
+
     if (!outlineOpen.value && outlineItems.value.length === 0) {
       return
     }

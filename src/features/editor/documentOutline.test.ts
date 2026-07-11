@@ -287,6 +287,87 @@ describe('createDocumentOutline', () => {
     expect(documentOutline.outlineOpen.value).toBe(false)
   })
 
+  it('never opens when the outline is reset while the viewport settles', async () => {
+    const editor = createFakeEditor({ toc: TOC_FIXTURE, headingsHtml: HEADINGS_FIXTURE })
+    let settle!: () => void
+    const documentOutline = createDocumentOutline({
+      getEditor: () => editor,
+      dismissKeyboard: vi.fn(),
+      settleViewport: () => new Promise<void>(resolve => (settle = resolve)),
+      scrollToHeading: vi.fn(),
+    })
+
+    const opening = documentOutline.openOutline()
+    documentOutline.resetForNewDocument()
+    settle()
+    await opening
+
+    expect(documentOutline.outlineOpen.value).toBe(false)
+    expect(editor.getTOC).not.toHaveBeenCalled()
+  })
+
+  it('never opens when closed while the viewport settles (competing surface)', async () => {
+    const editor = createFakeEditor({ toc: TOC_FIXTURE, headingsHtml: HEADINGS_FIXTURE })
+    let settle!: () => void
+    const documentOutline = createDocumentOutline({
+      getEditor: () => editor,
+      dismissKeyboard: vi.fn(),
+      settleViewport: () => new Promise<void>(resolve => (settle = resolve)),
+      scrollToHeading: vi.fn(),
+    })
+
+    const opening = documentOutline.openOutline()
+    // e.g. the Search bar opens and calls closeOutline() while pending.
+    documentOutline.closeOutline()
+    settle()
+    await opening
+
+    expect(documentOutline.outlineOpen.value).toBe(false)
+    expect(editor.getTOC).not.toHaveBeenCalled()
+  })
+
+  it('rejects a duplicate open while the first is still pending', async () => {
+    const editor = createFakeEditor({ toc: TOC_FIXTURE, headingsHtml: HEADINGS_FIXTURE })
+    const dismissKeyboard = vi.fn()
+    const settlers: Array<() => void> = []
+    const documentOutline = createDocumentOutline({
+      getEditor: () => editor,
+      dismissKeyboard,
+      settleViewport: () => new Promise<void>(resolve => settlers.push(resolve)),
+      scrollToHeading: vi.fn(),
+    })
+
+    const first = documentOutline.openOutline()
+    const second = documentOutline.openOutline()
+    settlers.forEach(resolve => resolve())
+    await Promise.all([first, second])
+
+    expect(settlers).toHaveLength(1)
+    expect(dismissKeyboard).toHaveBeenCalledTimes(1)
+    expect(editor.getTOC).toHaveBeenCalledTimes(1)
+    expect(documentOutline.outlineOpen.value).toBe(true)
+  })
+
+  it('aborts the open when the editor instance is replaced while the viewport settles', async () => {
+    const editorA = createFakeEditor({ toc: TOC_FIXTURE })
+    const editorB = createFakeEditor({ toc: TOC_FIXTURE })
+    let current = editorA
+    const documentOutline = createDocumentOutline({
+      getEditor: () => current,
+      dismissKeyboard: vi.fn(),
+      settleViewport: async () => {
+        current = editorB
+      },
+      scrollToHeading: vi.fn(),
+    })
+
+    await documentOutline.openOutline()
+
+    expect(documentOutline.outlineOpen.value).toBe(false)
+    expect(editorA.getTOC).not.toHaveBeenCalled()
+    expect(editorB.getTOC).not.toHaveBeenCalled()
+  })
+
   it('aborts the open when the editor is destroyed while the viewport settles', async () => {
     const editor = createFakeEditor({ toc: TOC_FIXTURE })
     let editorAlive = true

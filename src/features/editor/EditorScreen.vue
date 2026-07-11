@@ -116,6 +116,24 @@ const selectionToolbarSuspended = computed(
 )
 
 const searchInput = ref<HTMLInputElement | null>(null)
+const outlineButton = ref<HTMLButtonElement | null>(null)
+
+// Restore accessibility focus to the Outline trigger after the sheet closes
+// (any path: close button, scrim, Escape, Android Back, heading selection).
+// DOM focus only — a button focus never reopens the soft keyboard and never
+// touches Muya's cached editing selection.
+watch(
+  () => props.outlineOpen,
+  (open, wasOpen) => {
+    if (!open && wasOpen) {
+      void nextTick(() => {
+        if (outlineButton.value?.isConnected) {
+          outlineButton.value.focus({ preventScroll: true })
+        }
+      })
+    }
+  },
+)
 
 const searchCountText = computed(() => {
   if (!props.searchQuery) {
@@ -150,7 +168,12 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="app-shell">
-    <header v-if="searchOpen" class="top-bar search-bar" data-testid="editor-search-bar">
+    <header
+      v-if="searchOpen"
+      class="top-bar search-bar"
+      data-testid="editor-search-bar"
+      :inert="outlineOpen"
+    >
       <button
         class="nav-button"
         type="button"
@@ -215,7 +238,7 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </header>
-    <header v-else class="top-bar">
+    <header v-else class="top-bar" :inert="outlineOpen">
       <button
         class="nav-button"
         type="button"
@@ -246,6 +269,7 @@ onBeforeUnmount(() => {
           </svg>
         </button>
         <button
+          ref="outlineButton"
           class="icon-button"
           type="button"
           :aria-label="t('editor.outline.title')"
@@ -281,7 +305,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <section class="editor-pane" :aria-label="t('editor.markdownEditor')">
+    <section class="editor-pane" :aria-label="t('editor.markdownEditor')" :inert="outlineOpen">
       <div
         ref="editorShell"
         class="editor-host-shell"
@@ -295,6 +319,7 @@ onBeforeUnmount(() => {
     </section>
 
     <MobileSelectionToolbar
+      :inert="outlineOpen"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
       :host="editorShell"
@@ -307,6 +332,7 @@ onBeforeUnmount(() => {
 
     <MobileEditorToolbar
       v-if="toolbarVisible"
+      :inert="outlineOpen"
       :expanded="toolbarExpanded"
       :active-panel="toolbarPanel"
       :editor-ready="editorReady"
