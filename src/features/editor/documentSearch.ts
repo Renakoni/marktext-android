@@ -39,6 +39,21 @@ export interface DocumentSearch {
 }
 
 /**
+ * Keydown handler for the find-bar input's Enter key. During IME composition
+ * Enter belongs to the input method (candidate confirmation / commit), so
+ * both preventDefault and next-match navigation may run only for a real,
+ * non-composing Enter press.
+ */
+export function handleSearchEnterKeydown(event: KeyboardEvent, findNext: () => void) {
+  if (event.isComposing) {
+    return
+  }
+
+  event.preventDefault()
+  findNext()
+}
+
+/**
  * Session controller for the mobile in-document find bar. Wraps Muya's
  * search module (muya.search / muya.find): Muya owns match collection,
  * highlight rendering, and cursor restoration on close; this owns the
@@ -79,12 +94,24 @@ export function createDocumentSearch({
       return
     }
 
+    const editor = getEditor()
+    const hadActiveMatch = activeMatchIndex.value >= 0
+
     // Emptying the search clears every highlight; selectHighlight puts the
     // editor cursor back on the last active match so editing continues there.
-    getEditor()?.search('', { selectHighlight: restoreCursor })
+    editor?.search('', { selectHighlight: restoreCursor })
+
+    if (restoreCursor && !hadActiveMatch) {
+      // Muya only restores a cursor when a match was active. For an empty or
+      // no-match query the search input still owns focus and is about to
+      // unmount, so fall back to Muya's focus(), which reinstates the
+      // pre-search caret while it still belongs to the current document.
+      editor?.focus()
+    }
+
     clearSearchState()
     searchOpen.value = false
-    logger?.debug('document search closed', { restoreCursor })
+    logger?.debug('document search closed', { restoreCursor, hadActiveMatch })
   }
 
   function setQuery(value: string) {

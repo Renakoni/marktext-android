@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, watch, ref, computed, nextTick, type CSSProperties } from 'vue'
 import AndroidExitPrompt from './components/AndroidExitPrompt.vue'
+import { handleSearchEnterKeydown } from './documentSearch'
 import EditorActionSheet from './components/EditorActionSheet.vue'
 import LinkInsertSheet from './components/LinkInsertSheet.vue'
 import LocalDraftExitPrompt from './components/LocalDraftExitPrompt.vue'
@@ -167,7 +168,7 @@ onBeforeUnmount(() => {
           autocomplete="off"
           spellcheck="false"
           @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
-          @keydown.enter.prevent="$event.isComposing || emit('search-next')"
+          @keydown.enter="handleSearchEnterKeydown($event, () => emit('search-next'))"
         >
         <span
           v-if="searchCountText"

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createDocumentSearch } from './documentSearch'
+import { createDocumentSearch, handleSearchEnterKeydown } from './documentSearch'
 import type { MuyaEditor } from './editorRuntime'
 
 interface FakeEditorOptions {
@@ -24,9 +24,12 @@ function createFakeEditor({ matchCounts = {} }: FakeEditorOptions = {}) {
     return { matches, index }
   })
 
-  return { search, find } as unknown as MuyaEditor & {
+  const focus = vi.fn()
+
+  return { search, find, focus } as unknown as MuyaEditor & {
     search: typeof search
     find: typeof find
+    focus: typeof focus
   }
 }
 
@@ -116,20 +119,45 @@ describe('createDocumentSearch', () => {
     documentSearch.closeSearch()
 
     expect(editor.search).toHaveBeenLastCalledWith('', { selectHighlight: true })
+    // Muya's selectHighlight owns the cursor here; no focus fallback needed.
+    expect(editor.focus).not.toHaveBeenCalled()
     expect(documentSearch.searchOpen.value).toBe(false)
     expect(documentSearch.searchQuery.value).toBe('')
     expect(documentSearch.matchCount.value).toBe(0)
     expect(documentSearch.activeMatchIndex.value).toBe(-1)
   })
 
-  it('closing when leaving the editor skips the cursor restore', () => {
-    const { editor, documentSearch } = createSearchHarness({ matchCounts: { apple: 2 } })
+  it('closing with an empty query falls back to editor focus', () => {
+    const { editor, documentSearch } = createSearchHarness()
 
     documentSearch.openSearch()
-    documentSearch.setQuery('apple')
+    documentSearch.closeSearch()
+
+    expect(editor.search).toHaveBeenLastCalledWith('', { selectHighlight: true })
+    expect(editor.focus).toHaveBeenCalledTimes(1)
+    expect(documentSearch.searchOpen.value).toBe(false)
+  })
+
+  it('closing with a no-match query falls back to editor focus', () => {
+    const { editor, documentSearch } = createSearchHarness()
+
+    documentSearch.openSearch()
+    documentSearch.setQuery('missing')
+    documentSearch.closeSearch()
+
+    expect(editor.focus).toHaveBeenCalledTimes(1)
+    expect(documentSearch.searchOpen.value).toBe(false)
+  })
+
+  it('closing when leaving the editor skips the cursor restore and the focus fallback', () => {
+    const { editor, documentSearch } = createSearchHarness()
+
+    documentSearch.openSearch()
+    documentSearch.setQuery('missing')
     documentSearch.closeSearch({ restoreCursor: false })
 
     expect(editor.search).toHaveBeenLastCalledWith('', { selectHighlight: false })
+    expect(editor.focus).not.toHaveBeenCalled()
     expect(documentSearch.searchOpen.value).toBe(false)
   })
 
@@ -193,5 +221,34 @@ describe('createDocumentSearch', () => {
 
     expect(documentSearch.searchOpen.value).toBe(false)
     expect(documentSearch.matchCount.value).toBe(0)
+  })
+})
+
+describe('handleSearchEnterKeydown', () => {
+  function makeEnterEvent(isComposing: boolean) {
+    return {
+      isComposing,
+      preventDefault: vi.fn(),
+    } as unknown as KeyboardEvent & { preventDefault: ReturnType<typeof vi.fn> }
+  }
+
+  it('prevents the default and navigates on a real Enter', () => {
+    const event = makeEnterEvent(false)
+    const findNext = vi.fn()
+
+    handleSearchEnterKeydown(event, findNext)
+
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(findNext).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves a composing Enter to the IME: no preventDefault, no navigation', () => {
+    const event = makeEnterEvent(true)
+    const findNext = vi.fn()
+
+    handleSearchEnterKeydown(event, findNext)
+
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(findNext).not.toHaveBeenCalled()
   })
 })
