@@ -35,6 +35,7 @@ import {
   isAndroidSelectionControlAvailable,
   readAndroidClipboardText,
 } from './lib/androidSelection'
+import { createDocumentOutline, waitForViewportSettle } from './features/editor/documentOutline'
 import { createDocumentSearch } from './features/editor/documentSearch'
 import { createEditorSelectionLifecycle } from './features/editor/selectionLifecycle'
 import { createEditorSession, normalizeEditorMarkdown } from './features/editor/editorSession'
@@ -526,10 +527,63 @@ function scrollActiveSearchMatchIntoView() {
   getEditor()?.domNode.querySelector('.mu-highlight')?.scrollIntoView({ block: 'center' })
 }
 
+const {
+  outlineOpen: editorOutlineOpen,
+  outlineItems: editorOutlineItems,
+  openOutline: openEditorOutlineSheet,
+  closeOutline: closeEditorOutline,
+  selectHeading: selectEditorOutlineHeading,
+  resetForNewDocument: resetEditorOutlineForNewDocument,
+} = createDocumentOutline({
+  getEditor,
+  dismissKeyboard: dismissEditorKeyboard,
+  settleViewport: () => waitForViewportSettle(),
+  scrollToHeading: scrollEditorToHeading,
+  logger: editorLog,
+})
+
+// Blur only editor-owned focus: the soft keyboard retracts while Muya's
+// cached internal selection (used by focus()/search restore) stays intact.
+function dismissEditorKeyboard() {
+  const active = document.activeElement
+  if (active instanceof HTMLElement && getEditor()?.domNode.contains(active)) {
+    active.blur()
+  }
+}
+
+// Scroll the real editor scroll container (.editor-host-shell wraps Muya's
+// root) so the heading sits near the top with context, clear of app chrome.
+function scrollEditorToHeading(heading: Element) {
+  const editorRoot = getEditor()?.domNode
+  const container = editorRoot?.parentElement
+  if (!editorRoot || !container) {
+    return
+  }
+
+  const headingTop =
+    heading.getBoundingClientRect().top - container.getBoundingClientRect().top
+  container.scrollTo({ top: container.scrollTop + headingTop - 24 })
+}
+
+function openEditorOutline() {
+  if (!hasEditor()) {
+    return
+  }
+
+  closeEditorMenu()
+  closeEditorToolbar()
+  // Defensive: search owns the top bar while open, but never let both
+  // overlays coexist. No cursor restore — that would reopen the keyboard.
+  closeEditorSearch({ restoreCursor: false })
+  void openEditorOutlineSheet()
+  appLog.info('editor outline opened')
+}
+
 // Every document open lands here (including incoming share/open-with intents),
-// so stale find-bar state never carries across documents.
+// so stale find-bar and outline state never carries across documents.
 async function openEditor(markdown: string) {
   resetEditorSearchForNewDocument()
+  resetEditorOutlineForNewDocument()
   return openEditorSessionDocument(markdown)
 }
 
@@ -1096,6 +1150,7 @@ async function showHome() {
   appLog.info('show recent home')
   closeEditorMenu()
   closeEditorToolbar()
+  closeEditorOutline()
   // Leaving the editor: clear highlights without refocusing the editor.
   closeEditorSearch({ restoreCursor: false })
 
@@ -1165,6 +1220,7 @@ async function handleAppBackButton() {
     promptOpen: draftExitPromptOpen.value,
     androidExitPromptOpen: androidExitPromptOpen.value,
     menuOpen: editorMenuOpen.value,
+    outlineOpen: editorOutlineOpen.value,
     searchOpen: editorSearchOpen.value,
     toolbarOpen: editorToolbarExpanded.value,
   })
@@ -1177,6 +1233,7 @@ async function handleAppBackButton() {
     draftExitPromptOpen: draftExitPromptOpen.value,
     linkSheetOpen: linkSheetOpen.value,
     editorMenuOpen: editorMenuOpen.value,
+    editorOutlineOpen: editorOutlineOpen.value,
     editorSearchOpen: editorSearchOpen.value,
     editorToolbarExpanded: editorToolbarExpanded.value,
     homeSelectionActive: homeSelection.isActive.value,
@@ -1204,6 +1261,9 @@ async function handleAppBackButton() {
       return
     case 'close-editor-menu':
       closeEditorMenu()
+      return
+    case 'close-editor-outline':
+      closeEditorOutline()
       return
     case 'close-editor-search':
       closeEditorSearch()
@@ -1498,12 +1558,17 @@ onBeforeUnmount(() => {
     :search-query="editorSearchQuery"
     :search-match-count="editorSearchMatchCount"
     :search-active-index="editorSearchActiveIndex"
+    :outline-open="editorOutlineOpen"
+    :outline-items="editorOutlineItems"
     @back="showHome"
     @search="openEditorSearch"
     @close-search="closeEditorSearch()"
     @update:search-query="setEditorSearchQuery"
     @search-next="findNextEditorSearchMatch"
     @search-previous="findPreviousEditorSearchMatch"
+    @open-outline="openEditorOutline"
+    @close-outline="closeEditorOutline"
+    @select-outline-heading="selectEditorOutlineHeading"
     @toggle-menu="toggleEditorMenu"
     @close-menu="closeEditorMenu"
     @share="shareCurrentMarkdownDocument"

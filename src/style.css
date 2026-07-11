@@ -956,6 +956,95 @@ body {
   transition-duration: 0ms;
 }
 
+/* Outline sheet: fixed header, only the list scrolls, roughly half-height
+   cap for long outlines while short outlines size to content. */
+.outline-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 52vh;
+  max-height: 52dvh;
+}
+
+.outline-panel:focus {
+  outline: none;
+}
+
+.outline-header {
+  flex: none;
+}
+
+.outline-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.outline-title {
+  margin: 0 6px;
+}
+
+.outline-list {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-height: 0;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.outline-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  padding-inline-start: calc(12px + var(--outline-indent, 0) * 18px);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  text-align: start;
+  touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
+}
+
+.outline-row[data-outline-indent='0'] {
+  font-weight: 600;
+}
+
+.outline-row:active {
+  background: var(--press);
+  transition-duration: 0ms;
+}
+
+.outline-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.outline-row-text {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.outline-empty {
+  margin: 12px 6px 10px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .editor-action-row:disabled {
   color: var(--text-faint);
 }
