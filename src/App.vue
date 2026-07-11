@@ -37,6 +37,12 @@ import {
 } from './lib/androidSelection'
 import { createDocumentOutline, waitForViewportSettle } from './features/editor/documentOutline'
 import { createDocumentSearch } from './features/editor/documentSearch'
+import { createResumePosition } from './features/editor/resumePosition'
+import {
+  readStoredResumePosition,
+  removeStoredResumePosition,
+  writeStoredResumePosition,
+} from './lib/resumePositions'
 import { createEditorSelectionLifecycle } from './features/editor/selectionLifecycle'
 import { createEditorSession, normalizeEditorMarkdown } from './features/editor/editorSession'
 import { renderMarkdownToPdfExportHtml } from './features/editor/pdfExportHtml'
@@ -565,6 +571,41 @@ function scrollEditorToHeading(heading: Element) {
   container.scrollTo({ top: container.scrollTop + headingTop - 24 })
 }
 
+// Stable identity for resume positions. Android documents key by source URI
+// (survives renames of drafts they never had); local drafts key by draft id.
+// An Android document without a persisted URI has no stable identity and is
+// not tracked.
+function getResumeDocumentKey() {
+  const state = documentState.value
+  if (state.autosaveTarget === 'android-document') {
+    return state.sourceUri ? `android-document:${state.sourceUri}` : null
+  }
+
+  return `local-draft:${state.id}`
+}
+
+const {
+  resumeCardVisible,
+  resumeCardText,
+  startForOpenedDocument: startResumeForOpenedDocument,
+  activateResume: activateEditorResume,
+  dismissCard: dismissResumeCard,
+  standDown: standDownResume,
+  notifyDocumentEdited: notifyResumeDocumentEdited,
+  persistNow: persistResumePosition,
+  resetForNewDocument: resetResumeForNewDocument,
+} = createResumePosition({
+  getEditor,
+  isEditorReady: () => editorReady.value,
+  getDocumentKey: getResumeDocumentKey,
+  // Flush pending edits so the hash matches what the save paths write.
+  getMarkdown: () => (hasEditor() ? getEditorMarkdownSnapshot(true) : null),
+  readPosition: readStoredResumePosition,
+  writePosition: writeStoredResumePosition,
+  removePosition: removeStoredResumePosition,
+  logger: editorLog,
+})
+
 function openEditorOutline() {
   if (!hasEditor()) {
     return
@@ -575,6 +616,7 @@ function openEditorOutline() {
   // Defensive: search owns the top bar while open, but never let both
   // overlays coexist. No cursor restore — that would reopen the keyboard.
   closeEditorSearch({ restoreCursor: false })
+  standDownResume('outline opened')
   void openEditorOutlineSheet()
   appLog.info('editor outline opened')
 }
@@ -585,20 +627,27 @@ function openEditorOutline() {
 // cancel the outline request first, exactly like openEditorSearch does.
 function toggleEditorMenuExclusive() {
   closeEditorOutline()
+  standDownResume('menu opened')
   toggleEditorMenu()
 }
 
 function toggleEditorToolbarExclusive() {
   closeEditorOutline()
+  standDownResume('toolbar expanded')
   toggleEditorToolbar()
 }
 
 // Every document open lands here (including incoming share/open-with intents),
-// so stale find-bar and outline state never carries across documents.
+// so stale find-bar, outline, and resume state never carries across documents.
 async function openEditor(markdown: string) {
+  // The outgoing document's position is written under the resume session's
+  // cached key (documentState already points at the incoming document here).
+  persistResumePosition('document replaced')
+  resetResumeForNewDocument()
   resetEditorSearchForNewDocument()
   resetEditorOutlineForNewDocument()
-  return openEditorSessionDocument(markdown)
+  await openEditorSessionDocument(markdown)
+  void startResumeForOpenedDocument()
 }
 
 function getTransientAndroidSaveMessage() {
@@ -660,6 +709,8 @@ function syncMarkdown(nextStatus: unknown = 'Edited') {
     // Content edits invalidate match offsets; re-run the open query so the
     // highlights and the match counter stay truthful.
     refreshEditorSearchAfterEdit()
+    // Edits also invalidate the resume offer and any in-flight re-pinning.
+    notifyResumeDocumentEdited()
   }
   if (markDirty && documentState.value.autosaveTarget === 'android-document') {
     status.value = getAndroidEditorStatus()
@@ -729,6 +780,7 @@ function openLinkSheet(restoreRange: Range | null = null) {
 
   pendingInlineInsertRange = capturedRange
   closeEditorOutline()
+  standDownResume('link sheet opened')
   openEditorLinkSheet({
     text: nextLinkSheet.linkText,
     url: nextLinkSheet.linkUrl,
@@ -1128,6 +1180,7 @@ function openEditorSearch() {
   // Also cancels an outline open that is still waiting for the viewport,
   // so the two surfaces can never end up open at the same time.
   closeEditorOutline()
+  standDownResume('search opened')
   openEditorSearchBar()
   appLog.info('editor search opened')
 }
@@ -1144,6 +1197,10 @@ async function installCjkBoldCompensation() {
 }
 
 function closeEditorToHome() {
+  // Write the resume position while the editor still exists; the session is
+  // gone right after, so a late flush cannot double-write.
+  persistResumePosition('editor closed')
+  resetResumeForNewDocument()
   draftExitPromptOpen.value = false
   androidExitPromptOpen.value = false
   closeEditorMenu()
@@ -1169,6 +1226,7 @@ async function showHome() {
   closeEditorMenu()
   closeEditorToolbar()
   closeEditorOutline()
+  standDownResume('leaving editor')
   // Leaving the editor: clear highlights without refocusing the editor.
   closeEditorSearch({ restoreCursor: false })
 
@@ -1228,6 +1286,9 @@ function discardAndroidChangesAndShowHome() {
 
 function requestLifecycleFlush(reason: string) {
   void flushCurrentDocument(reason)
+  // Same lifecycle moments the document flush uses; the position write is
+  // independent of the save pipeline and never dirties the document.
+  persistResumePosition(reason)
 }
 
 async function handleAppBackButton() {
@@ -1493,6 +1554,8 @@ onBeforeUnmount(() => {
   removeAppLifecycleListeners()
   systemColorSchemeCleanup?.()
   systemColorSchemeCleanup = null
+  persistResumePosition('app unmount')
+  resetResumeForNewDocument()
   if (documentState.value.autosaveTarget === 'android-document') {
     void saveAndroidDocument()
   } else {
@@ -1578,6 +1641,8 @@ onBeforeUnmount(() => {
     :search-active-index="editorSearchActiveIndex"
     :outline-open="editorOutlineOpen"
     :outline-items="editorOutlineItems"
+    :resume-card-visible="resumeCardVisible"
+    :resume-card-text="resumeCardText"
     @back="showHome"
     @search="openEditorSearch"
     @close-search="closeEditorSearch()"
@@ -1587,6 +1652,8 @@ onBeforeUnmount(() => {
     @open-outline="openEditorOutline"
     @close-outline="closeEditorOutline"
     @select-outline-heading="selectEditorOutlineHeading"
+    @resume-activate="activateEditorResume"
+    @resume-dismiss="dismissResumeCard('dismiss button')"
     @toggle-menu="toggleEditorMenuExclusive"
     @close-menu="closeEditorMenu"
     @share="shareCurrentMarkdownDocument"

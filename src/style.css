@@ -806,6 +806,7 @@ body {
 /* --------------------------------------------------------- editor pane */
 
 .editor-pane {
+  position: relative;
   min-height: 0;
   padding: 18px;
   overflow: hidden;
@@ -1045,6 +1046,127 @@ body {
   line-height: 1.5;
 }
 
+/* Resume card: a compact non-modal chip floating just below the top bar.
+   It must stay far smaller than the editor viewport and never intercept
+   input outside its own pill. */
+.resume-card {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 15;
+  display: flex;
+  align-items: stretch;
+  max-width: min(85%, 420px);
+  border: var(--hairline) solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-float);
+  transform: translateX(-50%);
+}
+
+.resume-card-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 6px 4px 6px 14px;
+  border: 0;
+  border-radius: 14px 0 0 14px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
+}
+
+.resume-card-action:active {
+  background: var(--press);
+  transition-duration: 0ms;
+}
+
+.resume-card-action:focus-visible,
+.resume-card-dismiss:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.resume-card-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  stroke: var(--accent-strong);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.resume-card-content {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.resume-card-title {
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.resume-card-text {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.resume-card-dismiss {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 0 14px 14px 0;
+  background: transparent;
+  color: var(--text-muted);
+  touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
+}
+
+.resume-card-dismiss:active {
+  background: var(--press);
+  transition-duration: 0ms;
+}
+
+.resume-card-dismiss svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.resume-card-enter-active,
+.resume-card-leave-active {
+  transition:
+    opacity var(--dur-standard) var(--ease-out),
+    transform var(--dur-standard) var(--ease-out);
+}
+
+.resume-card-enter-from,
+.resume-card-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-8px);
+}
+
 .editor-action-row:disabled {
   color: var(--text-faint);
 }
@@ -1221,6 +1343,8 @@ body {
   .home-top-swap-leave-active,
   .selection-menu-enter-active,
   .selection-menu-leave-active,
+  .resume-card-enter-active,
+  .resume-card-leave-active,
   .document-check,
   .document-check svg {
     transition: none;
