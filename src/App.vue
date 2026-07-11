@@ -579,6 +579,20 @@ function openEditorOutline() {
   appLog.info('editor outline opened')
 }
 
+// Editor surfaces are mutually exclusive with the outline, including its
+// PENDING open (viewport settling): every entry point that can open the
+// menu, the expanded toolbar, or the link sheet during that window must
+// cancel the outline request first, exactly like openEditorSearch does.
+function toggleEditorMenuExclusive() {
+  closeEditorOutline()
+  toggleEditorMenu()
+}
+
+function toggleEditorToolbarExclusive() {
+  closeEditorOutline()
+  toggleEditorToolbar()
+}
+
 // Every document open lands here (including incoming share/open-with intents),
 // so stale find-bar and outline state never carries across documents.
 async function openEditor(markdown: string) {
@@ -714,6 +728,7 @@ function openLinkSheet(restoreRange: Range | null = null) {
   }
 
   pendingInlineInsertRange = capturedRange
+  closeEditorOutline()
   openEditorLinkSheet({
     text: nextLinkSheet.linkText,
     url: nextLinkSheet.linkUrl,
@@ -1572,7 +1587,7 @@ onBeforeUnmount(() => {
     @open-outline="openEditorOutline"
     @close-outline="closeEditorOutline"
     @select-outline-heading="selectEditorOutlineHeading"
-    @toggle-menu="toggleEditorMenu"
+    @toggle-menu="toggleEditorMenuExclusive"
     @close-menu="closeEditorMenu"
     @share="shareCurrentMarkdownDocument"
     @export-pdf="exportCurrentDocumentPdf"
@@ -1581,7 +1596,7 @@ onBeforeUnmount(() => {
     @run-toolbar-command="runEditorToolbarCommand"
     @run-selection-command="runSelectionToolbarCommand"
     @dismiss-selection="finishSelectionToolbarOutsideTap"
-    @toggle-toolbar="toggleEditorToolbar"
+    @toggle-toolbar="toggleEditorToolbarExclusive"
     @set-toolbar-panel="setEditorToolbarPanel"
     @close-link-sheet="closeLinkSheet"
     @insert-link="insertLinkFromSheet"

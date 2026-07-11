@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
+import { installAndroidAppMock } from './helpers/androidAppMock'
 import { openLocalDraft } from './helpers/drafts'
+import { expectEditorReady } from './helpers/editor'
 
 test.describe.configure({ timeout: 60000 })
 
@@ -144,6 +146,86 @@ test('opening Search while the outline open is pending cancels it — never both
   await page.waitForTimeout(700)
   await expect(page.getByTestId('outline-sheet')).toHaveCount(0)
   await expect(page.getByTestId('editor-search-bar')).toBeVisible()
+})
+
+test('expanding the toolbar while the outline open is pending cancels it — never both', async ({
+  page,
+}) => {
+  await openHeadingsDraft(page)
+
+  await page.evaluate(() => {
+    const outline = document.querySelector<HTMLElement>('[data-testid="outline-open-button"]')!
+    const expand = document.querySelector<HTMLElement>('[data-testid="toolbar-expand-button"]')!
+    outline.click()
+    expand.click()
+  })
+
+  // Give the cancelled outline open more than its full settle bound.
+  await page.waitForTimeout(700)
+  const state = await page.evaluate(() => ({
+    outline: document.querySelectorAll('[data-testid="outline-sheet"]').length,
+    toolbarExpanded: Boolean(document.querySelector('.toolbar-expanded')),
+  }))
+  expect(state.outline === 1 && state.toolbarExpanded).toBe(false)
+  // The toolbar interaction wins; the pending outline was cancelled.
+  expect(state.toolbarExpanded).toBe(true)
+  expect(state.outline).toBe(0)
+})
+
+test('opening the More menu while the outline open is pending cancels it — never both', async ({
+  page,
+}) => {
+  // The More menu only renders for shareable documents, so open a mocked
+  // Android document instead of a local draft.
+  const now = '2026-07-11T08:00:00.000Z'
+  const document = {
+    sourceUri: 'content://test/outline-menu-race',
+    displayName: 'Outline Menu Race.md',
+    markdown: HEADINGS_MARKDOWN,
+  }
+  await installAndroidAppMock(page, document)
+  await page.goto('/')
+  await page.evaluate(
+    ({ now, document }) => {
+      localStorage.clear()
+      localStorage.setItem(
+        'marktext-for-android:recent-documents',
+        JSON.stringify([
+          {
+            id: `android-document:${document.sourceUri}`,
+            kind: 'android-document',
+            displayName: document.displayName,
+            title: 'Outline Menu Race',
+            sourceUri: document.sourceUri,
+            providerName: 'Test Documents',
+            pathHint: document.displayName,
+            markdownPreview: null,
+            updatedAt: now,
+            lastOpenedAt: now,
+            lastSavedAt: null,
+            autosaveState: 'clean',
+            canWrite: true,
+          },
+        ]),
+      )
+    },
+    { now, document },
+  )
+  await page.reload()
+  await page.getByRole('button', { name: /Outline Menu Race/ }).click()
+  await expectEditorReady(page)
+
+  await page.evaluate(() => {
+    const outline = document.querySelector<HTMLElement>('[data-testid="outline-open-button"]')!
+    const menu = document.querySelector<HTMLElement>('[data-testid="editor-menu-button"]')!
+    outline.click()
+    menu.click()
+  })
+
+  await expect(page.getByTestId('editor-action-sheet')).toBeVisible()
+  await page.waitForTimeout(700)
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(0)
+  await expect(page.getByTestId('editor-action-sheet')).toBeVisible()
 })
 
 test('rapid repeated outline taps produce a single sheet', async ({ page }) => {
