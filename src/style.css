@@ -709,6 +709,66 @@ body {
   position: relative;
 }
 
+/* In-document find bar: replaces the title row inside the same top-bar grid. */
+.top-bar.search-bar {
+  gap: 6px;
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  transition: border-color var(--dur-standard) var(--ease-out);
+}
+
+.search-field:focus-within {
+  border-color: var(--accent);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.search-input:focus {
+  outline: none;
+}
+
+.search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search-count {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.search-count-empty {
+  color: var(--text-faint);
+}
+
+.icon-button:disabled {
+  color: var(--text-faint);
+  opacity: 0.55;
+}
+
 .document-heading {
   min-width: 0;
 }

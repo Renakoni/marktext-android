@@ -35,6 +35,7 @@ import {
   isAndroidSelectionControlAvailable,
   readAndroidClipboardText,
 } from './lib/androidSelection'
+import { createDocumentSearch } from './features/editor/documentSearch'
 import { createEditorSelectionLifecycle } from './features/editor/selectionLifecycle'
 import { createEditorSession, normalizeEditorMarkdown } from './features/editor/editorSession'
 import { renderMarkdownToPdfExportHtml } from './features/editor/pdfExportHtml'
@@ -456,7 +457,7 @@ const {
   hasEditor,
   getEditorMarkdownSnapshot,
   syncDocumentFromEditor,
-  openEditor,
+  openEditor: openEditorSessionDocument,
   destroyEditor,
   releaseEditorFocusAfterOpen,
   installEditorInputDiagnostics,
@@ -502,6 +503,35 @@ const {
   closeEditorToolbar,
   logger: editorLog,
 })
+
+const {
+  searchOpen: editorSearchOpen,
+  searchQuery: editorSearchQuery,
+  matchCount: editorSearchMatchCount,
+  activeMatchIndex: editorSearchActiveIndex,
+  openSearch: openEditorSearchBar,
+  closeSearch: closeEditorSearch,
+  setQuery: setEditorSearchQuery,
+  findNext: findNextEditorSearchMatch,
+  findPrevious: findPreviousEditorSearchMatch,
+  refreshAfterEdit: refreshEditorSearchAfterEdit,
+  resetForNewDocument: resetEditorSearchForNewDocument,
+} = createDocumentSearch({
+  getEditor,
+  scrollActiveMatchIntoView: scrollActiveSearchMatchIntoView,
+  logger: editorLog,
+})
+
+function scrollActiveSearchMatchIntoView() {
+  getEditor()?.domNode.querySelector('.mu-highlight')?.scrollIntoView({ block: 'center' })
+}
+
+// Every document open lands here (including incoming share/open-with intents),
+// so stale find-bar state never carries across documents.
+async function openEditor(markdown: string) {
+  resetEditorSearchForNewDocument()
+  return openEditorSessionDocument(markdown)
+}
 
 function getTransientAndroidSaveMessage() {
   return canPersistLocalDrafts()
@@ -558,6 +588,11 @@ function syncMarkdown(nextStatus: unknown = 'Edited') {
   const resolvedStatus = typeof nextStatus === 'string' ? nextStatus : 'Edited'
   const markDirty = resolvedStatus === 'Edited'
   syncDocumentFromEditor(markDirty)
+  if (markDirty) {
+    // Content edits invalidate match offsets; re-run the open query so the
+    // highlights and the match counter stay truthful.
+    refreshEditorSearchAfterEdit()
+  }
   if (markDirty && documentState.value.autosaveTarget === 'android-document') {
     status.value = getAndroidEditorStatus()
     if (currentAndroidDocumentCanWrite.value && canRunIdleAndroidDocumentAutosave()) {
@@ -1016,7 +1051,13 @@ function newDocument() {
 }
 
 function openEditorSearch() {
-  appLog.info('editor search requested')
+  if (!hasEditor()) {
+    return
+  }
+
+  closeEditorMenu()
+  openEditorSearchBar()
+  appLog.info('editor search opened')
 }
 
 // MIUI WebViews rasterize CJK identically at every font-weight (see
@@ -1055,6 +1096,8 @@ async function showHome() {
   appLog.info('show recent home')
   closeEditorMenu()
   closeEditorToolbar()
+  // Leaving the editor: clear highlights without refocusing the editor.
+  closeEditorSearch({ restoreCursor: false })
 
   const saveAction = getShowHomeDocumentSaveAction(documentState.value.autosaveTarget)
   if (saveAction === 'save-android-document') {
@@ -1122,6 +1165,7 @@ async function handleAppBackButton() {
     promptOpen: draftExitPromptOpen.value,
     androidExitPromptOpen: androidExitPromptOpen.value,
     menuOpen: editorMenuOpen.value,
+    searchOpen: editorSearchOpen.value,
     toolbarOpen: editorToolbarExpanded.value,
   })
 
@@ -1133,6 +1177,7 @@ async function handleAppBackButton() {
     draftExitPromptOpen: draftExitPromptOpen.value,
     linkSheetOpen: linkSheetOpen.value,
     editorMenuOpen: editorMenuOpen.value,
+    editorSearchOpen: editorSearchOpen.value,
     editorToolbarExpanded: editorToolbarExpanded.value,
     homeSelectionActive: homeSelection.isActive.value,
     homeSheetOpen: homeDeleteSheetOpen.value || homeRenameSheetOpen.value,
@@ -1159,6 +1204,9 @@ async function handleAppBackButton() {
       return
     case 'close-editor-menu':
       closeEditorMenu()
+      return
+    case 'close-editor-search':
+      closeEditorSearch()
       return
     case 'close-editor-toolbar':
       closeEditorToolbar()
@@ -1446,8 +1494,16 @@ onBeforeUnmount(() => {
     :text-direction="appearanceTextSettings.textDirection"
     :editor-style-vars="editorStyleVars"
     :can-paste-selection="canPasteSelection"
+    :search-open="editorSearchOpen"
+    :search-query="editorSearchQuery"
+    :search-match-count="editorSearchMatchCount"
+    :search-active-index="editorSearchActiveIndex"
     @back="showHome"
     @search="openEditorSearch"
+    @close-search="closeEditorSearch()"
+    @update:search-query="setEditorSearchQuery"
+    @search-next="findNextEditorSearchMatch"
+    @search-previous="findPreviousEditorSearchMatch"
     @toggle-menu="toggleEditorMenu"
     @close-menu="closeEditorMenu"
     @share="shareCurrentMarkdownDocument"
