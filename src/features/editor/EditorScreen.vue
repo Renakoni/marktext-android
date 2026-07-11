@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watch, ref, computed, type CSSProperties } from 'vue'
+import { onBeforeUnmount, watch, ref, computed, nextTick, type CSSProperties } from 'vue'
 import AndroidExitPrompt from './components/AndroidExitPrompt.vue'
 import EditorActionSheet from './components/EditorActionSheet.vue'
 import LinkInsertSheet from './components/LinkInsertSheet.vue'
@@ -51,11 +51,19 @@ const props = defineProps<{
   textDirection: 'ltr' | 'rtl'
   editorStyleVars: CSSProperties
   canPasteSelection: boolean
+  searchOpen: boolean
+  searchQuery: string
+  searchMatchCount: number
+  searchActiveIndex: number
 }>()
 
 const emit = defineEmits<{
   back: []
   search: []
+  'close-search': []
+  'update:searchQuery': [value: string]
+  'search-next': []
+  'search-previous': []
   'toggle-menu': []
   'close-menu': []
   share: []
@@ -92,9 +100,36 @@ const { t } = useI18n()
 const selectionToolbarSuspended = computed(
   () =>
     props.editorMenuOpen ||
+    props.searchOpen ||
     props.linkSheetOpen ||
     props.draftExitPromptOpen ||
     props.androidExitPromptOpen,
+)
+
+const searchInput = ref<HTMLInputElement | null>(null)
+
+const searchCountText = computed(() => {
+  if (!props.searchQuery) {
+    return ''
+  }
+
+  if (props.searchMatchCount === 0) {
+    return t('editor.searchNoMatches')
+  }
+
+  return t('editor.searchMatchCount', {
+    current: props.searchActiveIndex + 1,
+    total: props.searchMatchCount,
+  })
+})
+
+watch(
+  () => props.searchOpen,
+  open => {
+    if (open) {
+      void nextTick(() => searchInput.value?.focus())
+    }
+  },
 )
 
 watch(editorHost, element => emit('editor-host-change', element), { immediate: true })
@@ -106,7 +141,72 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="app-shell">
-    <header class="top-bar">
+    <header v-if="searchOpen" class="top-bar search-bar" data-testid="editor-search-bar">
+      <button
+        class="nav-button"
+        type="button"
+        :aria-label="t('editor.searchClose')"
+        data-testid="search-close-button"
+        @click="emit('close-search')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+      </button>
+      <div class="search-field">
+        <input
+          ref="searchInput"
+          class="search-input"
+          type="search"
+          data-testid="search-input"
+          :value="searchQuery"
+          :placeholder="t('editor.searchPlaceholder')"
+          :aria-label="t('editor.searchPlaceholder')"
+          enterkeyhint="search"
+          autocapitalize="off"
+          autocomplete="off"
+          spellcheck="false"
+          @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
+          @keydown.enter.prevent="$event.isComposing || emit('search-next')"
+        >
+        <span
+          v-if="searchCountText"
+          class="search-count"
+          :class="{ 'search-count-empty': searchMatchCount === 0 }"
+          data-testid="search-count"
+          aria-live="polite"
+        >
+          {{ searchCountText }}
+        </span>
+      </div>
+      <div class="editor-actions">
+        <button
+          class="icon-button"
+          type="button"
+          :aria-label="t('editor.searchPrevious')"
+          :disabled="searchMatchCount === 0"
+          data-testid="search-previous-button"
+          @click="emit('search-previous')"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M6 14l6-6 6 6" />
+          </svg>
+        </button>
+        <button
+          class="icon-button"
+          type="button"
+          :aria-label="t('editor.searchNext')"
+          :disabled="searchMatchCount === 0"
+          data-testid="search-next-button"
+          @click="emit('search-next')"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M6 10l6 6 6-6" />
+          </svg>
+        </button>
+      </div>
+    </header>
+    <header v-else class="top-bar">
       <button
         class="nav-button"
         type="button"
@@ -128,6 +228,7 @@ onBeforeUnmount(() => {
           type="button"
           :aria-label="t('editor.search')"
           :title="t('editor.search')"
+          data-testid="search-open-button"
           @click="emit('search')"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">

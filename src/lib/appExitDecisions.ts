@@ -20,6 +20,7 @@ export interface AppBackButtonState {
   draftExitPromptOpen: boolean
   linkSheetOpen: boolean
   editorMenuOpen: boolean
+  editorSearchOpen: boolean
   editorToolbarExpanded: boolean
   homeSelectionActive: boolean
   homeSheetOpen: boolean
@@ -30,6 +31,7 @@ export type AppBackButtonAction =
   | 'close-local-draft-exit-prompt'
   | 'close-link-sheet'
   | 'close-editor-menu'
+  | 'close-editor-search'
   | 'close-editor-toolbar'
   | 'close-home-sheet'
   | 'clear-home-selection'
@@ -74,6 +76,7 @@ export function getAppBackButtonAction({
   draftExitPromptOpen,
   linkSheetOpen,
   editorMenuOpen,
+  editorSearchOpen,
   editorToolbarExpanded,
   homeSelectionActive,
   homeSheetOpen,
@@ -92,6 +95,10 @@ export function getAppBackButtonAction({
 
   if (editorMenuOpen) {
     return 'close-editor-menu'
+  }
+
+  if (editorSearchOpen) {
+    return 'close-editor-search'
   }
 
   if (editorToolbarExpanded) {

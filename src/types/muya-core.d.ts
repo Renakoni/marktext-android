@@ -50,6 +50,19 @@ declare module '@muyajs/core' {
     setSelection(anchor: IMuyaSelectionEndpoint, focus: IMuyaSelectionEndpoint): void
   }
 
+  export interface IMuyaSearchOptions {
+    isCaseSensitive?: boolean
+    isWholeWord?: boolean
+    isRegexp?: boolean
+    selectHighlight?: boolean
+    highlightIndex?: number
+  }
+
+  export interface IMuyaSearchState {
+    matches: unknown[]
+    index: number
+  }
+
   export class Muya {
     static plugins: { plugin: unknown; options?: Record<string, unknown> }[]
     static use(plugin: unknown, options?: Record<string, unknown>): void
@@ -80,6 +93,8 @@ declare module '@muyajs/core' {
     updateParagraph(type: string): void
     focus(): void
     selectAll(): void
+    search(value: string, opts?: IMuyaSearchOptions): IMuyaSearchState
+    find(action: 'previous' | 'next'): IMuyaSearchState
     destroy(): void
   }
 
