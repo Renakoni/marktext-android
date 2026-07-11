@@ -132,9 +132,10 @@ function buildEditorDom() {
 
 interface ControllerHarnessOptions {
   createRecord: (options: CreateResumePositionRecordOptions) => Promise<ResumePositionRecord | null>
+  readPosition?: (docKey: string) => ResumePositionRecord | null
 }
 
-function createControllerHarness({ createRecord }: ControllerHarnessOptions) {
+function createControllerHarness({ createRecord, readPosition }: ControllerHarnessOptions) {
   // No ResizeObserver: the open-settle phase and stabilization resolve
   // immediately, keeping these tests synchronous and deterministic.
   vi.stubGlobal('ResizeObserver', undefined)
@@ -146,7 +147,7 @@ function createControllerHarness({ createRecord }: ControllerHarnessOptions) {
     isEditorReady: () => true,
     getDocumentKey: () => 'doc',
     getMarkdown: () => 'markdown',
-    readPosition: () => null,
+    readPosition: readPosition ?? (() => null),
     writePosition: (key, record) => void store.set(key, record),
     removePosition: key => void store.delete(key),
     createRecord,
@@ -212,6 +213,49 @@ describe('persistNow write ordering', () => {
     deferred[0](createStoredRecord(2))
     await before
     expect(store.get('doc')?.topBlockIndex).toBe(7)
+  })
+})
+
+describe('restore validation versus concurrent writes', () => {
+  it('a stale mismatch removal cannot delete a newer concurrently persisted record', async () => {
+    // The record handed to opening-time validation: same canonical length as
+    // the current markdown ("markdown" → 8) so validation reaches the async
+    // hash, which then mismatches.
+    const staleRecord: ResumePositionRecord = {
+      ...createStoredRecord(3),
+      capturedAt: '2026-07-10T00:00:00.000Z',
+    }
+    const newerRecord = createStoredRecord(7)
+
+    // Validation reads the stale record once; every later read (the removal
+    // identity check included) sees the live store.
+    let validationRead = false
+    let liveStore: Map<string, ResumePositionRecord> = new Map()
+    const { controller, shell, store } = createControllerHarness({
+      createRecord: () => Promise.resolve(newerRecord),
+      readPosition: key => {
+        if (!validationRead) {
+          validationRead = true
+          return staleRecord
+        }
+        return liveStore.get(key) ?? null
+      },
+    })
+    liveStore = store
+
+    const opening = controller.startForOpenedDocument()
+    // A lifecycle flush persists a newer, valid record while the stale
+    // record's hash comparison is still in flight.
+    shell.dispatchEvent(new Event('scroll'))
+    await controller.persistNow('lifecycle flush during validation')
+    expect(store.get('doc')).toBe(newerRecord)
+
+    await opening
+
+    // Whichever side finished last, the newer record must survive: the
+    // removal is identity-checked (skips a replaced entry), and a write
+    // landing after a removal re-creates the entry.
+    expect(store.get('doc')).toBe(newerRecord)
   })
 })
 

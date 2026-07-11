@@ -325,6 +325,87 @@ ${Array.from({ length: 25 }, (_, i) => `After-image paragraph ${i + 1}.`).join('
   await expect.poll(() => getShellScrollTop(page)).toBeGreaterThan(2400)
 })
 
+test('stabilization keeps re-pinning while an image is still pending after activation', async ({
+  page,
+}) => {
+  // The image is slower than the initial-settle hard cap, so the card
+  // becomes actionable while the image is STILL loading. After the tap, the
+  // stabilization window must survive the resize-free network wait (pending
+  // image ⇒ quiet window not trustworthy) and re-pin the anchor when the
+  // image finally lands — instead of disconnecting after 600 ms of quiet
+  // and leaving the user displaced by ~3200 px.
+  const tallSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="3200">' +
+    '<rect width="320" height="3200" fill="#dcdce8"/></svg>'
+  // Fast on the capture session (so the anchor is measured on the full
+  // layout), slower than the initial-settle hard cap on the reopen session.
+  let imageRequests = 0
+  await page.route('**/slow-block.svg', async route => {
+    imageRequests += 1
+    await new Promise(resolve => setTimeout(resolve, imageRequests === 1 ? 100 : 6500))
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      headers: { 'Cache-Control': 'no-store' },
+      body: tallSvg,
+    })
+  })
+
+  const filler =
+    'with enough words to wrap onto a second line on a phone viewport.'
+  const markdown = `# Resume Alpha
+
+${Array.from({ length: 60 }, (_, i) => `Lead-in paragraph ${i + 1} ${filler}`).join('\n\n')}
+
+![tall diagram](http://127.0.0.1:5174/slow-block.svg)
+
+${Array.from({ length: 25 }, (_, i) => `Trailing paragraph ${i + 1} ${filler}`).join('\n\n')}
+`
+  await openLocalDraft(page, { id: DRAFT_ID, markdown, title: /Resume Alpha/ })
+
+  // Capture against the final layout: the CONTENT image (not a UI icon) is
+  // in the DOM, anchored in a trailing paragraph BELOW the image.
+  await expect(page.locator('.mu-container .mu-inline-image img')).toBeVisible({
+    timeout: 15000,
+  })
+  await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>('.editor-host-shell')!
+    const target = [...shell.querySelectorAll<HTMLElement>('.mu-container > p')].find(p =>
+      (p.textContent ?? '').startsWith('Trailing paragraph 5'),
+    )!
+    const shellRect = shell.getBoundingClientRect()
+    shell.scrollTop = shell.scrollTop + (target.getBoundingClientRect().top - shellRect.top) - 100
+  })
+  await page.waitForTimeout(500)
+  const capturedScrollTop = await getShellScrollTop(page)
+  expect(capturedScrollTop).toBeGreaterThan(5000)
+
+  await exitToHome(page)
+  await expect.poll(() => getResumeStorage(page)).toContain(DOC_KEY)
+
+  // Fresh page so the slow load happens again on reopen.
+  await page.reload()
+  await reopenDraft(page)
+
+  // The card is offered at the initial-settle hard cap with the image still
+  // in flight; the transient target (image collapsed) is far enough down to
+  // stay eligible.
+  await expect(page.getByTestId('resume-card')).toBeVisible({ timeout: 8000 })
+  await page.getByTestId('resume-card-button').click()
+
+  // First landing happens against the image-less layout, well short of the
+  // final position — proving late content displaces the target...
+  await expect.poll(() => getShellScrollTop(page)).toBeGreaterThan(1000)
+  expect(await getShellScrollTop(page)).toBeLessThan(capturedScrollTop - 2000)
+
+  // ...and the bounded stabilization window re-pins the anchor once the
+  // image lands.
+  await expect
+    .poll(() => getShellScrollTop(page), { timeout: 12000 })
+    .toBeGreaterThan(capturedScrollTop - 100)
+  expect(await getShellScrollTop(page)).toBeLessThan(capturedScrollTop + 100)
+})
+
 test('a revisit without scrolling keeps the stored position', async ({ page }) => {
   await seedCapturedPosition(page)
   const storedBefore = await getResumeStorage(page)

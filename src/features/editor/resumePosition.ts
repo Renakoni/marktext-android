@@ -339,8 +339,20 @@ export function createResumePosition({
     if (!matches) {
       // The content changed since capture; the position is permanently
       // invalid for this document version. Discard silently — no fallback,
-      // no approximate relocation.
-      removePosition(docKey)
+      // no approximate relocation. Removal is ordered against concurrent
+      // writes: only the exact record this validation read may be deleted —
+      // a lifecycle capture can land a newer, valid record while the hash
+      // above was still computing, and deleting that would erase a real
+      // position. (A newer write completing AFTER this removal simply
+      // re-creates the entry, so both orderings are safe.)
+      const current = readPosition(docKey)
+      if (
+        current &&
+        current.capturedAt === record.capturedAt &&
+        current.markdownSha256 === record.markdownSha256
+      ) {
+        removePosition(docKey)
+      }
       logger?.debug('resume position discarded: document hash mismatch', { docKey })
       return
     }
@@ -461,11 +473,24 @@ export function createResumePosition({
       }
     }
 
+    // Same pending awareness as the initial settle: an image still fetching
+    // produces no resize events, so a quiet window is only trustworthy once
+    // no load is known to be in flight. The hard cap still bounds the wait,
+    // and the load's eventual reflow re-pins through the observer.
+    const onQuiet = () => {
+      if (hasPendingImageContent(blockContainer)) {
+        quietTimer = setTimeout(onQuiet, RESUME_STABILIZE_QUIET_MS)
+        return
+      }
+
+      stop('layout quiet')
+    }
+
     const observer = new ResizeObserver(() => {
       if (quietTimer !== null) {
         clearTimeout(quietTimer)
       }
-      quietTimer = setTimeout(() => stop('layout quiet'), RESUME_STABILIZE_QUIET_MS)
+      quietTimer = setTimeout(onQuiet, RESUME_STABILIZE_QUIET_MS)
       correct()
     })
 
@@ -480,7 +505,7 @@ export function createResumePosition({
     }
 
     const capTimer = setTimeout(() => stop('time cap'), RESUME_STABILIZE_MAX_MS)
-    quietTimer = setTimeout(() => stop('layout quiet'), RESUME_STABILIZE_QUIET_MS)
+    quietTimer = setTimeout(onQuiet, RESUME_STABILIZE_QUIET_MS)
 
     const cleanup = () => {
       observer.disconnect()
