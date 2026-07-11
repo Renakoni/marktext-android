@@ -2,7 +2,9 @@
 import { onBeforeUnmount, watch, ref, computed, nextTick, type CSSProperties } from 'vue'
 import AndroidExitPrompt from './components/AndroidExitPrompt.vue'
 import { handleSearchEnterKeydown } from './documentSearch'
+import type { OutlineItem } from './documentOutline'
 import EditorActionSheet from './components/EditorActionSheet.vue'
+import OutlineSheet from './components/OutlineSheet.vue'
 import LinkInsertSheet from './components/LinkInsertSheet.vue'
 import LocalDraftExitPrompt from './components/LocalDraftExitPrompt.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
@@ -56,6 +58,8 @@ const props = defineProps<{
   searchQuery: string
   searchMatchCount: number
   searchActiveIndex: number
+  outlineOpen: boolean
+  outlineItems: OutlineItem[]
 }>()
 
 const emit = defineEmits<{
@@ -65,6 +69,9 @@ const emit = defineEmits<{
   'update:searchQuery': [value: string]
   'search-next': []
   'search-previous': []
+  'open-outline': []
+  'close-outline': []
+  'select-outline-heading': [slug: string]
   'toggle-menu': []
   'close-menu': []
   share: []
@@ -102,12 +109,31 @@ const selectionToolbarSuspended = computed(
   () =>
     props.editorMenuOpen ||
     props.searchOpen ||
+    props.outlineOpen ||
     props.linkSheetOpen ||
     props.draftExitPromptOpen ||
     props.androidExitPromptOpen,
 )
 
 const searchInput = ref<HTMLInputElement | null>(null)
+const outlineButton = ref<HTMLButtonElement | null>(null)
+
+// Restore accessibility focus to the Outline trigger after the sheet closes
+// (any path: close button, scrim, Escape, Android Back, heading selection).
+// DOM focus only — a button focus never reopens the soft keyboard and never
+// touches Muya's cached editing selection.
+watch(
+  () => props.outlineOpen,
+  (open, wasOpen) => {
+    if (!open && wasOpen) {
+      void nextTick(() => {
+        if (outlineButton.value?.isConnected) {
+          outlineButton.value.focus({ preventScroll: true })
+        }
+      })
+    }
+  },
+)
 
 const searchCountText = computed(() => {
   if (!props.searchQuery) {
@@ -142,7 +168,12 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="app-shell">
-    <header v-if="searchOpen" class="top-bar search-bar" data-testid="editor-search-bar">
+    <header
+      v-if="searchOpen"
+      class="top-bar search-bar"
+      data-testid="editor-search-bar"
+      :inert="outlineOpen"
+    >
       <button
         class="nav-button"
         type="button"
@@ -207,7 +238,7 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </header>
-    <header v-else class="top-bar">
+    <header v-else class="top-bar" :inert="outlineOpen">
       <button
         class="nav-button"
         type="button"
@@ -238,6 +269,25 @@ onBeforeUnmount(() => {
           </svg>
         </button>
         <button
+          ref="outlineButton"
+          class="icon-button"
+          type="button"
+          :aria-label="t('editor.outline.title')"
+          :title="t('editor.outline.title')"
+          :aria-expanded="outlineOpen"
+          data-testid="outline-open-button"
+          @click="emit('open-outline')"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="5" cy="6" r="1.4" fill="currentColor" stroke="none" />
+            <path d="M9 6h10.5" />
+            <circle cx="8.5" cy="12" r="1.4" fill="currentColor" stroke="none" />
+            <path d="M12.5 12h7" />
+            <circle cx="12" cy="18" r="1.4" fill="currentColor" stroke="none" />
+            <path d="M16 18h3.5" />
+          </svg>
+        </button>
+        <button
           v-if="showEditorActions"
           class="icon-button"
           type="button"
@@ -255,7 +305,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <section class="editor-pane" :aria-label="t('editor.markdownEditor')">
+    <section class="editor-pane" :aria-label="t('editor.markdownEditor')" :inert="outlineOpen">
       <div
         ref="editorShell"
         class="editor-host-shell"
@@ -269,6 +319,7 @@ onBeforeUnmount(() => {
     </section>
 
     <MobileSelectionToolbar
+      :inert="outlineOpen"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
       :host="editorShell"
@@ -281,6 +332,7 @@ onBeforeUnmount(() => {
 
     <MobileEditorToolbar
       v-if="toolbarVisible"
+      :inert="outlineOpen"
       :expanded="toolbarExpanded"
       :active-panel="toolbarPanel"
       :editor-ready="editorReady"
@@ -311,6 +363,15 @@ onBeforeUnmount(() => {
         @export-pdf="emit('export-pdf')"
         @save-to-device="emit('save-to-device')"
         @save-copy="emit('save-copy')"
+      />
+    </Transition>
+
+    <Transition name="editor-sheet">
+      <OutlineSheet
+        v-if="outlineOpen"
+        :items="outlineItems"
+        @close="emit('close-outline')"
+        @select="slug => emit('select-outline-heading', slug)"
       />
     </Transition>
 

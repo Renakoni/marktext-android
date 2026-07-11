@@ -1,0 +1,315 @@
+import { expect, test, type Page } from '@playwright/test'
+import { installAndroidAppMock } from './helpers/androidAppMock'
+import { openLocalDraft } from './helpers/drafts'
+import { expectEditorReady } from './helpers/editor'
+
+test.describe.configure({ timeout: 60000 })
+
+const HEADINGS_MARKDOWN = `# Alpha
+
+intro paragraph
+
+> ## Quoted heading
+
+## Beta
+
+${'filler paragraph one\n\n'.repeat(20)}## Beta
+
+### Gamma nested
+
+${'filler paragraph two\n\n'.repeat(20)}# Omega
+`
+
+async function openHeadingsDraft(page: Page) {
+  await openLocalDraft(page, {
+    id: 'outline-draft',
+    markdown: HEADINGS_MARKDOWN,
+    title: /Alpha/,
+  })
+}
+
+async function openOutline(page: Page) {
+  await page.getByTestId('outline-open-button').click()
+  await expect(page.getByTestId('outline-sheet')).toBeVisible()
+}
+
+test('outline lists top-level headings with normalized indentation', async ({ page }) => {
+  await openHeadingsDraft(page)
+  await openOutline(page)
+
+  const rows = page.getByTestId('outline-row')
+  await expect(rows).toHaveCount(5)
+  await expect(rows.nth(0)).toHaveText('Alpha')
+  await expect(rows.nth(1)).toHaveText('Beta')
+  await expect(rows.nth(2)).toHaveText('Beta')
+  await expect(rows.nth(3)).toHaveText('Gamma nested')
+  await expect(rows.nth(4)).toHaveText('Omega')
+
+  // The quoted heading is not a top-level block and must not appear.
+  await expect(page.getByTestId('outline-list')).not.toContainText('Quoted heading')
+
+  // Indentation is normalized from H1 and the dialog is modal.
+  await expect(rows.nth(0)).toHaveAttribute('data-outline-indent', '0')
+  await expect(rows.nth(1)).toHaveAttribute('data-outline-indent', '1')
+  await expect(rows.nth(3)).toHaveAttribute('data-outline-indent', '2')
+  await expect(page.getByTestId('outline-sheet')).toHaveAttribute('aria-modal', 'true')
+})
+
+test('selecting a repeated heading scrolls the editor to the correct occurrence', async ({
+  page,
+}) => {
+  await openHeadingsDraft(page)
+  await openOutline(page)
+
+  // Choose the SECOND "Beta" (third row) — index mapping must not collapse
+  // repeated titles or count the blockquote heading.
+  await page.getByTestId('outline-row').nth(2).click()
+
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(0)
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const shell = document.querySelector('.editor-host-shell')!
+        const headings = shell.querySelectorAll('.mu-container > h2')
+        const target = headings[1]!
+        const shellRect = shell.getBoundingClientRect()
+        const rect = target.getBoundingClientRect()
+        return rect.top >= shellRect.top && rect.top < shellRect.top + shellRect.height * 0.5
+      }),
+    )
+    .toBe(true)
+
+  // Navigation must not focus the editor (keyboard stays closed).
+  const focusInEditor = await page.evaluate(() =>
+    Boolean(document.activeElement?.closest('[data-testid="editor-host"]')),
+  )
+  expect(focusInEditor).toBe(false)
+})
+
+test('outline does not modify the document markdown', async ({ page }) => {
+  await openHeadingsDraft(page)
+  const before = await page.evaluate(() => localStorage.getItem('marktext-for-android:drafts'))
+
+  await openOutline(page)
+  await page.getByTestId('outline-row').nth(4).click()
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(0)
+
+  const after = await page.evaluate(() => localStorage.getItem('marktext-for-android:drafts'))
+  expect(after).toBe(before)
+})
+
+test('scrim tap and the explicit close action both dismiss the outline', async ({ page }) => {
+  await openHeadingsDraft(page)
+
+  await openOutline(page)
+  await page.getByTestId('outline-close-button').click()
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(0)
+
+  await openOutline(page)
+  await page.getByTestId('outline-sheet-scrim').click({ position: { x: 10, y: 10 } })
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(0)
+})
+
+test('outline shows a restrained empty state without headings', async ({ page }) => {
+  await openLocalDraft(page, {
+    id: 'outline-empty-draft',
+    markdown: 'plain paragraph only\n',
+    title: /plain paragraph/,
+  })
+
+  await openOutline(page)
+
+  await expect(page.getByTestId('outline-empty')).toBeVisible()
+  await expect(page.getByTestId('outline-row')).toHaveCount(0)
+
+  await page.getByTestId('outline-close-button').click()
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(0)
+})
+
+test('opening Search while the outline open is pending cancels it — never both', async ({
+  page,
+}) => {
+  await openHeadingsDraft(page)
+
+  // Fire both taps inside one task so Search opens while the outline is
+  // still waiting for the viewport to settle.
+  await page.evaluate(() => {
+    const outline = document.querySelector<HTMLElement>('[data-testid="outline-open-button"]')!
+    const search = document.querySelector<HTMLElement>('[data-testid="search-open-button"]')!
+    outline.click()
+    search.click()
+  })
+
+  await expect(page.getByTestId('editor-search-bar')).toBeVisible()
+  // Give the cancelled outline open more than its full settle bound.
+  await page.waitForTimeout(700)
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(0)
+  await expect(page.getByTestId('editor-search-bar')).toBeVisible()
+})
+
+test('expanding the toolbar while the outline open is pending cancels it — never both', async ({
+  page,
+}) => {
+  await openHeadingsDraft(page)
+
+  await page.evaluate(() => {
+    const outline = document.querySelector<HTMLElement>('[data-testid="outline-open-button"]')!
+    const expand = document.querySelector<HTMLElement>('[data-testid="toolbar-expand-button"]')!
+    outline.click()
+    expand.click()
+  })
+
+  // Give the cancelled outline open more than its full settle bound.
+  await page.waitForTimeout(700)
+  const state = await page.evaluate(() => ({
+    outline: document.querySelectorAll('[data-testid="outline-sheet"]').length,
+    toolbarExpanded: Boolean(document.querySelector('.toolbar-expanded')),
+  }))
+  expect(state.outline === 1 && state.toolbarExpanded).toBe(false)
+  // The toolbar interaction wins; the pending outline was cancelled.
+  expect(state.toolbarExpanded).toBe(true)
+  expect(state.outline).toBe(0)
+})
+
+test('opening the More menu while the outline open is pending cancels it — never both', async ({
+  page,
+}) => {
+  // The More menu only renders for shareable documents, so open a mocked
+  // Android document instead of a local draft.
+  const now = '2026-07-11T08:00:00.000Z'
+  const document = {
+    sourceUri: 'content://test/outline-menu-race',
+    displayName: 'Outline Menu Race.md',
+    markdown: HEADINGS_MARKDOWN,
+  }
+  await installAndroidAppMock(page, document)
+  await page.goto('/')
+  await page.evaluate(
+    ({ now, document }) => {
+      localStorage.clear()
+      localStorage.setItem(
+        'marktext-for-android:recent-documents',
+        JSON.stringify([
+          {
+            id: `android-document:${document.sourceUri}`,
+            kind: 'android-document',
+            displayName: document.displayName,
+            title: 'Outline Menu Race',
+            sourceUri: document.sourceUri,
+            providerName: 'Test Documents',
+            pathHint: document.displayName,
+            markdownPreview: null,
+            updatedAt: now,
+            lastOpenedAt: now,
+            lastSavedAt: null,
+            autosaveState: 'clean',
+            canWrite: true,
+          },
+        ]),
+      )
+    },
+    { now, document },
+  )
+  await page.reload()
+  await page.getByRole('button', { name: /Outline Menu Race/ }).click()
+  await expectEditorReady(page)
+
+  await page.evaluate(() => {
+    const outline = document.querySelector<HTMLElement>('[data-testid="outline-open-button"]')!
+    const menu = document.querySelector<HTMLElement>('[data-testid="editor-menu-button"]')!
+    outline.click()
+    menu.click()
+  })
+
+  await expect(page.getByTestId('editor-action-sheet')).toBeVisible()
+  await page.waitForTimeout(700)
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(0)
+  await expect(page.getByTestId('editor-action-sheet')).toBeVisible()
+})
+
+test('rapid repeated outline taps produce a single sheet', async ({ page }) => {
+  await openHeadingsDraft(page)
+
+  await page.evaluate(() => {
+    const outline = document.querySelector<HTMLElement>('[data-testid="outline-open-button"]')!
+    outline.click()
+    outline.click()
+    outline.click()
+  })
+
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(1)
+  await page.waitForTimeout(700)
+  await expect(page.getByTestId('outline-sheet')).toHaveCount(1)
+})
+
+test('Tab and Shift+Tab cannot move focus outside the dialog', async ({ page }) => {
+  await openHeadingsDraft(page)
+  await openOutline(page)
+  await expect(page.getByTestId('outline-sheet')).toBeFocused()
+
+  const focusStaysInside = async () =>
+    page.evaluate(() =>
+      Boolean(document.activeElement?.closest('[data-testid="outline-sheet"]')),
+    )
+
+  // Shift+Tab from the panel wraps to the last row instead of escaping.
+  await page.keyboard.press('Shift+Tab')
+  expect(await focusStaysInside()).toBe(true)
+
+  // Tab forward through every focusable and past the end: still contained.
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press('Tab')
+    expect(await focusStaysInside()).toBe(true)
+  }
+})
+
+test('every close path returns focus to the outline button without refocusing the editor', async ({
+  page,
+}) => {
+  await openHeadingsDraft(page)
+
+  const expectFocusOnOutlineButton = async () => {
+    await expect(page.getByTestId('outline-open-button')).toBeFocused()
+    const inEditor = await page.evaluate(() =>
+      Boolean(document.activeElement?.closest('[data-testid="editor-host"]')),
+    )
+    expect(inEditor).toBe(false)
+  }
+
+  await openOutline(page)
+  await page.getByTestId('outline-close-button').click()
+  await expectFocusOnOutlineButton()
+
+  await openOutline(page)
+  await page.getByTestId('outline-sheet-scrim').click({ position: { x: 10, y: 10 } })
+  await expectFocusOnOutlineButton()
+
+  await openOutline(page)
+  await page.keyboard.press('Escape')
+  await expectFocusOnOutlineButton()
+
+  await openOutline(page)
+  await page.getByTestId('outline-row').nth(1).click()
+  await expectFocusOnOutlineButton()
+})
+
+test('opening the outline dismisses editor focus so the keyboard closes', async ({ page }) => {
+  await openHeadingsDraft(page)
+
+  await page.getByTestId('editor-host').click()
+  const focusedBefore = await page.evaluate(() =>
+    Boolean(document.activeElement?.closest('[data-testid="editor-host"]')),
+  )
+  expect(focusedBefore).toBe(true)
+
+  await openOutline(page)
+
+  const focusedAfter = await page.evaluate(() =>
+    Boolean(document.activeElement?.closest('[data-testid="editor-host"]')),
+  )
+  expect(focusedAfter).toBe(false)
+
+  // Accessibility focus moved into the dialog instead.
+  await expect(page.getByTestId('outline-sheet')).toBeFocused()
+})

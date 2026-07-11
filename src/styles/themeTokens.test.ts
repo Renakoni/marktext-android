@@ -19,7 +19,7 @@ const themePaths = [
 ]
 
 // Tokens set from JS at runtime (inline style vars) rather than in a stylesheet.
-const RUNTIME_DEFINED_TOKENS = new Set(['--editor-area-width'])
+const RUNTIME_DEFINED_TOKENS = new Set(['--editor-area-width', '--outline-indent'])
 
 // The semantic contract every theme must satisfy (documented in theme-tokens.css).
 const REQUIRED_SEMANTIC_TOKENS = [

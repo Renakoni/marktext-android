@@ -17,6 +17,7 @@ const baseBackState: AppBackButtonState = {
   draftExitPromptOpen: false,
   linkSheetOpen: false,
   editorMenuOpen: false,
+  editorOutlineOpen: false,
   editorSearchOpen: false,
   editorToolbarExpanded: false,
   homeSelectionActive: false,
@@ -88,9 +89,18 @@ describe('appExitDecisions', () => {
       ...baseBackState,
       currentScreen: 'editor',
       editorMenuOpen: true,
+      editorOutlineOpen: true,
       editorSearchOpen: true,
       editorToolbarExpanded: true,
     })).toBe('close-editor-menu')
+
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'editor',
+      editorOutlineOpen: true,
+      editorSearchOpen: true,
+      editorToolbarExpanded: true,
+    })).toBe('close-editor-outline')
 
     expect(getAppBackButtonAction({
       ...baseBackState,
