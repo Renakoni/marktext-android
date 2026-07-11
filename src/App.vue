@@ -642,7 +642,7 @@ function toggleEditorToolbarExclusive() {
 async function openEditor(markdown: string) {
   // The outgoing document's position is written under the resume session's
   // cached key (documentState already points at the incoming document here).
-  persistResumePosition('document replaced')
+  void persistResumePosition('document replaced')
   resetResumeForNewDocument()
   resetEditorSearchForNewDocument()
   resetEditorOutlineForNewDocument()
@@ -1199,7 +1199,7 @@ async function installCjkBoldCompensation() {
 function closeEditorToHome() {
   // Write the resume position while the editor still exists; the session is
   // gone right after, so a late flush cannot double-write.
-  persistResumePosition('editor closed')
+  void persistResumePosition('editor closed')
   resetResumeForNewDocument()
   draftExitPromptOpen.value = false
   androidExitPromptOpen.value = false
@@ -1288,7 +1288,7 @@ function requestLifecycleFlush(reason: string) {
   void flushCurrentDocument(reason)
   // Same lifecycle moments the document flush uses; the position write is
   // independent of the save pipeline and never dirties the document.
-  persistResumePosition(reason)
+  void persistResumePosition(reason)
 }
 
 async function handleAppBackButton() {
@@ -1554,7 +1554,7 @@ onBeforeUnmount(() => {
   removeAppLifecycleListeners()
   systemColorSchemeCleanup?.()
   systemColorSchemeCleanup = null
-  persistResumePosition('app unmount')
+  void persistResumePosition('app unmount')
   resetResumeForNewDocument()
   if (documentState.value.autosaveTarget === 'android-document') {
     void saveAndroidDocument()

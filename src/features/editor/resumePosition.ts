@@ -11,7 +11,7 @@ interface ResumePositionLogger {
   debug(message: string, context?: Record<string, unknown>): void
 }
 
-/** In-memory anchor refreshed on scroll settle; persisted only on exit paths. */
+/** Structural anchor read from the live DOM at persist time. */
 interface ResumeAnchor {
   topBlockIndex: number
   topBlockRatio: number
@@ -29,9 +29,6 @@ export interface ResumeBlockRect {
   height: number
 }
 
-// Anchor updates wait for this quiet window after the last scroll event, so
-// capture work never runs per-frame during a fling.
-export const RESUME_CAPTURE_SETTLE_MS = 250
 // Scrolling this far while the card shows counts as the user navigating on
 // their own; the offer is stale at that point.
 export const RESUME_CARD_SCROLL_DISMISS_PX = 24
@@ -39,11 +36,79 @@ export const RESUME_CARD_SCROLL_DISMISS_PX = 24
 export const RESUME_MIN_DISTANCE_VIEWPORTS = 1.5
 // Bounded lifetime: the card withdraws on its own instead of lingering.
 export const RESUME_CARD_AUTO_DISMISS_MS = 10_000
+// Initial-layout settle before eligibility is judged: images, fonts, KaTeX,
+// and diagram previews can reflow the document long after editor readiness,
+// and a distance check against that transient layout would suppress or show
+// the card incorrectly.
+export const RESUME_OPEN_SETTLE_QUIET_MS = 350
+export const RESUME_OPEN_SETTLE_MAX_MS = 3_000
 // Post-jump stabilization bounds: corrections stop after a quiet window, at
 // the hard cap, or on the first trusted user input — whichever comes first.
 export const RESUME_STABILIZE_QUIET_MS = 600
 export const RESUME_STABILIZE_MAX_MS = 4_000
 export const RESUME_STABILIZE_THRESHOLD_PX = 8
+
+/**
+ * An image whose network fetch is still in flight produces NO resize events,
+ * so a quiet window alone cannot distinguish "settled" from "still waiting".
+ * Muya marks in-flight image probes with `mu-image-loading` (removed on
+ * success and failure); inserted `<img>` elements report `complete`.
+ */
+function hasPendingImageContent(target: Element) {
+  if (target.querySelector('.mu-image-loading')) {
+    return true
+  }
+
+  return Array.from(target.querySelectorAll('img')).some(image => !image.complete)
+}
+
+/**
+ * Resolve once the element stops resizing for one quiet window AND no image
+ * load is pending, or at the hard bound — the same event-driven-with-cap
+ * shape as waitForViewportSettle in documentOutline.ts. The observer always
+ * disconnects at resolution; callers re-check their generation token
+ * afterwards.
+ */
+export function waitForLayoutSettle(
+  target: Element,
+  { quietMs = RESUME_OPEN_SETTLE_QUIET_MS, maxMs = RESUME_OPEN_SETTLE_MAX_MS } = {},
+): Promise<void> {
+  if (typeof ResizeObserver === 'undefined') {
+    return Promise.resolve()
+  }
+
+  return new Promise(resolve => {
+    let quietTimer: ReturnType<typeof setTimeout>
+
+    const finish = () => {
+      clearTimeout(quietTimer)
+      clearTimeout(maxTimer)
+      observer.disconnect()
+      resolve()
+    }
+
+    const onQuiet = () => {
+      // Quiet but not trustworthy yet: keep re-checking on the same cadence
+      // until the pending loads land (their reflow re-arms the timer via the
+      // observer) or the hard bound fires.
+      if (hasPendingImageContent(target)) {
+        quietTimer = setTimeout(onQuiet, quietMs)
+        return
+      }
+
+      finish()
+    }
+
+    const observer = new ResizeObserver(() => {
+      clearTimeout(quietTimer)
+      quietTimer = setTimeout(onQuiet, quietMs)
+    })
+
+    const maxTimer = setTimeout(finish, maxMs)
+    quietTimer = setTimeout(onQuiet, quietMs)
+    observer.observe(target)
+  })
+}
 
 /**
  * Locate the top-level block under the viewport top edge. Gaps between
@@ -100,6 +165,8 @@ export interface CreateResumePositionOptions {
   readPosition: (docKey: string) => ResumePositionRecord | null
   writePosition: (docKey: string, record: ResumePositionRecord) => void
   removePosition: (docKey: string) => void
+  /** Injectable for deterministic ordering tests; defaults to the real hash. */
+  createRecord?: typeof createResumePositionRecord
   logger?: ResumePositionLogger
 }
 
@@ -120,16 +187,21 @@ export interface ResumePosition {
   standDown(reason: string): void
   /** Content changed: the offer and any in-flight stabilization are stale. */
   notifyDocumentEdited(): void
-  /** Write the current in-memory anchor for the session's document, if any. */
-  persistNow(reason: string): void
+  /**
+   * Capture the live viewport anchor and persist it for the session's
+   * document. Resolves when the write settled; callers on exit paths may
+   * ignore the promise — ordering is guaranteed internally.
+   */
+  persistNow(reason: string): Promise<void>
   /** Cancel everything and forget the session before a document replacement. */
   resetForNewDocument(): void
 }
 
 /**
- * Session controller for "resume where you left off". Capture updates an
- * in-memory anchor on scroll settle and persists it only through the
- * existing exit/lifecycle paths; restore is strictly validated (exact
+ * Session controller for "resume where you left off". Capture reads the live
+ * viewport synchronously at each persist point (the existing exit/lifecycle
+ * paths), gated by whether the user scrolled or edited this session; restore
+ * waits for the initial layout to settle, is strictly validated (exact
  * SHA-256), never automatic, and every async step is bound to a generation
  * token so document replacement or editor destruction cancels it.
  */
@@ -141,6 +213,7 @@ export function createResumePosition({
   readPosition,
   writePosition,
   removePosition,
+  createRecord = createResumePositionRecord,
   logger,
 }: CreateResumePositionOptions): ResumePosition {
   const resumeCardVisible = ref(false)
@@ -148,11 +221,19 @@ export function createResumePosition({
 
   let generation = 0
   let sessionDocKey: string | null = null
-  let anchor: ResumeAnchor | null = null
+  // True once the user scrolled or edited this session. Only then does an
+  // exit write a fresh position; a passive revisit leaves the stored record
+  // untouched.
+  let positionTouched = false
   let pendingTarget: PendingResumeTarget | null = null
 
+  // Latest-capture-wins ordering for asynchronous hash-and-write requests.
+  // Keyed per document and NEVER reset with the session: a snapshotted
+  // outgoing-document write may complete after editor destruction, but it
+  // must not overwrite a newer capture for the same document.
+  const persistTokens = new Map<string, number>()
+
   let scrollCleanup: (() => void) | null = null
-  let captureTimer: ReturnType<typeof setTimeout> | null = null
   let cardTimer: ReturnType<typeof setTimeout> | null = null
   let cardShownScrollTop = 0
   let stabilizeCleanup: (() => void) | null = null
@@ -169,13 +250,6 @@ export function createResumePosition({
    */
   function getBlockContainer(): HTMLElement | null {
     return getEditor()?.domNode.querySelector<HTMLElement>('.mu-container') ?? null
-  }
-
-  function clearCaptureTimer() {
-    if (captureTimer !== null) {
-      clearTimeout(captureTimer)
-      captureTimer = null
-    }
   }
 
   function hideCard() {
@@ -196,11 +270,17 @@ export function createResumePosition({
     stabilizeCleanup = null
   }
 
-  function captureAnchor() {
+  /**
+   * Read the anchor from the live DOM. Always called synchronously at
+   * persist time — after the pending editor content flushed — so the anchor
+   * can never be structurally stale relative to the hashed Markdown, and an
+   * exit inside any debounce window cannot lose the latest position.
+   */
+  function captureLiveAnchor(): ResumeAnchor | null {
     const scrollContainer = getScrollContainer()
     const blockContainer = getBlockContainer()
     if (!scrollContainer || !blockContainer) {
-      return
+      return null
     }
 
     const blocks = Array.from(blockContainer.children)
@@ -213,10 +293,10 @@ export function createResumePosition({
       }),
     )
     if (!computed) {
-      return
+      return null
     }
 
-    anchor = {
+    return {
       topBlockIndex: computed.index,
       topBlockRatio: computed.ratio,
       displayText: normalizeResumeDisplayText(blocks[computed.index].textContent ?? ''),
@@ -225,24 +305,18 @@ export function createResumePosition({
 
   function installScrollCapture(scrollContainer: HTMLElement) {
     const onScroll = () => {
+      positionTouched = true
       if (
         resumeCardVisible.value &&
         Math.abs(scrollContainer.scrollTop - cardShownScrollTop) > RESUME_CARD_SCROLL_DISMISS_PX
       ) {
         dismissCard('scrolled away')
       }
-
-      clearCaptureTimer()
-      captureTimer = setTimeout(() => {
-        captureTimer = null
-        captureAnchor()
-      }, RESUME_CAPTURE_SETTLE_MS)
     }
 
     scrollContainer.addEventListener('scroll', onScroll, { passive: true })
     scrollCleanup = () => {
       scrollContainer.removeEventListener('scroll', onScroll)
-      clearCaptureTimer()
     }
   }
 
@@ -297,6 +371,13 @@ export function createResumePosition({
     })
     if (target < scrollContainer.clientHeight * RESUME_MIN_DISTANCE_VIEWPORTS) {
       logger?.debug('resume position skipped: too close to the top', { docKey })
+      return
+    }
+
+    // The user started scrolling or editing while validation ran: they are
+    // already navigating on their own, so the offer would be noise.
+    if (positionTouched) {
+      logger?.debug('resume position skipped: user already navigating', { docKey })
       return
     }
 
@@ -426,7 +507,8 @@ export function createResumePosition({
 
     const docKey = getDocumentKey()
     const scrollContainer = getScrollContainer()
-    if (!docKey || !scrollContainer || !getBlockContainer()) {
+    const blockContainer = getBlockContainer()
+    if (!docKey || !scrollContainer || !blockContainer) {
       return
     }
 
@@ -434,6 +516,16 @@ export function createResumePosition({
     const sessionGeneration = generation
     sessionDocKey = docKey
     installScrollCapture(scrollContainer)
+
+    // Editor readiness is not layout readiness: images, fonts, KaTeX, and
+    // diagram previews may still reflow the document. Judge eligibility only
+    // against a settled layout (bounded — one quiet window or the hard cap),
+    // otherwise the distance check can permanently suppress a valid offer or
+    // show one whose target ends up near the top.
+    await waitForLayoutSettle(blockContainer)
+    if (generation !== sessionGeneration) {
+      return
+    }
 
     await evaluateRestoreOpportunity(docKey, sessionGeneration)
   }
@@ -487,40 +579,59 @@ export function createResumePosition({
   }
 
   function notifyDocumentEdited() {
+    // Edits can change the top-level block structure, so any previously
+    // observed position is stale; the exit-time live capture (gated by this
+    // flag) is the only anchor that may be persisted afterwards.
+    positionTouched = true
     standDown('document edited')
   }
 
-  function persistNow(reason: string) {
-    if (!sessionDocKey || !anchor) {
-      return
+  function persistNow(reason: string): Promise<void> {
+    // Nothing moved and nothing changed: keep the stored record so a passive
+    // revisit does not erase a deep position with a top-of-document one.
+    if (!sessionDocKey || !positionTouched) {
+      return Promise.resolve()
     }
 
+    // Flush pending editor content BEFORE reading the DOM, so the anchor and
+    // the hashed Markdown describe the same document state.
     const markdown = getMarkdown()
     if (markdown === null) {
-      return
+      return Promise.resolve()
     }
 
-    // Everything is snapshotted synchronously; the hash-and-write
-    // continuation cannot be affected by editor destruction or replacement.
+    const anchor = captureLiveAnchor()
+    if (!anchor) {
+      return Promise.resolve()
+    }
+
+    // Everything is snapshotted synchronously — including capturedAt, so LRU
+    // recency reflects capture order, not hash completion order. The token
+    // makes overlapping writes latest-capture-wins: WebCrypto digests may
+    // resolve out of invocation order.
     const docKey = sessionDocKey
-    const { topBlockIndex, topBlockRatio, displayText } = anchor
-    void createResumePositionRecord({
-      markdown,
-      topBlockIndex,
-      topBlockRatio,
-      displayText,
-    }).then(record => {
-      if (record) {
-        writePosition(docKey, record)
-        logger?.debug('resume position persisted', { docKey, reason, topBlockIndex })
+    const capturedAt = new Date().toISOString()
+    const token = (persistTokens.get(docKey) ?? 0) + 1
+    persistTokens.set(docKey, token)
+
+    return createRecord({ markdown, capturedAt, ...anchor }).then(record => {
+      if (!record || persistTokens.get(docKey) !== token) {
+        return
       }
+
+      writePosition(docKey, record)
+      logger?.debug('resume position persisted', {
+        docKey,
+        reason,
+        topBlockIndex: anchor.topBlockIndex,
+      })
     })
   }
 
   function resetForNewDocument() {
     generation += 1
     sessionDocKey = null
-    anchor = null
+    positionTouched = false
     stopStabilization()
     hideCard()
     scrollCleanup?.()

@@ -30,7 +30,8 @@ async function scrollEditorTo(page: Page, top: number) {
   await page.evaluate(value => {
     document.querySelector<HTMLElement>('.editor-host-shell')!.scrollTop = value
   }, top)
-  // Wait past the capture settle window so the anchor updates.
+  // Capture happens live at exit; this wait only keeps position assertions
+  // deterministic (scroll delivery + card dismissal side effects).
   await page.waitForTimeout(500)
 }
 
@@ -183,6 +184,145 @@ test('resume never modifies the document, drafts storage, or save state', async 
 
   const draftsAfter = await page.evaluate(key => localStorage.getItem(key), DRAFTS_STORAGE_KEY)
   expect(draftsAfter).toBe(draftsBefore)
+})
+
+test('exiting immediately after scrolling still persists the latest position', async ({
+  page,
+}) => {
+  await openResumeDraft(page)
+  // Scroll and leave right away — no settle wait of any kind. The exit path
+  // must capture the live viewport, not a debounced snapshot.
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>('.editor-host-shell')!.scrollTop = 3000
+  })
+  await exitToHome(page)
+  await expect.poll(() => getResumeStorage(page)).toContain(DOC_KEY)
+
+  await reopenDraft(page)
+  await expect(page.getByTestId('resume-card')).toBeVisible()
+  await page.getByTestId('resume-card-button').click()
+  await expect.poll(() => getShellScrollTop(page)).toBeGreaterThan(2900)
+  expect(await getShellScrollTop(page)).toBeLessThan(3100)
+})
+
+test('the second scroll position wins over an earlier settled one on immediate exit', async ({
+  page,
+}) => {
+  await openResumeDraft(page)
+  await scrollEditorTo(page, 1500)
+  // Move again and exit before any quiet window can elapse.
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>('.editor-host-shell')!.scrollTop = 3200
+  })
+  await exitToHome(page)
+  await expect.poll(() => getResumeStorage(page)).toContain(DOC_KEY)
+
+  await reopenDraft(page)
+  await expect(page.getByTestId('resume-card')).toBeVisible()
+  await page.getByTestId('resume-card-button').click()
+  await expect.poll(() => getShellScrollTop(page)).toBeGreaterThan(3100)
+  expect(await getShellScrollTop(page)).toBeLessThan(3300)
+})
+
+test('a structural edit without another scroll never yields a stale anchor target', async ({
+  page,
+}) => {
+  // One very tall paragraph deep in the document: splitting it moves the
+  // in-block geometry enough that a stale pre-edit anchor (old index/ratio
+  // against the new structure) would land hundreds of pixels off.
+  const tallSentence = 'This tall block sentence keeps the paragraph very high on a phone. '
+  const markdown = `# Resume Alpha
+
+${Array.from({ length: 30 }, (_, i) => `Lead-in paragraph ${i + 1}.`).join('\n\n')}
+
+${tallSentence.repeat(40).trim()}
+
+${Array.from({ length: 30 }, (_, i) => `Trailing paragraph ${i + 1}.`).join('\n\n')}
+`
+  await openLocalDraft(page, { id: DRAFT_ID, markdown, title: /Resume Alpha/ })
+
+  // Park the viewport top deep INSIDE the tall block (ratio ~0.75).
+  await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>('.editor-host-shell')!
+    const tall = [...shell.querySelectorAll('.mu-container > p')].find(
+      p => (p.textContent ?? '').startsWith('This tall block'),
+    )!
+    const shellRect = shell.getBoundingClientRect()
+    const rect = tall.getBoundingClientRect()
+    shell.scrollTop = shell.scrollTop + (rect.top - shellRect.top) + rect.height * 0.75
+  })
+  await page.waitForTimeout(500)
+
+  // Split the tall block just below the viewport top, then exit WITHOUT
+  // scrolling again.
+  const shellBox = (await page.locator('.editor-host-shell').boundingBox())!
+  await page.mouse.click(shellBox.x + shellBox.width / 2, shellBox.y + 40)
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(400)
+  const exitScrollTop = await getShellScrollTop(page)
+
+  await exitToHome(page)
+  await expect.poll(() => getResumeStorage(page)).toContain(DOC_KEY)
+
+  await reopenDraft(page)
+  await expect(page.getByTestId('resume-card')).toBeVisible()
+  await page.getByTestId('resume-card-button').click()
+  await expect.poll(() => getShellScrollTop(page)).toBeGreaterThan(exitScrollTop - 80)
+  expect(await getShellScrollTop(page)).toBeLessThan(exitScrollTop + 80)
+})
+
+test('eligibility is judged after the initial layout settles with late-loading content', async ({
+  page,
+}) => {
+  // A tall image above the target loads late on reopen: before it lays out,
+  // the target transiently sits above the 1.5-viewport threshold and a
+  // premature evaluation would permanently suppress the card.
+  // Narrower than the phone editor content width so the height is never
+  // scaled down with the aspect ratio.
+  const tallSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="3200">' +
+    '<rect width="320" height="3200" fill="#dcdce8"/></svg>'
+  await page.route('**/slow-block.svg', async route => {
+    await new Promise(resolve => setTimeout(resolve, 900))
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      headers: { 'Cache-Control': 'no-store' },
+      body: tallSvg,
+    })
+  })
+
+  // Full URL: Muya's getImageSrc treats a bare "/path" as a local file.
+  const markdown = `# Resume Alpha
+
+![tall diagram](http://127.0.0.1:5174/slow-block.svg)
+
+${Array.from({ length: 25 }, (_, i) => `After-image paragraph ${i + 1}.`).join('\n\n')}
+`
+  await openLocalDraft(page, { id: DRAFT_ID, markdown, title: /Resume Alpha/ })
+
+  // Capture against the final layout: wait for the image to land first.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => document.querySelector<HTMLElement>('.editor-host-shell')!.scrollHeight,
+        ),
+      { timeout: 15000 },
+    )
+    .toBeGreaterThan(3000)
+  await scrollEditorTo(page, 2600)
+  await exitToHome(page)
+  await expect.poll(() => getResumeStorage(page)).toContain(DOC_KEY)
+
+  // Reload so neither the browser cache nor Muya's in-session image cache
+  // can short-circuit the slow load on reopen.
+  await page.reload()
+  await reopenDraft(page)
+
+  await expect(page.getByTestId('resume-card')).toBeVisible({ timeout: 8000 })
+  await page.getByTestId('resume-card-button').click()
+  await expect.poll(() => getShellScrollTop(page)).toBeGreaterThan(2400)
 })
 
 test('a revisit without scrolling keeps the stored position', async ({ page }) => {
