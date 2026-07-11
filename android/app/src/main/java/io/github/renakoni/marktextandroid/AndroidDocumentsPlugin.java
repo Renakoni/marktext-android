@@ -1103,8 +1103,17 @@ public class AndroidDocumentsPlugin extends Plugin {
             return;
         }
 
-        int grantFlags = data.getFlags() &
-            (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        // Rebuild the mask from the two allowed constants instead of masking the
+        // raw Intent flags; lint's WrongConstant check cannot narrow a bitwise-and
+        // of the broader @Intent.Flags value down to the persistable grant set.
+        int intentFlags = data.getFlags();
+        int grantFlags = 0;
+        if ((intentFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
+            grantFlags |= Intent.FLAG_GRANT_READ_URI_PERMISSION;
+        }
+        if ((intentFlags & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) != 0) {
+            grantFlags |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+        }
         if (grantFlags == 0) {
             return;
         }
