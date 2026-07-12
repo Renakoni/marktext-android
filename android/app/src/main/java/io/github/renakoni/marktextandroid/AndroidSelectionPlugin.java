@@ -69,6 +69,10 @@ public class AndroidSelectionPlugin extends Plugin {
         notifyListeners("selectionTap", data);
     }
 
+    void emitSelectionContextRequest() {
+        notifyListeners("selectionContextRequest", new JSObject());
+    }
+
     @PluginMethod
     public void performNativeSelectAll(PluginCall call) {
         String reason = call.getString("reason", "unspecified");

@@ -98,6 +98,14 @@ public class MainActivity extends BridgeActivity {
         activeSelectionActionMode = mode;
         activeSelectionActionModeStartUptimeMs = SystemClock.uptimeMillis();
         recordSelectionActionModeEvent("action-mode-started", modeDescription(mode));
+
+        // The suppressed floating ActionMode starting is exactly the moment
+        // Android would have shown its clipboard menu (long-press selection,
+        // double-tap word select, insertion-caret menu). Hand that moment to
+        // the web layer so the app-owned toolbar can offer clipboard actions.
+        if (isSuppressedSelectionActionMode(mode)) {
+            notifySelectionContextRequest();
+        }
     }
 
     @Override
@@ -193,6 +201,20 @@ public class MainActivity extends BridgeActivity {
             builder.append(menu.getItem(index).getItemId());
         }
         return builder.toString();
+    }
+
+    void notifySelectionContextRequest() {
+        recordSelectionActionModeEvent("selection-context-request", "notify");
+
+        if (getBridge() == null) {
+            return;
+        }
+
+        PluginHandle handle = getBridge().getPlugin("AndroidSelection");
+        Plugin plugin = handle == null ? null : handle.getInstance();
+        if (plugin instanceof AndroidSelectionPlugin) {
+            ((AndroidSelectionPlugin) plugin).emitSelectionContextRequest();
+        }
     }
 
     void notifySelectionTap(float cssX, float cssY) {

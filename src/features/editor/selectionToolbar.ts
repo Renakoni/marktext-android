@@ -9,17 +9,63 @@ export interface SelectionToolbarCommand {
   iconName: SelectionToolbarIconName
 }
 
-export const SELECTION_TOOLBAR_COMMANDS: readonly SelectionToolbarCommand[] = [
-  { commandId: 'copy', labelKey: 'editor.selection.copy', iconName: 'copy' },
-  { commandId: 'cut', labelKey: 'editor.selection.cut', iconName: 'cut' },
-  { commandId: 'paste', labelKey: 'editor.selection.paste', iconName: 'paste' },
-  { commandId: 'selectAll', labelKey: 'editor.selection.selectAll', iconName: 'selectAll' },
-]
+const CUT: SelectionToolbarCommand = {
+  commandId: 'cut',
+  labelKey: 'editor.selection.cut',
+  iconName: 'cut',
+}
+const COPY: SelectionToolbarCommand = {
+  commandId: 'copy',
+  labelKey: 'editor.selection.copy',
+  iconName: 'copy',
+}
+const PASTE: SelectionToolbarCommand = {
+  commandId: 'paste',
+  labelKey: 'editor.selection.paste',
+  iconName: 'paste',
+}
+const SELECT_ALL: SelectionToolbarCommand = {
+  commandId: 'selectAll',
+  labelKey: 'editor.selection.selectAll',
+  iconName: 'selectAll',
+}
 
-export function getSelectionToolbarCommands(canPaste: boolean) {
-  return canPaste
-    ? SELECTION_TOOLBAR_COMMANDS
-    : SELECTION_TOOLBAR_COMMANDS.filter(command => command.commandId !== 'paste')
+/**
+ * The floating toolbar's action set, straight from the product state table:
+ *
+ *   editable + selection  → Cut, Copy, [Paste], Select all
+ *   editable + caret      → [Paste], Select all
+ *   read-only + selection → Copy, Select all
+ *   read-only + caret     → Select all
+ *
+ * Paste appears only when the clipboard actually holds pasteable content.
+ * Select all is always offered — including in an empty document.
+ */
+export function getSelectionToolbarCommands({
+  hasSelection,
+  canPaste,
+  canWrite,
+}: {
+  hasSelection: boolean
+  canPaste: boolean
+  canWrite: boolean
+}): SelectionToolbarCommand[] {
+  const commands: SelectionToolbarCommand[] = []
+
+  if (hasSelection && canWrite) {
+    commands.push(CUT)
+  }
+
+  if (hasSelection) {
+    commands.push(COPY)
+  }
+
+  if (canWrite && canPaste) {
+    commands.push(PASTE)
+  }
+
+  commands.push(SELECT_ALL)
+  return commands
 }
 
 export interface SelectionRect {
@@ -42,20 +88,27 @@ export function shouldShowSelectionToolbar(input: {
   editorReady: boolean
   suspended: boolean
   snapshot: SelectionSnapshot | null
+  /** A long-press placed a caret: the toolbar shows for it too. */
+  caretSession?: boolean
 }): boolean {
-  const { editorReady, suspended, snapshot } = input
+  const { editorReady, suspended, snapshot, caretSession = false } = input
   if (!editorReady || suspended || !snapshot) {
     return false
   }
 
+  if (!snapshot.withinEditor || snapshot.rect === null) {
+    return false
+  }
+
+  // A long-press caret session shows the toolbar at the collapsed caret —
+  // including in an empty document (paste / select-all need no text).
+  if (snapshot.collapsed) {
+    return caretSession
+  }
+
   // A selection without visible text (an empty block or the quick-insert
   // placeholder hint) has nothing for copy/cut/select-all to operate on.
-  return (
-    !snapshot.collapsed &&
-    snapshot.withinEditor &&
-    snapshot.rect !== null &&
-    snapshot.text.trim().length > 0
-  )
+  return snapshot.text.trim().length > 0
 }
 
 export interface SelectionToolbarBox {
@@ -146,6 +199,30 @@ export function getDomSelectionSnapshot(host: HTMLElement | null): SelectionSnap
     host.contains(range.startContainer) && host.contains(range.endContainer)
   const rect = range.getBoundingClientRect()
   const hasVisibleRect = rect.width > 0 || rect.height > 0
+
+  // A collapsed caret in an empty block reports an all-zero range rect;
+  // anchor the toolbar to the caret's block element instead so a long-press
+  // in an empty document still has a placement target.
+  if (!hasVisibleRect && selection.isCollapsed && withinEditor) {
+    const node = range.startContainer
+    const element = node instanceof Element ? node : node.parentElement
+    const elementRect = element?.getBoundingClientRect()
+    if (elementRect && (elementRect.width > 0 || elementRect.height > 0)) {
+      return {
+        collapsed: true,
+        withinEditor,
+        text: '',
+        rect: {
+          left: elementRect.left,
+          top: elementRect.top,
+          right: elementRect.left,
+          bottom: elementRect.bottom,
+          width: 0,
+          height: elementRect.height,
+        },
+      }
+    }
+  }
 
   return {
     collapsed: selection.isCollapsed,

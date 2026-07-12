@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   caretRangeAtPoint,
   captureNonCollapsedSelectionRange,
@@ -16,6 +16,8 @@ const props = defineProps<{
   suspended: boolean
   host: HTMLElement | null
   canPaste: boolean
+  canWrite: boolean
+  caretSession: boolean
 }>()
 
 const emit = defineEmits<{
@@ -25,6 +27,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const visible = ref(false)
+// Drives the state-table action set: selection rows vs caret rows.
+const hasSelection = ref(false)
 const left = ref(0)
 const top = ref(0)
 const placement = ref<'above' | 'below'>('above')
@@ -52,18 +56,29 @@ function scheduleUpdate() {
   })
 }
 
+const toolbarCommands = computed(() =>
+  getSelectionToolbarCommands({
+    hasSelection: hasSelection.value,
+    canPaste: props.canPaste,
+    canWrite: props.canWrite,
+  }),
+)
+
 function updateFromSelection() {
   const snapshot = getDomSelectionSnapshot(props.host)
   const nextVisible = shouldShowSelectionToolbar({
     editorReady: props.editorReady,
     suspended: props.suspended,
     snapshot,
+    caretSession: props.caretSession,
   })
 
   if (!nextVisible || !snapshot?.rect) {
     visible.value = false
     return
   }
+
+  hasSelection.value = !snapshot.collapsed
 
   const box = toolbarElement.value
     ? {
@@ -96,7 +111,9 @@ function runCommand(commandId: SelectionToolbarCommandId) {
     return
   }
 
-  emit('runCommand', commandId, lastEditorSelectionRange)
+  // Caret rows must not resurrect a stale earlier selection: paste lands at
+  // the long-pressed caret, not at whatever was selected minutes ago.
+  emit('runCommand', commandId, hasSelection.value ? lastEditorSelectionRange : null)
 }
 
 // Touch path: the toolbar container prevents touchstart, because on Android
@@ -235,7 +252,15 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => [props.editorReady, props.suspended, props.host, props.canPaste] as const,
+  () =>
+    [
+      props.editorReady,
+      props.suspended,
+      props.host,
+      props.canPaste,
+      props.canWrite,
+      props.caretSession,
+    ] as const,
   scheduleUpdate,
 )
 </script>
@@ -257,7 +282,7 @@ watch(
     @mousedown.prevent
   >
     <button
-      v-for="command in getSelectionToolbarCommands(canPaste)"
+      v-for="command in toolbarCommands"
       :key="command.commandId"
       class="selection-toolbar-button"
       :class="{ 'is-pressed': pressedCommandId === command.commandId }"

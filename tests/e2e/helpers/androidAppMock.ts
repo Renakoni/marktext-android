@@ -6,6 +6,7 @@ export interface MockCapacitorWindow {
   __emitCapacitorAppPause?: () => void
   __emitCapacitorAppStateChange?: (isActive: boolean) => void
   __emitAndroidOpenWithDocument?: (event: MockAndroidOpenWithEvent) => void
+  __emitAndroidSelectionContextRequest?: () => void
   __appListenerCount?: (eventName: string) => number
   __androidDocumentListenerCount?: (eventName: string) => number
   __lastAndroidCreateOptions?: Record<string, unknown>
@@ -192,6 +193,7 @@ export async function installAndroidAppMock(
     const win = window as unknown as MockCapacitorWindow
     const appListeners = new Map<string, Array<(data: unknown) => void>>()
     const androidDocumentListeners = new Map<string, Array<(data: unknown) => void>>()
+    const androidSelectionListeners = new Map<string, Array<(data: unknown) => void>>()
     let pendingOpenWithEvent = mockOptions.pendingOpenWithEvent ?? null
     const emitAppEvent = (eventName: string, data: unknown) => {
       for (const listener of appListeners.get(eventName) ?? []) {
@@ -200,6 +202,11 @@ export async function installAndroidAppMock(
     }
     const emitAndroidDocumentEvent = (eventName: string, data: unknown) => {
       for (const listener of androidDocumentListeners.get(eventName) ?? []) {
+        listener(data)
+      }
+    }
+    const emitAndroidSelectionEvent = (eventName: string, data: unknown) => {
+      for (const listener of androidSelectionListeners.get(eventName) ?? []) {
         listener(data)
       }
     }
@@ -216,6 +223,11 @@ export async function installAndroidAppMock(
     }
     win.__emitAndroidOpenWithDocument = (event: MockAndroidOpenWithEvent) => {
       emitAndroidDocumentEvent('openWithDocument', event)
+    }
+    // Simulates MainActivity.notifySelectionContextRequest: the suppressed
+    // native floating ActionMode started (long-press / double-tap select).
+    win.__emitAndroidSelectionContextRequest = () => {
+      emitAndroidSelectionEvent('selectionContextRequest', {})
     }
     win.__appListenerCount = (eventName: string) => appListeners.get(eventName)?.length ?? 0
     win.__androidDocumentListenerCount = (eventName: string) =>
@@ -244,6 +256,19 @@ export async function installAndroidAppMock(
             { name: 'writeMarkdownDocument', rtype: 'promise' },
           ],
         },
+        {
+          name: 'AndroidSelection',
+          methods: [
+            { name: 'addListener', rtype: 'callback' },
+            { name: 'removeListener', rtype: 'promise' },
+            { name: 'setEditorSelectionActionModeSuppressed', rtype: 'promise' },
+            { name: 'getEditorSelectionActionModeState', rtype: 'promise' },
+            { name: 'finishEditorSelectionActionMode', rtype: 'promise' },
+            { name: 'performNativeSelectAll', rtype: 'promise' },
+            { name: 'readClipboardText', rtype: 'promise' },
+            { name: 'writeClipboardText', rtype: 'promise' },
+          ],
+        },
       ],
       nativeCallback(pluginName, methodName, options, callback) {
         if (pluginName === 'App' && methodName === 'addListener') {
@@ -253,6 +278,15 @@ export async function installAndroidAppMock(
             appListeners.set(options.eventName, listeners)
           }
           return Promise.resolve(`app-listener-${String(options.eventName)}`)
+        }
+
+        if (pluginName === 'AndroidSelection' && methodName === 'addListener') {
+          if (typeof options.eventName === 'string' && callback) {
+            const listeners = androidSelectionListeners.get(options.eventName) ?? []
+            listeners.push(callback)
+            androidSelectionListeners.set(options.eventName, listeners)
+          }
+          return Promise.resolve(`android-selection-listener-${String(options.eventName)}`)
         }
 
         if (pluginName === 'AndroidDocuments' && methodName === 'addListener') {
@@ -284,6 +318,54 @@ export async function installAndroidAppMock(
 
         if (pluginName === 'AndroidDocuments' && methodName === 'removeListener') {
           return Promise.resolve()
+        }
+
+        if (pluginName === 'AndroidSelection') {
+          if (methodName === 'removeListener') {
+            return Promise.resolve()
+          }
+
+          if (
+            methodName === 'setEditorSelectionActionModeSuppressed' ||
+            methodName === 'getEditorSelectionActionModeState'
+          ) {
+            return Promise.resolve({
+              suppressed: Boolean(options.suppressed),
+              hookInstalled: true,
+              suppressedCreateCount: 0,
+              suppressedStartCount: 0,
+              allowedCreateCount: 0,
+              allowedStartCount: 0,
+              finishCount: 0,
+              nativeEvents: '',
+            })
+          }
+
+          if (methodName === 'finishEditorSelectionActionMode') {
+            return Promise.resolve({ finished: false })
+          }
+
+          // Fall through to Muya's JS select-all: no native ActionMode exists.
+          if (methodName === 'performNativeSelectAll') {
+            return Promise.resolve({ performed: false })
+          }
+
+          // Bridge the mock clipboard onto the page clipboard so the state
+          // table can be exercised with real clipboard content.
+          if (methodName === 'readClipboardText') {
+            return navigator.clipboard.readText().then(
+              text => ({ text, available: text.length > 0 }),
+              () => ({ text: '', available: false }),
+            )
+          }
+
+          if (methodName === 'writeClipboardText') {
+            const text = typeof options.text === 'string' ? options.text : ''
+            return navigator.clipboard.writeText(text).then(
+              () => ({ written: true }),
+              () => ({ written: false }),
+            )
+          }
         }
 
         if (documentMock && pluginName === 'AndroidDocuments') {
