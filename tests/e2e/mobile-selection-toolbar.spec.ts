@@ -226,27 +226,44 @@ test('paste lands at the long-pressed caret and ends the session', async ({ page
   await openDraft(page)
   await page.evaluate(() => navigator.clipboard.writeText('pasted-at-caret'))
 
-  await longPressParagraph(page, 'Second paragraph tail')
+  // Deterministic caret: a click-derived caret position depends on the
+  // responsive text measure, so place the collapsed caret at a KNOWN offset
+  // (after "Second", before " paragraph") and fire the context request from
+  // exactly that position — dispatching contextmenu does not move a caret.
+  await page.evaluate(() => {
+    const paragraph = Array.from(
+      document.querySelectorAll('[data-testid="editor-host"] .mu-editor p'),
+    ).find(node => node.textContent?.includes('Second paragraph tail'))!
+    const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT)
+    const text = walker.nextNode() as Text
+    const range = document.createRange()
+    range.setStart(text, 'Second'.length)
+    range.collapse(true)
+    const selection = document.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+  })
+  await page
+    .locator('[data-testid="editor-host"] .mu-editor p')
+    .filter({ hasText: 'Second paragraph tail' })
+    .first()
+    .dispatchEvent('contextmenu')
+
   const toolbar = page.getByTestId('mobile-selection-toolbar')
   await expect(toolbar).toBeVisible()
-
   await toolbar.getByTestId('selection-command-paste').click()
 
-  await expect(page.getByTestId('editor-host')).toContainText('pasted-at-caret')
-  // Nothing was replaced: the other paragraph survives untouched.
+  // Nothing was replaced: the other paragraph survives untouched...
   await expect(page.getByTestId('editor-host')).toContainText('Alpha bravo charlie delta echo')
-  // The payload landed INSIDE the long-pressed paragraph — not in the other
-  // paragraph and not at a stale earlier selection. (Where exactly inside
-  // depends on the click-to-caret mapping and the responsive text measure,
-  // so the assertion is anchored to the paragraph, not a split point.)
+  // ...and the payload sits EXACTLY at the long-pressed caret, between the
+  // known prefix and suffix.
   const paragraphWithPayload = await page.evaluate(
     () =>
       Array.from(document.querySelectorAll('[data-testid="editor-host"] .mu-editor p'))
         .map(node => node.textContent ?? '')
         .find(text => text.includes('pasted-at-caret')) ?? '',
   )
-  expect(paragraphWithPayload).toMatch(/^Second.*pasted-at-caret/s)
-  expect(paragraphWithPayload).toContain('tail')
+  expect(paragraphWithPayload).toBe('Secondpasted-at-caret paragraph tail')
   await expect(toolbar).toBeHidden()
 })
 

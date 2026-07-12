@@ -97,6 +97,70 @@ test('landscape and wide screens keep the centered column with 50px gutters', as
   expect(metrics.editorPaddingLeft).toBe(0)
 })
 
+test('the text measure is continuous across the old 720px breakpoint', async ({ page }) => {
+  // A hard gutter breakpoint used to shrink the measure by ~104px when the
+  // viewport grew from 720px to 721px (split screen, foldables, resizable
+  // windows). The fluid gutter keeps the measure monotonic: it rises to the
+  // classic 700px cap and never steps down.
+  const measureAt = async (width: number) => {
+    await page.setViewportSize({ width, height: 700 })
+    return (await readLayoutMetrics(page)).paragraphContentWidth
+  }
+
+  await openProbe(page)
+
+  const at719 = await measureAt(719)
+  const at721 = await measureAt(721)
+  const at780 = await measureAt(780)
+  const at815 = await measureAt(815)
+  const at900 = await measureAt(900)
+
+  // No cliff at the old breakpoint (the hairline frame border may cost ~1px).
+  expect(Math.abs(at721 - at719)).toBeLessThan(5)
+  // Monotonic growth up to the classic 700px cap, then stable while the
+  // frame padding fades in.
+  expect(at780).toBeGreaterThanOrEqual(at721 - 1)
+  expect(at780).toBeGreaterThan(690)
+  expect(at815).toBeGreaterThan(694)
+  expect(at815).toBeLessThan(706)
+  expect(at900).toBeGreaterThan(694)
+  expect(at900).toBeLessThan(706)
+})
+
+test('a long inline formula scrolls inside itself instead of widening the editor', async ({
+  page,
+}) => {
+  const longMath = Array.from({ length: 30 }, (_, i) => `a_{${i}} x^{${i}}`).join(' + ')
+  await openLocalDraft(page, {
+    id: 'layout-math-draft',
+    markdown: `# Math Probe\n\nInline formula $${longMath}$ inside a paragraph.\n`,
+    title: /Math Probe/,
+  })
+
+  await expect.poll(() => page.locator('.katex').count()).toBeGreaterThan(0)
+
+  const metrics = await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>('.editor-host-shell')!
+    const paragraph = [...document.querySelectorAll<HTMLElement>('.mu-container > p')].find(p =>
+      p.textContent?.includes('Inline formula'),
+    )!
+    const render = paragraph.querySelector<HTMLElement>('.mu-math-render')!
+    return {
+      paragraphWidth: paragraph.getBoundingClientRect().width,
+      renderWidth: render.getBoundingClientRect().width,
+      renderScrollWidth: render.scrollWidth,
+      shellClientWidth: shell.clientWidth,
+      shellScrollWidth: shell.scrollWidth,
+    }
+  })
+
+  // The formula is genuinely wider than the column, scrolls inside its own
+  // box, and never makes the editor shell horizontally scrollable.
+  expect(metrics.renderScrollWidth).toBeGreaterThan(metrics.paragraphWidth)
+  expect(metrics.renderWidth).toBeLessThanOrEqual(metrics.paragraphWidth + 1)
+  expect(metrics.shellScrollWidth).toBe(metrics.shellClientWidth)
+})
+
 test('the editor line width setting caps the measure on top of the gutters', async ({ page }) => {
   await openProbe(page, { editorLineWidth: '30ch' })
 

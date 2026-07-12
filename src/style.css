@@ -808,17 +808,29 @@ body {
 .editor-pane {
   position: relative;
   min-height: 0;
-  padding: 18px;
+
+  /* The horizontal frame fades in linearly between 840px and 858px so the
+     text measure never jumps or dips: from ~801px the editing column sits
+     at its 700px cap with slack margins, and by 840px the slack exceeds
+     the full 36px frame, so the growing frame is absorbed by the outer
+     margins instead of the measure. */
+  padding: 18px clamp(0px, calc(100vw - 840px), 18px);
   overflow: hidden;
 }
 
 .editor-host-shell {
   /* Single owner of the editor's horizontal gutters: Muya's .mu-container
      pads with var(--editor-gutter) and the host adds NO horizontal padding
-     of its own, so spacing can never stack. 50px keeps the wide-screen
-     column identical to Muya's historical layout; the phone breakpoint
-     narrows it below. */
-  --editor-gutter: 50px;
+     of its own, so spacing can never stack.
+
+     The gutter is fluid so the text measure is continuous across every
+     width — a hard 16px→50px breakpoint would shrink the measure by ~100px
+     when the viewport grows one pixel (split-screen, foldables, resizable
+     windows). 16px (the Material compact margin) holds up to 720px, then
+     grows 0.4px per viewport px to reach the classic 50px at 805px; the
+     measure itself rises monotonically and caps at the historical 700px
+     (an 800px column minus two 50px gutters) from ~780px on. */
+  --editor-gutter: clamp(16px, calc(16px + (100vw - 720px) * 0.4), 50px);
 
   width: min(100%, 980px);
   height: 100%;
@@ -1371,13 +1383,6 @@ body {
   }
 
   .editor-host-shell {
-    /* Phones: 16px edge gutters (the Material compact-window margin; the
-       floor used by contemporary mobile editors). At 393dp this yields a
-       ~45ch measure at the default font size — the lower bound of the
-       comfortable 45–75ch reading range, so every extra pixel of gutter
-       would cost readable measure. */
-    --editor-gutter: 16px;
-
     width: 100%;
     border-width: 0;
     border-radius: 0;
