@@ -2,10 +2,15 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ImportedAndroidImage } from '../../lib/androidImages'
 import { MOBILE_COMMANDS, type MobileEditorCommandTarget } from '../../lib/mobileCommands'
 import {
+  TABLE_SHEET_DEFAULT_SIZE,
+  TABLE_SHEET_LIMITS,
+  clampTableSheetDimension,
   createAndroidImageInsertStart,
   createLinkInsertSheetWorkflow,
+  createTableInsertSheetWorkflow,
   insertAndroidImageWorkflow,
   insertLinkFromSheetWorkflow,
+  insertTableFromSheetWorkflow,
   normalizeToolbarSelectionText,
   runEditorToolbarCommandWorkflow,
   scheduleEditorToolbarSync,
@@ -49,6 +54,17 @@ describe('editorToolbarWorkflow', () => {
       commandTarget: target,
       beforeMarkdown: 'before',
     })).toEqual({ kind: 'insert-image' })
+
+    // Table must never reach `updateParagraph('table')` — on Android that
+    // Muya path emits an event nobody subscribes to (silent no-op).
+    expect(runEditorToolbarCommandWorkflow({
+      commandId: MOBILE_COMMANDS.PARAGRAPH_TABLE,
+      editorReady: true,
+      hasEditor: true,
+      commandTarget: target,
+      beforeMarkdown: 'before',
+    })).toEqual({ kind: 'open-table-sheet' })
+    expect(target.updateParagraph).not.toHaveBeenCalled()
 
     expect(runEditorToolbarCommandWorkflow({
       commandId: MOBILE_COMMANDS.FORMAT_STRONG,
@@ -127,6 +143,104 @@ describe('editorToolbarWorkflow', () => {
       beforeMarkdown: 'before',
     })
     expect(insertMarkdown).toHaveBeenCalledWith('[selected text](https://example.com/a\\)b)')
+  })
+
+  it('opens the table sheet at the default size only when the editor is ready', () => {
+    expect(createTableInsertSheetWorkflow({ editorReady: true, hasEditor: true })).toEqual({
+      kind: 'open',
+      rows: TABLE_SHEET_DEFAULT_SIZE.rows,
+      columns: TABLE_SHEET_DEFAULT_SIZE.columns,
+    })
+    expect(createTableInsertSheetWorkflow({ editorReady: false, hasEditor: true })).toEqual({
+      kind: 'not-ready',
+    })
+    expect(createTableInsertSheetWorkflow({ editorReady: true, hasEditor: false })).toEqual({
+      kind: 'not-ready',
+    })
+  })
+
+  it('clamps table sheet dimensions to the mobile limits', () => {
+    expect(clampTableSheetDimension('rows', 1)).toBe(TABLE_SHEET_LIMITS.rows.min)
+    expect(clampTableSheetDimension('rows', 99)).toBe(TABLE_SHEET_LIMITS.rows.max)
+    expect(clampTableSheetDimension('rows', 4.9)).toBe(4)
+    expect(clampTableSheetDimension('rows', Number.NaN)).toBe(TABLE_SHEET_DEFAULT_SIZE.rows)
+    expect(clampTableSheetDimension('columns', 0)).toBe(TABLE_SHEET_LIMITS.columns.min)
+    expect(clampTableSheetDimension('columns', 99)).toBe(TABLE_SHEET_LIMITS.columns.max)
+  })
+
+  it('restores the captured insertion point and creates the table from the sheet', () => {
+    const order: string[] = []
+    const restoreInsertionPoint = vi.fn(() => {
+      order.push('restore')
+      return true
+    })
+    const createTable = vi.fn(() => {
+      order.push('create')
+    })
+
+    expect(insertTableFromSheetWorkflow({
+      hasEditor: true,
+      rows: 4,
+      columns: 2,
+      beforeMarkdown: 'before',
+      restoreInsertionPoint,
+      createTable,
+    })).toEqual({
+      kind: 'inserted',
+      rows: 4,
+      columns: 2,
+      beforeMarkdown: 'before',
+    })
+    expect(createTable).toHaveBeenCalledWith({ rows: 4, columns: 2 })
+    expect(order).toEqual(['restore', 'create'])
+  })
+
+  it('keeps the table insert honest: clamped sizes, cached-selection fallback, failure reporting', () => {
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+
+    expect(insertTableFromSheetWorkflow({
+      hasEditor: false,
+      rows: 3,
+      columns: 3,
+      beforeMarkdown: '',
+      restoreInsertionPoint: vi.fn(),
+      createTable: vi.fn(),
+    })).toEqual({ kind: 'not-ready' })
+
+    // An unrestorable captured range falls back to Muya's cached selection
+    // and still inserts.
+    const createTable = vi.fn()
+    expect(insertTableFromSheetWorkflow({
+      hasEditor: true,
+      rows: 999,
+      columns: 0,
+      beforeMarkdown: 'before',
+      restoreInsertionPoint: vi.fn(() => false),
+      createTable,
+      logger,
+    })).toMatchObject({
+      kind: 'inserted',
+      rows: TABLE_SHEET_LIMITS.rows.max,
+      columns: TABLE_SHEET_LIMITS.columns.min,
+    })
+    expect(createTable).toHaveBeenCalledWith({
+      rows: TABLE_SHEET_LIMITS.rows.max,
+      columns: TABLE_SHEET_LIMITS.columns.min,
+    })
+    expect(logger.warn).toHaveBeenCalled()
+
+    expect(insertTableFromSheetWorkflow({
+      hasEditor: true,
+      rows: 3,
+      columns: 3,
+      beforeMarkdown: 'before',
+      restoreInsertionPoint: vi.fn(() => true),
+      createTable: vi.fn(() => {
+        throw new Error('create failed')
+      }),
+      logger,
+    })).toMatchObject({ kind: 'insert-failed' })
+    expect(logger.error).toHaveBeenCalled()
   })
 
   it('prepares Android image insertion and inserts selected text as alt text', async () => {

@@ -19,6 +19,7 @@ export interface AppBackButtonState {
   androidExitPromptOpen: boolean
   draftExitPromptOpen: boolean
   linkSheetOpen: boolean
+  tableSheetOpen: boolean
   editorMenuOpen: boolean
   editorOutlineOpen: boolean
   editorSearchOpen: boolean
@@ -31,6 +32,7 @@ export type AppBackButtonAction =
   | 'close-android-exit-prompt'
   | 'close-local-draft-exit-prompt'
   | 'close-link-sheet'
+  | 'close-table-sheet'
   | 'close-editor-menu'
   | 'close-editor-outline'
   | 'close-editor-search'
@@ -77,6 +79,7 @@ export function getAppBackButtonAction({
   androidExitPromptOpen,
   draftExitPromptOpen,
   linkSheetOpen,
+  tableSheetOpen,
   editorMenuOpen,
   editorOutlineOpen,
   editorSearchOpen,
@@ -94,6 +97,10 @@ export function getAppBackButtonAction({
 
   if (linkSheetOpen) {
     return 'close-link-sheet'
+  }
+
+  if (tableSheetOpen) {
+    return 'close-table-sheet'
   }
 
   if (editorMenuOpen) {

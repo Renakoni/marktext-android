@@ -94,7 +94,11 @@ const PARAGRAPH_ACTIONS: Partial<Record<MobileCommandId, string>> = {
   [MOBILE_COMMANDS.PARAGRAPH_CODE_FENCE]: 'pre',
   [MOBILE_COMMANDS.PARAGRAPH_MATH_FORMULA]: 'mathblock',
   [MOBILE_COMMANDS.PARAGRAPH_HTML_BLOCK]: 'html',
-  [MOBILE_COMMANDS.PARAGRAPH_TABLE]: 'table',
+  // PARAGRAPH_TABLE is deliberately absent: `updateParagraph('table')` only
+  // emits `muya-table-picker`, whose sole subscriber (the desktop hover
+  // chessboard) is not registered on Android — a silent no-op. Table inserts
+  // go through the size sheet and `muya.createTable` instead, and an
+  // unmapped id here reports `not-handled` rather than pretending success.
   [MOBILE_COMMANDS.PARAGRAPH_HORIZONTAL_LINE]: 'hr',
   [MOBILE_COMMANDS.PARAGRAPH_FRONT_MATTER]: 'front-matter',
 }

@@ -10,6 +10,11 @@ interface OpenLinkSheetOptions {
   url?: string
 }
 
+interface OpenTableSheetOptions {
+  rows: number
+  columns: number
+}
+
 type EditorToolbarBehaviorSettings = Pick<
   EditorToolbarSettings,
   'defaultPanel' | 'rememberPanel'
@@ -27,6 +32,9 @@ export function useEditorToolbar() {
   const linkSheetOpen = ref(false)
   const linkText = ref('')
   const linkUrl = ref('')
+  const tableSheetOpen = ref(false)
+  const tableRows = ref(0)
+  const tableColumns = ref(0)
   const importingAndroidImage = ref(false)
   let toolbarBehaviorSettings: EditorToolbarBehaviorSettings = {
     ...DEFAULT_EDITOR_TOOLBAR_BEHAVIOR_SETTINGS,
@@ -84,6 +92,20 @@ export function useEditorToolbar() {
     linkUrl.value = ''
   }
 
+  function openTableSheet({ rows, columns }: OpenTableSheetOptions) {
+    tableRows.value = rows
+    tableColumns.value = columns
+    editorMenuOpen.value = false
+    editorToolbarExpanded.value = false
+    tableSheetOpen.value = true
+  }
+
+  function closeTableSheet() {
+    tableSheetOpen.value = false
+    tableRows.value = 0
+    tableColumns.value = 0
+  }
+
   return {
     editorMenuOpen,
     editorToolbarExpanded,
@@ -91,6 +113,9 @@ export function useEditorToolbar() {
     linkSheetOpen,
     linkText,
     linkUrl,
+    tableSheetOpen,
+    tableRows,
+    tableColumns,
     importingAndroidImage,
     applyEditorToolbarSettings,
     toggleEditorMenu,
@@ -100,5 +125,7 @@ export function useEditorToolbar() {
     closeEditorToolbar,
     openLinkSheet,
     closeLinkSheet,
+    openTableSheet,
+    closeTableSheet,
   }
 }

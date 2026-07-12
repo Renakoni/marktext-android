@@ -6,6 +6,7 @@ import type { OutlineItem } from './documentOutline'
 import EditorActionSheet from './components/EditorActionSheet.vue'
 import OutlineSheet from './components/OutlineSheet.vue'
 import LinkInsertSheet from './components/LinkInsertSheet.vue'
+import TableInsertSheet from './components/TableInsertSheet.vue'
 import LocalDraftExitPrompt from './components/LocalDraftExitPrompt.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import MobileSelectionToolbar from './components/MobileSelectionToolbar.vue'
@@ -43,6 +44,9 @@ const props = defineProps<{
   linkSheetOpen: boolean
   linkText: string
   linkUrl: string
+  tableSheetOpen: boolean
+  tableRows: number
+  tableColumns: number
   draftExitPromptOpen: boolean
   draftCanSaveToDevice: boolean
   draftCanKeepLocal: boolean
@@ -93,6 +97,10 @@ const emit = defineEmits<{
   'update:linkUrl': [value: string]
   'close-link-sheet': []
   'insert-link': []
+  'update:tableRows': [value: number]
+  'update:tableColumns': [value: number]
+  'close-table-sheet': []
+  'insert-table': []
   'save-draft-to-device': []
   'keep-local-draft': []
   'discard-local-draft': []
@@ -117,6 +125,7 @@ const selectionToolbarSuspended = computed(
     props.searchOpen ||
     props.outlineOpen ||
     props.linkSheetOpen ||
+    props.tableSheetOpen ||
     props.draftExitPromptOpen ||
     props.androidExitPromptOpen,
 )
@@ -401,6 +410,18 @@ onBeforeUnmount(() => {
         @update:url="value => emit('update:linkUrl', value)"
         @cancel="emit('close-link-sheet')"
         @insert="emit('insert-link')"
+      />
+    </Transition>
+
+    <Transition name="editor-sheet">
+      <TableInsertSheet
+        v-if="tableSheetOpen"
+        :rows="tableRows"
+        :columns="tableColumns"
+        @update:rows="value => emit('update:tableRows', value)"
+        @update:columns="value => emit('update:tableColumns', value)"
+        @cancel="emit('close-table-sheet')"
+        @insert="emit('insert-table')"
       />
     </Transition>
 
