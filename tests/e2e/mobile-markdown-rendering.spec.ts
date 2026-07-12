@@ -35,6 +35,9 @@ test('renders loaded CommonMark and GFM blocks as Muya editor structures', async
   const editor = page.getByTestId('editor-host')
   await expect(editor.locator('h1.mu-atx-heading')).toContainText('Rendering Matrix')
   await expect(editor.locator('.mu-block-quote')).toContainText('Quoted')
+  // The inline marks render as their own Muya structures inside the quote.
+  await expect(editor.locator('.mu-block-quote strong.mu-inline-rule')).toContainText('strong')
+  await expect(editor.locator('.mu-block-quote em.mu-inline-rule')).toContainText('emphasized')
   await expect(editor.locator('.mu-thematic-break')).toHaveCount(1)
   await expect(editor.locator('ul').filter({ hasText: 'Bullet item' })).toHaveCount(1)
   await expect(editor.locator('ol').filter({ hasText: 'Second item' })).toHaveCount(1)

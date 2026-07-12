@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
-import { getDraftStorage, newBlankDocument } from './helpers/drafts'
+import {
+  getDraftStorage,
+  getStoredDraftMarkdown,
+  newBlankDocument,
+  openLocalDraft,
+} from './helpers/drafts'
 import { expectEditorReady } from './helpers/editor'
 
 test.describe.configure({ timeout: 60000 })
@@ -182,7 +187,11 @@ test('applies quick toolbar inline formatting to selected editor text', async ({
   await page.keyboard.press('Control+A')
   await page.getByTestId('toolbar-command-format.strong').click()
 
+  // Markdown result AND the rendered inline structure.
   await expect.poll(() => getDraftStorage(page)).toContain('**bold from mobile toolbar**')
+  await expect(
+    page.getByTestId('editor-host').locator('strong.mu-inline-rule'),
+  ).toContainText('bold from mobile toolbar')
 })
 
 test('keeps selected text active while chaining quick inline formatting', async ({ page }) => {
@@ -203,11 +212,20 @@ test('keeps selected text active while chaining quick inline formatting', async 
   await page.getByTestId('toolbar-command-format.emphasis').tap()
 
   await expect.poll(() => getDraftStorage(page)).toContain('***abc***')
+  // The chained result renders as nested strong + em inline structures.
+  await expect(page.getByTestId('editor-host').locator('strong.mu-inline-rule')).toContainText('abc')
+  await expect(page.getByTestId('editor-host').locator('em.mu-inline-rule')).toContainText('abc')
   await expect.poll(() => page.evaluate(() => document.getSelection()?.toString() ?? '')).toBe('abc')
 })
 
-test('applies expanded desktop format commands to selected editor text', async ({ page }) => {
+test('applies inline format commands from their panels to selected editor text', async ({ page }) => {
   const cases = [
+    {
+      commandId: 'format.inline-code',
+      text: 'inline code from mobile toolbar',
+      expected: '`inline code from mobile toolbar`',
+      panelId: 'markdown',
+    },
     {
       commandId: 'format.underline',
       text: 'underlined from mobile toolbar',
@@ -264,6 +282,235 @@ test('applies expanded desktop format commands to selected editor text', async (
       await expect.poll(() => getDraftStorage(page)).toContain(expected)
     })
   }
+})
+
+test('clears inline formatting back to plain text', async ({ page }) => {
+  await newBlankDocument(page)
+
+  const editor = page.getByTestId('editor-host')
+  await editor.click()
+  await page.keyboard.type('formatted away')
+  await page.keyboard.press('Control+A')
+  await page.getByTestId('toolbar-command-format.strong').click()
+  await expect.poll(() => getDraftStorage(page)).toContain('**formatted away**')
+  await expect(editor.locator('strong.mu-inline-rule')).toContainText('formatted away')
+
+  await selectToolbarPanel(page, 'format')
+  await page.getByTestId('toolbar-command-format.clear-format').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-format.clear-format').click()
+
+  // The parsed Markdown is exactly the plain text again, and the rendered
+  // strong structure is gone.
+  await expect.poll(() => getStoredDraftMarkdown(page)).toBe('formatted away\n')
+  await expect(editor.locator('strong.mu-inline-rule')).toHaveCount(0)
+})
+
+test('undo and redo from the toolbar walk the edit history', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('history probe')
+  await expect.poll(() => getDraftStorage(page)).toContain('history probe')
+
+  await page.getByTestId('toolbar-command-edit.undo').click()
+  await expect.poll(() => getDraftStorage(page)).not.toContain('history probe')
+
+  // Redo lives in the expanded toolbar header next to undo.
+  await page.getByTestId('toolbar-expand-button').click()
+  await page.getByTestId('toolbar-command-edit.redo').click()
+  await expect.poll(() => getDraftStorage(page)).toContain('history probe')
+})
+
+test('converts the current paragraph through every heading level and back', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('Heading matrix probe')
+  await selectToolbarPanel(page, 'paragraph')
+
+  const editor = page.getByTestId('editor-host')
+  for (let level = 1; level <= 6; level += 1) {
+    await page.getByTestId(`toolbar-command-paragraph.heading-${level}`).scrollIntoViewIfNeeded()
+    await page.getByTestId(`toolbar-command-paragraph.heading-${level}`).click()
+
+    // Markdown result AND the rendered Muya block structure.
+    await expect
+      .poll(() => getDraftStorage(page))
+      .toContain(`${'#'.repeat(level)} Heading matrix probe`)
+    await expect(editor.locator(`h${level}.mu-atx-heading`)).toContainText('Heading matrix probe')
+  }
+
+  // The explicit Paragraph command converts the heading leaf back.
+  await page.getByTestId('toolbar-command-paragraph.paragraph').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-paragraph.paragraph').click()
+  await expect.poll(() => getDraftStorage(page)).not.toContain('# Heading matrix probe')
+  await expect.poll(() => getDraftStorage(page)).toContain('Heading matrix probe')
+  await expect(editor.locator('p.mu-paragraph')).toContainText('Heading matrix probe')
+})
+
+test('promotes and demotes the current heading level', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('### Level three')
+  await expect.poll(() => getDraftStorage(page)).toContain('### Level three')
+
+  await selectToolbarPanel(page, 'paragraph')
+  await page.getByTestId('toolbar-command-paragraph.upgrade-heading').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-paragraph.upgrade-heading').click()
+  await expect.poll(() => getDraftStorage(page)).toContain('## Level three')
+  await expect.poll(() => getDraftStorage(page)).not.toContain('### Level three')
+
+  await page.getByTestId('toolbar-command-paragraph.degrade-heading').click()
+  await expect.poll(() => getDraftStorage(page)).toContain('### Level three')
+  await page.getByTestId('toolbar-command-paragraph.degrade-heading').click()
+  await expect.poll(() => getDraftStorage(page)).toContain('#### Level three')
+})
+
+test('toggles bullet and ordered lists from the quick strip', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('first entry')
+  await page.getByTestId('toolbar-command-paragraph.bullet-list').click()
+  await expect.poll(() => getDraftStorage(page)).toContain('- first entry')
+  await expect(
+    page.getByTestId('editor-host').locator('ul.mu-bullet-list').filter({ hasText: 'first entry' }),
+  ).toHaveCount(1)
+
+  // Converting the same list to an ordered list swaps the kind in place.
+  await page.getByTestId('toolbar-command-paragraph.order-list').click()
+  await expect.poll(() => getDraftStorage(page)).toContain('1. first entry')
+  await expect.poll(() => getDraftStorage(page)).not.toContain('- first entry')
+  await expect(
+    page.getByTestId('editor-host').locator('ol.mu-order-list').filter({ hasText: 'first entry' }),
+  ).toHaveCount(1)
+})
+
+test('toggles list looseness from the paragraph panel', async ({ page }) => {
+  // A tight list loaded from Markdown parses as loose: false, so the first
+  // toggle makes it loose and the second returns it to tight.
+  await openLocalDraft(page, {
+    id: 'loose-list-draft',
+    markdown: '- alpha\n- beta\n',
+    title: /alpha/,
+  })
+
+  await page
+    .locator('[data-testid="editor-host"] .mu-list-item')
+    .filter({ hasText: 'alpha' })
+    .click()
+  await selectToolbarPanel(page, 'paragraph')
+  await page.getByTestId('toolbar-command-paragraph.loose-list-item').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-paragraph.loose-list-item').click()
+
+  await expect.poll(() => getStoredDraftMarkdown(page)).toBe('- alpha\n\n- beta\n')
+
+  await page.getByTestId('toolbar-command-paragraph.loose-list-item').click()
+  await expect.poll(() => getStoredDraftMarkdown(page)).toBe('- alpha\n- beta\n')
+})
+
+test('inserts a fenced code block from the paragraph panel', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('above the fence')
+  await selectToolbarPanel(page, 'paragraph')
+  await page.getByTestId('toolbar-command-paragraph.code-fence').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-paragraph.code-fence').click()
+
+  await expect(page.getByTestId('editor-host').locator('.mu-code-block')).toHaveCount(1)
+  await expect.poll(() => getDraftStorage(page)).toContain('above the fence')
+
+  // The cursor lands in the new fence's language field; Enter moves it into
+  // the code body.
+  await page.keyboard.type('js')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('const fenced = true')
+  await expect.poll(() => getDraftStorage(page)).toContain('```js\\nconst fenced = true\\n```')
+})
+
+// PRODUCT GAP, documented during the coverage audit and tracked separately:
+// the Table command routes to Muya's `muya-table-picker` event, whose only
+// subscriber is the TableChessboard hover-grid UI plugin — deliberately not
+// registered on Android (editorRuntime.ts). The toolbar button is therefore
+// a silent no-op today: no table block is created on an empty or non-empty
+// paragraph and the Markdown is unchanged (verified against the live DOM).
+// This fixme pins the INTENDED behavior so it activates once an
+// Android-appropriate table insertion path exists.
+test.fixme('inserts a table from the insert panel', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('above the table')
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-paragraph.table').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+
+  await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(1)
+  await expect.poll(() => getStoredDraftMarkdown(page)).toMatch(/\|.*\|\n\| ?-+/)
+})
+
+test('inserts a horizontal rule from the insert panel', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('above the rule')
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-paragraph.horizontal-line').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-paragraph.horizontal-line').click()
+
+  await expect(page.getByTestId('editor-host').locator('.mu-thematic-break')).toHaveCount(1)
+  await expect.poll(() => getDraftStorage(page)).toContain('above the rule\\n\\n---')
+})
+
+test('inserts a math block from the markdown panel', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('lead paragraph')
+  await selectToolbarPanel(page, 'markdown')
+
+  await page.getByTestId('toolbar-command-paragraph.math-formula').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-paragraph.math-formula').click()
+
+  await expect(page.getByTestId('editor-host').locator('.mu-math-block')).toHaveCount(1)
+  await expect.poll(() => getDraftStorage(page)).toContain('$$\\n\\n$$')
+})
+
+test('inserts an HTML block from the markdown panel', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('lead paragraph')
+  await selectToolbarPanel(page, 'markdown')
+
+  await page.getByTestId('toolbar-command-paragraph.html-block').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-paragraph.html-block').click()
+
+  await expect(page.getByTestId('editor-host').locator('.mu-html-block')).toHaveCount(1)
+  await expect.poll(() => getDraftStorage(page)).toContain('<div>\\n\\n</div>')
+})
+
+test('prepends a single front matter block from the markdown panel', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('lead paragraph')
+  await selectToolbarPanel(page, 'markdown')
+
+  const editor = page.getByTestId('editor-host')
+  await page.getByTestId('toolbar-command-paragraph.front-matter').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-paragraph.front-matter').click()
+
+  // Front matter always prepends at the document start...
+  await expect(editor.locator('pre.mu-frontmatter')).toHaveCount(1)
+  await expect.poll(() => getStoredDraftMarkdown(page)).toMatch(/^---\n/)
+  await expect.poll(() => getStoredDraftMarkdown(page)).toContain('lead paragraph')
+
+  // ...and stays a single block when invoked again (idempotent).
+  await page.getByTestId('toolbar-command-paragraph.front-matter').click()
+  await expect(editor.locator('pre.mu-frontmatter')).toHaveCount(1)
 })
 
 test('exposes mobile syntax sections without collapsing everything into paragraph', async ({
