@@ -64,6 +64,12 @@ const scriptParts = computed(() => {
 .toolbar-command-icon {
   width: 20px;
   height: 20px;
+  /* Icons and labels anchor their box MIDPOINTS to the host line, not their
+     baselines: inline-layout hosts (the toolbar buttons) otherwise sit an
+     svg's bottom edge and a label's text baseline on the same line, which
+     pushed every letterform ~4px below the icon axis. Grid/flex hosts
+     ignore vertical-align, so this is a no-op for them. */
+  vertical-align: middle;
   stroke: currentColor;
   fill: none;
   stroke-width: 1.8;
@@ -82,6 +88,7 @@ const scriptParts = computed(() => {
   align-items: center;
   justify-content: center;
   height: 20px;
+  vertical-align: middle;
   font-size: 14px;
   font-weight: 600;
   line-height: 1;
