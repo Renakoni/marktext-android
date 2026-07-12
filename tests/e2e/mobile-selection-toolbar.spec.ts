@@ -710,6 +710,15 @@ test('a viewport-width change clamps the current page instead of stranding it', 
     toolbar.locator('button[data-testid^="selection-custom-"]').first(),
   ).toBeVisible()
 
+  // Placement must re-run against the NEW row dimensions: the bar stays
+  // inside the resized viewport instead of centering its old width.
+  await expect
+    .poll(async () => {
+      const box = await toolbar.boundingBox()
+      return box ? Math.round(box.x) >= 0 && Math.round(box.x + box.width) <= 800 : false
+    })
+    .toBe(true)
+
   for (let guard = 0; guard < 8; guard += 1) {
     const prev = toolbar.getByTestId('selection-page-prev')
     if ((await prev.count()) === 0) {
@@ -745,4 +754,37 @@ test('keyboard paging keeps focus inside the toolbar', async ({ page }) => {
   await page.keyboard.press('Enter')
   await expect(toolbar.getByTestId('selection-command-copy')).toBeVisible()
   await expect.poll(activeInToolbar).toBe(true)
+})
+
+test('pointer paging leaves the editor focus untouched', async ({ page }) => {
+  await openDraftWithSelectionToolbar(page, { commands: 'format.strong,format.emphasis' })
+
+  await selectParagraph(page, 'Alpha bravo')
+  const toolbar = page.getByTestId('mobile-selection-toolbar')
+  await expect(toolbar).toBeVisible()
+
+  // Real Android taps never blur the editor (prevented touchstart); mirror
+  // that state, then page with the pointer.
+  await page.evaluate(() => {
+    document
+      .querySelector<HTMLElement>('[data-testid="editor-host"] .mu-editor')
+      ?.focus()
+  })
+  const editorHasFocus = () =>
+    page.evaluate(() =>
+      Boolean(
+        document
+          .querySelector('[data-testid="editor-host"]')
+          ?.contains(document.activeElement),
+      ),
+    )
+  expect(await editorHasFocus()).toBe(true)
+
+  await toolbar.getByTestId('selection-page-next').click()
+  await expect(toolbar.getByTestId('selection-custom-format.strong')).toBeVisible()
+  expect(await editorHasFocus()).toBe(true)
+
+  await toolbar.getByTestId('selection-page-prev').click()
+  await expect(toolbar.getByTestId('selection-command-copy')).toBeVisible()
+  expect(await editorHasFocus()).toBe(true)
 })

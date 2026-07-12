@@ -133,11 +133,23 @@ function setCustomPage(delta: 1 | -1) {
     return
   }
 
+  // Rescue focus only when it sat INSIDE the bar before the flip (a
+  // keyboard or switch-access user on the pager). Touch paging keeps focus
+  // in the editor by design — the container's prevented touchstart exists
+  // exactly so taps never blur Muya or dismiss the IME, and a forced
+  // focus() here would undo that.
+  const bar = toolbarElement.value
+  const hadToolbarFocus = Boolean(
+    bar && document.activeElement && bar.contains(document.activeElement),
+  )
+
   customPage.value = next
   void nextTick(() => {
     // The row width changes with the rendered slice; re-run placement.
     scheduleUpdate()
-    rescueToolbarFocus()
+    if (hadToolbarFocus) {
+      rescueToolbarFocus()
+    }
   })
 }
 
@@ -182,6 +194,18 @@ watch(totalPages, total => {
     customPage.value = lastValidPage
   }
 })
+
+// A capacity change alters the rendered slice (and may clamp the page)
+// without any pointer interaction, but the placement pass that set the new
+// capacity measured the OLD row — offsetWidth is read in the same tick,
+// before Vue patches the DOM. Re-run placement once the new content is
+// actually rendered so the bar can never overflow a resized viewport.
+watch(
+  () => [activeCustomCommands.value, showClipboardRow.value] as const,
+  () => {
+    void nextTick(scheduleUpdate)
+  },
+)
 
 function commandTitle(command: { title: string; titleKey: I18nKey }) {
   return t(command.titleKey) || command.title
