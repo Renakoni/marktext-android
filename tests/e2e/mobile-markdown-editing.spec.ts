@@ -7,6 +7,17 @@ import {
 
 test.describe.configure({ timeout: 60000 })
 
+// The "/" quick-insert menu is deliberately not registered on Android (the
+// toolbar is the insert surface), so the empty-paragraph hint must not
+// advertise it.
+test('the empty-paragraph hint does not promise the unregistered "/" menu', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await expect(
+    page.locator('[data-testid="editor-host"] [empty-hint]').first(),
+  ).toHaveAttribute('empty-hint', 'Start writing...')
+})
+
 test('toggles a task list checkbox and persists the checked markdown state', async ({ page }) => {
   await openLocalDraft(
     page,
