@@ -61,6 +61,10 @@ export interface SettingsCustomToolbarRow extends SettingsBaseRow {
   kind: 'customToolbar'
 }
 
+export interface SettingsSelectionToolbarRow extends SettingsBaseRow {
+  kind: 'customSelectionToolbar'
+}
+
 export type SettingsDetailRow =
   | SettingsToggleRow
   | SettingsChoiceRow
@@ -69,6 +73,7 @@ export type SettingsDetailRow =
   | SettingsActionRow
   | SettingsStatusRow
   | SettingsCustomToolbarRow
+  | SettingsSelectionToolbarRow
 
 export interface SettingsDetailSection {
   titleKey: I18nKey
@@ -81,6 +86,7 @@ export const SETTINGS_PAGE_TITLE_KEYS = {
   [SETTINGS_PAGES.INDEX]: 'settings.title',
   [SETTINGS_PAGES.APPEARANCE]: 'settings.appearance',
   [SETTINGS_PAGES.EDITING]: 'settings.editing',
+  [SETTINGS_PAGES.SELECTION_TOOLBAR]: 'settings.section.selectionToolbar',
   [SETTINGS_PAGES.TOOLBAR]: 'settings.section.mobileToolbar',
   [SETTINGS_PAGES.CODE]: 'settings.code',
   [SETTINGS_PAGES.MARKDOWN]: 'settings.markdown',
@@ -141,6 +147,11 @@ const toolbarDisplayOptions = [
 const quickBarContentOptions = [
   { id: 'default', labelKey: 'settings.option.quickBar.default' },
   { id: 'custom', labelKey: 'settings.option.quickBar.custom' },
+] as const satisfies readonly SettingsOption[]
+
+const selectionToolbarRowsOptions = [
+  { id: '1', labelKey: 'settings.option.selectionRows.one' },
+  { id: '2', labelKey: 'settings.option.selectionRows.two' },
 ] as const satisfies readonly SettingsOption[]
 
 const tabWidthOptions = [
@@ -479,6 +490,29 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
           implementation: 'runtime',
           labelKey: 'settings.toolbar.custom.title',
           testId: 'settings-editing-quickbar-custom',
+        },
+      ],
+    },
+  ],
+  [SETTINGS_PAGES.SELECTION_TOOLBAR]: [
+    {
+      titleKey: 'settings.section.selectionToolbar',
+      rows: [
+        {
+          kind: 'choice',
+          id: 'selectionToolbarRows',
+          implementation: 'runtime',
+          labelKey: 'settings.selectionToolbar.rows',
+          defaultValue: '1',
+          options: selectionToolbarRowsOptions,
+          testId: 'settings-selection-toolbar-rows',
+        },
+        {
+          kind: 'customSelectionToolbar',
+          id: 'selectionToolbarCustomCommands',
+          implementation: 'runtime',
+          labelKey: 'settings.selectionToolbar.custom.title',
+          testId: 'settings-selection-toolbar-custom',
         },
       ],
     },

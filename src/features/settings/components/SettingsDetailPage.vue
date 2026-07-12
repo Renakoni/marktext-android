@@ -8,6 +8,7 @@ import SettingsSliderRow from './SettingsSliderRow.vue'
 import SettingsTextRow from './SettingsTextRow.vue'
 import SettingsToggleRow from './SettingsToggleRow.vue'
 import ToolbarQuickSettings from './ToolbarQuickSettings.vue'
+import SelectionToolbarSettings from './SelectionToolbarSettings.vue'
 import {
   SETTINGS_DETAIL_SECTIONS,
   type SettingsActionRow,
@@ -287,6 +288,10 @@ watch(
       />
       <ToolbarQuickSettings
         v-else-if="shouldShowSettingsRow(row.id) && row.kind === 'customToolbar' && shouldShowCustomToolbar()"
+        :test-id="row.testId"
+      />
+      <SelectionToolbarSettings
+        v-else-if="shouldShowSettingsRow(row.id) && row.kind === 'customSelectionToolbar'"
         :test-id="row.testId"
       />
       <SettingsRow

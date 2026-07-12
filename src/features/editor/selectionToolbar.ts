@@ -158,6 +158,58 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
+// ---- custom command paging ----
+//
+// Users pick the custom command LIST; the device owns the layout math. A
+// page's capacity comes from the live viewport, and commands that do not fit
+// PAGE instead of being trimmed — configuration must always match what is
+// visible. Slot geometry mirrors the rendered buttons (44px + 3px gap); the
+// budget stays inside the placement margins so a full page can never push
+// the bar past the viewport clamp.
+const SELECTION_SLOT_WIDTH = 47
+const SELECTION_BAR_CHROME = 10
+const SELECTION_WIDTH_BUDGET_RATIO = 0.85
+
+export function computeSelectionToolbarPageCapacity(viewportWidth: number) {
+  const budget = Math.min(
+    viewportWidth * SELECTION_WIDTH_BUDGET_RATIO,
+    viewportWidth - 2 * SELECTION_TOOLBAR_VIEWPORT_MARGIN,
+  )
+
+  return Math.max(1, Math.floor((budget - SELECTION_BAR_CHROME) / SELECTION_SLOT_WIDTH))
+}
+
+// Pages reserve slots only for the arrows they actually RENDER: an
+// inapplicable arrow is hidden (not disabled — a grayed arrow reads as
+// "there is more"), and its slot goes back to a command. `leadingBackArrow`
+// marks pages that always carry a back arrow regardless of position — the
+// single-row layout's custom pages, whose back arrow returns to the
+// clipboard segment.
+export function paginateSelectionCommands<T>(
+  commands: readonly T[],
+  capacity: number,
+  { leadingBackArrow }: { leadingBackArrow: boolean },
+): T[][] {
+  const cap = Math.max(1, Math.floor(capacity))
+  const pages: T[][] = []
+  let index = 0
+
+  while (index < commands.length) {
+    const backSlots = leadingBackArrow || pages.length > 0 ? 1 : 0
+    // Assume this page is the last; if the remainder does not fit, one slot
+    // goes to the forward arrow instead.
+    let size = Math.max(1, cap - backSlots)
+    if (commands.length - index > size) {
+      size = Math.max(1, cap - backSlots - 1)
+    }
+
+    pages.push(commands.slice(index, index + size))
+    index += size
+  }
+
+  return pages
+}
+
 export function caretRangeAtPoint(x: number, y: number): Range | null {
   if (typeof document === 'undefined') {
     return null

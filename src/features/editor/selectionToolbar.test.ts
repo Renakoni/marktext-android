@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  computeSelectionToolbarPageCapacity,
+  paginateSelectionCommands,
   computeSelectionToolbarPlacement,
   getSelectionToolbarCommands,
   shouldShowSelectionToolbar,
@@ -250,5 +252,45 @@ describe('selection toolbar placement', () => {
 
     expect(placed.placement).toBe('above')
     expect(placed.top).toBe(8)
+  })
+})
+
+describe('custom command paging', () => {
+  it('derives page capacity from the viewport width budget', () => {
+    // 393dp phone: budget = min(393*0.85, 393-16) = 334.05 -> (334.05-10)/47
+    expect(computeSelectionToolbarPageCapacity(393)).toBe(6)
+    // Tablet width fits far more per page.
+    expect(computeSelectionToolbarPageCapacity(800)).toBeGreaterThanOrEqual(13)
+    // Absurdly narrow viewports still render at least one slot.
+    expect(computeSelectionToolbarPageCapacity(60)).toBe(1)
+  })
+
+  it('reserves slots only for arrows a page actually renders', () => {
+    const twelve = Array.from({ length: 12 }, (_, index) => `c${index}`)
+
+    // Two-row layout: the first page has no back arrow (one extra command),
+    // middle pages carry both arrows, the last page only the back arrow.
+    const pinned = paginateSelectionCommands(twelve, 6, { leadingBackArrow: false })
+    expect(pinned.map(page => page.length)).toEqual([5, 4, 3])
+    expect(pinned.flat()).toEqual(twelve)
+
+    // Single-row custom pages always carry the clipboard-return back arrow.
+    const swapped = paginateSelectionCommands(twelve, 6, { leadingBackArrow: true })
+    expect(swapped.map(page => page.length)).toEqual([4, 4, 4])
+    expect(swapped.flat()).toEqual(twelve)
+
+    // A list that fits renders no arrows at all in the pinned layout...
+    expect(paginateSelectionCommands(['a', 'b'], 6, { leadingBackArrow: false }))
+      .toEqual([['a', 'b']])
+    // ...and only the back arrow in the swapped layout.
+    expect(
+      paginateSelectionCommands(['a', 'b', 'c', 'd', 'e'], 6, { leadingBackArrow: true }),
+    ).toEqual([['a', 'b', 'c', 'd', 'e']])
+
+    expect(paginateSelectionCommands([], 6, { leadingBackArrow: true })).toEqual([])
+    // Degenerate capacities still make progress one command at a time.
+    expect(
+      paginateSelectionCommands(['a', 'b', 'c'], 0, { leadingBackArrow: true }),
+    ).toHaveLength(3)
   })
 })

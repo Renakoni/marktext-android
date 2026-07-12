@@ -87,6 +87,7 @@ import {
 import {
   getEditorToolbarSettings,
 } from './features/editor/editorToolbarSettings'
+import { getSelectionToolbarSettings } from './features/editor/selectionToolbarSettings'
 import { useEditorToolbar } from './features/editor/useEditorToolbar'
 import { insertTextAtRestoredSelection } from './features/editor/editorInlineInsert'
 import {
@@ -239,6 +240,7 @@ const resolvedAppTheme = computed(() =>
 )
 const editingSettings = computed(() => getEditingSettings(getValue))
 const toolbarSettings = computed(() => getEditorToolbarSettings(getValue))
+const selectionToolbarSettings = computed(() => getSelectionToolbarSettings(getValue))
 const documentSettings = computed(() => getDocumentSettings(getValue))
 const imageSharingSettings = computed(() => getImageSharingSettings(getValue))
 const advancedSettings = computed(() => getAdvancedSettings(getValue))
@@ -1806,6 +1808,8 @@ onBeforeUnmount(() => {
     :editor-style-vars="editorStyleVars"
     :can-paste-selection="selectionClipboardHasText"
     :selection-caret-session="selectionCaretSessionActive"
+    :selection-custom-commands="selectionToolbarSettings.customCommands"
+    :selection-custom-rows="selectionToolbarSettings.rows"
     :search-open="editorSearchOpen"
     :search-query="editorSearchQuery"
     :search-match-count="editorSearchMatchCount"
