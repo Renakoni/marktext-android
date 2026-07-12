@@ -16,6 +16,7 @@ import {
 } from '../../editor/editorToolbarSettings'
 import { useSettingsState } from '../settingsState'
 import { useQuickBarReorder } from './useQuickBarReorder'
+import ToolbarCommandGlyph from '../../../components/ToolbarCommandGlyph.vue'
 
 defineProps<{
   testId: string
@@ -37,10 +38,6 @@ const commandGroups = computed(() =>
     commands: panel.commands,
   })),
 )
-
-function getCommandLabel(command: { label: string; labelKey?: I18nKey }) {
-  return command.labelKey ? t(command.labelKey) : command.label
-}
 
 function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
   return t(command.titleKey) || command.title
@@ -167,7 +164,7 @@ function onFixedCommandPointerDown(event: PointerEvent) {
           @contextmenu.prevent
           @pointerdown="onFixedCommandPointerDown"
         >
-          <span class="quickbar-command-label">{{ getCommandLabel(fixedCommand) }}</span>
+          <ToolbarCommandGlyph :command="fixedCommand" />
         </button>
       </div>
 
@@ -191,7 +188,7 @@ function onFixedCommandPointerDown(event: PointerEvent) {
           @contextmenu.prevent
           @pointerdown="event => onCommandPointerDown(event, command.commandId, true)"
         >
-          <span class="quickbar-command-label">{{ getCommandLabel(command) }}</span>
+          <ToolbarCommandGlyph :command="command" />
         </button>
         <button
           v-if="editing"
@@ -232,7 +229,7 @@ function onFixedCommandPointerDown(event: PointerEvent) {
             :data-testid="`settings-quickbar-command-${commandTestId(command.commandId)}`"
             @click="addCommand(command.commandId)"
           >
-            <span class="quickbar-command-label">{{ getCommandLabel(command) }}</span>
+            <ToolbarCommandGlyph :command="command" />
           </button>
         </div>
       </section>
@@ -469,14 +466,6 @@ function onFixedCommandPointerDown(event: PointerEvent) {
 
 .quickbar-command-button:disabled:not(.is-selected) {
   color: var(--text-faint);
-}
-
-.quickbar-command-label {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @keyframes quickbar-wiggle {

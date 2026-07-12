@@ -513,6 +513,80 @@ test('prepends a single front matter block from the markdown panel', async ({ pa
   await expect(editor.locator('pre.mu-frontmatter')).toHaveCount(1)
 })
 
+test('renders the toolbar visual system: icons, letterforms, accessible names', async ({
+  page,
+}) => {
+  await newBlankDocument(page)
+
+  // Collapsed quick strip: undo, the two lists, and Italic are icons (a
+  // sans-serif italic "I" reads as a slash, so Italic gets a drawn glyph);
+  // B/U stay letterforms that demonstrate their own effect.
+  const quick = page.getByTestId('mobile-editor-toolbar')
+  await expect(quick.locator('button[data-command-id="edit.undo"] svg')).toHaveCount(1)
+  await expect(quick.locator('button[data-command-id="paragraph.bullet-list"] svg')).toHaveCount(1)
+  await expect(quick.locator('button[data-command-id="paragraph.order-list"] svg')).toHaveCount(1)
+  await expect(quick.locator('button[data-command-id="format.strong"]')).toHaveText('B')
+  await expect(quick.locator('button[data-command-id="format.emphasis"] svg')).toHaveCount(1)
+
+  // Insert panel: former abbreviations ([], Img, HR) are now icons, each
+  // keeping its accessible name.
+  await selectToolbarPanel(page, 'insert')
+  for (const [commandId, name] of [
+    ['format.hyperlink', 'Link'],
+    ['format.image', 'Image'],
+    ['paragraph.table', 'Table'],
+    ['paragraph.horizontal-line', 'Horizontal rule'],
+  ] as const) {
+    const button = page.getByTestId(`toolbar-command-${commandId}`)
+    await expect(button.locator('svg')).toHaveCount(1)
+    await expect(button).toHaveAttribute('aria-label', name)
+  }
+
+  // Markdown panel: the script commands stay typographic symbols; the math
+  // pair uses icons whose only difference is composition (inline within a
+  // text line versus a block on its own line), not a math operation.
+  await selectToolbarPanel(page, 'markdown')
+  await expect(page.getByTestId('toolbar-command-format.inline-math').locator('svg')).toHaveCount(1)
+  await expect(page.getByTestId('toolbar-command-format.superscript')).toHaveText('x²')
+  await expect(
+    page.getByTestId('toolbar-command-paragraph.math-formula').locator('svg'),
+  ).toHaveCount(1)
+  await expect(
+    page.getByTestId('toolbar-command-paragraph.front-matter').locator('svg'),
+  ).toHaveCount(1)
+
+  // Every visible toolbar button exposes an accessible name — an explicit
+  // aria-label for icon buttons, or visible text (the panel switcher).
+  const unnamed = await page.evaluate(() =>
+    Array.from(
+      document.querySelectorAll('[data-testid="mobile-editor-toolbar"] button'),
+    ).filter(button => {
+      const ariaLabel = (button.getAttribute('aria-label') ?? '').trim()
+      const text = (button.textContent ?? '').trim()
+      return !ariaLabel && !text
+    }).length,
+  )
+  expect(unnamed).toBe(0)
+})
+
+test('the settings quick bar preview renders the same command visuals', async ({ page }) => {
+  await openToolbarSettings(page)
+  await page.getByTestId('settings-editing-quickbar-content-option-custom').click()
+  await expect(page.getByTestId('settings-editing-quickbar-custom')).toBeVisible()
+
+  // Icon commands preview as icons; letterform commands as letterforms —
+  // rendered by the same shared component as the live toolbar.
+  await expect(
+    page.getByTestId('settings-quickbar-slot-fixed').locator('svg'),
+  ).toHaveCount(1)
+  await expect(page.getByTestId('settings-quickbar-slot-0')).toHaveText('B')
+  await expect(
+    page
+      .getByTestId('settings-quickbar-preview')
+      .locator('[data-command-id="paragraph.bullet-list"] button svg'),
+  ).toHaveCount(1)
+})
+
 test('exposes mobile syntax sections without collapsing everything into paragraph', async ({
   page,
 }) => {
@@ -562,7 +636,7 @@ test('customizes the collapsed quick toolbar from Settings', async ({ page }) =>
     'Undo, fixed',
   )
   await expect(page.getByTestId('settings-quickbar-slot-0')).toContainText('B')
-  await expect(page.getByTestId('settings-quickbar-slot-1')).toContainText('I')
+  await expect(page.getByTestId('settings-quickbar-slot-1').locator('svg')).toHaveCount(1)
 
   await page.getByTestId('settings-quickbar-command-paragraph-heading-1').click()
   await expect(page.getByTestId('settings-quickbar-slot-5')).toContainText('H1')
