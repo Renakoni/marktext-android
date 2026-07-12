@@ -80,52 +80,7 @@ test('converts typed dollar fences into a persisted math block', async ({ page }
   await expect.poll(() => getDraftStorage(page)).toContain('a^2 + b^2 = c^2')
 })
 
-test('shows the MarkText selection toolbar only while editor text is selected', async ({
-  page,
-}) => {
-  await openLocalDraft(
-    page,
-    {
-      id: 'markdown-editing-draft',
-      markdown: `# Selection Probe
-
-Select this paragraph to reveal the toolbar
-`,
-      title: /Selection Probe/,
-    },
-  )
-
-  const toolbar = page.getByTestId('mobile-selection-toolbar')
-  await expect(toolbar).toBeHidden()
-
-  await page.evaluate(() => {
-    const paragraph = Array.from(
-      document.querySelectorAll('[data-testid="editor-host"] .mu-editor p'),
-    ).find(node => node.textContent?.includes('Select this paragraph'))
-    if (!paragraph) {
-      throw new Error('selection probe paragraph not found')
-    }
-
-    const range = document.createRange()
-    range.selectNodeContents(paragraph)
-    const selection = document.getSelection()
-    selection?.removeAllRanges()
-    selection?.addRange(range)
-  })
-
-  await expect(toolbar).toBeVisible()
-  await expect(toolbar.getByTestId('selection-command-copy')).toBeVisible()
-  await expect(toolbar.getByTestId('selection-command-cut')).toBeVisible()
-  await expect(toolbar.getByTestId('selection-command-selectAll')).toBeVisible()
-
-  // tap() exercises the touch dispatch path real Android devices use:
-  // touchstart is suppressed by the toolbar and the command fires on touchend.
-  await toolbar.getByTestId('selection-command-selectAll').tap()
-  await expect(toolbar).toBeVisible()
-  await expect
-    .poll(() => page.evaluate(() => document.getSelection()?.toString() ?? ''))
-    .toContain('Selection Probe')
-
-  await page.evaluate(() => document.getSelection()?.removeAllRanges())
-  await expect(toolbar).toBeHidden()
-})
+// The floating selection toolbar's visibility, action set, select-all
+// retention, and dismissal behavior are owned by
+// mobile-selection-toolbar.spec.ts; this file covers Markdown editing
+// semantics only.
