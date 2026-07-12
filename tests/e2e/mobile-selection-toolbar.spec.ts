@@ -256,14 +256,19 @@ test('paste lands at the long-pressed caret and ends the session', async ({ page
   // Nothing was replaced: the other paragraph survives untouched...
   await expect(page.getByTestId('editor-host')).toContainText('Alpha bravo charlie delta echo')
   // ...and the payload sits EXACTLY at the long-pressed caret, between the
-  // known prefix and suffix.
-  const paragraphWithPayload = await page.evaluate(
-    () =>
-      Array.from(document.querySelectorAll('[data-testid="editor-host"] .mu-editor p'))
-        .map(node => node.textContent ?? '')
-        .find(text => text.includes('pasted-at-caret')) ?? '',
-  )
-  expect(paragraphWithPayload).toBe('Secondpasted-at-caret paragraph tail')
+  // known prefix and suffix. Polled: the paste command re-reads the clipboard
+  // asynchronously after the click, so a one-shot snapshot races it on slow
+  // runners.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          Array.from(document.querySelectorAll('[data-testid="editor-host"] .mu-editor p'))
+            .map(node => node.textContent ?? '')
+            .find(text => text.includes('pasted-at-caret')) ?? '',
+      ),
+    )
+    .toBe('Secondpasted-at-caret paragraph tail')
   await expect(toolbar).toBeHidden()
 })
 
