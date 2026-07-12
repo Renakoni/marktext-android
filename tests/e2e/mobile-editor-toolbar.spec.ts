@@ -529,6 +529,56 @@ test('the table lands at the toolbar-cached selection, not a later moved caret',
   )
 })
 
+test('opening the link sheet closes the in-document search overlay', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('searchable content')
+  await page.getByTestId('search-open-button').click()
+  await expect(page.getByTestId('editor-search-bar')).toBeVisible()
+
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-format.hyperlink').click()
+
+  await expect(page.getByTestId('link-insert-sheet')).toBeVisible()
+  await expect(page.getByTestId('editor-search-bar')).toBeHidden()
+})
+
+test('the link sheet contains keyboard focus and rescues it on cancel', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-format.hyperlink').click()
+  await expect(page.getByTestId('link-insert-sheet')).toBeVisible()
+
+  const activeTestId = () =>
+    page.evaluate(
+      () =>
+        document.activeElement?.getAttribute('data-testid') ??
+        document.activeElement?.tagName ??
+        'none',
+    )
+
+  // Initial focus leads to the URL field; with it empty the Insert button is
+  // disabled, so forward Tab reaches Cancel and WRAPS to the text field
+  // instead of escaping through the scrim into the app chrome.
+  await expect.poll(activeTestId).toBe('link-url-input')
+  await page.keyboard.press('Tab')
+  await expect.poll(activeTestId).toBe('link-cancel-button')
+  await page.keyboard.press('Tab')
+  await expect.poll(activeTestId).toBe('link-text-input')
+
+  // Shift+Tab from the first control wraps back to the last.
+  await page.keyboard.press('Shift+Tab')
+  await expect.poll(activeTestId).toBe('link-cancel-button')
+
+  // Closing without inserting must not leave focus dangling on <body>.
+  await page.getByTestId('link-cancel-button').click()
+  await expect(page.getByTestId('link-insert-sheet')).toBeHidden()
+  await expect.poll(activeTestId).toBe('toolbar-expand-button')
+})
+
 test('opening the table sheet closes the in-document search overlay', async ({ page }) => {
   await newBlankDocument(page)
 

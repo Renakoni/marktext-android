@@ -150,29 +150,42 @@ watch(
   },
 )
 
-// After the table sheet closes, focus must not be left dangling on <body>.
-// Only rescue a DANGLING focus: after an insert Muya moves the cursor into
-// the first cell and owns the focus — never steal it back to a button. The
-// sheet leaves through a Transition, so at this point the old controls can
-// still hold focus inside the departing dialog; that counts as dangling.
+// After an insert sheet closes, focus must not be left dangling on <body>.
+// Only rescue a DANGLING focus: after an insert the editor takes the cursor
+// and owns the focus — never steal it back to a button. The sheets leave
+// through a Transition, so at this point the old controls can still hold
+// focus inside the departing dialog; that counts as dangling.
+function rescueFocusAfterSheetClose(sheetTestId: string) {
+  void nextTick(() => {
+    const active = document.activeElement
+    const focusSettledElsewhere =
+      active &&
+      active !== document.body &&
+      !active.closest(`[data-testid="${sheetTestId}"]`)
+    if (focusSettledElsewhere) {
+      return
+    }
+    editorShell.value
+      ?.closest('.app-shell')
+      ?.querySelector<HTMLElement>('[data-testid="toolbar-expand-button"]')
+      ?.focus({ preventScroll: true })
+  })
+}
+
 watch(
   () => props.tableSheetOpen,
   (open, wasOpen) => {
     if (!open && wasOpen) {
-      void nextTick(() => {
-        const active = document.activeElement
-        const focusSettledElsewhere =
-          active &&
-          active !== document.body &&
-          !active.closest('[data-testid="table-insert-sheet"]')
-        if (focusSettledElsewhere) {
-          return
-        }
-        editorShell.value
-          ?.closest('.app-shell')
-          ?.querySelector<HTMLElement>('[data-testid="toolbar-expand-button"]')
-          ?.focus({ preventScroll: true })
-      })
+      rescueFocusAfterSheetClose('table-insert-sheet')
+    }
+  },
+)
+
+watch(
+  () => props.linkSheetOpen,
+  (open, wasOpen) => {
+    if (!open && wasOpen) {
+      rescueFocusAfterSheetClose('link-insert-sheet')
     }
   },
 )
