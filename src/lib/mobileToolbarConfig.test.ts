@@ -8,7 +8,9 @@ import {
   getMobileToolbarCommandButton,
   getMobileToolbarPanel,
   getMobileToolbarPanelCommands,
+  type MobileToolbarCommandButton,
 } from './mobileToolbarConfig'
+import { TOOLBAR_ICON_PATHS } from '../features/editor/components/toolbarIcons'
 
 function getEditCommandIds() {
   return MOBILE_TOOLBAR_EDIT_COMMANDS.map(command => command.commandId)
@@ -123,5 +125,67 @@ describe('mobileToolbarConfig', () => {
 
     expect(panel.id).toBe(DEFAULT_MOBILE_TOOLBAR_PANEL)
     expect(getMobileToolbarPanelCommands(panel.id)).toBe(getMobileToolbarPanel('format').commands)
+  })
+})
+
+const ALL_COMMANDS: MobileToolbarCommandButton[] = [
+  ...MOBILE_TOOLBAR_EDIT_COMMANDS,
+  ...MOBILE_TOOLBAR_QUICK_COMMANDS,
+  ...MOBILE_TOOLBAR_PANELS.flatMap(panel => [...panel.commands]),
+]
+
+// The visual-language contract: every command renders as an icon from the
+// toolbar icon set or as a genuine typographic symbol. Engineering
+// abbreviations ("HR", "FM", "Img", "Sup", "Clr") are not a visual.
+const TYPOGRAPHIC_LABELS = new Set([
+  'B',
+  'I',
+  'U',
+  'S',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'H↑',
+  'H↓',
+  '¶',
+  'x²',
+  'x₂',
+  '√x',
+  '∑',
+])
+
+describe('mobile toolbar visual contract', () => {
+  it('renders every command as an icon or an approved typographic symbol', () => {
+    for (const command of ALL_COMMANDS) {
+      const isIcon = Boolean(command.iconName && command.iconName in TOOLBAR_ICON_PATHS)
+      const isTypographic = TYPOGRAPHIC_LABELS.has(command.label)
+
+      expect(
+        isIcon || isTypographic,
+        `${command.commandId} must use an icon or an approved symbol (got "${
+          command.iconName ?? command.label
+        }")`,
+      ).toBe(true)
+    }
+  })
+
+  it('gives every command an accessible title and a non-empty text fallback', () => {
+    for (const command of ALL_COMMANDS) {
+      expect(command.titleKey, command.commandId).toMatch(/^toolbar\.command\./)
+      expect(command.title.length, command.commandId).toBeGreaterThan(1)
+      expect(command.label.trim().length, command.commandId).toBeGreaterThan(0)
+    }
+  })
+
+  it('draws every icon with real stroke paths on the 24px grid', () => {
+    for (const [name, paths] of Object.entries(TOOLBAR_ICON_PATHS)) {
+      expect(paths.length, name).toBeGreaterThan(0)
+      for (const path of paths) {
+        expect(path, name).toMatch(/^M[\d .]/)
+      }
+    }
   })
 })

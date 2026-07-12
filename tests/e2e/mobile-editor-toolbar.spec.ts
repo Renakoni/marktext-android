@@ -513,6 +513,75 @@ test('prepends a single front matter block from the markdown panel', async ({ pa
   await expect(editor.locator('pre.mu-frontmatter')).toHaveCount(1)
 })
 
+test('renders the toolbar visual system: icons, letterforms, accessible names', async ({
+  page,
+}) => {
+  await newBlankDocument(page)
+
+  // Collapsed quick strip: undo and the two lists are icons; B/I/U stay
+  // letterforms that demonstrate their own effect.
+  const quick = page.getByTestId('mobile-editor-toolbar')
+  await expect(quick.locator('button[data-command-id="edit.undo"] svg')).toHaveCount(1)
+  await expect(quick.locator('button[data-command-id="paragraph.bullet-list"] svg')).toHaveCount(1)
+  await expect(quick.locator('button[data-command-id="paragraph.order-list"] svg')).toHaveCount(1)
+  await expect(quick.locator('button[data-command-id="format.strong"]')).toHaveText('B')
+  await expect(quick.locator('button[data-command-id="format.emphasis"]')).toHaveText('I')
+
+  // Insert panel: former abbreviations ([], Img, HR) are now icons, each
+  // keeping its accessible name.
+  await selectToolbarPanel(page, 'insert')
+  for (const [commandId, name] of [
+    ['format.hyperlink', 'Link'],
+    ['format.image', 'Image'],
+    ['paragraph.table', 'Table'],
+    ['paragraph.horizontal-line', 'Horizontal rule'],
+  ] as const) {
+    const button = page.getByTestId(`toolbar-command-${commandId}`)
+    await expect(button.locator('svg')).toHaveCount(1)
+    await expect(button).toHaveAttribute('aria-label', name)
+  }
+
+  // Markdown panel: math and script commands stay typographic symbols.
+  await selectToolbarPanel(page, 'markdown')
+  await expect(page.getByTestId('toolbar-command-format.inline-math')).toHaveText('√x')
+  await expect(page.getByTestId('toolbar-command-format.superscript')).toHaveText('x²')
+  await expect(page.getByTestId('toolbar-command-paragraph.math-formula')).toHaveText('∑')
+  await expect(
+    page.getByTestId('toolbar-command-paragraph.front-matter').locator('svg'),
+  ).toHaveCount(1)
+
+  // Every visible toolbar button exposes an accessible name — an explicit
+  // aria-label for icon buttons, or visible text (the panel switcher).
+  const unnamed = await page.evaluate(() =>
+    Array.from(
+      document.querySelectorAll('[data-testid="mobile-editor-toolbar"] button'),
+    ).filter(button => {
+      const ariaLabel = (button.getAttribute('aria-label') ?? '').trim()
+      const text = (button.textContent ?? '').trim()
+      return !ariaLabel && !text
+    }).length,
+  )
+  expect(unnamed).toBe(0)
+})
+
+test('the settings quick bar preview renders the same command visuals', async ({ page }) => {
+  await openToolbarSettings(page)
+  await page.getByTestId('settings-editing-quickbar-content-option-custom').click()
+  await expect(page.getByTestId('settings-editing-quickbar-custom')).toBeVisible()
+
+  // Icon commands preview as icons; letterform commands as letterforms —
+  // rendered by the same shared component as the live toolbar.
+  await expect(
+    page.getByTestId('settings-quickbar-slot-fixed').locator('svg'),
+  ).toHaveCount(1)
+  await expect(page.getByTestId('settings-quickbar-slot-0')).toHaveText('B')
+  await expect(
+    page
+      .getByTestId('settings-quickbar-preview')
+      .locator('[data-command-id="paragraph.bullet-list"] button svg'),
+  ).toHaveCount(1)
+})
+
 test('exposes mobile syntax sections without collapsing everything into paragraph', async ({
   page,
 }) => {

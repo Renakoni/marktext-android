@@ -11,6 +11,7 @@ import {
 } from '../../../lib/mobileToolbarConfig'
 import { useI18n, type I18nKey } from '../../../lib/i18n'
 import { captureNonCollapsedSelectionRange } from '../selectionToolbar'
+import ToolbarCommandGlyph from './ToolbarCommandGlyph.vue'
 
 const props = defineProps<{
   expanded: boolean
@@ -101,10 +102,6 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
   groupMenuOpen.value = false
 }
 
-function getCommandLabel(command: { label: string; labelKey?: I18nKey }) {
-  return command.labelKey ? t(command.labelKey) : command.label
-}
-
 function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
   return t(command.titleKey) || command.title
 }
@@ -134,7 +131,7 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
           @mousedown.prevent
           @click="runCommand(command.commandId)"
         >
-          <span class="toolbar-button-label">{{ getCommandLabel(command) }}</span>
+          <ToolbarCommandGlyph :command="command" />
         </button>
       </div>
       <button
@@ -188,7 +185,7 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
           @mousedown.prevent
           @click="runCommand(command.commandId)"
         >
-          <span class="toolbar-button-label">{{ getCommandLabel(command) }}</span>
+          <ToolbarCommandGlyph :command="command" />
         </button>
 
         <button
@@ -229,7 +226,7 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
             @mousedown.prevent
             @click="runCommand(command.commandId)"
           >
-            <span class="toolbar-button-label">{{ getCommandLabel(command) }}</span>
+            <ToolbarCommandGlyph :command="command" />
           </button>
         </div>
 
@@ -313,20 +310,24 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
   flex: 1 1 auto;
 }
 
+/* The panel switcher is a quiet text control: the commands are the content
+   of this surface, so the switcher gets no resting fill and sits in the
+   muted tier of the same type system. */
 .toolbar-group-switcher {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   min-height: 38px;
-  padding: 0 12px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 999px;
-  background: var(--surface-muted);
-  color: var(--text);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
   font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: -0.006em;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   touch-action: manipulation;
   transition: background-color var(--dur-standard) var(--ease-out);
 }
@@ -383,10 +384,10 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
   padding: 0 13px;
 }
 
+/* Undo/redo are ordinary members of the command system: same box, same
+   icon weight, same states as every other command. */
 .toolbar-history-button {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--accent-strong);
+  color: var(--text);
 }
 
 .toolbar-expand-handle {
@@ -407,50 +408,14 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
   stroke-linejoin: round;
 }
 
-.toolbar-button[data-command-id='format.emphasis'] {
-  font-style: italic;
-}
-
-.toolbar-button[data-command-id='format.strong'] {
-  font-weight: 800;
-}
-
-.toolbar-button[data-command-id='format.underline'] {
-  text-decoration: underline;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 3px;
-}
-
-.toolbar-button[data-command-id='format.strike'] {
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
-}
-
-.toolbar-button[data-command-id='format.highlight'] {
-  background: var(--accent-tint-10);
-  color: var(--accent-strong);
-}
-
-.toolbar-button[data-command-id='format.superscript'],
-.toolbar-button[data-command-id='format.subscript'],
-.toolbar-button[data-command-id='format.inline-math'],
-.toolbar-button[data-command-id='format.clear-format'] {
-  font-size: 12px;
-}
-
-.toolbar-button[data-command-id='format.inline-code'] {
-  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
-}
-
-.toolbar-button[data-command-id='format.clear-format'] {
-  color: var(--text-muted);
-}
+/* Per-command letterform styling lives in ToolbarCommandGlyph so the
+   Settings quick-bar preview renders the exact same visuals. */
 
 .toolbar-button:active,
 .toolbar-expand-handle:active,
 .toolbar-group-switcher:active,
 .toolbar-group-option:active {
-  background: var(--accent-tint-11);
+  background: var(--press);
   transition-duration: 0ms;
 }
 

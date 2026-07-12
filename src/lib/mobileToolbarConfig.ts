@@ -1,12 +1,21 @@
 import { MOBILE_COMMANDS, type MobileCommandId } from './mobileCommands'
+import type { ToolbarIconName } from '../features/editor/components/toolbarIcons'
 import type { I18nKey } from './i18n'
 
 export type MobileEditorToolbarPanel = 'format' | 'paragraph' | 'insert' | 'markdown'
 
+/**
+ * A command's visual is either an icon from the toolbar icon set
+ * (`iconName`) or its typographic label — familiar symbols like B, I, H1,
+ * ¶, or x² that communicate faster than any icon. `label` doubles as the
+ * fallback and stays required so a command can never render empty;
+ * `titleKey` is the accessible name in both cases.
+ */
 export interface MobileToolbarCommandButton {
   commandId: MobileCommandId
   label: string
   labelKey?: I18nKey
+  iconName?: ToolbarIconName
   title: string
   titleKey: I18nKey
 }
@@ -23,12 +32,12 @@ export interface MobileToolbarPanelDefinition {
 export const DEFAULT_MOBILE_TOOLBAR_PANEL: MobileEditorToolbarPanel = 'format'
 
 export const MOBILE_TOOLBAR_EDIT_COMMANDS = [
-  { commandId: MOBILE_COMMANDS.EDIT_UNDO, label: '↶', title: 'Undo', titleKey: 'toolbar.command.undo' },
-  { commandId: MOBILE_COMMANDS.EDIT_REDO, label: '↷', title: 'Redo', titleKey: 'toolbar.command.redo' },
+  { commandId: MOBILE_COMMANDS.EDIT_UNDO, label: 'Undo', iconName: 'undo', title: 'Undo', titleKey: 'toolbar.command.undo' },
+  { commandId: MOBILE_COMMANDS.EDIT_REDO, label: 'Redo', iconName: 'redo', title: 'Redo', titleKey: 'toolbar.command.redo' },
 ] as const satisfies readonly MobileToolbarCommandButton[]
 
 export const MOBILE_TOOLBAR_QUICK_COMMANDS = [
-  { commandId: MOBILE_COMMANDS.EDIT_UNDO, label: '↶', title: 'Undo', titleKey: 'toolbar.command.undo' },
+  { commandId: MOBILE_COMMANDS.EDIT_UNDO, label: 'Undo', iconName: 'undo', title: 'Undo', titleKey: 'toolbar.command.undo' },
   { commandId: MOBILE_COMMANDS.FORMAT_STRONG, label: 'B', title: 'Bold', titleKey: 'toolbar.command.bold' },
   { commandId: MOBILE_COMMANDS.FORMAT_EMPHASIS, label: 'I', title: 'Italic', titleKey: 'toolbar.command.italic' },
   {
@@ -39,13 +48,15 @@ export const MOBILE_TOOLBAR_QUICK_COMMANDS = [
   },
   {
     commandId: MOBILE_COMMANDS.PARAGRAPH_BULLET_LIST,
-    label: '•',
+    label: 'List',
+    iconName: 'bullet-list',
     title: 'Bullet list',
     titleKey: 'toolbar.command.bulletList',
   },
   {
     commandId: MOBILE_COMMANDS.PARAGRAPH_ORDERED_LIST,
     label: '1.',
+    iconName: 'ordered-list',
     title: 'Ordered list',
     titleKey: 'toolbar.command.orderedList',
   },
@@ -72,15 +83,15 @@ const MOBILE_TOOLBAR_PANEL_COMMANDS: Record<
     },
     {
       commandId: MOBILE_COMMANDS.FORMAT_HIGHLIGHT,
-      label: 'HL',
-      labelKey: 'toolbar.label.highlight',
+      label: 'Highlight',
+      iconName: 'highlight',
       title: 'Highlight',
       titleKey: 'toolbar.command.highlight',
     },
     {
       commandId: MOBILE_COMMANDS.FORMAT_CLEAR,
-      label: 'Clr',
-      labelKey: 'toolbar.label.clear',
+      label: 'Clear',
+      iconName: 'clear-format',
       title: 'Clear format',
       titleKey: 'toolbar.command.clearFormat',
     },
@@ -88,7 +99,7 @@ const MOBILE_TOOLBAR_PANEL_COMMANDS: Record<
   paragraph: [
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_PARAGRAPH,
-      label: 'P',
+      label: '¶',
       title: 'Paragraph',
       titleKey: 'toolbar.command.paragraph',
     },
@@ -100,108 +111,127 @@ const MOBILE_TOOLBAR_PANEL_COMMANDS: Record<
     { commandId: MOBILE_COMMANDS.PARAGRAPH_HEADING_6, label: 'H6', title: 'Heading 6', titleKey: 'toolbar.command.heading6' },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_UPGRADE_HEADING,
-      label: 'Up',
-      labelKey: 'toolbar.label.up',
+      label: 'H↑',
       title: 'Promote heading',
       titleKey: 'toolbar.command.promoteHeading',
     },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_DEGRADE_HEADING,
-      label: 'Down',
-      labelKey: 'toolbar.label.down',
+      label: 'H↓',
       title: 'Demote heading',
       titleKey: 'toolbar.command.demoteHeading',
     },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_QUOTE_BLOCK,
-      label: '>',
+      label: 'Quote',
+      iconName: 'quote',
       title: 'Quote block',
       titleKey: 'toolbar.command.quoteBlock',
     },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_CODE_FENCE,
       label: 'Code',
-      labelKey: 'toolbar.label.code',
+      iconName: 'code-block',
       title: 'Code block',
       titleKey: 'toolbar.command.codeBlock',
     },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_BULLET_LIST,
-      label: '•',
+      label: 'List',
+      iconName: 'bullet-list',
       title: 'Bullet list',
       titleKey: 'toolbar.command.bulletList',
     },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_ORDERED_LIST,
       label: '1.',
+      iconName: 'ordered-list',
       title: 'Ordered list',
       titleKey: 'toolbar.command.orderedList',
     },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_TASK_LIST,
-      label: '[ ]',
+      label: 'Tasks',
+      iconName: 'task-list',
       title: 'Task list',
       titleKey: 'toolbar.command.taskList',
     },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_LOOSE_LIST_ITEM,
       label: 'Loose',
-      labelKey: 'toolbar.label.loose',
+      iconName: 'line-spacing',
       title: 'Loose list item',
       titleKey: 'toolbar.command.looseListItem',
     },
   ],
   insert: [
-    { commandId: MOBILE_COMMANDS.FORMAT_HYPERLINK, label: '[]', title: 'Link', titleKey: 'toolbar.command.link' },
+    {
+      commandId: MOBILE_COMMANDS.FORMAT_HYPERLINK,
+      label: 'Link',
+      iconName: 'link',
+      title: 'Link',
+      titleKey: 'toolbar.command.link',
+    },
     {
       commandId: MOBILE_COMMANDS.FORMAT_IMAGE,
-      label: 'Img',
-      labelKey: 'toolbar.label.image',
+      label: 'Image',
+      iconName: 'image',
       title: 'Image',
       titleKey: 'toolbar.command.image',
     },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_TABLE,
       label: 'Table',
-      labelKey: 'toolbar.label.table',
+      iconName: 'table',
       title: 'Table',
       titleKey: 'toolbar.command.table',
     },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_HORIZONTAL_LINE,
-      label: 'HR',
+      label: 'Rule',
+      iconName: 'horizontal-rule',
       title: 'Horizontal rule',
       titleKey: 'toolbar.command.horizontalRule',
     },
   ],
   markdown: [
-    { commandId: MOBILE_COMMANDS.FORMAT_INLINE_CODE, label: '`', title: 'Inline code', titleKey: 'toolbar.command.inlineCode' },
-    { commandId: MOBILE_COMMANDS.FORMAT_INLINE_MATH, label: '$x$', title: 'Inline math', titleKey: 'toolbar.command.inlineMath' },
+    {
+      commandId: MOBILE_COMMANDS.FORMAT_INLINE_CODE,
+      label: 'Code',
+      iconName: 'inline-code',
+      title: 'Inline code',
+      titleKey: 'toolbar.command.inlineCode',
+    },
+    { commandId: MOBILE_COMMANDS.FORMAT_INLINE_MATH, label: '√x', title: 'Inline math', titleKey: 'toolbar.command.inlineMath' },
     {
       commandId: MOBILE_COMMANDS.FORMAT_SUPERSCRIPT,
-      label: 'Sup',
-      labelKey: 'toolbar.label.superscript',
+      label: 'x²',
       title: 'Superscript',
       titleKey: 'toolbar.command.superscript',
     },
     {
       commandId: MOBILE_COMMANDS.FORMAT_SUBSCRIPT,
-      label: 'Sub',
-      labelKey: 'toolbar.label.subscript',
+      label: 'x₂',
       title: 'Subscript',
       titleKey: 'toolbar.command.subscript',
     },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_MATH_FORMULA,
-      label: 'Math',
-      labelKey: 'toolbar.label.math',
+      label: '∑',
       title: 'Math block',
       titleKey: 'toolbar.command.mathBlock',
     },
-    { commandId: MOBILE_COMMANDS.PARAGRAPH_HTML_BLOCK, label: 'HTML', title: 'HTML block', titleKey: 'toolbar.command.htmlBlock' },
+    {
+      commandId: MOBILE_COMMANDS.PARAGRAPH_HTML_BLOCK,
+      label: 'HTML',
+      iconName: 'html-block',
+      title: 'HTML block',
+      titleKey: 'toolbar.command.htmlBlock',
+    },
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_FRONT_MATTER,
-      label: 'FM',
+      label: 'Meta',
+      iconName: 'front-matter',
       title: 'Front matter',
       titleKey: 'toolbar.command.frontMatter',
     },
