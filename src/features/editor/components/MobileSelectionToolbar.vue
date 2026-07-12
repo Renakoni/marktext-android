@@ -3,8 +3,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   caretRangeAtPoint,
   captureNonCollapsedSelectionRange,
-  chunkSelectionCommands,
   computeSelectionToolbarPageCapacity,
+  paginateSelectionCommands,
   computeSelectionToolbarPlacement,
   getDomSelectionSnapshot,
   getSelectionToolbarCommands,
@@ -94,17 +94,12 @@ const customPages = computed(() => {
     return []
   }
 
-  const capacity = pageCapacity.value
-  if (props.customRows === 2) {
-    // The clipboard row is pinned; the custom row pages. Arrows are only
-    // needed when the list overflows a single page.
-    const perPage = props.customCommands.length <= capacity ? capacity : capacity - 2
-    return chunkSelectionCommands(props.customCommands, perPage)
-  }
-
-  // Single-row layout: the whole row swaps between the clipboard segment and
-  // custom slices, so every custom page carries both pager slots.
-  return chunkSelectionCommands(props.customCommands, capacity - 2)
+  // Single-row custom pages always carry a back arrow (it returns to the
+  // clipboard segment); the two-row custom row only pages forward from its
+  // first page. Slots are reserved per rendered arrow.
+  return paginateSelectionCommands(props.customCommands, pageCapacity.value, {
+    leadingBackArrow: props.customRows === 1,
+  })
 })
 
 // Single-row layout: segment 0 = clipboard, segments 1..n = custom pages.
@@ -125,7 +120,6 @@ const activeCustomCommands = computed(() => {
 })
 const canPageBack = computed(() => customPage.value > 0)
 const canPageForward = computed(() => customPage.value < totalPages.value - 1)
-const showPager = computed(() => showCustomCommands.value && totalPages.value > 1)
 
 function setCustomPage(delta: 1 | -1) {
   const next = customPage.value + delta
@@ -545,12 +539,13 @@ watch(
       v-if="showCustomCommands && (customRows === 2 || customPage > 0)"
       class="selection-toolbar-row"
     >
+      <!-- Inapplicable arrows are HIDDEN, never disabled: a grayed arrow
+           reads as "there is more", and the freed slot holds a command. -->
       <button
-        v-if="customRows === 1 || showPager"
+        v-if="customRows === 1 || canPageBack"
         class="selection-pager-button"
         :class="{ 'is-pressed': pressedCommandId === 'page-prev' }"
         type="button"
-        :disabled="!canPageBack"
         :aria-label="t('editor.selection.previousCommands')"
         data-testid="selection-page-prev"
         @touchstart="pressedCommandId = 'page-prev'"
@@ -580,11 +575,10 @@ watch(
         <ToolbarCommandGlyph :command="command" />
       </button>
       <button
-        v-if="(customRows === 1 && canPageForward) || (customRows === 2 && showPager)"
+        v-if="canPageForward"
         class="selection-pager-button"
         :class="{ 'is-pressed': pressedCommandId === 'page-next' }"
         type="button"
-        :disabled="!canPageForward"
         :aria-label="t('editor.selection.moreCommands')"
         data-testid="selection-page-next"
         @touchstart="pressedCommandId = 'page-next'"

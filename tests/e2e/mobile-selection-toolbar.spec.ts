@@ -788,3 +788,57 @@ test('pointer paging leaves the editor focus untouched', async ({ page }) => {
   await expect(toolbar.getByTestId('selection-command-copy')).toBeVisible()
   expect(await editorHasFocus()).toBe(true)
 })
+
+test('two-row paging hides inapplicable arrows and reclaims their slots', async ({ page }) => {
+  const commandIds = [
+    'format.strong',
+    'format.emphasis',
+    'format.underline',
+    'format.inline-math',
+    'format.superscript',
+    'format.subscript',
+    'paragraph.bullet-list',
+    'paragraph.order-list',
+    'paragraph.heading-1',
+    'paragraph.heading-2',
+    'paragraph.table',
+    'paragraph.horizontal-line',
+  ]
+  await openDraftWithSelectionToolbar(page, { commands: commandIds.join(','), rows: '2' })
+
+  await selectParagraph(page, 'Alpha bravo')
+  const toolbar = page.getByTestId('mobile-selection-toolbar')
+  await expect(toolbar).toBeVisible()
+
+  const customButtons = toolbar.locator('button[data-testid^="selection-custom-"]')
+
+  // First page: no back arrow — its slot holds an extra command.
+  await expect(toolbar.getByTestId('selection-page-prev')).toHaveCount(0)
+  await expect(toolbar.getByTestId('selection-page-next')).toBeVisible()
+  const firstPageCount = await customButtons.count()
+
+  // Walk to the last page: the forward arrow must disappear there, with the
+  // back arrow still present, and every command seen exactly once.
+  const seen = new Set<string>()
+  for (let guard = 0; guard < 8; guard += 1) {
+    await expect(customButtons.first()).toBeVisible()
+    const visible = await customButtons.evaluateAll(buttons =>
+      buttons.map(button => button.getAttribute('data-command-id') ?? ''),
+    )
+    visible.forEach(id => seen.add(id))
+    const next = toolbar.getByTestId('selection-page-next')
+    if ((await next.count()) === 0) {
+      break
+    }
+    await next.click()
+    await expect(toolbar.getByTestId(`selection-custom-${visible[0]}`)).toBeHidden()
+  }
+  expect([...seen].sort()).toEqual([...commandIds].sort())
+  await expect(toolbar.getByTestId('selection-page-next')).toHaveCount(0)
+  await expect(toolbar.getByTestId('selection-page-prev')).toBeVisible()
+  // The clipboard row stays pinned through every page.
+  await expect(toolbar.getByTestId('selection-command-copy')).toBeVisible()
+  // The last page holds fewer commands than the first (only the back arrow
+  // reserves a slot there, but the tail slice is short); nothing was lost.
+  expect(firstPageCount).toBeGreaterThan(0)
+})

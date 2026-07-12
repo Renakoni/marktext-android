@@ -179,11 +179,32 @@ export function computeSelectionToolbarPageCapacity(viewportWidth: number) {
   return Math.max(1, Math.floor((budget - SELECTION_BAR_CHROME) / SELECTION_SLOT_WIDTH))
 }
 
-export function chunkSelectionCommands<T>(commands: readonly T[], perPage: number): T[][] {
-  const size = Math.max(1, Math.floor(perPage))
+// Pages reserve slots only for the arrows they actually RENDER: an
+// inapplicable arrow is hidden (not disabled — a grayed arrow reads as
+// "there is more"), and its slot goes back to a command. `leadingBackArrow`
+// marks pages that always carry a back arrow regardless of position — the
+// single-row layout's custom pages, whose back arrow returns to the
+// clipboard segment.
+export function paginateSelectionCommands<T>(
+  commands: readonly T[],
+  capacity: number,
+  { leadingBackArrow }: { leadingBackArrow: boolean },
+): T[][] {
+  const cap = Math.max(1, Math.floor(capacity))
   const pages: T[][] = []
-  for (let index = 0; index < commands.length; index += size) {
+  let index = 0
+
+  while (index < commands.length) {
+    const backSlots = leadingBackArrow || pages.length > 0 ? 1 : 0
+    // Assume this page is the last; if the remainder does not fit, one slot
+    // goes to the forward arrow instead.
+    let size = Math.max(1, cap - backSlots)
+    if (commands.length - index > size) {
+      size = Math.max(1, cap - backSlots - 1)
+    }
+
     pages.push(commands.slice(index, index + size))
+    index += size
   }
 
   return pages
