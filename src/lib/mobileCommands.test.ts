@@ -117,6 +117,9 @@ describe('mobileCommands', () => {
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.FORMAT_STRONG)).toBe(true)
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.FORMAT_HYPERLINK)).toBe(true)
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.PARAGRAPH_HEADING_1)).toBe(true)
+    // Table lost its PARAGRAPH_ACTIONS entry (Android no-op path) but its
+    // size sheet must still receive the toolbar's cached pre-tap selection.
+    expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.PARAGRAPH_TABLE)).toBe(true)
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.EDIT_UNDO)).toBe(false)
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.EDIT_REDO)).toBe(false)
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.FILE_OPEN)).toBe(false)

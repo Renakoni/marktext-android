@@ -22,6 +22,7 @@ const emit = defineEmits<{
 }>()
 
 const insertButton = ref<HTMLButtonElement | null>(null)
+const panel = ref<HTMLElement | null>(null)
 const { t } = useI18n()
 
 const canDecrease = computed(() => ({
@@ -47,9 +48,42 @@ onMounted(() => {
   // The default size is ready to insert, so lead the focus there; steppers
   // never summon the soft keyboard.
   void nextTick(() => {
-    insertButton.value?.focus()
+    insertButton.value?.focus({ preventScroll: true })
   })
 })
+
+// The background is inert while the sheet is open, but hardware Tab could
+// still walk focus out of the dialog to the document body. Cycle it inside
+// the panel instead (aria-modal alone does not contain keyboard focus).
+function trapTabKey(event: KeyboardEvent) {
+  const root = panel.value
+  if (!root) {
+    return
+  }
+
+  const focusables = Array.from(root.querySelectorAll<HTMLElement>('button:not(:disabled)'))
+  if (focusables.length === 0) {
+    event.preventDefault()
+    return
+  }
+
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  const active = document.activeElement
+
+  if (event.shiftKey) {
+    if (active === first || active === root) {
+      event.preventDefault()
+      last.focus()
+    }
+    return
+  }
+
+  if (active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
 </script>
 
 <template>
@@ -60,8 +94,13 @@ onMounted(() => {
     aria-labelledby="table-sheet-title"
     data-testid="table-insert-sheet"
     @keydown.esc="emit('cancel')"
+    @keydown.tab="trapTabKey"
   >
-    <form class="draft-save-panel table-insert-panel" @submit.prevent="emit('insert')">
+    <form
+      ref="panel"
+      class="draft-save-panel table-insert-panel"
+      @submit.prevent="emit('insert')"
+    >
       <h2 id="table-sheet-title">{{ t('editor.table.title') }}</h2>
       <div class="table-size-field">
         <span :id="`table-rows-label`">{{ t('editor.table.rows') }}</span>
@@ -76,7 +115,13 @@ onMounted(() => {
           >
             −
           </button>
-          <output class="table-size-value" data-testid="table-rows-value">{{ rows }}</output>
+          <output
+            class="table-size-value"
+            aria-live="polite"
+            aria-atomic="true"
+            :aria-label="`${t('editor.table.rows')} ${rows}`"
+            data-testid="table-rows-value"
+          >{{ rows }}</output>
           <button
             type="button"
             class="table-step-button"
@@ -102,7 +147,13 @@ onMounted(() => {
           >
             −
           </button>
-          <output class="table-size-value" data-testid="table-columns-value">{{ columns }}</output>
+          <output
+            class="table-size-value"
+            aria-live="polite"
+            aria-atomic="true"
+            :aria-label="`${t('editor.table.columns')} ${columns}`"
+            data-testid="table-columns-value"
+          >{{ columns }}</output>
           <button
             type="button"
             class="table-step-button"

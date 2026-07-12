@@ -140,6 +140,19 @@ export function runMobileEditorCommand(
   return { handled: false, commandId, reason: 'editor-unavailable' }
 }
 
+// Commands with no Muya action entry whose sheet still anchors at the
+// PRE-TAP selection. Table is absent from PARAGRAPH_ACTIONS (the Muya path
+// is an Android no-op), but dropping it from this predicate would make the
+// toolbar discard its cached selection range and fall back to the live DOM
+// caret, which an Android toolbar tap may already have moved.
+const SELECTION_DEPENDENT_SHEET_COMMANDS = new Set<MobileCommandId>([
+  MOBILE_COMMANDS.PARAGRAPH_TABLE,
+])
+
 export function isSelectionDependentMobileCommand(commandId: MobileCommandId) {
-  return Boolean(FORMAT_ACTIONS[commandId] || PARAGRAPH_ACTIONS[commandId])
+  return Boolean(
+    FORMAT_ACTIONS[commandId] ||
+      PARAGRAPH_ACTIONS[commandId] ||
+      SELECTION_DEPENDENT_SHEET_COMMANDS.has(commandId),
+  )
 }

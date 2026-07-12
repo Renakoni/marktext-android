@@ -486,6 +486,102 @@ test('the table sheet steppers choose a custom size within the mobile limits', a
   await expect(table.locator('tr').first().locator('th, td')).toHaveCount(1)
 })
 
+test('the table lands at the toolbar-cached selection, not a later moved caret', async ({
+  page,
+}) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('First paragraph selected')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Second paragraph fallback')
+
+  // The toolbar caches this non-collapsed pre-tap selection...
+  await selectTextInFirstParagraph(page, 'First paragraph selected')
+
+  // ...then an Android toolbar interaction may move the LIVE caret before
+  // the command handler runs — simulate it collapsing into the second
+  // paragraph. A collapsed selection never overwrites the toolbar cache,
+  // and the cached range must win over the moved live caret.
+  await page.evaluate(() => {
+    const second = Array.from(
+      document.querySelectorAll('[data-testid="editor-host"] .mu-editor p'),
+    ).find(node => node.textContent?.includes('Second paragraph fallback'))!
+    const walker = document.createTreeWalker(second, NodeFilter.SHOW_TEXT)
+    const text = walker.nextNode() as Text
+    const range = document.createRange()
+    range.setStart(text, text.length)
+    range.collapse(true)
+    const selection = document.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+  })
+
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+  await expect(page.getByTestId('table-insert-sheet')).toBeVisible()
+  await page.getByTestId('table-insert-button').click()
+
+  // Document order: first paragraph, TABLE, second paragraph.
+  await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(1)
+  await expect.poll(() => getStoredDraftMarkdown(page)).toMatch(
+    /First paragraph selected[\s\S]*\|[\s\S]*Second paragraph fallback/,
+  )
+})
+
+test('opening the table sheet closes the in-document search overlay', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('searchable content')
+  await page.getByTestId('search-open-button').click()
+  await expect(page.getByTestId('editor-search-bar')).toBeVisible()
+
+  // The bottom toolbar stays reachable under the search overlay; the modal
+  // sheet must not silently stack on top of an active search session.
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+
+  await expect(page.getByTestId('table-insert-sheet')).toBeVisible()
+  await expect(page.getByTestId('editor-search-bar')).toBeHidden()
+})
+
+test('the table sheet contains keyboard focus and rescues it on cancel', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+  await expect(page.getByTestId('table-insert-sheet')).toBeVisible()
+
+  const activeTestId = () =>
+    page.evaluate(
+      () =>
+        document.activeElement?.getAttribute('data-testid') ??
+        document.activeElement?.tagName ??
+        'none',
+    )
+
+  // Initial focus leads to the ready-to-confirm Insert action.
+  await expect.poll(activeTestId).toBe('table-insert-button')
+
+  // Forward Tab reaches Cancel, then WRAPS to the first stepper control
+  // instead of escaping through the scrim into the app chrome.
+  await page.keyboard.press('Tab')
+  await expect.poll(activeTestId).toBe('table-cancel-button')
+  await page.keyboard.press('Tab')
+  await expect.poll(activeTestId).toBe('table-rows-decrement')
+
+  // Shift+Tab from the first control wraps back to the last.
+  await page.keyboard.press('Shift+Tab')
+  await expect.poll(activeTestId).toBe('table-cancel-button')
+
+  // Closing without inserting must not leave focus dangling on <body>.
+  await page.getByTestId('table-cancel-button').click()
+  await expect(page.getByTestId('table-insert-sheet')).toBeHidden()
+  await expect.poll(activeTestId).toBe('toolbar-expand-button')
+})
+
 test('cancelling the table sheet inserts nothing and keeps the document intact', async ({
   page,
 }) => {

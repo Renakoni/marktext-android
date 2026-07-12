@@ -271,6 +271,10 @@ let lastContentLogAt = 0
 let appLifecycleListeners: AppLifecycleListeners | null = null
 let pendingInlineInsertRange: Range | null = null
 let pendingTableInsertRange: Range | null = null
+// The editor instance the table sheet was opened for: a warm open-with or
+// share intent can replace the editor under the open sheet, and a confirm
+// must never act on the successor document.
+let pendingTableInsertEditor: unknown = null
 let startupActionTimer: number | null = null
 let systemColorSchemeCleanup: (() => void) | null = null
 
@@ -717,6 +721,8 @@ async function openEditor(markdown: string) {
   resetSelectionToolbarLongPress()
   resetEditorSearchForNewDocument()
   resetEditorOutlineForNewDocument()
+  // The sheet and its pending range belong to the outgoing document.
+  closeTableSheet()
   await openEditorSessionDocument(markdown)
   void startResumeForOpenedDocument()
   // Long-press entry: Android uses the native suppressed-ActionMode signal;
@@ -893,20 +899,19 @@ function insertLinkFromSheet() {
 }
 
 function openTableSheet(restoreRange: Range | null = null) {
-  const editorPresent = hasEditor()
-  const capturedRange =
-    editorReady.value && editorPresent
-      ? restoreRange?.cloneRange() ?? captureEditorSelection()
-      : null
   const nextTableSheet = createTableInsertSheetWorkflow({
     editorReady: editorReady.value,
-    hasEditor: editorPresent,
+    hasEditor: hasEditor(),
   })
   if (nextTableSheet.kind !== 'open') {
     return
   }
 
-  pendingTableInsertRange = capturedRange
+  // Same policy as the outline: never let the sheet stack on the search
+  // overlay; no cursor restore — that would reopen the keyboard.
+  closeEditorSearch({ restoreCursor: false })
+  pendingTableInsertRange = restoreRange?.cloneRange() ?? captureEditorSelection()
+  pendingTableInsertEditor = getEditor()
   closeEditorOutline()
   standDownResume('table sheet opened')
   endSelectionCaretSession('table sheet opened')
@@ -919,10 +924,17 @@ function openTableSheet(restoreRange: Range | null = null) {
 function closeTableSheet() {
   resetEditorTableSheet()
   pendingTableInsertRange = null
+  pendingTableInsertEditor = null
 }
 
 function insertTableFromSheet() {
   const activeEditor = getEditor()
+  if (!activeEditor || activeEditor !== pendingTableInsertEditor) {
+    editorLog.warn('mobile table insert dropped: the editor was replaced under the sheet')
+    closeTableSheet()
+    return
+  }
+
   const result = insertTableFromSheetWorkflow({
     hasEditor: hasEditor(),
     rows: tableRows.value,
@@ -1340,6 +1352,7 @@ function closeEditorToHome() {
   androidExitPromptOpen.value = false
   closeEditorMenu()
   closeLinkSheet()
+  closeTableSheet()
   closeEditorToolbar()
   destroyEditor()
   homeTab.value = HOME_TABS.DOCUMENTS
