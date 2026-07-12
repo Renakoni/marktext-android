@@ -9,6 +9,7 @@ import LinkInsertSheet from './components/LinkInsertSheet.vue'
 import LocalDraftExitPrompt from './components/LocalDraftExitPrompt.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import MobileSelectionToolbar from './components/MobileSelectionToolbar.vue'
+import ResumeCard from './components/ResumeCard.vue'
 import type { SelectionToolbarCommandId } from './selectionToolbar'
 import type { MobileCommandId } from '../../lib/mobileCommands'
 import type {
@@ -60,6 +61,8 @@ const props = defineProps<{
   searchActiveIndex: number
   outlineOpen: boolean
   outlineItems: OutlineItem[]
+  resumeCardVisible: boolean
+  resumeCardText: string
 }>()
 
 const emit = defineEmits<{
@@ -72,6 +75,8 @@ const emit = defineEmits<{
   'open-outline': []
   'close-outline': []
   'select-outline-heading': [slug: string]
+  'resume-activate': []
+  'resume-dismiss': []
   'toggle-menu': []
   'close-menu': []
   share: []
@@ -316,6 +321,16 @@ onBeforeUnmount(() => {
       >
         <div ref="editorHost" class="muya-host" />
       </div>
+
+      <!-- Non-modal offer: never blocks the editor, never scrolls on its own. -->
+      <Transition name="resume-card">
+        <ResumeCard
+          v-if="resumeCardVisible"
+          :text="resumeCardText"
+          @activate="emit('resume-activate')"
+          @dismiss="emit('resume-dismiss')"
+        />
+      </Transition>
     </section>
 
     <MobileSelectionToolbar
