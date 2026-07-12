@@ -171,21 +171,35 @@ export function createSelectionToolbarLongPress({
       return
     }
 
+    // The request is bound to the caret that existed at the long-press
+    // itself, BEFORE the asynchronous clipboard query: anything that moves
+    // the caret during the query (an ordinary tap, typing, arrow keys) came
+    // from an ordinary interaction and must not open the toolbar.
+    const entryCaret = getCollapsedEditorCaret()
+
     generation += 1
     const requestGeneration = generation
     await refreshClipboardHasText()
+    // Every dismissal path (surfaces, edits, command runs, document
+    // replacement) advances the generation and invalidates this request
+    // even though the toolbar never became visible.
     if (generation !== requestGeneration || !isEditorReady() || !canActivate()) {
       return
     }
 
     // A non-collapsed selection is already handled by the selection-driven
     // display; the clipboard refresh above was all it needed.
-    const caret = getCollapsedEditorCaret()
-    if (!caret) {
+    if (!entryCaret) {
       logger?.debug('selection toolbar clipboard state refreshed', {
         source,
         canPaste: clipboardHasText.value,
       })
+      return
+    }
+
+    const caret = getCollapsedEditorCaret()
+    if (!caret || caret.node !== entryCaret.node || caret.offset !== entryCaret.offset) {
+      logger?.debug('selection toolbar caret session dropped: caret became stale', { source })
       return
     }
 
@@ -210,12 +224,15 @@ export function createSelectionToolbarLongPress({
   }
 
   function notifyDocumentEdited() {
-    if (caretSessionActive.value) {
-      endCaretSession('document edited')
-    }
+    // Unconditional: an edit must also invalidate a context request whose
+    // clipboard query is still pending, not just an already-visible session.
+    endCaretSession('document edited')
   }
 
   function endCaretSession(reason: string) {
+    // Also invalidates a context request whose clipboard query is still in
+    // flight — dismissal applies before the toolbar ever becomes visible.
+    generation += 1
     removeCaretSessionWatch()
     sessionAnchorNode = null
     sessionAnchorOffset = -1

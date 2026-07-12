@@ -174,4 +174,69 @@ describe('createSelectionToolbarLongPress', () => {
 
     expect(longPress.caretSessionActive.value).toBe(false)
   })
+
+  it('drops a pending request when the caret moves during the clipboard query', async () => {
+    let resolveClipboard: (value: boolean) => void = () => {}
+    const { longPress, paragraph } = createHarness({
+      clipboardText: () => new Promise(resolve => (resolveClipboard = resolve)),
+    })
+    placeCaret(paragraph, 1)
+
+    // Long-press at caret A; an ordinary tap moves the caret to B while the
+    // clipboard query is still pending. B came from an ordinary interaction
+    // and must not get a toolbar.
+    const entry = longPress.enterFromContextRequest('test')
+    placeCaret(paragraph, 5)
+    resolveClipboard(true)
+    await entry
+
+    expect(longPress.caretSessionActive.value).toBe(false)
+  })
+
+  it('drops a pending request invalidated by an edit during the clipboard query', async () => {
+    let resolveClipboard: (value: boolean) => void = () => {}
+    const { longPress, paragraph } = createHarness({
+      clipboardText: () => new Promise(resolve => (resolveClipboard = resolve)),
+    })
+    placeCaret(paragraph, 1)
+
+    const entry = longPress.enterFromContextRequest('test')
+    // Typing both edits the document and (in this harness) leaves the caret
+    // where it was — the generation bump alone must kill the request.
+    longPress.notifyDocumentEdited()
+    resolveClipboard(true)
+    await entry
+
+    expect(longPress.caretSessionActive.value).toBe(false)
+  })
+
+  it('drops a pending request ended by a competing surface during the query', async () => {
+    let resolveClipboard: (value: boolean) => void = () => {}
+    const { longPress, paragraph } = createHarness({
+      clipboardText: () => new Promise(resolve => (resolveClipboard = resolve)),
+    })
+    placeCaret(paragraph, 1)
+
+    const entry = longPress.enterFromContextRequest('test')
+    longPress.endCaretSession('search opened')
+    resolveClipboard(true)
+    await entry
+
+    expect(longPress.caretSessionActive.value).toBe(false)
+  })
+
+  it('still opens when the caret is unchanged after a deferred clipboard query', async () => {
+    let resolveClipboard: (value: boolean) => void = () => {}
+    const { longPress, paragraph } = createHarness({
+      clipboardText: () => new Promise(resolve => (resolveClipboard = resolve)),
+    })
+    placeCaret(paragraph, 1)
+
+    const entry = longPress.enterFromContextRequest('test')
+    resolveClipboard(true)
+    await entry
+
+    expect(longPress.caretSessionActive.value).toBe(true)
+    expect(longPress.clipboardHasText.value).toBe(true)
+  })
 })

@@ -16,7 +16,6 @@ const props = defineProps<{
   suspended: boolean
   host: HTMLElement | null
   canPaste: boolean
-  canWrite: boolean
   caretSession: boolean
 }>()
 
@@ -29,6 +28,12 @@ const { t } = useI18n()
 const visible = ref(false)
 // Drives the state-table action set: selection rows vs caret rows.
 const hasSelection = ref(false)
+// The EDITOR's actual editability — deliberately not the source-URI write
+// capability: an Android document whose URI cannot be overwritten is still
+// fully editable in memory (the Save-copy workflow), so it keeps Cut and
+// Paste. The read-only table rows apply only when the editable surface
+// itself is non-editable.
+const canWrite = ref(true)
 const left = ref(0)
 const top = ref(0)
 const placement = ref<'above' | 'below'>('above')
@@ -60,9 +65,14 @@ const toolbarCommands = computed(() =>
   getSelectionToolbarCommands({
     hasSelection: hasSelection.value,
     canPaste: props.canPaste,
-    canWrite: props.canWrite,
+    canWrite: canWrite.value,
   }),
 )
+
+function readEditorEditability() {
+  const editorRoot = props.host?.querySelector('.mu-editor')
+  return editorRoot ? editorRoot.getAttribute('contenteditable') !== 'false' : true
+}
 
 function updateFromSelection() {
   const snapshot = getDomSelectionSnapshot(props.host)
@@ -79,6 +89,7 @@ function updateFromSelection() {
   }
 
   hasSelection.value = !snapshot.collapsed
+  canWrite.value = readEditorEditability()
 
   const box = toolbarElement.value
     ? {
@@ -258,7 +269,6 @@ watch(
       props.suspended,
       props.host,
       props.canPaste,
-      props.canWrite,
       props.caretSession,
     ] as const,
   scheduleUpdate,

@@ -608,12 +608,6 @@ const {
   logger: editorLog,
 })
 
-const canWriteSelectionDocument = computed(() =>
-  documentState.value.autosaveTarget === 'android-document'
-    ? currentAndroidDocumentCanWrite.value
-    : true,
-)
-
 // Whether the clipboard currently holds pasteable text. Read through the
 // native bridge on Android; on the web the Clipboard API may refuse to be
 // inspected (permissions) — offering Paste then beats silently losing it.
@@ -1710,7 +1704,6 @@ onBeforeUnmount(() => {
     :text-direction="appearanceTextSettings.textDirection"
     :editor-style-vars="editorStyleVars"
     :can-paste-selection="selectionClipboardHasText"
-    :can-write-selection="canWriteSelectionDocument"
     :selection-caret-session="selectionCaretSessionActive"
     :search-open="editorSearchOpen"
     :search-query="editorSearchQuery"

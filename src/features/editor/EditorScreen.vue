@@ -55,7 +55,6 @@ const props = defineProps<{
   textDirection: 'ltr' | 'rtl'
   editorStyleVars: CSSProperties
   canPasteSelection: boolean
-  canWriteSelection: boolean
   selectionCaretSession: boolean
   searchOpen: boolean
   searchQuery: string
@@ -341,7 +340,6 @@ onBeforeUnmount(() => {
       :suspended="selectionToolbarSuspended"
       :host="editorShell"
       :can-paste="canPasteSelection"
-      :can-write="canWriteSelection"
       :caret-session="selectionCaretSession"
       @run-command="
         (commandId, restoreRange) => emit('run-selection-command', commandId, restoreRange)

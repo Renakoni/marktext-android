@@ -313,7 +313,7 @@ test('a subsequent tap dismisses the long-press caret toolbar', async ({ page })
   await expect(toolbar).toBeHidden()
 })
 
-test('a read-only document offers copy and select all per the state table', async ({ page }) => {
+test('an unwritable source URI keeps the full editing clipboard actions', async ({ page }) => {
   const now = '2026-07-12T08:00:00.000Z'
   const document = {
     sourceUri: 'content://test/read-only-selection',
@@ -360,31 +360,57 @@ test('a read-only document offers copy and select all per the state table', asyn
     page.evaluate(() =>
       (window as unknown as MockCapacitorWindow).__emitAndroidSelectionContextRequest?.(),
     )
+  const placeCaretInParagraph = () =>
+    page.evaluate(() => {
+      const paragraph = Array.from(
+        document.querySelectorAll('[data-testid="editor-host"] .mu-editor p'),
+      ).find(node => node.textContent?.includes('Protected paragraph'))!
+      const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT)
+      const text = walker.nextNode() as Text
+      const range = document.createRange()
+      range.setStart(text, 2)
+      range.collapse(true)
+      const selection = document.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+    })
   const toolbar = page.getByTestId('mobile-selection-toolbar')
 
-  // Read-only with a selection: Copy, Select all — no cut, no paste even
-  // though the clipboard has content.
+  // The source URI cannot be overwritten (canWrite: false), but the EDITOR
+  // is still fully editable — the user can modify the content and save it
+  // as a copy. Cut and Paste therefore stay available; the read-only table
+  // rows are about editor editability, not source-write capability.
+  await selectParagraph(page, 'Protected paragraph')
+  await emitContextRequest()
+  await expect(toolbar).toBeVisible()
+  await expect
+    .poll(() => toolbarCommandIds(page))
+    .toEqual(['cut', 'copy', 'paste', 'selectAll'])
+
+  await page.evaluate(() => document.getSelection()?.removeAllRanges())
+  await expect(toolbar).toBeHidden()
+  await placeCaretInParagraph()
+  await emitContextRequest()
+  await expect(toolbar).toBeVisible()
+  await expect.poll(() => toolbarCommandIds(page)).toEqual(['paste', 'selectAll'])
+
+  // A genuinely non-editable editor surface DOES activate the read-only
+  // rows: Copy + Select all with a selection, Select all alone at a caret.
+  await page.evaluate(() => document.getSelection()?.removeAllRanges())
+  await expect(toolbar).toBeHidden()
+  await page.evaluate(() =>
+    document
+      .querySelector('[data-testid="editor-host"] .mu-editor')
+      ?.setAttribute('contenteditable', 'false'),
+  )
   await selectParagraph(page, 'Protected paragraph')
   await emitContextRequest()
   await expect(toolbar).toBeVisible()
   await expect.poll(() => toolbarCommandIds(page)).toEqual(['copy', 'selectAll'])
 
-  // Read-only caret long-press: Select all only.
   await page.evaluate(() => document.getSelection()?.removeAllRanges())
   await expect(toolbar).toBeHidden()
-  await page.evaluate(() => {
-    const paragraph = Array.from(
-      document.querySelectorAll('[data-testid="editor-host"] .mu-editor p'),
-    ).find(node => node.textContent?.includes('Protected paragraph'))!
-    const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT)
-    const text = walker.nextNode() as Text
-    const range = document.createRange()
-    range.setStart(text, 2)
-    range.collapse(true)
-    const selection = document.getSelection()
-    selection?.removeAllRanges()
-    selection?.addRange(range)
-  })
+  await placeCaretInParagraph()
   await emitContextRequest()
   await expect(toolbar).toBeVisible()
   await expect.poll(() => toolbarCommandIds(page)).toEqual(['selectAll'])
