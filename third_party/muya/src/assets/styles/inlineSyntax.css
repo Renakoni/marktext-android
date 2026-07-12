@@ -208,9 +208,10 @@ code.mu-inline-rule {
 }
 
 /* A long inline-math formula must scroll horizontally (in the editing popup and
-   inline when hidden) instead of overflowing the editor area. */
+   inline when hidden) instead of overflowing the editor area. The subtrahend
+   mirrors the .mu-container horizontal padding on both sides. */
 .mu-math > .mu-math-render {
-    max-width: calc(var(--editor-area-width, 800px) - 100px);
+    max-width: calc(var(--editor-area-width, 800px) - 2 * var(--editor-gutter, 50px));
     overflow: auto hidden;
 
     scrollbar-width: thin;
@@ -456,6 +457,10 @@ blockquote .mu-hide.mu-math > .mu-math-render {
 
 .mu-inline-image.mu-image-loading {
     width: 400px;
+
+    /* Never wider than the editing column — a fixed 400px placeholder
+       overflows a phone-width canvas. */
+    max-width: 100%;
     height: 250px;
     margin: 0 auto;
 

@@ -40,9 +40,9 @@ describe('appearanceSettings', () => {
   it('ignores invalid line width values instead of passing them to CSS', () => {
     expect(normalizeEditorLineWidth('wide')).toBe('')
     expect(normalizeEditorLineWidth('72rem')).toBe('')
-    expect(resolveEditorLineWidthStyleValue('72ch')).toBe('calc(100px + 72ch)')
+    expect(resolveEditorLineWidthStyleValue('72ch')).toBe('calc(2 * var(--editor-gutter, 50px) + 72ch)')
     expect(getEditorStyleVars({ ...DEFAULT_APPEARANCE_TEXT_SETTINGS, editorLineWidth: '72ch' }))
-      .toEqual({ '--editor-area-width': 'calc(100px + 72ch)' })
+      .toEqual({ '--editor-area-width': 'calc(2 * var(--editor-gutter, 50px) + 72ch)' })
   })
 
   it('maps font choices to complete CSS stacks with desktop fallbacks', () => {

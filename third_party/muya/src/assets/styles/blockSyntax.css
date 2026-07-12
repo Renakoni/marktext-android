@@ -18,7 +18,13 @@
     max-width: var(--editor-area-width, 800px);
     min-height: 100%;
     margin: 0 auto;
-    padding: 0 50px 100px;
+
+    /* The horizontal gutter is a host-tunable variable: the 50px default
+       preserves the historical desktop layout, while narrow hosts (phones)
+       set --editor-gutter to reclaim the column width. Consumers that
+       compensate for the gutter (math scroll width, the host's line-width
+       setting) must derive from the same variable. */
+    padding: 0 var(--editor-gutter, 50px) 100px;
 
     color: var(--editor-color);
 }

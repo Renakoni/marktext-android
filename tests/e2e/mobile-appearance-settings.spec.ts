@@ -77,7 +77,9 @@ test('applies Appearance text settings without rewriting existing draft Markdown
 
   const editorHost = page.getByTestId('editor-host')
   await expect(editorHost).toHaveAttribute('dir', 'rtl')
-  await expect(editorHost).toHaveCSS('--editor-area-width', 'calc(100px + 72ch)')
+  // The line-width setting is the TEXT measure; both responsive gutters are
+  // added on top (16px each at the phone breakpoint).
+  await expect(editorHost).toHaveCSS('--editor-area-width', 'calc(2 * 16px + 72ch)')
   await expect(editorHost.locator('.muya-host')).toHaveCSS('--mu-font-size', '18px')
   await expect(editorHost.locator('.muya-host')).toHaveCSS('--mu-line-height', '1.8')
   await expect(editorHost.locator('.muya-host')).toHaveCSS('--mu-font-family', /DejaVu Sans Mono/)

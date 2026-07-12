@@ -813,6 +813,13 @@ body {
 }
 
 .editor-host-shell {
+  /* Single owner of the editor's horizontal gutters: Muya's .mu-container
+     pads with var(--editor-gutter) and the host adds NO horizontal padding
+     of its own, so spacing can never stack. 50px keeps the wide-screen
+     column identical to Muya's historical layout; the phone breakpoint
+     narrows it below. */
+  --editor-gutter: 50px;
+
   width: min(100%, 980px);
   height: 100%;
   margin: 0 auto;
@@ -830,7 +837,7 @@ body {
 
 .editor-host-shell .mu-editor {
   min-height: 100%;
-  padding: 42px 56px 56px;
+  padding: 42px 0 56px;
 }
 
 /* MIUI WebViews pin CJK glyphs to one weight: 400 and 700 rasterize to
@@ -1364,6 +1371,13 @@ body {
   }
 
   .editor-host-shell {
+    /* Phones: 16px edge gutters (the Material compact-window margin; the
+       floor used by contemporary mobile editors). At 393dp this yields a
+       ~45ch measure at the default font size — the lower bound of the
+       comfortable 45–75ch reading range, so every extra pixel of gutter
+       would cost readable measure. */
+    --editor-gutter: 16px;
+
     width: 100%;
     border-width: 0;
     border-radius: 0;
@@ -1371,7 +1385,7 @@ body {
   }
 
   .editor-host-shell .mu-editor {
-    padding: 24px 18px 48px;
+    padding: 24px 0 48px;
   }
 
   .status-bar {
