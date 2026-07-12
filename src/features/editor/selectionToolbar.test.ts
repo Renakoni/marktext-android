@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  SELECTION_TOOLBAR_COMMANDS,
   computeSelectionToolbarPlacement,
   getSelectionToolbarCommands,
   shouldShowSelectionToolbar,
@@ -22,29 +21,53 @@ function createRect(overrides: Partial<SelectionRect> = {}): SelectionRect {
   }
 }
 
+function commandIds(input: { hasSelection: boolean; canPaste: boolean; canWrite: boolean }) {
+  return getSelectionToolbarCommands(input).map(command => command.commandId)
+}
+
 describe('selection toolbar commands', () => {
-  it('exposes copy, cut, paste, and select all in order', () => {
-    expect(SELECTION_TOOLBAR_COMMANDS.map(command => command.commandId)).toEqual([
-      'copy',
-      'cut',
+  it('matches the product state table row by row', () => {
+    // Editable, no selection, clipboard has pasteable content.
+    expect(commandIds({ hasSelection: false, canPaste: true, canWrite: true })).toEqual([
       'paste',
       'selectAll',
     ])
-    expect(SELECTION_TOOLBAR_COMMANDS.map(command => command.iconName)).toEqual([
-      'copy',
+    // Editable, no selection, clipboard empty.
+    expect(commandIds({ hasSelection: false, canPaste: false, canWrite: true })).toEqual([
+      'selectAll',
+    ])
+    // Editable, selection, clipboard has pasteable content.
+    expect(commandIds({ hasSelection: true, canPaste: true, canWrite: true })).toEqual([
       'cut',
+      'copy',
       'paste',
+      'selectAll',
+    ])
+    // Editable, selection, clipboard empty.
+    expect(commandIds({ hasSelection: true, canPaste: false, canWrite: true })).toEqual([
+      'cut',
+      'copy',
+      'selectAll',
+    ])
+    // Read-only with selection: no cut, no paste even with clipboard content.
+    expect(commandIds({ hasSelection: true, canPaste: true, canWrite: false })).toEqual([
+      'copy',
+      'selectAll',
+    ])
+    // Read-only without a selection.
+    expect(commandIds({ hasSelection: false, canPaste: true, canWrite: false })).toEqual([
       'selectAll',
     ])
   })
 
-  it('drops paste when clipboard read is unavailable', () => {
-    expect(getSelectionToolbarCommands(false).map(command => command.commandId)).toEqual([
-      'copy',
-      'cut',
-      'selectAll',
-    ])
-    expect(getSelectionToolbarCommands(true)).toEqual(SELECTION_TOOLBAR_COMMANDS)
+  it('keeps select all available in every state', () => {
+    for (const hasSelection of [true, false]) {
+      for (const canPaste of [true, false]) {
+        for (const canWrite of [true, false]) {
+          expect(commandIds({ hasSelection, canPaste, canWrite })).toContain('selectAll')
+        }
+      }
+    }
   })
 })
 
@@ -127,6 +150,56 @@ describe('selection toolbar visibility', () => {
         editorReady: true,
         suspended: false,
         snapshot: { ...visibleSnapshot, rect: null },
+      }),
+    ).toBe(false)
+  })
+
+  it('shows a collapsed caret only during a long-press session', () => {
+    const caretSnapshot = { ...visibleSnapshot, collapsed: true, text: '' }
+
+    // Ordinary caret placement never opens the toolbar...
+    expect(
+      shouldShowSelectionToolbar({
+        editorReady: true,
+        suspended: false,
+        snapshot: caretSnapshot,
+      }),
+    ).toBe(false)
+
+    // ...a long-press caret session does — including with empty text
+    // (empty document), as long as a placement rect exists.
+    expect(
+      shouldShowSelectionToolbar({
+        editorReady: true,
+        suspended: false,
+        snapshot: caretSnapshot,
+        caretSession: true,
+      }),
+    ).toBe(true)
+
+    // The session never overrides suspension, editor readiness, or bounds.
+    expect(
+      shouldShowSelectionToolbar({
+        editorReady: true,
+        suspended: true,
+        snapshot: caretSnapshot,
+        caretSession: true,
+      }),
+    ).toBe(false)
+    expect(
+      shouldShowSelectionToolbar({
+        editorReady: true,
+        suspended: false,
+        snapshot: { ...caretSnapshot, withinEditor: false },
+        caretSession: true,
+      }),
+    ).toBe(false)
+    expect(
+      shouldShowSelectionToolbar({
+        editorReady: true,
+        suspended: false,
+        snapshot: { ...caretSnapshot, rect: null },
+        caretSession: true,
       }),
     ).toBe(false)
   })

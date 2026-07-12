@@ -37,6 +37,8 @@ import {
 } from './lib/androidSelection'
 import { createDocumentOutline, waitForViewportSettle } from './features/editor/documentOutline'
 import { createDocumentSearch } from './features/editor/documentSearch'
+import { createSelectionToolbarLongPress } from './features/editor/selectionToolbarLongPress'
+import type { SelectionToolbarCommandId } from './features/editor/selectionToolbar'
 import { createResumePosition } from './features/editor/resumePosition'
 import {
   readStoredResumePosition,
@@ -606,6 +608,63 @@ const {
   logger: editorLog,
 })
 
+// Whether the clipboard currently holds pasteable text. Read through the
+// native bridge on Android; on the web the Clipboard API may refuse to be
+// inspected (permissions) — offering Paste then beats silently losing it.
+async function queryClipboardHasText() {
+  if (isAndroidSelectionControlAvailable()) {
+    return (await readAndroidClipboardText()).length > 0
+  }
+
+  if (!navigator.clipboard?.readText) {
+    return false
+  }
+
+  try {
+    return (await navigator.clipboard.readText()).length > 0
+  } catch {
+    return true
+  }
+}
+
+const {
+  caretSessionActive: selectionCaretSessionActive,
+  clipboardHasText: selectionClipboardHasText,
+  enterFromContextRequest: enterSelectionToolbarContext,
+  notifyCommandRun: notifySelectionToolbarCommandRun,
+  notifyDocumentEdited: notifySelectionToolbarDocumentEdited,
+  endCaretSession: endSelectionCaretSession,
+  attachWebFallbacks: attachSelectionToolbarWebFallbacks,
+  resetForNewDocument: resetSelectionToolbarLongPress,
+} = createSelectionToolbarLongPress({
+  isEditorReady: () => editorReady.value,
+  getEditorHost: () => getEditor()?.domNode ?? null,
+  canActivate: () =>
+    currentScreen.value === 'editor' &&
+    !editorMenuOpen.value &&
+    !editorSearchOpen.value &&
+    !editorOutlineOpen.value &&
+    !linkSheetOpen.value &&
+    !draftExitPromptOpen.value &&
+    !androidExitPromptOpen.value,
+  queryClipboardHasText,
+  logger: editorLog,
+})
+
+// The suppressed native floating ActionMode started: refresh the clipboard
+// state and open a caret session when the long-press placed a caret.
+function handleSelectionContextRequest() {
+  void enterSelectionToolbarContext('native action mode')
+}
+
+async function runEditorSelectionCommand(
+  commandId: SelectionToolbarCommandId,
+  restoreRange: Range | null,
+) {
+  await runSelectionToolbarCommand(commandId, restoreRange)
+  notifySelectionToolbarCommandRun()
+}
+
 function openEditorOutline() {
   if (!hasEditor()) {
     return
@@ -617,6 +676,7 @@ function openEditorOutline() {
   // overlays coexist. No cursor restore — that would reopen the keyboard.
   closeEditorSearch({ restoreCursor: false })
   standDownResume('outline opened')
+  endSelectionCaretSession('outline opened')
   void openEditorOutlineSheet()
   appLog.info('editor outline opened')
 }
@@ -628,6 +688,7 @@ function openEditorOutline() {
 function toggleEditorMenuExclusive() {
   closeEditorOutline()
   standDownResume('menu opened')
+  endSelectionCaretSession('menu opened')
   toggleEditorMenu()
 }
 
@@ -644,10 +705,16 @@ async function openEditor(markdown: string) {
   // cached key (documentState already points at the incoming document here).
   void persistResumePosition('document replaced')
   resetResumeForNewDocument()
+  resetSelectionToolbarLongPress()
   resetEditorSearchForNewDocument()
   resetEditorOutlineForNewDocument()
   await openEditorSessionDocument(markdown)
   void startResumeForOpenedDocument()
+  // Long-press entry: Android uses the native suppressed-ActionMode signal;
+  // web dev/e2e fall back to in-page contextmenu + selection watching.
+  if (!isAndroidSelectionControlAvailable()) {
+    attachSelectionToolbarWebFallbacks()
+  }
 }
 
 function getTransientAndroidSaveMessage() {
@@ -709,8 +776,10 @@ function syncMarkdown(nextStatus: unknown = 'Edited') {
     // Content edits invalidate match offsets; re-run the open query so the
     // highlights and the match counter stay truthful.
     refreshEditorSearchAfterEdit()
-    // Edits also invalidate the resume offer and any in-flight re-pinning.
+    // Edits also invalidate the resume offer and any in-flight re-pinning,
+    // and end a long-press caret session (typing owns the caret now).
     notifyResumeDocumentEdited()
+    notifySelectionToolbarDocumentEdited()
   }
   if (markDirty && documentState.value.autosaveTarget === 'android-document') {
     status.value = getAndroidEditorStatus()
@@ -756,6 +825,7 @@ const {
   getEditor,
   getEditorElement,
   describeEditorInputState,
+  onSelectionContextRequest: handleSelectionContextRequest,
   logger: editorLog,
 })
 function insertMarkdownAtPendingSelection(markdown: string) {
@@ -781,6 +851,7 @@ function openLinkSheet(restoreRange: Range | null = null) {
   pendingInlineInsertRange = capturedRange
   closeEditorOutline()
   standDownResume('link sheet opened')
+  endSelectionCaretSession('link sheet opened')
   openEditorLinkSheet({
     text: nextLinkSheet.linkText,
     url: nextLinkSheet.linkUrl,
@@ -873,10 +944,6 @@ function syncAfterToolbarCommand(beforeMarkdown: string) {
     onUnchanged: () => syncDocumentFromEditor(documentState.value.isDirty),
   })
 }
-
-const canPasteSelection =
-  isAndroidSelectionControlAvailable() ||
-  (typeof navigator !== 'undefined' && Boolean(navigator.clipboard?.readText))
 
 function runEditorToolbarCommand(commandId: MobileCommandId, restoreRange: Range | null = null) {
   const activeEditor = editorReady.value ? getEditor() : null
@@ -1181,6 +1248,7 @@ function openEditorSearch() {
   // so the two surfaces can never end up open at the same time.
   closeEditorOutline()
   standDownResume('search opened')
+  endSelectionCaretSession('search opened')
   openEditorSearchBar()
   appLog.info('editor search opened')
 }
@@ -1227,6 +1295,7 @@ async function showHome() {
   closeEditorToolbar()
   closeEditorOutline()
   standDownResume('leaving editor')
+  endSelectionCaretSession('leaving editor')
   // Leaving the editor: clear highlights without refocusing the editor.
   closeEditorSearch({ restoreCursor: false })
 
@@ -1634,7 +1703,8 @@ onBeforeUnmount(() => {
     :android-saving="savingAndroidDocumentCopy"
     :text-direction="appearanceTextSettings.textDirection"
     :editor-style-vars="editorStyleVars"
-    :can-paste-selection="canPasteSelection"
+    :can-paste-selection="selectionClipboardHasText"
+    :selection-caret-session="selectionCaretSessionActive"
     :search-open="editorSearchOpen"
     :search-query="editorSearchQuery"
     :search-match-count="editorSearchMatchCount"
@@ -1661,7 +1731,7 @@ onBeforeUnmount(() => {
     @save-to-device="saveLocalDraftToAndroidDocument"
     @save-copy="saveAndroidDocumentCopy"
     @run-toolbar-command="runEditorToolbarCommand"
-    @run-selection-command="runSelectionToolbarCommand"
+    @run-selection-command="runEditorSelectionCommand"
     @dismiss-selection="finishSelectionToolbarOutsideTap"
     @toggle-toolbar="toggleEditorToolbarExclusive"
     @set-toolbar-panel="setEditorToolbarPanel"

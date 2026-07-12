@@ -28,6 +28,10 @@ interface AndroidSelectionPlugin {
     eventName: 'selectionTap',
     listener: (event: AndroidSelectionTapEvent) => void,
   ): Promise<{ remove: () => Promise<void> }>
+  addListener(
+    eventName: 'selectionContextRequest',
+    listener: () => void,
+  ): Promise<{ remove: () => Promise<void> }>
 }
 
 export interface AndroidSelectionTapEvent {
@@ -159,6 +163,24 @@ export async function addAndroidSelectionTapListener(
 
   try {
     const handle = await AndroidSelection.addListener('selectionTap', listener)
+    return () => handle.remove()
+  } catch {
+    return null
+  }
+}
+
+// Fired when the suppressed floating ActionMode starts — the exact moment
+// Android would have shown its own clipboard menu (long-press selection,
+// double-tap word select, insertion-caret menu).
+export async function addAndroidSelectionContextListener(
+  listener: () => void,
+): Promise<(() => Promise<void>) | null> {
+  if (!isAndroidSelectionControlAvailable()) {
+    return null
+  }
+
+  try {
+    const handle = await AndroidSelection.addListener('selectionContextRequest', listener)
     return () => handle.remove()
   } catch {
     return null

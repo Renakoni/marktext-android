@@ -3,6 +3,7 @@ import type { MuyaEditor } from './editorRuntime'
 import { captureSelectionWithin, resolveEditorDomNode } from './editorInlineInsert'
 import { caretRangeAtPoint, type SelectionToolbarCommandId } from './selectionToolbar'
 import {
+  addAndroidSelectionContextListener,
   addAndroidSelectionTapListener,
   finishAndroidEditorSelectionActionMode,
   isAndroidSelectionControlAvailable,
@@ -24,6 +25,12 @@ export interface EditorSelectionLifecycleOptions {
   getEditor: () => MuyaEditor | null
   getEditorElement: () => HTMLElement | null
   describeEditorInputState: () => Record<string, unknown>
+  /**
+   * The suppressed native floating ActionMode started — the moment Android
+   * would have shown its own clipboard menu (long-press selection,
+   * double-tap word select, insertion-caret menu).
+   */
+  onSelectionContextRequest?: () => void
   logger: SelectionLogger
 }
 
@@ -52,6 +59,7 @@ export function createEditorSelectionLifecycle(
   options: EditorSelectionLifecycleOptions,
 ): EditorSelectionLifecycle {
   let nativeSelectionTapCleanup: (() => Promise<void>) | null = null
+  let nativeSelectionContextCleanup: (() => Promise<void>) | null = null
 
   function captureEditorSelection() {
     return captureSelectionWithin(
@@ -329,7 +337,14 @@ export function createEditorSelectionLifecycle(
           getCurrentSelectionRangeClone(),
         )
       } else if (commandId === 'paste') {
-        restoreEditorSelectionRange(activeEditor, restoreRange)
+        const restored = restoreEditorSelectionRange(activeEditor, restoreRange)
+        if (!restored) {
+          // Long-press caret paste: no expanded range to restore. Adopt the
+          // live collapsed DOM caret into Muya's selection model so the
+          // paste lands at the long-pressed position instead of a stale
+          // cached selection.
+          syncMuyaSelectionFromDom(activeEditor)
+        }
         await activeEditor.editor.clipboard.pasteAsPlainText()
         await finishEditorSelectionActionModeAndRestoreCaret(
           'selection-toolbar-paste',
@@ -392,19 +407,41 @@ export function createEditorSelectionLifecycle(
     finishSelectionToolbarOutsideTap(caret)
   }
 
+  function handleNativeSelectionContextRequest() {
+    if (options.currentScreen.value !== 'editor' || !options.editorReady.value) {
+      return
+    }
+
+    options.onSelectionContextRequest?.()
+  }
+
   async function installNativeSelectionTapListener() {
     await uninstallNativeSelectionTapListener()
     nativeSelectionTapCleanup = await addAndroidSelectionTapListener(handleNativeSelectionTap)
+    if (options.onSelectionContextRequest) {
+      nativeSelectionContextCleanup = await addAndroidSelectionContextListener(
+        handleNativeSelectionContextRequest,
+      )
+    }
   }
 
   async function uninstallNativeSelectionTapListener() {
     const cleanup = nativeSelectionTapCleanup
+    const contextCleanup = nativeSelectionContextCleanup
     nativeSelectionTapCleanup = null
+    nativeSelectionContextCleanup = null
     if (cleanup) {
       try {
         await cleanup()
       } catch (error) {
         options.logger.debug('native selection tap listener cleanup failed', { error })
+      }
+    }
+    if (contextCleanup) {
+      try {
+        await contextCleanup()
+      } catch (error) {
+        options.logger.debug('native selection context listener cleanup failed', { error })
       }
     }
   }
