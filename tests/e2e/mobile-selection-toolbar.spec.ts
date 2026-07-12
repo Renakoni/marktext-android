@@ -620,15 +620,27 @@ test('the selection toolbar settings page configures the bar end to end', async 
   await page.getByTestId('settings-selectionbar-command-format-emphasis').click()
   await page.getByTestId('settings-selection-toolbar-rows-option-2').click()
 
-  const stored = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('marktext-for-android:settings-ui') ?? '{}') as Record<
-      string,
-      unknown
-    >,
-  )
-  expect(stored).toMatchObject({
+  const readStored = () =>
+    page.evaluate(() =>
+      JSON.parse(localStorage.getItem('marktext-for-android:settings-ui') ?? '{}') as Record<
+        string,
+        unknown
+      >,
+    )
+  expect(await readStored()).toMatchObject({
     selectionToolbarCustomCommands: 'format.strong,format.emphasis',
     selectionToolbarRows: '2',
+  })
+
+  // The grid buttons TOGGLE: re-activating a selected command removes it —
+  // the discoverable, keyboard-operable path out of a wrong pick.
+  await page.getByTestId('settings-selectionbar-command-format-emphasis').click()
+  expect(await readStored()).toMatchObject({
+    selectionToolbarCustomCommands: 'format.strong',
+  })
+  await page.getByTestId('settings-selectionbar-command-format-emphasis').click()
+  expect(await readStored()).toMatchObject({
+    selectionToolbarCustomCommands: 'format.strong,format.emphasis',
   })
 
   await page.getByTestId('settings-detail-back').click()
@@ -646,4 +658,91 @@ test('the selection toolbar settings page configures the bar end to end', async 
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? ''))
     .toContain('**configure then format**')
+})
+
+test('a viewport-width change clamps the current page instead of stranding it', async ({
+  page,
+}) => {
+  const commandIds = [
+    'format.strong',
+    'format.emphasis',
+    'format.underline',
+    'format.inline-math',
+    'format.superscript',
+    'format.subscript',
+    'paragraph.bullet-list',
+    'paragraph.order-list',
+    'paragraph.heading-1',
+    'paragraph.heading-2',
+    'paragraph.table',
+    'paragraph.horizontal-line',
+  ]
+  await openDraftWithSelectionToolbar(page, { commands: commandIds.join(',') })
+
+  await selectParagraph(page, 'Alpha bravo')
+  const toolbar = page.getByTestId('mobile-selection-toolbar')
+  await expect(toolbar).toBeVisible()
+
+  // Walk to the LAST custom page at phone width.
+  await toolbar.getByTestId('selection-page-next').click()
+  for (let guard = 0; guard < 8; guard += 1) {
+    await expect(
+      toolbar.locator('button[data-testid^="selection-custom-"]').first(),
+    ).toBeVisible()
+    const next = toolbar.getByTestId('selection-page-next')
+    if ((await next.count()) === 0 || (await next.isDisabled())) {
+      break
+    }
+    const firstId = await toolbar
+      .locator('button[data-testid^="selection-custom-"]')
+      .first()
+      .getAttribute('data-command-id')
+    await next.click()
+    await expect(toolbar.getByTestId(`selection-custom-${firstId}`)).toBeHidden()
+  }
+
+  // Widen the viewport: capacity grows and total pages shrink, so the stale
+  // page index MUST clamp instead of stranding an empty page whose back
+  // arrow the navigation guard rejects.
+  await page.setViewportSize({ width: 800, height: 851 })
+
+  await expect(
+    toolbar.locator('button[data-testid^="selection-custom-"]').first(),
+  ).toBeVisible()
+
+  for (let guard = 0; guard < 8; guard += 1) {
+    const prev = toolbar.getByTestId('selection-page-prev')
+    if ((await prev.count()) === 0) {
+      break
+    }
+    await prev.click()
+  }
+  await expect(toolbar.getByTestId('selection-command-copy')).toBeVisible()
+})
+
+test('keyboard paging keeps focus inside the toolbar', async ({ page }) => {
+  await openDraftWithSelectionToolbar(page, { commands: 'format.strong,format.emphasis' })
+
+  await selectParagraph(page, 'Alpha bravo')
+  const toolbar = page.getByTestId('mobile-selection-toolbar')
+  await expect(toolbar).toBeVisible()
+
+  const activeInToolbar = () =>
+    page.evaluate(() => {
+      const bar = document.querySelector('[data-testid="mobile-selection-toolbar"]')
+      return Boolean(bar && document.activeElement && bar.contains(document.activeElement))
+    })
+
+  // Keyboard-activate the pager: the button unmounts with its row, and focus
+  // must be rescued into the new page instead of falling to <body>.
+  await toolbar.getByTestId('selection-page-next').focus()
+  await page.keyboard.press('Enter')
+  await expect(toolbar.getByTestId('selection-custom-format.strong')).toBeVisible()
+  await expect.poll(activeInToolbar).toBe(true)
+
+  // The flip back to the clipboard segment rescues focus the same way.
+  await toolbar.getByTestId('selection-page-prev').focus()
+  await page.keyboard.press('Enter')
+  await expect(toolbar.getByTestId('selection-command-copy')).toBeVisible()
+  await expect.poll(activeInToolbar).toBe(true)
 })

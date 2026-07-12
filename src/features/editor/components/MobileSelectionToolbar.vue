@@ -134,8 +134,34 @@ function setCustomPage(delta: 1 | -1) {
   }
 
   customPage.value = next
-  // The row width changes with the rendered slice; re-run placement.
-  void nextTick(scheduleUpdate)
+  void nextTick(() => {
+    // The row width changes with the rendered slice; re-run placement.
+    scheduleUpdate()
+    rescueToolbarFocus()
+  })
+}
+
+// A page flip can unmount the very button that had keyboard focus (the whole
+// row swaps in single-row mode; a pager that reaches its bound becomes
+// disabled). Focus falling to <body> strands hardware-keyboard and
+// switch-access users, so pull it back into the bar: forward lands on the
+// first command of the new page, back-to-clipboard lands on the pager that
+// re-enters the custom pages.
+function rescueToolbarFocus() {
+  const bar = toolbarElement.value
+  if (!bar) {
+    return
+  }
+
+  const active = document.activeElement
+  if (active && active !== document.body && bar.contains(active)) {
+    return
+  }
+
+  const target = bar.querySelector<HTMLElement>(
+    'button[data-testid^="selection-custom-"]:not(:disabled), [data-testid="selection-page-next"]:not(:disabled), [data-testid="selection-command-selectAll"]',
+  )
+  target?.focus({ preventScroll: true })
 }
 
 watch(
@@ -144,6 +170,18 @@ watch(
     customPage.value = 0
   },
 )
+
+// A viewport-width change (rotation, foldable expansion, split screen)
+// recomputes the capacity and can shrink totalPages below the current page.
+// Preserve the invariant 0 <= customPage < totalPages by clamping to the
+// last valid page, so the bar never strands the user on an empty page whose
+// back arrow the navigation guard would reject.
+watch(totalPages, total => {
+  const lastValidPage = Math.max(0, total - 1)
+  if (customPage.value > lastValidPage) {
+    customPage.value = lastValidPage
+  }
+})
 
 function commandTitle(command: { title: string; titleKey: I18nKey }) {
   return t(command.titleKey) || command.title
@@ -535,6 +573,14 @@ watch(
         </svg>
       </button>
     </div>
+
+    <span
+      v-if="showCustomCommands && totalPages > 1"
+      class="selection-page-status"
+      aria-live="polite"
+    >
+      {{ t('editor.selection.pageStatus', { current: customPage + 1, total: totalPages }) }}
+    </span>
   </div>
 </template>
 
@@ -577,7 +623,9 @@ watch(
 .selection-pager-button {
   display: grid;
   place-items: center;
-  width: 32px;
+  /* Same 44px minimum touch target as every command button: in single-row
+     mode this arrow is the only path into the custom commands. */
+  width: 44px;
   min-height: 44px;
   margin-left: auto;
   padding: 0;
@@ -603,6 +651,19 @@ watch(
 
 .selection-pager-button:disabled {
   opacity: 0.35;
+}
+
+/* Screen-reader-only page announcement. */
+.selection-page-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
 }
 
 .selection-toolbar-button {

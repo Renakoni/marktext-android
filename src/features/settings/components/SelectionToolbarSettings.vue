@@ -83,18 +83,25 @@ const customCommands = computed(() =>
     .filter((command): command is MobileToolbarCommandButton => Boolean(command)),
 )
 
-function addCommand(commandId: MobileCommandId) {
-  if (selectedCommandIds.value.has(commandId) || atCapacity.value) {
-    return
-  }
-
-  setCustomCommandIds([...customCommandIds.value, commandId])
-}
-
 function removeCommand(commandId: MobileCommandId) {
   setCustomCommandIds(
     customCommandIds.value.filter(selectedCommandId => selectedCommandId !== commandId),
   )
+}
+
+// Grid buttons TOGGLE: activating a selected command removes it again. This
+// is the discoverable, keyboard-operable removal path (the long-press edit
+// mode is drag-reorder sugar, not the only way out of a mistake), and
+// remove-then-re-add doubles as keyboard reordering.
+function toggleCommand(commandId: MobileCommandId) {
+  if (selectedCommandIds.value.has(commandId)) {
+    removeCommand(commandId)
+    return
+  }
+
+  if (!atCapacity.value) {
+    setCustomCommandIds([...customCommandIds.value, commandId])
+  }
 }
 
 function clearAllCommands() {
@@ -102,8 +109,16 @@ function clearAllCommands() {
   exitEditMode()
 }
 
+// At the cap only UNSELECTED commands lock; selected ones stay active so
+// they can always be toggled off.
 function isCommandDisabled(command: MobileToolbarCommandButton) {
-  return selectedCommandIds.value.has(command.commandId) || atCapacity.value
+  return !selectedCommandIds.value.has(command.commandId) && atCapacity.value
+}
+
+function commandToggleLabel(command: MobileToolbarCommandButton) {
+  return selectedCommandIds.value.has(command.commandId)
+    ? t('settings.toolbar.custom.removeCommand', { command: getCommandTitle(command) })
+    : t('settings.toolbar.custom.addCommand', { command: getCommandTitle(command) })
 }
 </script>
 
@@ -143,10 +158,10 @@ function isCommandDisabled(command: MobileToolbarCommandButton) {
       {{
         customCommands.length === 0
           ? t('settings.selectionToolbar.custom.empty')
-          : t('settings.selectionToolbar.custom.count', {
+          : `${t('settings.selectionToolbar.custom.count', {
             count: customCommands.length,
             max: SELECTION_TOOLBAR_MAX_CUSTOM_COMMANDS,
-          })
+          })} ${t('settings.selectionToolbar.custom.reorderHint')}`
       }}
     </p>
 
@@ -212,11 +227,9 @@ function isCommandDisabled(command: MobileToolbarCommandButton) {
             type="button"
             :disabled="isCommandDisabled(command)"
             :aria-pressed="selectedCommandIds.has(command.commandId)"
-            :aria-label="t('settings.toolbar.custom.addCommand', {
-              command: getCommandTitle(command),
-            })"
+            :aria-label="commandToggleLabel(command)"
             :data-testid="`settings-selectionbar-command-${commandTestId(command.commandId)}`"
-            @click="addCommand(command.commandId)"
+            @click="toggleCommand(command.commandId)"
           >
             <ToolbarCommandGlyph :command="command" />
           </button>
