@@ -11,7 +11,7 @@ import {
 } from '../../../lib/mobileToolbarConfig'
 import { useI18n, type I18nKey } from '../../../lib/i18n'
 import { captureNonCollapsedSelectionRange } from '../selectionToolbar'
-import ToolbarCommandGlyph from './ToolbarCommandGlyph.vue'
+import ToolbarCommandGlyph from '../../../components/ToolbarCommandGlyph.vue'
 
 const props = defineProps<{
   expanded: boolean

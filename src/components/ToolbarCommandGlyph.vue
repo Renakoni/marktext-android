@@ -1,26 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { MobileToolbarCommandButton } from '../../../lib/mobileToolbarConfig'
-import { TOOLBAR_ICON_PATHS } from './toolbarIcons'
-import { useI18n } from '../../../lib/i18n'
+import type { MobileToolbarCommandButton } from '../lib/mobileToolbarConfig'
+import { TOOLBAR_ICON_PATHS } from '../lib/toolbarIcons'
 
 // One rendering path for a toolbar command's visual, shared by the bottom
 // toolbar and the Settings quick-bar preview so the two can never drift:
 // an icon from the toolbar icon set when the command defines one, otherwise
-// its typographic label (B, I, H1…, ¶, x², √x — symbols that stay clearer
-// than any icon).
+// its typographic label (B, H1…, ¶, x² — symbols that stay clearer than any
+// icon).
 const props = defineProps<{
   command: MobileToolbarCommandButton
 }>()
 
-const { t } = useI18n()
-
 const iconPaths = computed(() =>
   props.command.iconName ? TOOLBAR_ICON_PATHS[props.command.iconName] : null,
-)
-
-const label = computed(() =>
-  props.command.labelKey ? t(props.command.labelKey) : props.command.label,
 )
 </script>
 
@@ -38,7 +31,7 @@ const label = computed(() =>
     v-else
     class="toolbar-command-label"
     :data-command-id="command.commandId"
-  >{{ label }}</span>
+  >{{ command.label }}</span>
 </template>
 
 <style scoped>
@@ -66,10 +59,6 @@ const label = computed(() =>
   font-weight: 800;
 }
 
-.toolbar-command-label[data-command-id='format.emphasis'] {
-  font-style: italic;
-}
-
 .toolbar-command-label[data-command-id='format.underline'] {
   text-decoration: underline;
   text-decoration-thickness: 1.5px;
@@ -81,10 +70,9 @@ const label = computed(() =>
   text-decoration-thickness: 1.5px;
 }
 
-/* Structural glyphs (¶, ∑) read best a step larger; the math and script
-   marks (√x, x², x₂) hold the base size so the row keeps one rhythm. */
-.toolbar-command-label[data-command-id='paragraph.paragraph'],
-.toolbar-command-label[data-command-id='paragraph.math-formula'] {
+/* The structural pilcrow reads best a step larger; the script marks
+   (x², x₂) hold the base size so the row keeps one rhythm. */
+.toolbar-command-label[data-command-id='paragraph.paragraph'] {
   font-size: 16px;
   font-weight: 500;
 }

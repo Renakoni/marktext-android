@@ -1,12 +1,12 @@
 import { MOBILE_COMMANDS, type MobileCommandId } from './mobileCommands'
-import type { ToolbarIconName } from '../features/editor/components/toolbarIcons'
+import type { ToolbarIconName } from './toolbarIcons'
 import type { I18nKey } from './i18n'
 
 export type MobileEditorToolbarPanel = 'format' | 'paragraph' | 'insert' | 'markdown'
 
 /**
  * A command's visual is either an icon from the toolbar icon set
- * (`iconName`) or its typographic label — familiar symbols like B, I, H1,
+ * (`iconName`) or its typographic label — familiar symbols like B, H1,
  * ¶, or x² that communicate faster than any icon. `label` doubles as the
  * fallback and stays required so a command can never render empty;
  * `titleKey` is the accessible name in both cases.
@@ -14,7 +14,6 @@ export type MobileEditorToolbarPanel = 'format' | 'paragraph' | 'insert' | 'mark
 export interface MobileToolbarCommandButton {
   commandId: MobileCommandId
   label: string
-  labelKey?: I18nKey
   iconName?: ToolbarIconName
   title: string
   titleKey: I18nKey
@@ -39,7 +38,7 @@ export const MOBILE_TOOLBAR_EDIT_COMMANDS = [
 export const MOBILE_TOOLBAR_QUICK_COMMANDS = [
   { commandId: MOBILE_COMMANDS.EDIT_UNDO, label: 'Undo', iconName: 'undo', title: 'Undo', titleKey: 'toolbar.command.undo' },
   { commandId: MOBILE_COMMANDS.FORMAT_STRONG, label: 'B', title: 'Bold', titleKey: 'toolbar.command.bold' },
-  { commandId: MOBILE_COMMANDS.FORMAT_EMPHASIS, label: 'I', title: 'Italic', titleKey: 'toolbar.command.italic' },
+  { commandId: MOBILE_COMMANDS.FORMAT_EMPHASIS, label: 'I', iconName: 'italic', title: 'Italic', titleKey: 'toolbar.command.italic' },
   {
     commandId: MOBILE_COMMANDS.FORMAT_UNDERLINE,
     label: 'U',
@@ -68,7 +67,7 @@ const MOBILE_TOOLBAR_PANEL_COMMANDS: Record<
 > = {
   format: [
     { commandId: MOBILE_COMMANDS.FORMAT_STRONG, label: 'B', title: 'Bold', titleKey: 'toolbar.command.bold' },
-    { commandId: MOBILE_COMMANDS.FORMAT_EMPHASIS, label: 'I', title: 'Italic', titleKey: 'toolbar.command.italic' },
+    { commandId: MOBILE_COMMANDS.FORMAT_EMPHASIS, label: 'I', iconName: 'italic', title: 'Italic', titleKey: 'toolbar.command.italic' },
     {
       commandId: MOBILE_COMMANDS.FORMAT_UNDERLINE,
       label: 'U',
@@ -202,7 +201,7 @@ const MOBILE_TOOLBAR_PANEL_COMMANDS: Record<
       title: 'Inline code',
       titleKey: 'toolbar.command.inlineCode',
     },
-    { commandId: MOBILE_COMMANDS.FORMAT_INLINE_MATH, label: '√x', title: 'Inline math', titleKey: 'toolbar.command.inlineMath' },
+    { commandId: MOBILE_COMMANDS.FORMAT_INLINE_MATH, label: '√x', iconName: 'inline-math', title: 'Inline math', titleKey: 'toolbar.command.inlineMath' },
     {
       commandId: MOBILE_COMMANDS.FORMAT_SUPERSCRIPT,
       label: 'x²',
@@ -218,6 +217,7 @@ const MOBILE_TOOLBAR_PANEL_COMMANDS: Record<
     {
       commandId: MOBILE_COMMANDS.PARAGRAPH_MATH_FORMULA,
       label: '∑',
+      iconName: 'math-block',
       title: 'Math block',
       titleKey: 'toolbar.command.mathBlock',
     },

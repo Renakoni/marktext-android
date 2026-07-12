@@ -10,7 +10,7 @@ import {
   getMobileToolbarPanelCommands,
   type MobileToolbarCommandButton,
 } from './mobileToolbarConfig'
-import { TOOLBAR_ICON_PATHS } from '../features/editor/components/toolbarIcons'
+import { TOOLBAR_ICON_PATHS } from './toolbarIcons'
 
 function getEditCommandIds() {
   return MOBILE_TOOLBAR_EDIT_COMMANDS.map(command => command.commandId)
@@ -139,7 +139,6 @@ const ALL_COMMANDS: MobileToolbarCommandButton[] = [
 // abbreviations ("HR", "FM", "Img", "Sup", "Clr") are not a visual.
 const TYPOGRAPHIC_LABELS = new Set([
   'B',
-  'I',
   'U',
   'S',
   'H1',
@@ -153,8 +152,6 @@ const TYPOGRAPHIC_LABELS = new Set([
   '¶',
   'x²',
   'x₂',
-  '√x',
-  '∑',
 ])
 
 describe('mobile toolbar visual contract', () => {

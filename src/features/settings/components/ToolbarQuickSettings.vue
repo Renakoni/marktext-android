@@ -16,7 +16,7 @@ import {
 } from '../../editor/editorToolbarSettings'
 import { useSettingsState } from '../settingsState'
 import { useQuickBarReorder } from './useQuickBarReorder'
-import ToolbarCommandGlyph from '../../editor/components/ToolbarCommandGlyph.vue'
+import ToolbarCommandGlyph from '../../../components/ToolbarCommandGlyph.vue'
 
 defineProps<{
   testId: string

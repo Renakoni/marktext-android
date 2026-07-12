@@ -518,14 +518,15 @@ test('renders the toolbar visual system: icons, letterforms, accessible names', 
 }) => {
   await newBlankDocument(page)
 
-  // Collapsed quick strip: undo and the two lists are icons; B/I/U stay
-  // letterforms that demonstrate their own effect.
+  // Collapsed quick strip: undo, the two lists, and Italic are icons (a
+  // sans-serif italic "I" reads as a slash, so Italic gets a drawn glyph);
+  // B/U stay letterforms that demonstrate their own effect.
   const quick = page.getByTestId('mobile-editor-toolbar')
   await expect(quick.locator('button[data-command-id="edit.undo"] svg')).toHaveCount(1)
   await expect(quick.locator('button[data-command-id="paragraph.bullet-list"] svg')).toHaveCount(1)
   await expect(quick.locator('button[data-command-id="paragraph.order-list"] svg')).toHaveCount(1)
   await expect(quick.locator('button[data-command-id="format.strong"]')).toHaveText('B')
-  await expect(quick.locator('button[data-command-id="format.emphasis"]')).toHaveText('I')
+  await expect(quick.locator('button[data-command-id="format.emphasis"] svg')).toHaveCount(1)
 
   // Insert panel: former abbreviations ([], Img, HR) are now icons, each
   // keeping its accessible name.
@@ -541,11 +542,15 @@ test('renders the toolbar visual system: icons, letterforms, accessible names', 
     await expect(button).toHaveAttribute('aria-label', name)
   }
 
-  // Markdown panel: math and script commands stay typographic symbols.
+  // Markdown panel: the script commands stay typographic symbols; the math
+  // pair uses icons whose only difference is composition (inline within a
+  // text line versus a block on its own line), not a math operation.
   await selectToolbarPanel(page, 'markdown')
-  await expect(page.getByTestId('toolbar-command-format.inline-math')).toHaveText('√x')
+  await expect(page.getByTestId('toolbar-command-format.inline-math').locator('svg')).toHaveCount(1)
   await expect(page.getByTestId('toolbar-command-format.superscript')).toHaveText('x²')
-  await expect(page.getByTestId('toolbar-command-paragraph.math-formula')).toHaveText('∑')
+  await expect(
+    page.getByTestId('toolbar-command-paragraph.math-formula').locator('svg'),
+  ).toHaveCount(1)
   await expect(
     page.getByTestId('toolbar-command-paragraph.front-matter').locator('svg'),
   ).toHaveCount(1)
@@ -631,7 +636,7 @@ test('customizes the collapsed quick toolbar from Settings', async ({ page }) =>
     'Undo, fixed',
   )
   await expect(page.getByTestId('settings-quickbar-slot-0')).toContainText('B')
-  await expect(page.getByTestId('settings-quickbar-slot-1')).toContainText('I')
+  await expect(page.getByTestId('settings-quickbar-slot-1').locator('svg')).toHaveCount(1)
 
   await page.getByTestId('settings-quickbar-command-paragraph-heading-1').click()
   await expect(page.getByTestId('settings-quickbar-slot-5')).toContainText('H1')
