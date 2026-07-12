@@ -65,8 +65,25 @@ async function registerMuyaPlugins(logger?: EditorRuntimeLogger) {
   return core
 }
 
-function resolveMuyaLocale(core: MuyaCoreModule, appLocale = 'en') {
-  return appLocale === 'zh-CN' ? core.zhCN : core.en
+// The stock Muya empty-paragraph hint advertises the "/" quick-insert menu,
+// whose plugin is deliberately not registered on Android: the toolbar is the
+// insert surface, and "/" sits behind the symbols layer on touch keyboards.
+// Never promise an interaction that does not exist — swap the hint at the
+// locale boundary so vendored Muya stays untouched. Revisit only if a
+// curated, touch-adapted quick-insert menu ships (see todolist).
+const EMPTY_PARAGRAPH_HINTS: Record<string, string> = {
+  'en': 'Start writing...',
+  'zh-CN': '开始书写…',
+}
+
+export function resolveMuyaLocale(core: MuyaCoreModule, appLocale = 'en') {
+  const base = appLocale === 'zh-CN' ? core.zhCN : core.en
+  const resource: Record<string, string> = {
+    ...base.resource,
+    'Type / to insert...': EMPTY_PARAGRAPH_HINTS[appLocale] ?? EMPTY_PARAGRAPH_HINTS['en'],
+  }
+
+  return { ...base, resource }
 }
 
 function getMuyaAppearanceOptions(settings?: AppearanceTextSettings) {
