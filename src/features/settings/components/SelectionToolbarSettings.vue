@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { MobileCommandId } from '../../../lib/mobileCommands'
 import { useI18n, type I18nKey } from '../../../lib/i18n'
 import {
@@ -8,29 +8,37 @@ import {
   type MobileToolbarCommandButton,
 } from '../../../lib/mobileToolbarConfig'
 import {
-  DEFAULT_TOOLBAR_CUSTOM_COMMAND_IDS,
-  TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY,
-  TOOLBAR_FIXED_QUICK_COMMAND_ID,
-  normalizeToolbarCustomQuickCommands,
-  serializeToolbarCustomQuickCommands,
-} from '../../editor/editorToolbarSettings'
+  SELECTION_TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY,
+  SELECTION_TOOLBAR_MAX_CUSTOM_COMMANDS,
+  normalizeSelectionToolbarCustomCommands,
+  serializeSelectionToolbarCustomCommands,
+} from '../../editor/selectionToolbarSettings'
 import { useSettingsState } from '../settingsState'
 import { useQuickBarReorder } from './useQuickBarReorder'
 import ToolbarCommandGlyph from '../../../components/ToolbarCommandGlyph.vue'
 
+// The floating selection toolbar's custom command slots. Unlike the bottom
+// quick bar there is no fixed slot and no mode toggle: an EMPTY list is the
+// default, which keeps the bar the pure clipboard surface it shipped as.
+// The clipboard block itself is owned by the product state table and never
+// appears here.
 defineProps<{
   testId: string
 }>()
 
-const { getValue, hasValue, setValue } = useSettingsState()
+const { getValue, setValue } = useSettingsState()
 const { t } = useI18n()
-const quickBarScroller = ref<HTMLElement | null>(null)
-const fixedCommand = getMobileToolbarCommandButton(TOOLBAR_FIXED_QUICK_COMMAND_ID)
+const barScroller = ref<HTMLElement | null>(null)
 
 const customCommandIds = computed(() =>
-  normalizeToolbarCustomQuickCommands(getValue(TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY, '')),
+  normalizeSelectionToolbarCustomCommands(
+    getValue(SELECTION_TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY, ''),
+  ),
 )
 const selectedCommandIds = computed(() => new Set(customCommandIds.value))
+const atCapacity = computed(
+  () => customCommandIds.value.length >= SELECTION_TOOLBAR_MAX_CUSTOM_COMMANDS,
+)
 const commandGroups = computed(() =>
   MOBILE_TOOLBAR_PANELS.map(panel => ({
     id: panel.id,
@@ -48,11 +56,10 @@ function commandTestId(commandId: MobileCommandId) {
 }
 
 function setCustomCommandIds(commandIds: readonly MobileCommandId[]) {
-  setValue(TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY, serializeToolbarCustomQuickCommands(commandIds))
-}
-
-if (!hasValue(TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY)) {
-  setCustomCommandIds(DEFAULT_TOOLBAR_CUSTOM_COMMAND_IDS)
+  setValue(
+    SELECTION_TOOLBAR_CUSTOM_COMMANDS_STORAGE_KEY,
+    serializeSelectionToolbarCustomCommands(commandIds),
+  )
 }
 
 const {
@@ -66,7 +73,7 @@ const {
   onPointerCancel,
 } = useQuickBarReorder({
   commandIds: customCommandIds,
-  scrollerRef: quickBarScroller,
+  scrollerRef: barScroller,
   setCommandIds: setCustomCommandIds,
 })
 
@@ -76,41 +83,27 @@ const customCommands = computed(() =>
     .filter((command): command is MobileToolbarCommandButton => Boolean(command)),
 )
 
-async function scrollPreviewToEnd() {
-  await nextTick()
-  const scroller = quickBarScroller.value
-  if (scroller) {
-    scroller.scrollTo({ left: scroller.scrollWidth, behavior: 'smooth' })
-  }
-}
-
 function addCommand(commandId: MobileCommandId) {
-  if (selectedCommandIds.value.has(commandId)) {
+  if (selectedCommandIds.value.has(commandId) || atCapacity.value) {
     return
   }
 
   setCustomCommandIds([...customCommandIds.value, commandId])
-  scrollPreviewToEnd()
 }
 
 function removeCommand(commandId: MobileCommandId) {
-  setCustomCommandIds(customCommandIds.value.filter(selectedCommandId => selectedCommandId !== commandId))
+  setCustomCommandIds(
+    customCommandIds.value.filter(selectedCommandId => selectedCommandId !== commandId),
+  )
 }
 
-function restoreDefaultQuickBar() {
-  setCustomCommandIds(DEFAULT_TOOLBAR_CUSTOM_COMMAND_IDS)
+function clearAllCommands() {
+  setCustomCommandIds([])
   exitEditMode()
-  nextTick(() => quickBarScroller.value?.scrollTo({ left: 0, behavior: 'smooth' }))
 }
 
 function isCommandDisabled(command: MobileToolbarCommandButton) {
-  return selectedCommandIds.value.has(command.commandId)
-}
-
-function onFixedCommandPointerDown(event: PointerEvent) {
-  if (fixedCommand) {
-    onCommandPointerDown(event, fixedCommand.commandId, false)
-  }
+  return selectedCommandIds.value.has(command.commandId) || atCapacity.value
 }
 </script>
 
@@ -124,13 +117,13 @@ function onFixedCommandPointerDown(event: PointerEvent) {
     @pointercancel="onPointerCancel"
   >
     <div class="quickbar-custom-header">
-      <h3>{{ t('settings.toolbar.custom.title') }}</h3>
+      <h3>{{ t('settings.selectionToolbar.custom.title') }}</h3>
       <div class="quickbar-actions">
         <button
           v-if="editing"
           class="quickbar-done-button"
           type="button"
-          data-testid="settings-quickbar-done"
+          data-testid="settings-selectionbar-done"
           @click="exitEditMode"
         >
           {{ t('settings.toolbar.custom.done') }}
@@ -138,36 +131,32 @@ function onFixedCommandPointerDown(event: PointerEvent) {
         <button
           class="quickbar-reset-button"
           type="button"
-          data-testid="settings-quickbar-restore-default"
-          @click="restoreDefaultQuickBar"
+          data-testid="settings-selectionbar-clear"
+          @click="clearAllCommands"
         >
-          {{ t('settings.toolbar.custom.restoreDefault') }}
+          {{ t('settings.selectionToolbar.custom.clear') }}
         </button>
       </div>
     </div>
 
+    <p class="selectionbar-hint">
+      {{
+        customCommands.length === 0
+          ? t('settings.selectionToolbar.custom.empty')
+          : t('settings.selectionToolbar.custom.count', {
+            count: customCommands.length,
+            max: SELECTION_TOOLBAR_MAX_CUSTOM_COMMANDS,
+          })
+      }}
+    </p>
+
     <div
-      ref="quickBarScroller"
+      ref="barScroller"
       class="quickbar-preview"
       role="group"
       :aria-label="t('settings.toolbar.custom.preview')"
-      data-testid="settings-quickbar-preview"
+      data-testid="settings-selectionbar-preview"
     >
-      <div v-if="fixedCommand" class="quickbar-item is-fixed">
-        <button
-          class="quickbar-slot"
-          type="button"
-          :aria-label="t('settings.toolbar.custom.fixedCommand', {
-            command: getCommandTitle(fixedCommand),
-          })"
-          data-testid="settings-quickbar-slot-fixed"
-          @contextmenu.prevent
-          @pointerdown="onFixedCommandPointerDown"
-        >
-          <ToolbarCommandGlyph :command="fixedCommand" />
-        </button>
-      </div>
-
       <div
         v-for="(command, index) in customCommands"
         :key="command.commandId"
@@ -178,13 +167,13 @@ function onFixedCommandPointerDown(event: PointerEvent) {
         }"
         :data-command-id="command.commandId"
         data-quickbar-draggable="true"
-        :data-testid="`settings-quickbar-slot-${index}`"
+        :data-testid="`settings-selectionbar-slot-${index}`"
       >
         <button
           class="quickbar-slot"
           type="button"
           :aria-label="getCommandTitle(command)"
-          :data-testid="`settings-quickbar-button-${commandTestId(command.commandId)}`"
+          :data-testid="`settings-selectionbar-button-${commandTestId(command.commandId)}`"
           @contextmenu.prevent
           @pointerdown="event => onCommandPointerDown(event, command.commandId, true)"
         >
@@ -197,7 +186,7 @@ function onFixedCommandPointerDown(event: PointerEvent) {
           :aria-label="t('settings.toolbar.custom.removeCommand', {
             command: getCommandTitle(command),
           })"
-          :data-testid="`settings-quickbar-remove-${commandTestId(command.commandId)}`"
+          :data-testid="`settings-selectionbar-remove-${commandTestId(command.commandId)}`"
           @pointerdown.stop
           @click.stop="removeCommand(command.commandId)"
         >
@@ -211,7 +200,7 @@ function onFixedCommandPointerDown(event: PointerEvent) {
         v-for="group in commandGroups"
         :key="group.id"
         class="quickbar-command-group"
-        :data-testid="`settings-quickbar-group-${group.id}`"
+        :data-testid="`settings-selectionbar-group-${group.id}`"
       >
         <h4>{{ t(group.labelKey) }}</h4>
         <div class="quickbar-command-grid">
@@ -226,7 +215,7 @@ function onFixedCommandPointerDown(event: PointerEvent) {
             :aria-label="t('settings.toolbar.custom.addCommand', {
               command: getCommandTitle(command),
             })"
-            :data-testid="`settings-quickbar-command-${commandTestId(command.commandId)}`"
+            :data-testid="`settings-selectionbar-command-${commandTestId(command.commandId)}`"
             @click="addCommand(command.commandId)"
           >
             <ToolbarCommandGlyph :command="command" />
@@ -238,3 +227,12 @@ function onFixedCommandPointerDown(event: PointerEvent) {
 </template>
 
 <style scoped src="./quickbarSettings.css"></style>
+
+<style scoped>
+.selectionbar-hint {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+</style>

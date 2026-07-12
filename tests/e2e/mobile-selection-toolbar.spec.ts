@@ -464,3 +464,186 @@ test('toolbar stays hidden for the empty-document placeholder selection', async 
   await page.waitForTimeout(400)
   await expect(page.getByTestId('mobile-selection-toolbar')).toBeHidden()
 })
+
+// ---- customizable selection toolbar ----
+
+async function openDraftWithSelectionToolbar(
+  page: Page,
+  settings: { commands: string; rows?: string },
+) {
+  const now = '2026-07-01T09:00:00.000Z'
+  await page.goto('/')
+  await page.evaluate(([stamp, commands, rows]) => {
+    localStorage.clear()
+    localStorage.setItem(
+      'marktext-for-android:drafts',
+      JSON.stringify([
+        {
+          id: 'chain-probe-draft',
+          markdown:
+            '# Chain Probe\n\nAlpha bravo charlie delta echo\n\nSecond paragraph tail\n',
+          updatedAt: stamp,
+          lastSavedAt: stamp,
+        },
+      ]),
+    )
+    localStorage.setItem(
+      'marktext-for-android:settings-ui',
+      JSON.stringify({
+        selectionToolbarCustomCommands: commands,
+        ...(rows ? { selectionToolbarRows: rows } : {}),
+      }),
+    )
+  }, [now, settings.commands, settings.rows ?? ''] as const)
+  await page.reload()
+  await page.getByRole('button', { name: /Chain Probe/ }).click()
+  await expectEditorReady(page)
+}
+
+test('custom selection commands format the selection and keep it for chaining', async ({
+  page,
+}) => {
+  await openDraftWithSelectionToolbar(page, { commands: 'format.strong,format.emphasis' })
+
+  await selectParagraph(page, 'Alpha bravo')
+  const toolbar = page.getByTestId('mobile-selection-toolbar')
+  await expect(toolbar).toBeVisible()
+
+  // Single-row default: the clipboard segment ends in the pager arrow, and
+  // the custom page replaces the whole row.
+  await expect(toolbar.getByTestId('selection-command-copy')).toBeVisible()
+  await toolbar.getByTestId('selection-page-next').click()
+  await expect(toolbar.getByTestId('selection-command-copy')).toBeHidden()
+  await toolbar.getByTestId('selection-custom-format.strong').click()
+
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? ''))
+    .toContain('**Alpha bravo charlie delta echo**')
+
+  // The selection survives for chaining and the toolbar stays up.
+  await expect
+    .poll(() => page.evaluate(() => document.getSelection()?.toString() ?? ''))
+    .toContain('Alpha bravo')
+  await expect(toolbar).toBeVisible()
+})
+
+test('custom pages never drop a command and the back arrow returns to the clipboard', async ({
+  page,
+}) => {
+  const commandIds = [
+    'format.strong',
+    'format.emphasis',
+    'format.underline',
+    'format.strike',
+    'format.highlight',
+    'format.clear-format',
+  ]
+  await openDraftWithSelectionToolbar(page, { commands: commandIds.join(',') })
+
+  await selectParagraph(page, 'Alpha bravo')
+  const toolbar = page.getByTestId('mobile-selection-toolbar')
+  await expect(toolbar).toBeVisible()
+
+  // Walk forward through every page, collecting the rendered commands. Pages
+  // hold disjoint command slices, so the old page's first command going
+  // hidden is the deterministic "page flipped" signal.
+  const seen = new Set<string>()
+  await toolbar.getByTestId('selection-page-next').click()
+  for (let guard = 0; guard < 6; guard += 1) {
+    await expect(
+      toolbar.locator('button[data-testid^="selection-custom-"]').first(),
+    ).toBeVisible()
+    const visible = await toolbar
+      .locator('button[data-testid^="selection-custom-"]')
+      .evaluateAll(buttons =>
+        buttons.map(button => button.getAttribute('data-command-id') ?? ''),
+      )
+    visible.forEach(id => seen.add(id))
+    const next = toolbar.getByTestId('selection-page-next')
+    if ((await next.count()) === 0 || (await next.isDisabled())) {
+      break
+    }
+    await next.click()
+    await expect(toolbar.getByTestId(`selection-custom-${visible[0]}`)).toBeHidden()
+  }
+  expect([...seen].sort()).toEqual([...commandIds].sort())
+
+  // Walk back to the clipboard segment.
+  for (let guard = 0; guard < 6; guard += 1) {
+    const prev = toolbar.getByTestId('selection-page-prev')
+    if ((await prev.count()) === 0) {
+      break
+    }
+    await prev.click()
+  }
+  await expect(toolbar.getByTestId('selection-command-copy')).toBeVisible()
+})
+
+test('the two-row layout pins the clipboard row above the custom row', async ({ page }) => {
+  await openDraftWithSelectionToolbar(page, {
+    commands: 'format.strong,format.emphasis,format.underline',
+    rows: '2',
+  })
+
+  await selectParagraph(page, 'Alpha bravo')
+  const toolbar = page.getByTestId('mobile-selection-toolbar')
+  await expect(toolbar).toBeVisible()
+
+  // Both rows render at once; three commands fit one page, so no pager.
+  await expect(toolbar.getByTestId('selection-command-copy')).toBeVisible()
+  await expect(toolbar.getByTestId('selection-custom-format.strong')).toBeVisible()
+  await expect(toolbar.getByTestId('selection-page-next')).toHaveCount(0)
+})
+
+test('caret and read-only rows never grow custom commands', async ({ page }) => {
+  await openDraftWithSelectionToolbar(page, { commands: 'format.strong,format.emphasis' })
+  await page.evaluate(() => navigator.clipboard.writeText('caret payload'))
+
+  await longPressParagraph(page, 'Alpha bravo')
+  const toolbar = page.getByTestId('mobile-selection-toolbar')
+  await expect(toolbar).toBeVisible()
+
+  // The caret rows of the state table are untouched by customization.
+  await expect.poll(() => toolbarCommandIds(page)).toEqual(['paste', 'selectAll'])
+  await expect(toolbar.getByTestId('selection-page-next')).toHaveCount(0)
+  await expect(toolbar.locator('button[data-testid^="selection-custom-"]')).toHaveCount(0)
+})
+
+test('the selection toolbar settings page configures the bar end to end', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+
+  await page.getByTestId('bottom-nav-settings').click()
+  await page.getByTestId('settings-entry-selection-toolbar').click()
+  await page.getByTestId('settings-selectionbar-command-format-strong').click()
+  await page.getByTestId('settings-selectionbar-command-format-emphasis').click()
+  await page.getByTestId('settings-selection-toolbar-rows-option-2').click()
+
+  const stored = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('marktext-for-android:settings-ui') ?? '{}') as Record<
+      string,
+      unknown
+    >,
+  )
+  expect(stored).toMatchObject({
+    selectionToolbarCustomCommands: 'format.strong,format.emphasis',
+    selectionToolbarRows: '2',
+  })
+
+  await page.getByTestId('settings-detail-back').click()
+  await page.getByTestId('bottom-nav-documents').click()
+  await page.getByTestId('new-document-button').click()
+  await expectEditorReady(page)
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('configure then format')
+  await selectParagraph(page, 'configure then format')
+
+  const toolbar = page.getByTestId('mobile-selection-toolbar')
+  await expect(toolbar).toBeVisible()
+  await expect(toolbar.getByTestId('selection-custom-format.strong')).toBeVisible()
+  await toolbar.getByTestId('selection-custom-format.strong').click()
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? ''))
+    .toContain('**configure then format**')
+})

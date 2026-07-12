@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  chunkSelectionCommands,
+  computeSelectionToolbarPageCapacity,
   computeSelectionToolbarPlacement,
   getSelectionToolbarCommands,
   shouldShowSelectionToolbar,
@@ -250,5 +252,28 @@ describe('selection toolbar placement', () => {
 
     expect(placed.placement).toBe('above')
     expect(placed.top).toBe(8)
+  })
+})
+
+describe('custom command paging', () => {
+  it('derives page capacity from the viewport width budget', () => {
+    // 393dp phone: budget = min(393*0.85, 393-16) = 334.05 -> (334.05-10)/47
+    expect(computeSelectionToolbarPageCapacity(393)).toBe(6)
+    // Tablet width fits far more per page.
+    expect(computeSelectionToolbarPageCapacity(800)).toBeGreaterThanOrEqual(13)
+    // Absurdly narrow viewports still render at least one slot.
+    expect(computeSelectionToolbarPageCapacity(60)).toBe(1)
+  })
+
+  it('chunks commands into pages without ever dropping one', () => {
+    const commands = ['a', 'b', 'c', 'd', 'e']
+
+    expect(chunkSelectionCommands(commands, 2)).toEqual([['a', 'b'], ['c', 'd'], ['e']])
+    expect(chunkSelectionCommands(commands, 5)).toEqual([commands])
+    expect(chunkSelectionCommands(commands, 9)).toEqual([commands])
+    expect(chunkSelectionCommands([], 3)).toEqual([])
+    // A degenerate per-page value still pages one-by-one instead of looping.
+    expect(chunkSelectionCommands(commands, 0)).toHaveLength(5)
+    expect(chunkSelectionCommands(commands, 2).flat()).toEqual(commands)
   })
 })
