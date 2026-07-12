@@ -183,6 +183,14 @@ code.mu-inline-rule {
 
     display: inline-block;
 
+    /* Anchor the whole inline-math box to the paragraph's ACTUAL text
+       measure. The render child is sized inside a shrink-to-fit
+       inline-block, where its own percentage max-width cannot resolve —
+       capping the parent against the paragraph (a definite containing
+       block) is what keeps a long formula scrolling inside itself instead
+       of widening the editor on narrow viewports. */
+    max-width: 100%;
+
     color: var(--editor-color);
     font-family: monospace;
     vertical-align: middle;
@@ -208,9 +216,12 @@ code.mu-inline-rule {
 }
 
 /* A long inline-math formula must scroll horizontally (in the editing popup and
-   inline when hidden) instead of overflowing the editor area. */
+   inline when hidden) instead of overflowing the editor area. The limit is the
+   ACTUAL containing block (the paragraph's text measure, or the popup body) —
+   not the configured --editor-area-width, which is only the column's maximum
+   and far exceeds the real measure on narrow viewports. */
 .mu-math > .mu-math-render {
-    max-width: calc(var(--editor-area-width, 800px) - 100px);
+    max-width: 100%;
     overflow: auto hidden;
 
     scrollbar-width: thin;
@@ -456,6 +467,10 @@ blockquote .mu-hide.mu-math > .mu-math-render {
 
 .mu-inline-image.mu-image-loading {
     width: 400px;
+
+    /* Never wider than the editing column — a fixed 400px placeholder
+       overflows a phone-width canvas. */
+    max-width: 100%;
     height: 250px;
     margin: 0 auto;
 

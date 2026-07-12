@@ -215,7 +215,11 @@ export function resolveEditorFontFamily(fontFamily: EditorFontFamily) {
 
 export function resolveEditorLineWidthStyleValue(editorLineWidth: string) {
   const normalized = normalizeEditorLineWidth(editorLineWidth)
-  return normalized ? `calc(100px + ${normalized})` : undefined
+  // The user's value is the TEXT measure; .mu-container is border-box with
+  // var(--editor-gutter) horizontal padding, so both gutters are added on
+  // top. Deriving from the same variable keeps the measure true at every
+  // breakpoint (50px gutters on wide screens, 16px on phones).
+  return normalized ? `calc(2 * var(--editor-gutter, 50px) + ${normalized})` : undefined
 }
 
 export function getEditorStyleVars(settings: AppearanceTextSettings) {
