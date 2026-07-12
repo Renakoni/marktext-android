@@ -271,9 +271,10 @@ let lastContentLogAt = 0
 let appLifecycleListeners: AppLifecycleListeners | null = null
 let pendingInlineInsertRange: Range | null = null
 let pendingTableInsertRange: Range | null = null
-// The editor instance the table sheet was opened for: a warm open-with or
-// share intent can replace the editor under the open sheet, and a confirm
-// must never act on the successor document.
+// The editor instance each sheet was opened for: a warm open-with or share
+// intent can replace the editor under an open sheet, and a confirm must
+// never act on the successor document.
+let pendingLinkInsertEditor: unknown = null
 let pendingTableInsertEditor: unknown = null
 let startupActionTimer: number | null = null
 let systemColorSchemeCleanup: (() => void) | null = null
@@ -721,7 +722,8 @@ async function openEditor(markdown: string) {
   resetSelectionToolbarLongPress()
   resetEditorSearchForNewDocument()
   resetEditorOutlineForNewDocument()
-  // The sheet and its pending range belong to the outgoing document.
+  // The sheets and their pending ranges belong to the outgoing document.
+  closeLinkSheet()
   closeTableSheet()
   await openEditorSessionDocument(markdown)
   void startResumeForOpenedDocument()
@@ -864,7 +866,11 @@ function openLinkSheet(restoreRange: Range | null = null) {
     return
   }
 
+  // Same policy as the outline and table sheets: never stack on the search
+  // overlay; no cursor restore — that would reopen the keyboard.
+  closeEditorSearch({ restoreCursor: false })
   pendingInlineInsertRange = capturedRange
+  pendingLinkInsertEditor = getEditor()
   closeEditorOutline()
   standDownResume('link sheet opened')
   endSelectionCaretSession('link sheet opened')
@@ -877,10 +883,18 @@ function openLinkSheet(restoreRange: Range | null = null) {
 function closeLinkSheet() {
   resetEditorLinkSheet()
   pendingInlineInsertRange = null
+  pendingLinkInsertEditor = null
 }
 
 function insertLinkFromSheet() {
-  const beforeMarkdown = getEditor()?.getMarkdown() ?? ''
+  const activeEditor = getEditor()
+  if (!activeEditor || activeEditor !== pendingLinkInsertEditor) {
+    editorLog.warn('mobile link insert dropped: the editor was replaced under the sheet')
+    closeLinkSheet()
+    return
+  }
+
+  const beforeMarkdown = activeEditor.getMarkdown() ?? ''
   const result = insertLinkFromSheetWorkflow({
     hasEditor: hasEditor(),
     linkText: linkText.value,

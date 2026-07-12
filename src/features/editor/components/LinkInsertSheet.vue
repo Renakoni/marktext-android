@@ -15,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const linkUrlInput = ref<HTMLInputElement | null>(null)
+const panel = ref<HTMLElement | null>(null)
 const { t } = useI18n()
 const canInsert = computed(() => props.url.trim().length > 0)
 const textValue = computed({
@@ -31,6 +32,43 @@ onMounted(() => {
     linkUrlInput.value?.focus()
   })
 })
+
+// Keyboard containment relies on this Tab trap ALONE (aria-modal does not
+// contain focus). Unlike the outline and table sheets, the background must
+// NOT be inert here: the confirm inserts through focus + execCommand into
+// the still-mounted editor, and an inert editor refuses focus, which turns
+// every insert into a silent failure.
+function trapTabKey(event: KeyboardEvent) {
+  const root = panel.value
+  if (!root) {
+    return
+  }
+
+  const focusables = Array.from(
+    root.querySelectorAll<HTMLElement>('input:not(:disabled), button:not(:disabled)'),
+  )
+  if (focusables.length === 0) {
+    event.preventDefault()
+    return
+  }
+
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  const active = document.activeElement
+
+  if (event.shiftKey) {
+    if (active === first || active === root) {
+      event.preventDefault()
+      last.focus()
+    }
+    return
+  }
+
+  if (active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
 </script>
 
 <template>
@@ -41,8 +79,13 @@ onMounted(() => {
     aria-labelledby="link-sheet-title"
     data-testid="link-insert-sheet"
     @keydown.esc="emit('cancel')"
+    @keydown.tab="trapTabKey"
   >
-    <form class="draft-save-panel link-insert-panel" @submit.prevent="emit('insert')">
+    <form
+      ref="panel"
+      class="draft-save-panel link-insert-panel"
+      @submit.prevent="emit('insert')"
+    >
       <h2 id="link-sheet-title">{{ t('editor.link.title') }}</h2>
       <label class="link-field">
         <span>{{ t('editor.link.text') }}</span>
