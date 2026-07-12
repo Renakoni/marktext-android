@@ -29,6 +29,9 @@ export type EditorToolbarCommandWorkflowResult =
       kind: 'open-link-sheet'
     }
   | {
+      kind: 'open-table-sheet'
+    }
+  | {
       kind: 'insert-image'
     }
   | {
@@ -77,6 +80,14 @@ export function runEditorToolbarCommandWorkflow({
 
   if (commandId === MOBILE_COMMANDS.FORMAT_IMAGE) {
     return { kind: 'insert-image' }
+  }
+
+  // Table cannot go through `updateParagraph('table')`: that path emits
+  // Muya's `muya-table-picker` event, whose only subscriber (the desktop
+  // hover chessboard) is not registered on Android, so it is a silent no-op.
+  // The size sheet drives `muya.createTable` directly instead.
+  if (commandId === MOBILE_COMMANDS.PARAGRAPH_TABLE) {
+    return { kind: 'open-table-sheet' }
   }
 
   try {
@@ -173,6 +184,115 @@ export function insertLinkFromSheetWorkflow({
 
   return {
     kind: 'inserted',
+    beforeMarkdown,
+  }
+}
+
+// Structure is immutable after insertion on Android (the desktop table
+// row/column editing plugins are hover UIs and are not registered), so the
+// size chosen in the sheet is final. Defaults match the Google Docs mobile
+// insert dialog; the row minimum is the GFM header plus one body row, and
+// the column maximum keeps cells usable on a phone-width measure.
+export const TABLE_SHEET_DEFAULT_SIZE = { rows: 3, columns: 3 } as const
+
+export const TABLE_SHEET_LIMITS = {
+  rows: { min: 2, max: 20 },
+  columns: { min: 1, max: 8 },
+} as const
+
+export function clampTableSheetDimension(kind: 'rows' | 'columns', value: number) {
+  const { min, max } = TABLE_SHEET_LIMITS[kind]
+  if (!Number.isFinite(value)) {
+    return TABLE_SHEET_DEFAULT_SIZE[kind]
+  }
+
+  return Math.min(max, Math.max(min, Math.floor(value)))
+}
+
+export type TableInsertSheetWorkflowResult =
+  | {
+      kind: 'not-ready'
+    }
+  | {
+      kind: 'open'
+      rows: number
+      columns: number
+    }
+
+export function createTableInsertSheetWorkflow({
+  editorReady,
+  hasEditor,
+}: {
+  editorReady: boolean
+  hasEditor: boolean
+}): TableInsertSheetWorkflowResult {
+  if (!editorReady || !hasEditor) {
+    return { kind: 'not-ready' }
+  }
+
+  return {
+    kind: 'open',
+    rows: TABLE_SHEET_DEFAULT_SIZE.rows,
+    columns: TABLE_SHEET_DEFAULT_SIZE.columns,
+  }
+}
+
+export type InsertTableFromSheetWorkflowResult =
+  | {
+      kind: 'not-ready'
+    }
+  | {
+      kind: 'insert-failed'
+      error?: unknown
+    }
+  | {
+      kind: 'inserted'
+      rows: number
+      columns: number
+      beforeMarkdown: string
+    }
+
+export function insertTableFromSheetWorkflow({
+  hasEditor,
+  rows,
+  columns,
+  beforeMarkdown,
+  restoreInsertionPoint,
+  createTable,
+  logger,
+}: {
+  hasEditor: boolean
+  rows: number
+  columns: number
+  beforeMarkdown: string
+  restoreInsertionPoint: () => boolean
+  createTable: (dimensions: { rows: number; columns: number }) => void
+  logger?: WorkflowLogger
+}): InsertTableFromSheetWorkflowResult {
+  if (!hasEditor) {
+    return { kind: 'not-ready' }
+  }
+
+  const safeRows = clampTableSheetDimension('rows', rows)
+  const safeColumns = clampTableSheetDimension('columns', columns)
+
+  try {
+    // Best-effort: when the captured range cannot be restored (edited away,
+    // detached document), Muya's cached selection still anchors the insert.
+    if (!restoreInsertionPoint()) {
+      logger?.warn('mobile table insert falls back to the cached editor selection')
+    }
+
+    createTable({ rows: safeRows, columns: safeColumns })
+  } catch (error) {
+    logger?.error('mobile table insert failed', { rows: safeRows, columns: safeColumns, error })
+    return { kind: 'insert-failed', error }
+  }
+
+  return {
+    kind: 'inserted',
+    rows: safeRows,
+    columns: safeColumns,
     beforeMarkdown,
   }
 }

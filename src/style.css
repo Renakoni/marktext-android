@@ -1304,6 +1304,64 @@ body {
   outline-offset: 1px;
 }
 
+.table-insert-panel {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 14px;
+}
+
+.table-size-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.table-size-field > span {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.table-size-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.table-step-button {
+  width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+  transition: background-color var(--dur-standard) var(--ease-out);
+}
+
+.table-step-button:active:not(:disabled) {
+  background: var(--press);
+}
+
+.table-step-button:disabled {
+  color: var(--text-muted);
+  opacity: 0.45;
+}
+
+.table-size-value {
+  min-width: 44px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Decision rows: quiet full-width text actions separated by hairlines,
    not a stack of filled pills. */
 .draft-save-actions {

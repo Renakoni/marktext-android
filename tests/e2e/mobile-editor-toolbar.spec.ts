@@ -430,15 +430,11 @@ test('inserts a fenced code block from the paragraph panel', async ({ page }) =>
   await expect.poll(() => getDraftStorage(page)).toContain('```js\\nconst fenced = true\\n```')
 })
 
-// PRODUCT GAP, documented during the coverage audit and tracked separately:
-// the Table command routes to Muya's `muya-table-picker` event, whose only
-// subscriber is the TableChessboard hover-grid UI plugin — deliberately not
-// registered on Android (editorRuntime.ts). The toolbar button is therefore
-// a silent no-op today: no table block is created on an empty or non-empty
-// paragraph and the Markdown is unchanged (verified against the live DOM).
-// This fixme pins the INTENDED behavior so it activates once an
-// Android-appropriate table insertion path exists.
-test.fixme('inserts a table from the insert panel', async ({ page }) => {
+// The Table command opens the size sheet (steppers, default 3×3) and inserts
+// through `muya.createTable`. It must not route to `updateParagraph('table')`:
+// that Muya path emits `muya-table-picker`, whose only subscriber is the
+// desktop hover-grid chessboard, deliberately not registered on Android.
+test('inserts a table from the insert panel through the size sheet', async ({ page }) => {
   await newBlankDocument(page)
 
   await page.getByTestId('editor-host').click()
@@ -447,8 +443,162 @@ test.fixme('inserts a table from the insert panel', async ({ page }) => {
   await page.getByTestId('toolbar-command-paragraph.table').scrollIntoViewIfNeeded()
   await page.getByTestId('toolbar-command-paragraph.table').click()
 
+  const sheet = page.getByTestId('table-insert-sheet')
+  await expect(sheet).toBeVisible()
+  await expect(page.getByTestId('table-rows-value')).toHaveText('3')
+  await expect(page.getByTestId('table-columns-value')).toHaveText('3')
+  await page.getByTestId('table-insert-button').click()
+
+  await expect(sheet).toBeHidden()
+  const table = page.getByTestId('editor-host').locator('figure.mu-table')
+  await expect(table).toHaveCount(1)
+  await expect(table.locator('tr')).toHaveCount(3)
+  await expect(table.locator('tr').first().locator('th, td')).toHaveCount(3)
+  // The typed paragraph survives above the inserted table.
+  await expect.poll(() => getStoredDraftMarkdown(page)).toMatch(
+    /above the table[\s\S]*\|.*\|\n\| ?-+/,
+  )
+})
+
+test('the table sheet steppers choose a custom size within the mobile limits', async ({
+  page,
+}) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+  await expect(page.getByTestId('table-insert-sheet')).toBeVisible()
+
+  await page.getByTestId('table-rows-increment').click()
+  await page.getByTestId('table-columns-decrement').click()
+  await page.getByTestId('table-columns-decrement').click()
+  await expect(page.getByTestId('table-rows-value')).toHaveText('4')
+  await expect(page.getByTestId('table-columns-value')).toHaveText('1')
+  // The column minimum is 1: the decrement control disables at the bound.
+  await expect(page.getByTestId('table-columns-decrement')).toBeDisabled()
+
+  await page.getByTestId('table-insert-button').click()
+
+  const table = page.getByTestId('editor-host').locator('figure.mu-table')
+  await expect(table).toHaveCount(1)
+  await expect(table.locator('tr')).toHaveCount(4)
+  await expect(table.locator('tr').first().locator('th, td')).toHaveCount(1)
+})
+
+test('the table lands at the toolbar-cached selection, not a later moved caret', async ({
+  page,
+}) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('First paragraph selected')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Second paragraph fallback')
+
+  // The toolbar caches this non-collapsed pre-tap selection...
+  await selectTextInFirstParagraph(page, 'First paragraph selected')
+
+  // ...then an Android toolbar interaction may move the LIVE caret before
+  // the command handler runs — simulate it collapsing into the second
+  // paragraph. A collapsed selection never overwrites the toolbar cache,
+  // and the cached range must win over the moved live caret.
+  await page.evaluate(() => {
+    const second = Array.from(
+      document.querySelectorAll('[data-testid="editor-host"] .mu-editor p'),
+    ).find(node => node.textContent?.includes('Second paragraph fallback'))!
+    const walker = document.createTreeWalker(second, NodeFilter.SHOW_TEXT)
+    const text = walker.nextNode() as Text
+    const range = document.createRange()
+    range.setStart(text, text.length)
+    range.collapse(true)
+    const selection = document.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+  })
+
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+  await expect(page.getByTestId('table-insert-sheet')).toBeVisible()
+  await page.getByTestId('table-insert-button').click()
+
+  // Document order: first paragraph, TABLE, second paragraph.
   await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(1)
-  await expect.poll(() => getStoredDraftMarkdown(page)).toMatch(/\|.*\|\n\| ?-+/)
+  await expect.poll(() => getStoredDraftMarkdown(page)).toMatch(
+    /First paragraph selected[\s\S]*\|[\s\S]*Second paragraph fallback/,
+  )
+})
+
+test('opening the table sheet closes the in-document search overlay', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('searchable content')
+  await page.getByTestId('search-open-button').click()
+  await expect(page.getByTestId('editor-search-bar')).toBeVisible()
+
+  // The bottom toolbar stays reachable under the search overlay; the modal
+  // sheet must not silently stack on top of an active search session.
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+
+  await expect(page.getByTestId('table-insert-sheet')).toBeVisible()
+  await expect(page.getByTestId('editor-search-bar')).toBeHidden()
+})
+
+test('the table sheet contains keyboard focus and rescues it on cancel', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+  await expect(page.getByTestId('table-insert-sheet')).toBeVisible()
+
+  const activeTestId = () =>
+    page.evaluate(
+      () =>
+        document.activeElement?.getAttribute('data-testid') ??
+        document.activeElement?.tagName ??
+        'none',
+    )
+
+  // Initial focus leads to the ready-to-confirm Insert action.
+  await expect.poll(activeTestId).toBe('table-insert-button')
+
+  // Forward Tab reaches Cancel, then WRAPS to the first stepper control
+  // instead of escaping through the scrim into the app chrome.
+  await page.keyboard.press('Tab')
+  await expect.poll(activeTestId).toBe('table-cancel-button')
+  await page.keyboard.press('Tab')
+  await expect.poll(activeTestId).toBe('table-rows-decrement')
+
+  // Shift+Tab from the first control wraps back to the last.
+  await page.keyboard.press('Shift+Tab')
+  await expect.poll(activeTestId).toBe('table-cancel-button')
+
+  // Closing without inserting must not leave focus dangling on <body>.
+  await page.getByTestId('table-cancel-button').click()
+  await expect(page.getByTestId('table-insert-sheet')).toBeHidden()
+  await expect.poll(activeTestId).toBe('toolbar-expand-button')
+})
+
+test('cancelling the table sheet inserts nothing and keeps the document intact', async ({
+  page,
+}) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('untouched paragraph')
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+  await expect(page.getByTestId('table-insert-sheet')).toBeVisible()
+
+  await page.getByTestId('table-cancel-button').click()
+
+  await expect(page.getByTestId('table-insert-sheet')).toBeHidden()
+  await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(0)
+  await expect(page.getByTestId('editor-host')).toContainText('untouched paragraph')
+  await expect.poll(() => getStoredDraftMarkdown(page)).not.toContain('|')
 })
 
 test('inserts a horizontal rule from the insert panel', async ({ page }) => {

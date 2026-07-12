@@ -81,7 +81,6 @@ describe('mobileCommands', () => {
       [MOBILE_COMMANDS.PARAGRAPH_CODE_FENCE, 'pre'],
       [MOBILE_COMMANDS.PARAGRAPH_MATH_FORMULA, 'mathblock'],
       [MOBILE_COMMANDS.PARAGRAPH_HTML_BLOCK, 'html'],
-      [MOBILE_COMMANDS.PARAGRAPH_TABLE, 'table'],
       [MOBILE_COMMANDS.PARAGRAPH_HORIZONTAL_LINE, 'hr'],
       [MOBILE_COMMANDS.PARAGRAPH_FRONT_MATTER, 'front-matter'],
     ] as const
@@ -93,6 +92,17 @@ describe('mobileCommands', () => {
       expect(result.handled).toBe(true)
       expect(calls).toEqual([`paragraph:${action}`])
     }
+  })
+
+  it('refuses the table command instead of feeding the Android no-op Muya path', () => {
+    // `updateParagraph('table')` only emits `muya-table-picker`, which has no
+    // subscriber on Android; the table sheet owns insertion instead. This
+    // must surface as not-handled, never as a silent success.
+    const { editor, calls } = createEditorTarget()
+    const result = runMobileEditorCommand(editor, MOBILE_COMMANDS.PARAGRAPH_TABLE)
+
+    expect(result.handled).toBe(false)
+    expect(calls).toEqual([])
   })
 
   it('reports unsupported editor adapters without crashing command dispatch', () => {
@@ -107,6 +117,9 @@ describe('mobileCommands', () => {
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.FORMAT_STRONG)).toBe(true)
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.FORMAT_HYPERLINK)).toBe(true)
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.PARAGRAPH_HEADING_1)).toBe(true)
+    // Table lost its PARAGRAPH_ACTIONS entry (Android no-op path) but its
+    // size sheet must still receive the toolbar's cached pre-tap selection.
+    expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.PARAGRAPH_TABLE)).toBe(true)
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.EDIT_UNDO)).toBe(false)
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.EDIT_REDO)).toBe(false)
     expect(isSelectionDependentMobileCommand(MOBILE_COMMANDS.FILE_OPEN)).toBe(false)

@@ -16,6 +16,7 @@ const baseBackState: AppBackButtonState = {
   androidExitPromptOpen: false,
   draftExitPromptOpen: false,
   linkSheetOpen: false,
+  tableSheetOpen: false,
   editorMenuOpen: false,
   editorOutlineOpen: false,
   editorSearchOpen: false,
@@ -81,9 +82,18 @@ describe('appExitDecisions', () => {
       ...baseBackState,
       currentScreen: 'editor',
       linkSheetOpen: true,
+      tableSheetOpen: true,
       editorMenuOpen: true,
       editorToolbarExpanded: true,
     })).toBe('close-link-sheet')
+
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'editor',
+      tableSheetOpen: true,
+      editorMenuOpen: true,
+      editorToolbarExpanded: true,
+    })).toBe('close-table-sheet')
 
     expect(getAppBackButtonAction({
       ...baseBackState,

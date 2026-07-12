@@ -332,6 +332,52 @@ test('preserves an active local draft before opening a warm Android share', asyn
   expect(drafts).toContain('Warm Share')
 })
 
+test('a warm Android share closes an open table sheet and never touches the new document', async ({
+  page,
+}) => {
+  await installAndroidShareAppMock(page)
+  await page.addInitScript(() => localStorage.clear())
+  await page.goto('/')
+  await page.waitForFunction(() => {
+    const win = window as unknown as MockCapacitorWindow
+    return (win.__androidDocumentListenerCount?.('shareDocument') ?? 0) > 0
+  })
+
+  await page.getByTestId('new-document-button').click()
+  await expectEditorReady(page)
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('document A body')
+
+  await page.getByTestId('toolbar-expand-button').click()
+  await page.getByTestId('toolbar-group-switcher').click()
+  await page.getByTestId('toolbar-section-option-insert').click()
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+  await expect(page.getByTestId('table-insert-sheet')).toBeVisible()
+
+  await page.evaluate(() => {
+    const win = window as unknown as MockCapacitorWindow
+    win.__emitAndroidShareDocument?.({
+      document: {
+        sourceUri: null,
+        displayName: 'Warm Share.md',
+        providerName: 'Android share',
+        pathHint: 'Warm Share.md',
+        mimeType: 'text/plain',
+        markdown: '# Warm Share\n\nreplaced under the sheet',
+        canWrite: false,
+        persisted: false,
+        shareKind: 'text',
+      },
+    })
+  })
+
+  await expect(page.getByTestId('editor-host')).toContainText('replaced under the sheet')
+  // The sheet was opened for document A: it must not survive the editor
+  // replacement, and no stale insertion may reach the new document.
+  await expect(page.getByTestId('table-insert-sheet')).toBeHidden()
+  await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(0)
+})
+
 test('shows a safe notice when an Android share is rejected', async ({ page }) => {
   await installAndroidShareAppMock(page, {
     pendingShareEvent: {

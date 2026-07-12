@@ -68,4 +68,24 @@ describe('useEditorToolbar', () => {
     expect(toolbar.linkText.value).toBe('')
     expect(toolbar.linkUrl.value).toBe('')
   })
+
+  it('opens and clears table sheet state without leaking stale values', () => {
+    const toolbar = useEditorToolbar()
+
+    toolbar.toggleEditorMenu()
+    toolbar.openTableSheet({ rows: 3, columns: 3 })
+
+    expect(toolbar.editorMenuOpen.value).toBe(false)
+    expect(toolbar.editorToolbarExpanded.value).toBe(false)
+    expect(toolbar.tableSheetOpen.value).toBe(true)
+    expect(toolbar.tableRows.value).toBe(3)
+    expect(toolbar.tableColumns.value).toBe(3)
+
+    toolbar.tableRows.value = 5
+    toolbar.closeTableSheet()
+
+    expect(toolbar.tableSheetOpen.value).toBe(false)
+    expect(toolbar.tableRows.value).toBe(0)
+    expect(toolbar.tableColumns.value).toBe(0)
+  })
 })

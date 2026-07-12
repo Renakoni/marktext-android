@@ -6,6 +6,7 @@ import type { OutlineItem } from './documentOutline'
 import EditorActionSheet from './components/EditorActionSheet.vue'
 import OutlineSheet from './components/OutlineSheet.vue'
 import LinkInsertSheet from './components/LinkInsertSheet.vue'
+import TableInsertSheet from './components/TableInsertSheet.vue'
 import LocalDraftExitPrompt from './components/LocalDraftExitPrompt.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import MobileSelectionToolbar from './components/MobileSelectionToolbar.vue'
@@ -43,6 +44,9 @@ const props = defineProps<{
   linkSheetOpen: boolean
   linkText: string
   linkUrl: string
+  tableSheetOpen: boolean
+  tableRows: number
+  tableColumns: number
   draftExitPromptOpen: boolean
   draftCanSaveToDevice: boolean
   draftCanKeepLocal: boolean
@@ -93,6 +97,10 @@ const emit = defineEmits<{
   'update:linkUrl': [value: string]
   'close-link-sheet': []
   'insert-link': []
+  'update:tableRows': [value: number]
+  'update:tableColumns': [value: number]
+  'close-table-sheet': []
+  'insert-table': []
   'save-draft-to-device': []
   'keep-local-draft': []
   'discard-local-draft': []
@@ -117,6 +125,7 @@ const selectionToolbarSuspended = computed(
     props.searchOpen ||
     props.outlineOpen ||
     props.linkSheetOpen ||
+    props.tableSheetOpen ||
     props.draftExitPromptOpen ||
     props.androidExitPromptOpen,
 )
@@ -136,6 +145,33 @@ watch(
         if (outlineButton.value?.isConnected) {
           outlineButton.value.focus({ preventScroll: true })
         }
+      })
+    }
+  },
+)
+
+// After the table sheet closes, focus must not be left dangling on <body>.
+// Only rescue a DANGLING focus: after an insert Muya moves the cursor into
+// the first cell and owns the focus — never steal it back to a button. The
+// sheet leaves through a Transition, so at this point the old controls can
+// still hold focus inside the departing dialog; that counts as dangling.
+watch(
+  () => props.tableSheetOpen,
+  (open, wasOpen) => {
+    if (!open && wasOpen) {
+      void nextTick(() => {
+        const active = document.activeElement
+        const focusSettledElsewhere =
+          active &&
+          active !== document.body &&
+          !active.closest('[data-testid="table-insert-sheet"]')
+        if (focusSettledElsewhere) {
+          return
+        }
+        editorShell.value
+          ?.closest('.app-shell')
+          ?.querySelector<HTMLElement>('[data-testid="toolbar-expand-button"]')
+          ?.focus({ preventScroll: true })
       })
     }
   },
@@ -178,7 +214,7 @@ onBeforeUnmount(() => {
       v-if="searchOpen"
       class="top-bar search-bar"
       data-testid="editor-search-bar"
-      :inert="outlineOpen"
+      :inert="outlineOpen || tableSheetOpen"
     >
       <button
         class="nav-button"
@@ -244,7 +280,7 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </header>
-    <header v-else class="top-bar" :inert="outlineOpen">
+    <header v-else class="top-bar" :inert="outlineOpen || tableSheetOpen">
       <button
         class="nav-button"
         type="button"
@@ -311,7 +347,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <section class="editor-pane" :aria-label="t('editor.markdownEditor')" :inert="outlineOpen">
+    <section class="editor-pane" :aria-label="t('editor.markdownEditor')" :inert="outlineOpen || tableSheetOpen">
       <div
         ref="editorShell"
         class="editor-host-shell"
@@ -335,7 +371,7 @@ onBeforeUnmount(() => {
     </section>
 
     <MobileSelectionToolbar
-      :inert="outlineOpen"
+      :inert="outlineOpen || tableSheetOpen"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
       :host="editorShell"
@@ -349,7 +385,7 @@ onBeforeUnmount(() => {
 
     <MobileEditorToolbar
       v-if="toolbarVisible"
-      :inert="outlineOpen"
+      :inert="outlineOpen || tableSheetOpen"
       :expanded="toolbarExpanded"
       :active-panel="toolbarPanel"
       :editor-ready="editorReady"
@@ -401,6 +437,18 @@ onBeforeUnmount(() => {
         @update:url="value => emit('update:linkUrl', value)"
         @cancel="emit('close-link-sheet')"
         @insert="emit('insert-link')"
+      />
+    </Transition>
+
+    <Transition name="editor-sheet">
+      <TableInsertSheet
+        v-if="tableSheetOpen"
+        :rows="tableRows"
+        :columns="tableColumns"
+        @update:rows="value => emit('update:tableRows', value)"
+        @update:columns="value => emit('update:tableColumns', value)"
+        @cancel="emit('close-table-sheet')"
+        @insert="emit('insert-table')"
       />
     </Transition>
 

@@ -91,6 +91,10 @@ declare module '@muyajs/core' {
     replaceContent(content: unknown[] | string, recordSelection?: unknown): boolean
     format(type: string): void
     updateParagraph(type: string): void
+    createTable(
+      dimensions: { rows: number; columns: number },
+      options?: { replace?: boolean },
+    ): void
     focus(): void
     selectAll(): void
     search(value: string, opts?: IMuyaSearchOptions): IMuyaSearchState

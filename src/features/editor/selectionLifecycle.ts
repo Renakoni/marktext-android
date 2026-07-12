@@ -37,6 +37,7 @@ export interface EditorSelectionLifecycleOptions {
 export interface EditorSelectionLifecycle {
   captureEditorSelection(): Range | null
   restoreEditorSelectionRange(activeEditor: MuyaEditor, restoreRange: Range | null): boolean
+  restoreEditorInsertionCaret(activeEditor: MuyaEditor, range: Range | null): boolean
   finishSelectionToolbarOutsideTap(caretRange: Range | null): void
   runSelectionToolbarCommand(
     commandId: SelectionToolbarCommandId,
@@ -190,6 +191,19 @@ export function createEditorSelectionLifecycle(
       options.logger.debug('selection collapse skipped', { edge, error })
       return false
     }
+  }
+
+  // Restore the insertion point captured before a sheet took the focus: a
+  // caret restores in place; an expanded selection collapses to its end so a
+  // block insert lands after the selected content instead of replacing it.
+  function restoreEditorInsertionCaret(activeEditor: MuyaEditor, range: Range | null) {
+    if (!range) {
+      return false
+    }
+
+    return range.collapsed
+      ? restoreCollapsedEditorRange(activeEditor, range)
+      : collapseEditorSelectionToRangeEdge(activeEditor, range, 'end')
   }
 
   function clearEditorSelectionIfStillExpanded(activeEditor: MuyaEditor) {
@@ -449,6 +463,7 @@ export function createEditorSelectionLifecycle(
   return {
     captureEditorSelection,
     restoreEditorSelectionRange,
+    restoreEditorInsertionCaret,
     finishSelectionToolbarOutsideTap,
     runSelectionToolbarCommand,
     setEditorSelectionMenuSuppression,

@@ -76,8 +76,10 @@ import {
 import {
   createAndroidImageInsertStart,
   createLinkInsertSheetWorkflow,
+  createTableInsertSheetWorkflow,
   insertAndroidImageWorkflow,
   insertLinkFromSheetWorkflow,
+  insertTableFromSheetWorkflow,
   normalizeToolbarSelectionText,
   runEditorToolbarCommandWorkflow,
   scheduleEditorToolbarSync,
@@ -212,6 +214,9 @@ const {
   linkSheetOpen,
   linkText,
   linkUrl,
+  tableSheetOpen,
+  tableRows,
+  tableColumns,
   importingAndroidImage,
   applyEditorToolbarSettings,
   toggleEditorMenu,
@@ -221,6 +226,8 @@ const {
   closeEditorToolbar,
   openLinkSheet: openEditorLinkSheet,
   closeLinkSheet: resetEditorLinkSheet,
+  openTableSheet: openEditorTableSheet,
+  closeTableSheet: resetEditorTableSheet,
 } = useEditorToolbar()
 const { locale, setLocale, t } = useI18n()
 const { getValue, clearSettings } = useSettingsState()
@@ -263,6 +270,11 @@ const homeDocumentText = computed<HomeDocumentText>(() => ({
 let lastContentLogAt = 0
 let appLifecycleListeners: AppLifecycleListeners | null = null
 let pendingInlineInsertRange: Range | null = null
+let pendingTableInsertRange: Range | null = null
+// The editor instance the table sheet was opened for: a warm open-with or
+// share intent can replace the editor under the open sheet, and a confirm
+// must never act on the successor document.
+let pendingTableInsertEditor: unknown = null
 let startupActionTimer: number | null = null
 let systemColorSchemeCleanup: (() => void) | null = null
 
@@ -645,6 +657,7 @@ const {
     !editorSearchOpen.value &&
     !editorOutlineOpen.value &&
     !linkSheetOpen.value &&
+    !tableSheetOpen.value &&
     !draftExitPromptOpen.value &&
     !androidExitPromptOpen.value,
   queryClipboardHasText,
@@ -708,6 +721,8 @@ async function openEditor(markdown: string) {
   resetSelectionToolbarLongPress()
   resetEditorSearchForNewDocument()
   resetEditorOutlineForNewDocument()
+  // The sheet and its pending range belong to the outgoing document.
+  closeTableSheet()
   await openEditorSessionDocument(markdown)
   void startResumeForOpenedDocument()
   // Long-press entry: Android uses the native suppressed-ActionMode signal;
@@ -813,6 +828,7 @@ function getEditorCommandTarget(): MobileEditorCommandTarget | null {
 const {
   captureEditorSelection,
   restoreEditorSelectionRange,
+  restoreEditorInsertionCaret,
   finishSelectionToolbarOutsideTap,
   runSelectionToolbarCommand,
   setEditorSelectionMenuSuppression,
@@ -879,6 +895,64 @@ function insertLinkFromSheet() {
   }
 
   closeLinkSheet()
+  syncAfterToolbarCommand(result.beforeMarkdown)
+}
+
+function openTableSheet(restoreRange: Range | null = null) {
+  const nextTableSheet = createTableInsertSheetWorkflow({
+    editorReady: editorReady.value,
+    hasEditor: hasEditor(),
+  })
+  if (nextTableSheet.kind !== 'open') {
+    return
+  }
+
+  // Same policy as the outline: never let the sheet stack on the search
+  // overlay; no cursor restore — that would reopen the keyboard.
+  closeEditorSearch({ restoreCursor: false })
+  pendingTableInsertRange = restoreRange?.cloneRange() ?? captureEditorSelection()
+  pendingTableInsertEditor = getEditor()
+  closeEditorOutline()
+  standDownResume('table sheet opened')
+  endSelectionCaretSession('table sheet opened')
+  openEditorTableSheet({
+    rows: nextTableSheet.rows,
+    columns: nextTableSheet.columns,
+  })
+}
+
+function closeTableSheet() {
+  resetEditorTableSheet()
+  pendingTableInsertRange = null
+  pendingTableInsertEditor = null
+}
+
+function insertTableFromSheet() {
+  const activeEditor = getEditor()
+  if (!activeEditor || activeEditor !== pendingTableInsertEditor) {
+    editorLog.warn('mobile table insert dropped: the editor was replaced under the sheet')
+    closeTableSheet()
+    return
+  }
+
+  const result = insertTableFromSheetWorkflow({
+    hasEditor: hasEditor(),
+    rows: tableRows.value,
+    columns: tableColumns.value,
+    beforeMarkdown: activeEditor?.getMarkdown() ?? '',
+    restoreInsertionPoint: () =>
+      activeEditor
+        ? restoreEditorInsertionCaret(activeEditor, pendingTableInsertRange)
+        : false,
+    createTable: dimensions => activeEditor?.createTable(dimensions),
+    logger: editorLog,
+  })
+
+  if (result.kind !== 'inserted') {
+    return
+  }
+
+  closeTableSheet()
   syncAfterToolbarCommand(result.beforeMarkdown)
 }
 
@@ -966,6 +1040,11 @@ function runEditorToolbarCommand(commandId: MobileCommandId, restoreRange: Range
 
   if (result.kind === 'open-link-sheet') {
     openLinkSheet(commandRange)
+    return
+  }
+
+  if (result.kind === 'open-table-sheet') {
+    openTableSheet(commandRange)
     return
   }
 
@@ -1273,6 +1352,7 @@ function closeEditorToHome() {
   androidExitPromptOpen.value = false
   closeEditorMenu()
   closeLinkSheet()
+  closeTableSheet()
   closeEditorToolbar()
   destroyEditor()
   homeTab.value = HOME_TABS.DOCUMENTS
@@ -1380,6 +1460,7 @@ async function handleAppBackButton() {
     androidExitPromptOpen: androidExitPromptOpen.value,
     draftExitPromptOpen: draftExitPromptOpen.value,
     linkSheetOpen: linkSheetOpen.value,
+    tableSheetOpen: tableSheetOpen.value,
     editorMenuOpen: editorMenuOpen.value,
     editorOutlineOpen: editorOutlineOpen.value,
     editorSearchOpen: editorSearchOpen.value,
@@ -1406,6 +1487,9 @@ async function handleAppBackButton() {
       return
     case 'close-link-sheet':
       closeLinkSheet()
+      return
+    case 'close-table-sheet':
+      closeTableSheet()
       return
     case 'close-editor-menu':
       closeEditorMenu()
@@ -1670,6 +1754,8 @@ onBeforeUnmount(() => {
     v-else
     v-model:link-text="linkText"
     v-model:link-url="linkUrl"
+    v-model:table-rows="tableRows"
+    v-model:table-columns="tableColumns"
     :document-title="displayDocumentTitle"
     :status="displayStatus"
     :editor-ready="editorReady"
@@ -1692,6 +1778,7 @@ onBeforeUnmount(() => {
     :saving-to-device="savingLocalDraftToAndroid"
     :saving-copy="savingAndroidDocumentCopy"
     :link-sheet-open="linkSheetOpen"
+    :table-sheet-open="tableSheetOpen"
     :draft-exit-prompt-open="draftExitPromptOpen"
     :draft-can-save-to-device="canSaveLocalDraftToAndroidDocument()"
     :draft-can-keep-local="canPersistLocalDrafts()"
@@ -1737,6 +1824,8 @@ onBeforeUnmount(() => {
     @set-toolbar-panel="setEditorToolbarPanel"
     @close-link-sheet="closeLinkSheet"
     @insert-link="insertLinkFromSheet"
+    @close-table-sheet="closeTableSheet"
+    @insert-table="insertTableFromSheet"
     @save-draft-to-device="saveLocalDraftToAndroidDocument({ returnHomeAfterSave: true })"
     @keep-local-draft="keepLocalDraftAndShowHome"
     @discard-local-draft="discardLocalDraftAndShowHome"
