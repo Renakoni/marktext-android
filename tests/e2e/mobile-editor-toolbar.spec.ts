@@ -742,12 +742,20 @@ test('renders the toolbar visual system: icons, letterforms, accessible names', 
     await expect(button).toHaveAttribute('aria-label', name)
   }
 
-  // Markdown panel: the script commands stay typographic symbols; the math
-  // pair uses icons whose only difference is composition (inline within a
-  // text line versus a block on its own line), not a math operation.
+  // Markdown panel: the script commands stay typographic, COMPOSED from
+  // primary-font glyphs (base x + scaled mark) instead of Unicode ²/₂ whose
+  // Android font fallback breaks baseline alignment; the math pair uses
+  // icons whose only difference is composition (inline within a text line
+  // versus a block on its own line), not a math operation.
   await selectToolbarPanel(page, 'markdown')
   await expect(page.getByTestId('toolbar-command-format.inline-math').locator('svg')).toHaveCount(1)
-  await expect(page.getByTestId('toolbar-command-format.superscript')).toHaveText('x²')
+  await expect(page.getByTestId('toolbar-command-format.superscript')).toHaveText('x2')
+  await expect(
+    page.getByTestId('toolbar-command-format.superscript').locator('.toolbar-script-mark.is-super'),
+  ).toHaveCount(1)
+  await expect(
+    page.getByTestId('toolbar-command-format.subscript').locator('.toolbar-script-mark.is-sub'),
+  ).toHaveCount(1)
   await expect(
     page.getByTestId('toolbar-command-paragraph.math-formula').locator('svg'),
   ).toHaveCount(1)
