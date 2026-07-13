@@ -276,6 +276,62 @@ export function getCustomDisplayName(displayName: string): string | undefined {
   return trimmed && !UNTITLED_NAME_REGEXP.test(trimmed) ? trimmed : undefined
 }
 
+const UNTITLED_NUMBER_REGEXP = /^Untitled-(\d+)$/
+
+/** The N of an `Untitled-N` placeholder, or null for any other name. */
+export function getUntitledNumber(displayName: string | undefined | null): number | null {
+  const match = displayName?.trim().match(UNTITLED_NUMBER_REGEXP)
+  if (!match) {
+    return null
+  }
+
+  const value = Number(match[1])
+  return Number.isInteger(value) && value >= 1 ? value : null
+}
+
+/**
+ * The next `Untitled-N` placeholder for a new draft: the lowest positive
+ * integer not already held by an existing draft. Numbers are a stable draft
+ * identity, so a freed number (a deleted draft) is refilled rather than the
+ * sequence marching on.
+ */
+export function getNextUntitledDisplayName(
+  takenDisplayNames: Iterable<string | undefined | null>,
+): string {
+  const taken = new Set<number>()
+  for (const name of takenDisplayNames) {
+    const number = getUntitledNumber(name)
+    if (number !== null) {
+      taken.add(number)
+    }
+  }
+
+  let next = 1
+  while (taken.has(next)) {
+    next += 1
+  }
+
+  return `Untitled-${next}`
+}
+
+/**
+ * Whether the Markdown carries a title of its own (a heading or leading text),
+ * so a draft that would otherwise fall back to its Untitled-N placeholder can
+ * be told apart from one that shows real content.
+ */
+export function hasDerivedTitle(markdown: string): boolean {
+  const heading = markdown
+    .split(/\r\n|\r|\n/)
+    .map(line => line.match(/^#{1,6}\s+(.+)$/)?.[1]?.trim())
+    .find(Boolean)
+
+  if (heading && stripInlineMarkdown(heading)) {
+    return true
+  }
+
+  return getLeadingTitleText(markdown).length > 0
+}
+
 export function getDocumentTitle(markdown: string, displayName = DEFAULT_UNTITLED_NAME) {
   const heading = markdown
     .split(/\r\n|\r|\n/)

@@ -49,6 +49,61 @@ test('creates a local draft from real editor input and returns it to the recent 
   await expect(page.getByTestId('new-document-button')).toBeVisible()
 })
 
+test('gives each genuinely untitled draft a distinct, stable number', async ({ page }) => {
+  // Two drafts with content but no derivable title (empty-bodied code fences)
+  // plus a heading-titled one, all saved before per-draft numbering.
+  await page.goto('/')
+  await page.evaluate(() => {
+    localStorage.clear()
+    localStorage.setItem(
+      'marktext-for-android:drafts',
+      JSON.stringify([
+        {
+          id: 'code-old',
+          markdown: '```\n```',
+          createdAt: '2026-07-01T08:00:00.000Z',
+          updatedAt: '2026-07-01T08:00:00.000Z',
+          lastSavedAt: '2026-07-01T08:00:00.000Z',
+        },
+        {
+          id: 'code-new',
+          markdown: '```js\n```',
+          createdAt: '2026-07-01T09:00:00.000Z',
+          updatedAt: '2026-07-01T09:00:00.000Z',
+          lastSavedAt: '2026-07-01T09:00:00.000Z',
+        },
+        {
+          id: 'titled',
+          markdown: '# A real heading\n\nbody',
+          createdAt: '2026-07-01T10:00:00.000Z',
+          updatedAt: '2026-07-01T10:00:00.000Z',
+          lastSavedAt: '2026-07-01T10:00:00.000Z',
+        },
+      ]),
+    )
+  })
+  await page.reload()
+
+  await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
+  // The two code-only drafts get distinct numbers (oldest first); the titled
+  // one keeps its heading — normal derivation is untouched.
+  await expect(page.getByText('Untitled-1', { exact: true })).toBeVisible()
+  await expect(page.getByText('Untitled-2', { exact: true })).toBeVisible()
+  await expect(page.getByText('A real heading', { exact: true })).toBeVisible()
+
+  // The numbers are frozen into storage as each draft's stable identity, and
+  // only the genuinely untitled drafts carry one.
+  const stored = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('marktext-for-android:drafts') ?? '[]'),
+  )
+  const displayNamesById = Object.fromEntries(
+    (stored as { id: string; displayName?: string }[]).map(draft => [draft.id, draft.displayName]),
+  )
+  expect(displayNamesById['code-old']).toBe('Untitled-1')
+  expect(displayNamesById['code-new']).toBe('Untitled-2')
+  expect(displayNamesById['titled']).toBeUndefined()
+})
+
 test('preserves repeated ordered-list markers when a draft is opened and saved', async ({ page }) => {
   const now = '2026-07-01T08:00:00.000Z'
   const markdown = '# List marker note\n\n1. one\n1. two\n1. three\n'

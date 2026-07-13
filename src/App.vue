@@ -98,6 +98,7 @@ import {
   destroyMuyaEditor,
 } from './features/editor/editorRuntime'
 import {
+  assignUntitledDraftNames,
   removeLocalDraft,
   type LocalDraftRecord,
 } from './lib/localDrafts'
@@ -1645,7 +1646,11 @@ onMounted(() => {
   systemColorSchemeCleanup = watchSystemColorScheme(prefersDark => {
     systemPrefersDark.value = prefersDark
   })
-  const restoredDrafts = readStoredLocalDrafts()
+  // Drafts saved before per-draft numbering shared the generic Untitled-1;
+  // give each genuinely untitled one a distinct, frozen Untitled-N once so
+  // their identities are stable from here on.
+  const storedDrafts = readStoredLocalDrafts()
+  const restoredDrafts = assignUntitledDraftNames(storedDrafts)
   const restoredRecentDocuments = readStoredAndroidRecentDocuments()
   const legacyDraft = readLegacyDraft()
 
@@ -1653,6 +1658,9 @@ onMounted(() => {
   pinnedDocuments.value = readStoredPinnedDocuments()
 
   if (restoredDrafts.length > 0) {
+    if (restoredDrafts !== storedDrafts) {
+      persistLocalDrafts(restoredDrafts)
+    }
     localDrafts.value = restoredDrafts
     const visibleDraft = restoredDrafts.find(draft => shouldShowLocalDraftRecord(draft.id))
     if (visibleDraft) {

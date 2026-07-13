@@ -1,3 +1,9 @@
+import {
+  getCustomDisplayName,
+  getUntitledNumber,
+  hasDerivedTitle,
+} from './documentState'
+
 export interface LocalDraftRecord {
   id: string
   markdown: string
@@ -102,6 +108,53 @@ export function upsertLocalDraft(
 
 export function removeLocalDraft(records: LocalDraftRecord[], id: string) {
   return records.filter(record => record.id !== id)
+}
+
+/**
+ * One-time migration for drafts saved before per-draft numbering: a draft with
+ * no name of its own and no content title used to fall back to the shared
+ * `Untitled-1`, so several read as the same thing. Give each such draft a
+ * distinct, gap-filled `Untitled-N` (oldest first) alongside any numbers that
+ * are already frozen, leaving named and content-titled drafts untouched.
+ * Returns the same array reference when nothing needs assigning.
+ */
+export function assignUntitledDraftNames(records: LocalDraftRecord[]): LocalDraftRecord[] {
+  const taken = new Set<number>()
+  for (const record of records) {
+    const number = getUntitledNumber(record.displayName)
+    if (number !== null) {
+      taken.add(number)
+    }
+  }
+
+  const assigned = new Map<string, string>()
+  const oldestFirst = [...records].sort(
+    (left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt),
+  )
+  let next = 1
+  for (const record of oldestFirst) {
+    const needsNumber =
+      getCustomDisplayName(record.displayName ?? '') === undefined &&
+      getUntitledNumber(record.displayName) === null &&
+      !hasDerivedTitle(record.markdown)
+    if (!needsNumber) {
+      continue
+    }
+
+    while (taken.has(next)) {
+      next += 1
+    }
+    taken.add(next)
+    assigned.set(record.id, `Untitled-${next}`)
+  }
+
+  if (assigned.size === 0) {
+    return records
+  }
+
+  return records.map(record =>
+    assigned.has(record.id) ? { ...record, displayName: assigned.get(record.id) } : record,
+  )
 }
 
 export function renameLocalDraft(records: LocalDraftRecord[], id: string, displayName: string) {

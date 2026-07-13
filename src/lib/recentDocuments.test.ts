@@ -74,6 +74,24 @@ describe('recentDocuments', () => {
     expect(record.displayName).toBe('Trip plan')
   })
 
+  it('treats a stored Untitled-N as a placeholder, not a name', () => {
+    // A frozen number never overrides the draft's own content title.
+    const titled = createRecentDocumentFromLocalDraft({
+      ...newerDraft,
+      displayName: 'Untitled-3',
+    })
+    expect(titled.title).toBe('Newer draft')
+
+    // It only surfaces when the draft has no title of its own, and it is the
+    // draft's distinct number rather than the shared Untitled-1.
+    const untitled = createRecentDocumentFromLocalDraft({
+      ...newerDraft,
+      markdown: '```\n```',
+      displayName: 'Untitled-3',
+    })
+    expect(untitled.title).toBe('Untitled-3')
+  })
+
   it('creates recent document records from Android documents without storing markdown content', () => {
     const record = createRecentDocumentFromAndroidDocument({
       sourceUri: 'content://provider/android-note.md',

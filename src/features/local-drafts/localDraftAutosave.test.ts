@@ -64,4 +64,56 @@ describe('localDraftAutosave', () => {
     expect(result.savedDocument.markdown).toBe('   ')
     expect(result.nextDrafts).toEqual([])
   })
+
+  // A genuinely untitled draft is one whose Markdown derives no title (an
+  // empty-bodied code fence here). It is the only case that earns a number.
+  const untitledMarkdown = '```\n```'
+
+  it('gives a genuinely untitled draft a gap-filled Untitled number', () => {
+    const documentState = createUntitledDocument({ markdown: untitledMarkdown })
+    // A named draft and a content-titled draft reserve no numbers, so the new
+    // untitled draft still starts at 1.
+    const result = createLocalDraftAutosaveResult(documentState, untitledMarkdown, [
+      { ...existingDraft, id: 'other-1', displayName: 'Trip plan' },
+      { ...existingDraft, id: 'other-2', markdown: '# A heading' },
+    ])
+
+    expect(result.savedDocument.displayName).toBe('Untitled-1')
+    expect(result.nextDrafts.find(draft => draft.id === documentState.id)?.displayName)
+      .toBe('Untitled-1')
+  })
+
+  it('reuses the lowest free Untitled number instead of marching onward', () => {
+    const documentState = createUntitledDocument({ markdown: untitledMarkdown })
+    const result = createLocalDraftAutosaveResult(documentState, untitledMarkdown, [
+      { ...existingDraft, id: 'held-2', markdown: untitledMarkdown, displayName: 'Untitled-2' },
+    ])
+
+    expect(result.savedDocument.displayName).toBe('Untitled-1')
+  })
+
+  it('never reserves a number for a draft that shows a content title', () => {
+    const documentState = createUntitledDocument({ markdown: '# Real title' })
+    const result = createLocalDraftAutosaveResult(documentState, '# Real title', [])
+
+    expect(result.nextDrafts[0].displayName).toBeUndefined()
+  })
+
+  it('freezes an earned number even after the draft grows a title', () => {
+    const numbered = {
+      ...existingDraft,
+      id: 'numbered',
+      markdown: untitledMarkdown,
+      displayName: 'Untitled-3',
+    }
+    const documentState = updateDocumentMarkdown(
+      { ...createUntitledDocument({ markdown: untitledMarkdown }), id: 'numbered' },
+      '# Now it has a title',
+    )
+    const result = createLocalDraftAutosaveResult(documentState, '# Now it has a title', [numbered])
+
+    // The number stays the draft's identity; the content title merely wins the
+    // displayed name (asserted by recentDocuments), so it is kept, not dropped.
+    expect(result.nextDrafts[0].displayName).toBe('Untitled-3')
+  })
 })
