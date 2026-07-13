@@ -1541,6 +1541,19 @@ function confirmIncomingOpenAfterBlockedPreserve(request: {
   incomingName: string
   proceed: () => Promise<void>
 }) {
+  // The safety prompt must be the only surface on screen so it is visible and
+  // Android Back answers it — otherwise an open menu/outline (z-index 40) would
+  // cover it. Close transient editor chrome WITHOUT touching the editor, which
+  // stays mounted with its unsaved content.
+  closeEditorMenu()
+  closeEditorToolbar()
+  closeEditorOutline()
+  closeEditorSearch({ restoreCursor: false })
+  closeLinkSheet()
+  closeTableSheet()
+  draftExitPromptOpen.value = false
+  androidExitPromptOpen.value = false
+
   pendingIncomingOpenProceed = request.proceed
   incomingOpenName.value = request.incomingName
   incomingOpenPromptOpen.value = true
@@ -1557,6 +1570,8 @@ function keepEditingInsteadOfIncomingOpen() {
     documentState.value.autosaveTarget === 'android-document'
       ? getAndroidEditorStatus()
       : 'Edited'
+  // Resume the queue: any intent that arrived while the prompt was open runs now.
+  void incomingDocuments.resolveIncomingDecision()
 }
 
 async function discardCurrentAndOpenIncoming() {
@@ -1567,6 +1582,8 @@ async function discardCurrentAndOpenIncoming() {
   if (proceed) {
     await proceed()
   }
+  // Drain after the replacement so a queued intent preserves the new editor.
+  void incomingDocuments.resolveIncomingDecision()
 }
 
 function requestLifecycleFlush(reason: string) {

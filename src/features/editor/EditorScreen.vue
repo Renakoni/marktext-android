@@ -242,7 +242,7 @@ onBeforeUnmount(() => {
       v-if="searchOpen"
       class="top-bar search-bar"
       data-testid="editor-search-bar"
-      :inert="outlineOpen || tableSheetOpen"
+      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
     >
       <button
         class="nav-button"
@@ -308,7 +308,7 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </header>
-    <header v-else class="top-bar" :inert="outlineOpen || tableSheetOpen">
+    <header v-else class="top-bar" :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen">
       <button
         class="nav-button"
         type="button"
@@ -375,7 +375,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <section class="editor-pane" :aria-label="t('editor.markdownEditor')" :inert="outlineOpen || tableSheetOpen">
+    <section class="editor-pane" :aria-label="t('editor.markdownEditor')" :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen">
       <div
         ref="editorShell"
         class="editor-host-shell"
@@ -407,7 +407,7 @@ onBeforeUnmount(() => {
     </section>
 
     <MobileSelectionToolbar
-      :inert="outlineOpen || tableSheetOpen"
+      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
       :host="editorShell"
@@ -425,7 +425,7 @@ onBeforeUnmount(() => {
     />
 
     <LinkActionOverlay
-      :inert="outlineOpen || tableSheetOpen"
+      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
       :caret-session="selectionCaretSession"
@@ -436,7 +436,7 @@ onBeforeUnmount(() => {
 
     <MobileEditorToolbar
       v-if="toolbarVisible && !editorFailed"
-      :inert="outlineOpen || tableSheetOpen"
+      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :expanded="toolbarExpanded"
       :active-panel="toolbarPanel"
       :editor-ready="editorReady"

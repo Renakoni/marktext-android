@@ -82,6 +82,8 @@ export interface IncomingDocumentOrchestration {
   removeListeners(): void
   handleOpenWithDocumentEvent(event: AndroidOpenWithDocumentEvent): Promise<void>
   handleShareDocumentEvent(event: AndroidShareDocumentEvent): Promise<void>
+  /** Resume the incoming-open queue after the blocked prompt is answered. */
+  resolveIncomingDecision(): Promise<void>
 }
 
 /**
@@ -127,9 +129,16 @@ export function createIncomingDocumentOrchestration(
 
     if (preservationAction.kind === 'save-android-document') {
       options.syncDocumentFromEditor(options.documentState.value.isDirty, true)
+      const saved = await options.saveAndroidDocument()
+
+      // Read the payload AFTER the awaited save. A `changed-during-save` result
+      // returns false while the editor already holds newer text than the
+      // snapshot the save used, so flush and re-read the current content — the
+      // recovery draft and the block decision must reflect the latest edits,
+      // never the pre-save snapshot.
+      options.syncDocumentFromEditor(options.documentState.value.isDirty, true)
       const sourceUri = options.documentState.value.sourceUri
       const markdown = options.documentState.value.markdown
-      const saved = await options.saveAndroidDocument()
 
       // Saved to its file, or there is nothing to lose.
       if (saved || markdown.trim().length === 0) {
@@ -159,19 +168,64 @@ export function createIncomingDocumentOrchestration(
     return { kind: 'blocked' }
   }
 
-  // Either replaces the editor with the incoming document now, or — when the
-  // current document could not be preserved — keeps the editor and asks first.
-  async function runIncomingOpen(
-    preservation: IncomingPreservationResult,
-    incomingName: string,
-    proceed: () => Promise<void>,
-  ) {
+  // Incoming opens are serialized so two intents can never race or replace the
+  // editor behind a pending prompt. Only one transaction runs at a time; while a
+  // blocked prompt awaits the user's decision the editor is frozen, so newer
+  // intents wait (latest-wins) instead of opening. `awaitingDecision` is cleared
+  // by resolveIncomingDecision when the user keeps or discards.
+  let transactionActive = false
+  let awaitingDecision = false
+  let queuedTransaction: (() => Promise<void>) | null = null
+
+  function scheduleIncomingTransaction(transaction: () => Promise<void>) {
+    // Latest-wins: only the newest waiting intent survives.
+    queuedTransaction = transaction
+    return drainIncomingTransactions()
+  }
+
+  async function drainIncomingTransactions(): Promise<void> {
+    if (transactionActive || awaitingDecision) {
+      return
+    }
+
+    const next = queuedTransaction
+    queuedTransaction = null
+    if (!next) {
+      return
+    }
+
+    transactionActive = true
+    try {
+      await next()
+    } finally {
+      transactionActive = false
+    }
+
+    // A blocked transaction leaves awaitingDecision set and pauses the queue
+    // until the user resolves it; otherwise keep draining any newer intent.
+    if (!awaitingDecision) {
+      await drainIncomingTransactions()
+    }
+  }
+
+  // Runs one incoming open: replace the editor now when the current document is
+  // preserved, or keep it mounted and ask (freezing the queue) when it is not.
+  async function runIncomingTransaction(incomingName: string, proceed: () => Promise<void>) {
+    const preservation = await preserveCurrentDocumentBeforeIncomingOpen()
     if (preservation.kind === 'blocked') {
+      awaitingDecision = true
       options.confirmIncomingOpenAfterBlockedPreserve({ incomingName, proceed })
       return
     }
 
     await proceed()
+  }
+
+  // Called by App once the user answers the blocked prompt (keep or discard);
+  // resumes the queue so any intent that arrived while it was open is processed.
+  function resolveIncomingDecision() {
+    awaitingDecision = false
+    return drainIncomingTransactions()
   }
 
   function closeEditorChromeForIncomingOpen() {
@@ -193,14 +247,15 @@ export function createIncomingDocumentOrchestration(
       return
     }
 
-    const preservation = await preserveCurrentDocumentBeforeIncomingOpen()
-    await runIncomingOpen(preservation, action.document.displayName, async () => {
-      closeEditorChromeForIncomingOpen()
-      await options.openAndroidDocumentResult(action.document, {
-        source: action.source,
-        remember: action.remember,
-      })
-    })
+    await scheduleIncomingTransaction(() =>
+      runIncomingTransaction(action.document.displayName, async () => {
+        closeEditorChromeForIncomingOpen()
+        await options.openAndroidDocumentResult(action.document, {
+          source: action.source,
+          remember: action.remember,
+        })
+      }),
+    )
   }
 
   async function handleShareDocumentEvent(event: AndroidShareDocumentEvent) {
@@ -215,23 +270,25 @@ export function createIncomingDocumentOrchestration(
       return
     }
 
-    const preservation = await preserveCurrentDocumentBeforeIncomingOpen()
-
     if (action.kind === 'open-document') {
-      await runIncomingOpen(preservation, action.document.displayName, async () => {
-        closeEditorChromeForIncomingOpen()
-        await options.openAndroidDocumentResult(action.document, {
-          source: action.source,
-          remember: action.remember,
-        })
-      })
+      await scheduleIncomingTransaction(() =>
+        runIncomingTransaction(action.document.displayName, async () => {
+          closeEditorChromeForIncomingOpen()
+          await options.openAndroidDocumentResult(action.document, {
+            source: action.source,
+            remember: action.remember,
+          })
+        }),
+      )
       return
     }
 
-    await runIncomingOpen(preservation, action.document.displayName, async () => {
-      closeEditorChromeForIncomingOpen()
-      await openSharedTextDocument(action.document)
-    })
+    await scheduleIncomingTransaction(() =>
+      runIncomingTransaction(action.document.displayName, async () => {
+        closeEditorChromeForIncomingOpen()
+        await openSharedTextDocument(action.document)
+      }),
+    )
   }
 
   function installListeners() {
@@ -260,5 +317,6 @@ export function createIncomingDocumentOrchestration(
     removeListeners,
     handleOpenWithDocumentEvent,
     handleShareDocumentEvent,
+    resolveIncomingDecision,
   }
 }

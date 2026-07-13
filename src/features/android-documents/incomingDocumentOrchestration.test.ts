@@ -236,6 +236,83 @@ describe('incomingDocumentOrchestration', () => {
     })
   })
 
+  it('recovers the latest content after the awaited save, not the pre-save snapshot', async () => {
+    const documentState = {
+      ...createUntitledDocument({
+        markdown: '# Before save',
+        autosaveTarget: 'android-document',
+        sourceUri: 'content://test/current.md',
+      }),
+      isDirty: true,
+    }
+    const { orchestration, options } = createOrchestration({
+      currentScreen: 'editor',
+      hasEditor: true,
+      documentState,
+    })
+    // The provider write is still pending while the user keeps typing: the save
+    // reports changed-during-save (false) and the editor now holds newer text.
+    options.saveAndroidDocument.mockImplementation(async () => {
+      options.documentState.value = {
+        ...options.documentState.value,
+        markdown: '# Edited during save',
+      }
+      return false
+    })
+
+    await orchestration.handleOpenWithDocumentEvent({ document: incomingDocument, error: null })
+
+    // The recovery payload must be the freshest content, never the stale snapshot.
+    expect(options.persistAndroidRecoveryDraft).toHaveBeenCalledWith(
+      'content://test/current.md',
+      '# Edited during save',
+    )
+  })
+
+  it('holds a second incoming open while a blocked prompt is still pending', async () => {
+    const documentState = {
+      ...createUntitledDocument({
+        markdown: '# Device doc',
+        autosaveTarget: 'android-document',
+        sourceUri: 'content://test/current.md',
+      }),
+      isDirty: true,
+    }
+    const { orchestration, options } = createOrchestration({
+      currentScreen: 'editor',
+      hasEditor: true,
+      documentState,
+      saveResult: false,
+      recoveryKept: false,
+    })
+
+    // First intent blocks and shows the prompt.
+    await orchestration.handleOpenWithDocumentEvent({ document: incomingDocument, error: null })
+    expect(options.confirmIncomingOpenAfterBlockedPreserve).toHaveBeenCalledTimes(1)
+    expect(options.saveAndroidDocument).toHaveBeenCalledTimes(1)
+
+    // A second intent arrives while the decision is pending. It must neither open
+    // behind the prompt nor even run its own preservation yet (serialized).
+    const secondDocument = {
+      ...incomingDocument,
+      sourceUri: 'content://test/second.md',
+      displayName: 'second.md',
+    }
+    await orchestration.handleOpenWithDocumentEvent({ document: secondDocument, error: null })
+    expect(options.openAndroidDocumentResult).not.toHaveBeenCalled()
+    expect(options.saveAndroidDocument).toHaveBeenCalledTimes(1)
+
+    // Resolving the first decision drains the queued second intent, which then
+    // preserves the current editor (still blocked) and prompts for the new doc.
+    await orchestration.resolveIncomingDecision()
+    expect(options.saveAndroidDocument).toHaveBeenCalledTimes(2)
+    expect(options.confirmIncomingOpenAfterBlockedPreserve).toHaveBeenCalledTimes(2)
+    expect(options.confirmIncomingOpenAfterBlockedPreserve.mock.calls[1][0].incomingName).toBe(
+      'second.md',
+    )
+    expect(options.openAndroidDocumentResult).not.toHaveBeenCalled()
+  })
+
   it('routes a shared Markdown file through the shared open path', async () => {
     const { orchestration, options } = createOrchestration()
 
