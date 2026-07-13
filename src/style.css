@@ -835,7 +835,12 @@ body {
   width: min(100%, 980px);
   height: 100%;
   margin: 0 auto;
-  overflow: auto;
+  /* Vertical-only scroll owner. Horizontal overflow must never slide the whole
+     editor: each wide block owns its own horizontal scroll — tables via the
+     figure.mu-table rule below, code and math blocks internally — while images
+     cap at 100% and Muya's floating UI mounts on <body>, so nothing inside
+     needs to scroll the root sideways. */
+  overflow: hidden auto;
   border: var(--hairline) solid var(--separator);
   border-radius: var(--radius);
   background: var(--surface);
@@ -850,6 +855,17 @@ body {
 .editor-host-shell .mu-editor {
   min-height: 100%;
   padding: 42px 0 56px;
+}
+
+/* A wide table scrolls inside its own figure instead of sliding the whole
+   editor. Muya's 10em cell min-width keeps columns readable, so a normal
+   multi-column table is wider than a phone column; the figure clips and scrolls
+   it horizontally while the vertical-only host stays put. Android registers no
+   table drag/resize plugins and Muya's float UI lives on <body>, so nothing is
+   clipped by owning the overflow here. */
+.editor-host-shell figure.mu-table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* MIUI WebViews pin CJK glyphs to one weight: 400 and 700 rasterize to
