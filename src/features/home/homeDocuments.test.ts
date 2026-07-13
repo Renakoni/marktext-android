@@ -39,7 +39,7 @@ describe('homeDocuments', () => {
     })
   })
 
-  it('localizes a fallback Untitled-N for display but keeps content titles verbatim', () => {
+  it('keeps a canonical Untitled-N verbatim on every surface, never localized', () => {
     const base: RecentDocumentListItem = {
       id: 'draft-1',
       kind: 'local-draft',
@@ -62,14 +62,16 @@ describe('homeDocuments', () => {
       markdownDocumentSource: 'Markdown 文档',
       detailsSeparator: ' · ',
       formatWordCount: (count: number) => `${count} 字`,
-      formatUntitled: (index: number) => `未命名-${index}`,
     }
 
-    // The titleless draft's canonical Untitled-2 is localized for display.
-    expect(toHomeDocumentItem(base, zh).title).toBe('未命名-2')
-    // A draft whose own content reads "Untitled-2" keeps it verbatim.
+    // A titleless draft, and a real Android file whose own name is Untitled-2,
+    // both keep the canonical value — no locale-specific rendering.
+    expect(toHomeDocumentItem(base, zh).title).toBe('Untitled-2')
     expect(
-      toHomeDocumentItem({ ...base, markdownPreview: '# Untitled-2' }, zh).title,
+      toHomeDocumentItem(
+        { ...base, kind: 'android-document', markdownPreview: null },
+        zh,
+      ).title,
     ).toBe('Untitled-2')
   })
 
@@ -134,7 +136,6 @@ describe('homeDocuments', () => {
         markdownDocumentSource: 'Markdown 文档',
         detailsSeparator: ' · ',
         formatWordCount: count => `${count} 字`,
-        formatUntitled: index => `未命名-${index}`,
       }),
     ).toEqual({
       id: 'draft-1',

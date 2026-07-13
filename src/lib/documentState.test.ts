@@ -8,7 +8,6 @@ import {
   getSuggestedMarkdownCopyFileName,
   getSuggestedMarkdownFileName,
   getSuggestedPdfFileName,
-  getUntitledFallbackIndex,
   getUntitledNumber,
   hasDerivedTitle,
   normalizeMarkdownForEditor,
@@ -118,17 +117,6 @@ describe('documentState', () => {
     // The lowest hole wins over marching the sequence onward.
     expect(getNextUntitledDisplayName(['Untitled-2', 'Untitled-3'])).toBe('Untitled-1')
     expect(getNextUntitledDisplayName(['Untitled-1', 'Untitled-3'])).toBe('Untitled-2')
-  })
-
-  it('localizes an Untitled-N only when it is genuinely the fallback', () => {
-    // Titleless drafts (empty document / empty-bodied fence): a real fallback.
-    expect(getUntitledFallbackIndex('Untitled-2', '')).toBe(2)
-    expect(getUntitledFallbackIndex('Untitled-2', '```\n```')).toBe(2)
-    // Content that itself reads "Untitled-2" is a real title, not a fallback.
-    expect(getUntitledFallbackIndex('Untitled-2', '# Untitled-2')).toBeNull()
-    expect(getUntitledFallbackIndex('Untitled-2', 'Untitled-2 is my note')).toBeNull()
-    // A real title or rename is never localized.
-    expect(getUntitledFallbackIndex('Trip plan', '')).toBeNull()
   })
 
   it('detects whether Markdown carries a title of its own', () => {

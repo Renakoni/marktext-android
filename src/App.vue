@@ -58,7 +58,7 @@ import {
 import { isAndroidRecoveryDraftId } from './features/android-documents/androidRecoveryDrafts'
 import { rememberAndroidRecentDocument } from './features/android-documents/androidRecentDocuments'
 import { getImageSharingSettings } from './features/android-documents/imageSharingSettings'
-import { createUntitledDocument, getUntitledFallbackIndex } from './lib/documentState'
+import { createUntitledDocument } from './lib/documentState'
 import {
   createDocumentStateFromLocalDraft,
 } from './features/document-session/documentSessionState'
@@ -268,7 +268,6 @@ const homeDocumentText = computed<HomeDocumentText>(() => ({
   detailsSeparator: t('home.detailsSeparator'),
   formatWordCount: count =>
     t(count === 1 ? 'home.wordCount.one' : 'home.wordCount.other', { count }),
-  formatUntitled: index => t('document.untitledNumbered', { index }),
 }))
 
 let lastContentLogAt = 0
@@ -356,18 +355,10 @@ const lineCount = computed(() => documentState.value.stats.lines)
 const characterCount = computed(() => documentState.value.stats.characters)
 const wordCount = computed(() => documentState.value.stats.words)
 const documentTitle = computed(() => documentState.value.title)
-const displayDocumentTitle = computed(() => {
-  // A stored Untitled-N is canonical (locale-independent numbering); localize
-  // it for display only when it is genuinely the fallback, never when the
-  // content itself derives that title.
-  const fallbackIndex = getUntitledFallbackIndex(
-    documentState.value.title,
-    documentState.value.markdown,
-  )
-  return fallbackIndex !== null
-    ? t('document.untitledNumbered', { index: fallbackIndex })
-    : documentTitle.value
-})
+// The Untitled-N placeholder is canonical everywhere: it is a draft's stable
+// identity, so it stays byte-for-byte the same in the header, the recent list,
+// rename, share, and export — it is never localized to a per-locale form.
+const displayDocumentTitle = computed(() => documentTitle.value)
 const recentDocumentRecords = computed(() =>
   [
     ...localDrafts.value

@@ -315,19 +315,6 @@ export function getNextUntitledDisplayName(
 }
 
 /**
- * The N to localize for a title that is genuinely the Untitled-N fallback —
- * an `Untitled-N` string that the Markdown did NOT derive on its own — or null
- * for a real title. This is the presentation guard: canonical `Untitled-N` is
- * stored so numbering never depends on the locale, but a Chinese session shows
- * `未命名-N`; content that itself reads `Untitled-2` (a heading or leading line)
- * is a real title and is left exactly as written.
- */
-export function getUntitledFallbackIndex(title: string, markdown: string): number | null {
-  const number = getUntitledNumber(title)
-  return number !== null && !hasDerivedTitle(markdown) ? number : null
-}
-
-/**
  * Whether the Markdown carries a title of its own (a heading or leading text),
  * so a draft that would otherwise fall back to its Untitled-N placeholder can
  * be told apart from one that shows real content.

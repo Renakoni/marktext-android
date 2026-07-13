@@ -1,4 +1,3 @@
-import { getUntitledFallbackIndex } from '../../lib/documentState'
 import type { RecentDocumentKind, RecentDocumentListItem } from '../../lib/recentDocuments'
 
 export interface HomeDocumentItem {
@@ -41,7 +40,6 @@ export interface HomeDocumentText {
   markdownDocumentSource: string
   detailsSeparator: string
   formatWordCount: (count: number) => string
-  formatUntitled: (index: number) => string
 }
 
 const DEFAULT_HOME_DOCUMENT_TEXT: HomeDocumentText = {
@@ -49,7 +47,6 @@ const DEFAULT_HOME_DOCUMENT_TEXT: HomeDocumentText = {
   markdownDocumentSource: 'Markdown document',
   detailsSeparator: ' - ',
   formatWordCount: count => `${count} ${count === 1 ? 'word' : 'words'}`,
-  formatUntitled: index => `Untitled-${index}`,
 }
 
 export function formatHomeDocumentSavedTime(value: string | null, locale?: string) {
@@ -85,15 +82,10 @@ export function toHomeDocumentItem(
   const count = item.stats ? text.formatWordCount(item.stats.words) : ''
   const source = getHomeDocumentSource(item, text)
 
-  // A canonical Untitled-N is localized for display only when it is genuinely
-  // the fallback for a titleless draft, never a content-derived title.
-  const fallbackIndex = getUntitledFallbackIndex(item.title, item.markdownPreview ?? '')
-  const title = fallbackIndex !== null ? text.formatUntitled(fallbackIndex) : item.title
-
   return {
     id: item.id,
     kind: item.kind,
-    title,
+    title: item.title,
     displayName: item.displayName,
     details: [source, savedAt, count].filter(Boolean).join(text.detailsSeparator),
   }

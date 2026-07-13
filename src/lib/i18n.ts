@@ -54,8 +54,6 @@ const MESSAGES = {
     'nav.settings': 'Settings',
     'nav.primary': 'Primary',
 
-    'document.untitledNumbered': 'Untitled-{index}',
-
     'app.status.ready': 'Ready',
     'app.status.edited': 'Edited',
     'app.status.autosavingLocally': 'Autosaving locally',
@@ -616,8 +614,6 @@ const MESSAGES = {
     'nav.documents': '文档',
     'nav.settings': '设置',
     'nav.primary': '主导航',
-
-    'document.untitledNumbered': '未命名-{index}',
 
     'app.status.ready': '就绪',
     'app.status.edited': '已编辑',
