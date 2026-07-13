@@ -34,7 +34,9 @@ import {
 import {
   isAndroidSelectionControlAvailable,
   readAndroidClipboardText,
+  writeAndroidClipboardText,
 } from './lib/androidSelection'
+import { openExternalUrl } from './lib/externalLinks'
 import { createDocumentOutline, waitForViewportSettle } from './features/editor/documentOutline'
 import { createDocumentSearch } from './features/editor/documentSearch'
 import { createSelectionToolbarLongPress } from './features/editor/selectionToolbarLongPress'
@@ -671,6 +673,31 @@ async function runEditorSelectionCommand(
 ) {
   await runSelectionToolbarCommand(commandId, restoreRange)
   notifySelectionToolbarCommandRun()
+}
+
+// Follow a link from the floating link overlay. The scheme is re-validated
+// inside openExternalUrl, so an unsafe target never reaches AppLauncher. A
+// failure to open (no handler for a mailto/tel) is logged rather than surfaced:
+// the http case effectively always has a browser, and the overlay stays put.
+async function openEditorLink(href: string) {
+  const opened = await openExternalUrl(href)
+  if (!opened) {
+    editorLog.warn('could not open external link', { href })
+  }
+}
+
+// Copy a link's href. The Android clipboard bridge wins; the web Clipboard API
+// is the dev/e2e fallback. The overlay owns the "Copied" confirmation.
+async function copyEditorLink(href: string) {
+  if (await writeAndroidClipboardText(href)) {
+    return
+  }
+
+  try {
+    await navigator.clipboard?.writeText(href)
+  } catch {
+    editorLog.warn('could not copy link to clipboard', { href })
+  }
 }
 
 function openEditorOutline() {
@@ -1809,6 +1836,7 @@ onBeforeUnmount(() => {
     :selection-caret-session="selectionCaretSessionActive"
     :selection-custom-commands="selectionToolbarSettings.customCommands"
     :selection-custom-rows="selectionToolbarSettings.rows"
+    :link-overlay-enabled="editingSettings.linkPopup"
     :search-open="editorSearchOpen"
     :search-query="editorSearchQuery"
     :search-match-count="editorSearchMatchCount"
@@ -1837,6 +1865,8 @@ onBeforeUnmount(() => {
     @run-toolbar-command="runEditorToolbarCommand"
     @run-selection-command="runEditorSelectionCommand"
     @dismiss-selection="finishSelectionToolbarOutsideTap"
+    @open-link="openEditorLink"
+    @copy-link="copyEditorLink"
     @toggle-toolbar="toggleEditorToolbarExclusive"
     @set-toolbar-panel="setEditorToolbarPanel"
     @close-link-sheet="closeLinkSheet"

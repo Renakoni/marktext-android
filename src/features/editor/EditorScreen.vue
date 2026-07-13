@@ -10,6 +10,7 @@ import TableInsertSheet from './components/TableInsertSheet.vue'
 import LocalDraftExitPrompt from './components/LocalDraftExitPrompt.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import MobileSelectionToolbar from './components/MobileSelectionToolbar.vue'
+import LinkActionOverlay from './components/LinkActionOverlay.vue'
 import ResumeCard from './components/ResumeCard.vue'
 import type { SelectionToolbarCommandId } from './selectionToolbar'
 import type { SelectionToolbarRows } from './selectionToolbarSettings'
@@ -63,6 +64,7 @@ const props = defineProps<{
   selectionCaretSession: boolean
   selectionCustomCommands: readonly MobileToolbarCommandButton[]
   selectionCustomRows: SelectionToolbarRows
+  linkOverlayEnabled: boolean
   searchOpen: boolean
   searchQuery: string
   searchMatchCount: number
@@ -94,6 +96,8 @@ const emit = defineEmits<{
   'run-toolbar-command': [commandId: MobileCommandId, restoreRange: Range | null]
   'run-selection-command': [commandId: SelectionToolbarCommandId, restoreRange: Range | null]
   'dismiss-selection': [caretRange: Range | null]
+  'open-link': [href: string]
+  'copy-link': [href: string]
   'toggle-toolbar': []
   'set-toolbar-panel': [panel: MobileEditorToolbarPanel]
   'update:linkText': [value: string]
@@ -402,6 +406,17 @@ onBeforeUnmount(() => {
         (commandId, restoreRange) => emit('run-toolbar-command', commandId, restoreRange)
       "
       @dismiss-selection="caretRange => emit('dismiss-selection', caretRange)"
+    />
+
+    <LinkActionOverlay
+      :inert="outlineOpen || tableSheetOpen"
+      :editor-ready="editorReady"
+      :suspended="selectionToolbarSuspended"
+      :caret-session="selectionCaretSession"
+      :host="editorShell"
+      :enabled="linkOverlayEnabled"
+      @open="href => emit('open-link', href)"
+      @copy="href => emit('copy-link', href)"
     />
 
     <MobileEditorToolbar
