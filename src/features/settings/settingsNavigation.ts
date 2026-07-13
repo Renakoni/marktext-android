@@ -4,6 +4,7 @@ export const SETTINGS_PAGES = Object.freeze({
   INDEX: 'index',
   APPEARANCE: 'appearance',
   EDITING: 'editing',
+  SELECTION_TOOLBAR: 'selection-toolbar',
   TOOLBAR: 'toolbar',
   CODE: 'code',
   MARKDOWN: 'markdown',
@@ -48,6 +49,12 @@ export const SETTINGS_HOME_SECTIONS = [
         labelKey: 'settings.editing',
         valueKey: 'settings.entry.editing',
         testId: 'settings-entry-editing',
+      },
+      {
+        id: SETTINGS_PAGES.SELECTION_TOOLBAR,
+        labelKey: 'settings.section.selectionToolbar',
+        valueKey: 'settings.section.selectionToolbar',
+        testId: 'settings-entry-selection-toolbar',
       },
       {
         id: SETTINGS_PAGES.TOOLBAR,

@@ -25,6 +25,10 @@ import {
   DEFAULT_EDITOR_TOOLBAR_SETTINGS,
   EDITOR_TOOLBAR_SETTING_KEYS,
 } from '../editor/editorToolbarSettings'
+import {
+  DEFAULT_SELECTION_TOOLBAR_ROWS,
+  SELECTION_TOOLBAR_SETTING_KEYS,
+} from '../editor/selectionToolbarSettings'
 import type { SettingsValue } from './settingsState'
 
 type SettingsRowWithLocation = SettingsDetailRow & {
@@ -34,9 +38,12 @@ type SettingsRowWithLocation = SettingsDetailRow & {
 
 type SettingsValueRow = Extract<
   SettingsDetailRow,
-  { kind: 'toggle' | 'choice' | 'slider' | 'text' | 'customToolbar' }
+  { kind: 'toggle' | 'choice' | 'slider' | 'text' | 'customToolbar' | 'customSelectionToolbar' }
 >
-type SettingsDefaultValueRow = Exclude<SettingsValueRow, { kind: 'customToolbar' }>
+type SettingsDefaultValueRow = Exclude<
+  SettingsValueRow,
+  { kind: 'customToolbar' | 'customSelectionToolbar' }
+>
 
 const EXPECTED_STORED_ONLY_ROW_IDS = new Set([
   'sourceCodeModeEnabled',
@@ -59,6 +66,7 @@ const OWNED_STORED_SETTING_KEYS = new Set<string>([
   ...APPEARANCE_SETTING_KEYS,
   ...EDITING_SETTING_KEYS,
   ...EDITOR_TOOLBAR_SETTING_KEYS,
+  ...SELECTION_TOOLBAR_SETTING_KEYS,
   ...DOCUMENT_SETTING_KEYS,
   ...IMAGE_SHARING_SETTING_KEYS,
   ...ADVANCED_SETTING_KEYS,
@@ -109,6 +117,8 @@ const RUNTIME_SETTING_DEFAULTS = new Map<string, SettingsValue>([
   ['toolbarRememberPanel', DEFAULT_EDITOR_TOOLBAR_SETTINGS.rememberPanel],
   ['toolbarCompact', DEFAULT_EDITOR_TOOLBAR_SETTINGS.compact],
   ['toolbarQuickBarMode', DEFAULT_EDITOR_TOOLBAR_SETTINGS.quickBarMode],
+
+  ['selectionToolbarRows', String(DEFAULT_SELECTION_TOOLBAR_ROWS)],
 
   ['localDrafts', DEFAULT_DOCUMENT_SETTINGS.localDrafts],
   ['recoveryDrafts', DEFAULT_DOCUMENT_SETTINGS.recoveryDrafts],

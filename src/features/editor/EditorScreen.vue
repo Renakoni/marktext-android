@@ -12,6 +12,7 @@ import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import MobileSelectionToolbar from './components/MobileSelectionToolbar.vue'
 import ResumeCard from './components/ResumeCard.vue'
 import type { SelectionToolbarCommandId } from './selectionToolbar'
+import type { SelectionToolbarRows } from './selectionToolbarSettings'
 import type { MobileCommandId } from '../../lib/mobileCommands'
 import type {
   MobileEditorToolbarPanel,
@@ -60,6 +61,8 @@ const props = defineProps<{
   editorStyleVars: CSSProperties
   canPasteSelection: boolean
   selectionCaretSession: boolean
+  selectionCustomCommands: readonly MobileToolbarCommandButton[]
+  selectionCustomRows: SelectionToolbarRows
   searchOpen: boolean
   searchQuery: string
   searchMatchCount: number
@@ -390,8 +393,13 @@ onBeforeUnmount(() => {
       :host="editorShell"
       :can-paste="canPasteSelection"
       :caret-session="selectionCaretSession"
+      :custom-commands="selectionCustomCommands"
+      :custom-rows="selectionCustomRows"
       @run-command="
         (commandId, restoreRange) => emit('run-selection-command', commandId, restoreRange)
+      "
+      @run-custom-command="
+        (commandId, restoreRange) => emit('run-toolbar-command', commandId, restoreRange)
       "
       @dismiss-selection="caretRange => emit('dismiss-selection', caretRange)"
     />
