@@ -87,6 +87,36 @@ describe('localDrafts', () => {
     expect(drafts[0].createdAt).toBe(olderDraft.createdAt)
   })
 
+  it('keeps every draft when a new one pushes past the old 20-draft cap', () => {
+    // Twenty saved drafts, oldest (draft-1) to newest (draft-20).
+    const existing: LocalDraftRecord[] = Array.from({ length: 20 }, (_, index) => {
+      const minute = String(index).padStart(2, '0')
+      return {
+        id: `draft-${index + 1}`,
+        markdown: `# Draft ${index + 1}\n\nbody`,
+        createdAt: `2026-06-29T00:${minute}:00.000Z`,
+        updatedAt: `2026-06-29T00:${minute}:00.000Z`,
+        lastSavedAt: `2026-06-29T00:${minute}:00.000Z`,
+      }
+    })
+
+    const withTwentyFirst = upsertLocalDraft(existing, {
+      id: 'draft-21',
+      markdown: '# Draft 21\n\nbody',
+      createdAt: '2026-06-29T00:20:00.000Z',
+      updatedAt: '2026-06-29T00:20:00.000Z',
+      lastSavedAt: '2026-06-29T00:20:00.000Z',
+    })
+
+    // The 21st draft must not evict the oldest — all 21 survive, in storage too.
+    expect(withTwentyFirst).toHaveLength(21)
+    const persistedIds = parseLocalDrafts(serializeLocalDrafts(withTwentyFirst)).map(
+      draft => draft.id,
+    )
+    expect(persistedIds).toContain('draft-1')
+    expect(persistedIds).toHaveLength(21)
+  })
+
   it('migrates legacy draft records without created time', () => {
     const legacyDraft = {
       id: 'legacy',
