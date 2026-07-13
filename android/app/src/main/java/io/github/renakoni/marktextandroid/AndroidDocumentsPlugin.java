@@ -984,7 +984,8 @@ public class AndroidDocumentsPlugin extends Plugin {
         MarkdownWriteOptions writeOptions
     ) throws IOException, DocumentReadException {
         byte[] bytes = MarkdownCodec.validateBytes(markdown, writeOptions);
-        writeText(uri, bytes);
+        // A freshly created document has no prior content to protect.
+        writeText(uri, bytes, false);
 
         String displayName = getDisplayName(uri);
         String mimeType = getMimeType(uri);
@@ -1017,7 +1018,8 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
 
         byte[] bytes = MarkdownCodec.validateBytes(markdown, writeOptions);
-        writeText(uri, bytes);
+        // Overwriting an existing document: protect its bytes with backup+rollback.
+        writeText(uri, bytes, true);
         JSObject result = new JSObject();
         result.put("sourceUri", uri.toString());
         result.put("displayName", displayName);
@@ -1125,15 +1127,16 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
     }
 
-    private void writeText(Uri uri, byte[] bytes) throws IOException {
-        ContentResolver resolver = getContext().getContentResolver();
-        try (OutputStream output = resolver.openOutputStream(uri, "wt")) {
-            if (output == null) {
-                throw new IOException("Content resolver returned no output stream");
-            }
-            output.write(bytes);
-            output.flush();
-        }
+    // Atomic-intent write: never leave the user's real file truncated on a
+    // mid-write failure. The algorithm (backup, write, fsync, verify, restore
+    // on failure) lives in the Android-free SafeDocumentWriter; this only binds
+    // it to the resolver + URI.
+    private void writeText(Uri uri, byte[] bytes, boolean protectExisting) throws IOException {
+        SafeDocumentWriter.write(
+            new ContentResolverDocumentIo(
+                getContext().getContentResolver(), uri, MarkdownCodec.MAX_MARKDOWN_BYTES),
+            bytes,
+            protectExisting);
     }
 
     private DecodedMarkdown readText(Uri uri) throws IOException, DocumentReadException {
