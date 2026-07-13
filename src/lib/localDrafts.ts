@@ -18,8 +18,6 @@ type StoredLocalDraftRecord = Omit<LocalDraftRecord, 'createdAt'> & {
   createdAt?: string
 }
 
-const DEFAULT_DRAFT_LIMIT = 20
-
 function isStoredLocalDraftRecord(value: unknown): value is StoredLocalDraftRecord {
   if (!value || typeof value !== 'object') {
     return false
@@ -47,10 +45,15 @@ function compareDraftsByUpdateTime(left: StoredLocalDraftRecord, right: StoredLo
   return Date.parse(right.updatedAt) - Date.parse(left.updatedAt)
 }
 
-export function normalizeLocalDrafts(
-  records: StoredLocalDraftRecord[],
-  limit = DEFAULT_DRAFT_LIMIT,
-) {
+/**
+ * Sorts drafts newest-first and drops duplicates and empty drafts, keeping
+ * EVERY remaining draft. Persistence must never cap this list: each record is
+ * the only durable copy of that draft's content, so evicting the oldest to fit
+ * a limit would silently lose a user's work ("never lose a word"). Any list
+ * length limit belongs to the home projection as a presentation-only slice
+ * (see `normalizeRecentDocuments`), never here.
+ */
+export function normalizeLocalDrafts(records: StoredLocalDraftRecord[]) {
   const seen = new Set<string>()
   const normalized: LocalDraftRecord[] = []
 
@@ -64,7 +67,7 @@ export function normalizeLocalDrafts(
     normalized.push(record)
   }
 
-  return normalized.slice(0, limit)
+  return normalized
 }
 
 export function parseLocalDrafts(value: string | null) {
@@ -88,11 +91,7 @@ export function serializeLocalDrafts(records: LocalDraftRecord[]) {
   return JSON.stringify(normalizeLocalDrafts(records))
 }
 
-export function upsertLocalDraft(
-  records: LocalDraftRecord[],
-  draft: LocalDraftRecord,
-  limit = DEFAULT_DRAFT_LIMIT,
-) {
+export function upsertLocalDraft(records: LocalDraftRecord[], draft: LocalDraftRecord) {
   const existingDraft = records.find(record => record.id === draft.id)
   const nextDraft = {
     ...draft,
@@ -100,10 +99,10 @@ export function upsertLocalDraft(
     displayName: draft.displayName ?? existingDraft?.displayName,
   }
 
-  return normalizeLocalDrafts(
-    [nextDraft, ...records.filter(record => record.id !== draft.id)],
-    limit,
-  )
+  return normalizeLocalDrafts([
+    nextDraft,
+    ...records.filter(record => record.id !== draft.id),
+  ])
 }
 
 export function removeLocalDraft(records: LocalDraftRecord[], id: string) {
