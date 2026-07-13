@@ -4,6 +4,10 @@ export default defineConfig({
   testDir: './tests/e2e',
   workers: 1,
   timeout: 30_000,
+  // The Vite cold-transform storm sporadically fails the first editor init (a
+  // rejected @muyajs/core dynamic import); a retry clears it, and Playwright
+  // reports the run as flaky instead of failing the whole gate on infra noise.
+  retries: process.env.CI ? 2 : 1,
   expect: {
     timeout: 5_000,
   },

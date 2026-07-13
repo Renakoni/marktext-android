@@ -468,6 +468,8 @@ const {
 
 const {
   editorReady,
+  editorFailed,
+  retryEditor,
   setEditorElement,
   getEditorElement,
   getEditor,
@@ -1786,6 +1788,7 @@ onBeforeUnmount(() => {
     :document-title="displayDocumentTitle"
     :status="displayStatus"
     :editor-ready="editorReady"
+    :editor-failed="editorFailed"
     :show-editor-actions="canShowEditorActions()"
     :editor-menu-open="editorMenuOpen"
     :toolbar-visible="toolbarSettings.displayMode !== 'hidden'"
@@ -1831,6 +1834,7 @@ onBeforeUnmount(() => {
     :resume-card-visible="resumeCardVisible"
     :resume-card-text="resumeCardText"
     @back="showHome"
+    @retry-editor="retryEditor"
     @search="openEditorSearch"
     @close-search="closeEditorSearch()"
     @update:search-query="setEditorSearchQuery"

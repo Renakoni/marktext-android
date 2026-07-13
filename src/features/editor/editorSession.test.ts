@@ -288,7 +288,7 @@ describe('editorSession', () => {
     expect(harness.destroyMuyaEditor).toHaveBeenCalledWith(harness.createdEditors[0])
   })
 
-  it('reports a failed initialization without leaving the session half-open', async () => {
+  it('surfaces a failed initialization only after the transparent retry is exhausted', async () => {
     const harness = createHarness({
       createMuyaEditor: async () => {
         throw new Error('muya exploded')
@@ -297,14 +297,64 @@ describe('editorSession', () => {
 
     await harness.session.openEditor('content')
 
+    // The initial attempt plus one auto-retry both ran before giving up.
+    expect(harness.createMuyaEditor).toHaveBeenCalledTimes(2)
     expect(harness.status.value).toBe('Editor failed')
-    expect(harness.logger.error).toHaveBeenCalledWith('Muya init failed', expect.any(Error))
+    expect(harness.session.editorFailed.value).toBe(true)
+    expect(harness.logger.error).toHaveBeenCalledWith(
+      'Muya init failed',
+      expect.objectContaining({ attempt: 2, error: expect.any(Error) }),
+    )
     expect(harness.setEditorSelectionMenuSuppression).toHaveBeenCalledWith(
       false,
       'editor-init-failed',
     )
     expect(harness.session.editorReady.value).toBe(false)
     expect(harness.session.hasEditor()).toBe(false)
+  })
+
+  it('retries a transient init failure once and recovers without surfacing it', async () => {
+    let attempts = 0
+    const harness = createHarness({
+      createMuyaEditor: async options => {
+        attempts += 1
+        if (attempts === 1) {
+          throw new Error('transient')
+        }
+        return createFakeMuyaEditor(options.markdown) as unknown as MuyaEditor
+      },
+    })
+
+    await harness.session.openEditor('# recover')
+
+    expect(attempts).toBe(2)
+    expect(harness.session.editorReady.value).toBe(true)
+    expect(harness.session.editorFailed.value).toBe(false)
+    expect(harness.status.value).not.toBe('Editor failed')
+    expect(harness.session.getEditorMarkdownSnapshot()).toBe('# recover')
+  })
+
+  it('reopens the failed document when retryEditor runs', async () => {
+    let succeed = false
+    const harness = createHarness({
+      createMuyaEditor: async options => {
+        if (!succeed) {
+          throw new Error('still failing')
+        }
+        return createFakeMuyaEditor(options.markdown) as unknown as MuyaEditor
+      },
+    })
+
+    await harness.session.openEditor('# retry me')
+    expect(harness.session.editorFailed.value).toBe(true)
+    expect(harness.session.editorReady.value).toBe(false)
+
+    succeed = true
+    await harness.session.retryEditor()
+
+    expect(harness.session.editorFailed.value).toBe(false)
+    expect(harness.session.editorReady.value).toBe(true)
+    expect(harness.session.getEditorMarkdownSnapshot()).toBe('# retry me')
   })
 
   it('installs input diagnostics when enabled and removes them on teardown', async () => {

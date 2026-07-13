@@ -16,6 +16,12 @@ const ENABLE_ANDROID_SELECTION_ACTION_MODE_SUPPRESSION = true
 // behavior: leave off unless actively diagnosing selection lifecycle issues.
 const ENABLE_ANDROID_SELECTION_DIAGNOSTICS = false
 
+// Editor init can fail on a transient hiccup (a cold dynamic import, a WebView
+// stall). Retry once transparently before surfacing the failure UI; Muya's
+// core import is not cached on rejection, so a retry re-attempts cleanly.
+const MAX_INIT_ATTEMPTS = 2
+const INIT_RETRY_DELAY_MS = 250
+
 interface EditorSessionLogger {
   debug(message: string, context?: unknown): void
   info(message: string, context?: unknown): void
@@ -55,6 +61,7 @@ export interface EditorSessionOptions {
 
 export interface EditorSession {
   editorReady: Ref<boolean>
+  editorFailed: Ref<boolean>
   setEditorElement(element: HTMLElement | null): void
   getEditorElement(): HTMLElement | null
   getEditor(): MuyaEditor | null
@@ -62,6 +69,7 @@ export interface EditorSession {
   getEditorMarkdownSnapshot(flushPending?: boolean): string
   syncDocumentFromEditor(markDirty?: boolean, flushPending?: boolean): MarkdownDocumentState
   openEditor(markdown: string): Promise<void>
+  retryEditor(): Promise<void>
   destroyEditor(options?: { updateSelectionMenuSuppression?: boolean }): void
   releaseEditorFocusAfterOpen(): void
   installEditorInputDiagnostics(): void
@@ -86,6 +94,8 @@ export function normalizeEditorMarkdown(markdown: string) {
 export function createEditorSession(options: EditorSessionOptions): EditorSession {
   const editorElement = ref<HTMLElement | null>(null)
   const editorReady = ref(false)
+  const editorFailed = ref(false)
+  let lastOpenedMarkdown = ''
 
   let editor: MuyaEditor | null = null
   let editorInitToken = 0
@@ -131,14 +141,14 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
     return options.documentState.value
   }
 
-  async function initEditor(initialMarkdown: string) {
+  async function initEditor(initialMarkdown: string, attempt = 1) {
     const element = editorElement.value
     if (!element) {
       return
     }
 
+    const token = ++editorInitToken
     try {
-      const token = ++editorInitToken
       try {
         await options.ensureAndroidImageResolver()
       } catch (error) {
@@ -174,6 +184,7 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
           : 'editor-init-baseline-disabled',
       )
       options.syncMarkdown('Ready')
+      editorFailed.value = false
       editorReady.value = true
       options.logger.info('Muya init complete', {
         characters: options.documentState.value.stats.characters,
@@ -181,13 +192,31 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
         lines: options.documentState.value.stats.lines,
       })
     } catch (error) {
-      options.status.value = 'Editor failed'
-      options.logger.error('Muya init failed', error)
+      // A newer open or destroy superseded this attempt: leave its state alone.
+      if (token !== editorInitToken) {
+        return
+      }
+      options.logger.error('Muya init failed', { attempt, error })
       await options.setEditorSelectionMenuSuppression(false, 'editor-init-failed')
+
+      // Retry once transparently: the user only sees the loading state, and a
+      // transient failure clears before ever reaching the failure surface.
+      if (attempt < MAX_INIT_ATTEMPTS) {
+        await new Promise<void>(resolve => setTimeout(resolve, INIT_RETRY_DELAY_MS))
+        if (token === editorInitToken) {
+          await initEditor(initialMarkdown, attempt + 1)
+        }
+        return
+      }
+
+      options.status.value = 'Editor failed'
+      editorFailed.value = true
     }
   }
 
   async function openEditor(markdown: string) {
+    lastOpenedMarkdown = markdown
+    editorFailed.value = false
     editorReady.value = false
     options.closeEditorToolbar()
     const wasEditorOpen = options.currentScreen.value === 'editor'
@@ -200,6 +229,13 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
     options.currentScreen.value = 'editor'
     await nextTick()
     await initEditor(markdown)
+  }
+
+  // Re-open the document that failed to initialize. A full open() gives the
+  // retry a clean host (the failed attempt may have left partial DOM) plus its
+  // own transparent auto-retry.
+  async function retryEditor() {
+    await openEditor(lastOpenedMarkdown)
   }
 
   function destroyEditor(destroyOptions: { updateSelectionMenuSuppression?: boolean } = {}) {
@@ -333,6 +369,8 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
 
   return {
     editorReady,
+    editorFailed,
+    retryEditor,
     setEditorElement,
     getEditorElement,
     getEditor,

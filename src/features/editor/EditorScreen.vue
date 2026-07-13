@@ -12,6 +12,7 @@ import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import MobileSelectionToolbar from './components/MobileSelectionToolbar.vue'
 import LinkActionOverlay from './components/LinkActionOverlay.vue'
 import ResumeCard from './components/ResumeCard.vue'
+import EditorFailurePanel from './components/EditorFailurePanel.vue'
 import type { SelectionToolbarCommandId } from './selectionToolbar'
 import type { SelectionToolbarRows } from './selectionToolbarSettings'
 import type { MobileCommandId } from '../../lib/mobileCommands'
@@ -25,6 +26,7 @@ const props = defineProps<{
   documentTitle: string
   status: string
   editorReady: boolean
+  editorFailed: boolean
   showEditorActions: boolean
   editorMenuOpen: boolean
   toolbarVisible: boolean
@@ -77,6 +79,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   back: []
+  'retry-editor': []
   search: []
   'close-search': []
   'update:searchQuery': [value: string]
@@ -387,6 +390,14 @@ onBeforeUnmount(() => {
           @dismiss="emit('resume-dismiss')"
         />
       </Transition>
+
+      <!-- Init failed after a transparent retry: a calm recovery surface over
+           the empty host, never a silent dead editor. -->
+      <EditorFailurePanel
+        v-if="editorFailed"
+        @retry="emit('retry-editor')"
+        @back="emit('back')"
+      />
     </section>
 
     <MobileSelectionToolbar
@@ -418,7 +429,7 @@ onBeforeUnmount(() => {
     />
 
     <MobileEditorToolbar
-      v-if="toolbarVisible"
+      v-if="toolbarVisible && !editorFailed"
       :inert="outlineOpen || tableSheetOpen"
       :expanded="toolbarExpanded"
       :active-panel="toolbarPanel"
