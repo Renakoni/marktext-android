@@ -59,6 +59,7 @@ function createHarness(overrides: {
 
   const destroyMuyaEditor = vi.fn()
   const syncMarkdown = vi.fn()
+  const onEditorBlur = vi.fn()
   const setEditorSelectionMenuSuppression = vi.fn(async () => {})
   const installNativeSelectionTapListener = vi.fn(async () => {})
   const uninstallNativeSelectionTapListener = vi.fn(async () => {})
@@ -78,7 +79,7 @@ function createHarness(overrides: {
     destroyMuyaEditor,
     syncMarkdown,
     onEditorFocus: vi.fn(),
-    onEditorBlur: vi.fn(),
+    onEditorBlur,
     ensureAndroidImageResolver: vi.fn(async () => true),
     getClipboardText: () => undefined,
     setEditorSelectionMenuSuppression,
@@ -136,6 +137,7 @@ function createHarness(overrides: {
     createMuyaEditor,
     destroyMuyaEditor,
     syncMarkdown,
+    onEditorBlur,
     setEditorSelectionMenuSuppression,
     installNativeSelectionTapListener,
     uninstallNativeSelectionTapListener,
@@ -464,6 +466,124 @@ describe('editorSession', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('does not announce ready when destroyed while the init suppression bridge is pending', async () => {
+    const harness = createHarness()
+
+    // Defer the 'editor-init' suppression call — it crosses the async native
+    // bridge — so the editor can be destroyed while it is in flight.
+    let releaseSuppression: () => void = () => {}
+    harness.setEditorSelectionMenuSuppression.mockImplementation(
+      async (_suppressed?: boolean, reason?: string) => {
+        if (reason === 'editor-init') {
+          await new Promise<void>(resolve => {
+            releaseSuppression = resolve
+          })
+        }
+      },
+    )
+
+    const openPromise = harness.session.openEditor('# doc')
+
+    // The attempt built its editor and is now parked awaiting the native bridge.
+    await vi.waitFor(() => {
+      expect(harness.setEditorSelectionMenuSuppression).toHaveBeenCalledWith(true, 'editor-init')
+    })
+    expect(harness.session.editorReady.value).toBe(false)
+    expect(harness.session.hasEditor()).toBe(true)
+
+    // The user leaves (Back): destroy the editor while suppression is pending.
+    harness.session.destroyEditor()
+    expect(harness.session.hasEditor()).toBe(false)
+
+    // The native bridge finally resolves the stale attempt.
+    releaseSuppression()
+    await openPromise
+
+    // The superseded attempt never announced itself ready or ran the ready sync
+    // against the destroyed editor.
+    expect(harness.session.editorReady.value).toBe(false)
+    expect(harness.syncMarkdown).not.toHaveBeenCalledWith('Ready')
+  })
+
+  it('releases focus inside the live editor root after Muya replaced the template host', async () => {
+    const harness = createHarness({
+      createMuyaEditor: async options => {
+        const fake = createFakeMuyaEditor(options.markdown)
+        // Mirror Muya's getContainer(): replace the handed template host with the
+        // live editor root, leaving editorElement pointing at a detached node.
+        options.element.replaceWith(fake.domNode)
+        return fake as unknown as MuyaEditor
+      },
+    })
+
+    await harness.session.openEditor('# doc')
+
+    // Muya's init focus lands inside the LIVE root; the stale template host does
+    // not contain it.
+    const liveRoot = harness.session.getEditor()!.domNode
+    const content = document.createElement('div')
+    content.tabIndex = -1
+    liveRoot.appendChild(content)
+    content.focus()
+    expect(document.activeElement).toBe(content)
+    expect(harness.host.contains(content)).toBe(false)
+
+    // Run the rAF-scheduled focus release synchronously.
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      callback(0)
+      return 0
+    })
+    try {
+      harness.session.releaseEditorFocusAfterOpen()
+    } finally {
+      raf.mockRestore()
+    }
+
+    // Focus was released against the live root — the no-keyboard policy holds
+    // even though editorElement is stale.
+    expect(document.activeElement).not.toBe(content)
+  })
+
+  it('does not run the user-blur handler while programmatically releasing focus after open', async () => {
+    const harness = createHarness({
+      createMuyaEditor: async options => {
+        const fake = createFakeMuyaEditor(options.markdown)
+        options.element.replaceWith(fake.domNode)
+        // Mirror Muya: a DOM blur on the root emits the app blur (muya.ts:164).
+        fake.domNode.addEventListener('blur', () => options.onBlur())
+        return fake as unknown as MuyaEditor
+      },
+    })
+
+    await harness.session.openEditor('# doc')
+    const liveRoot = harness.session.getEditor()!.domNode as HTMLElement
+    liveRoot.tabIndex = -1
+    liveRoot.focus()
+    expect(document.activeElement).toBe(liveRoot)
+    harness.onEditorBlur.mockClear()
+
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      callback(0)
+      return 0
+    })
+    try {
+      harness.session.releaseEditorFocusAfterOpen()
+    } finally {
+      raf.mockRestore()
+    }
+
+    // Focus was released, but the programmatic blur did NOT run the user-blur
+    // status handler (which would clobber the just-set open notice).
+    expect(document.activeElement).not.toBe(liveRoot)
+    expect(harness.onEditorBlur).not.toHaveBeenCalled()
+
+    // A later, genuine user blur is still delivered — suppression is scoped to
+    // the focus-release only.
+    liveRoot.focus()
+    liveRoot.blur()
+    expect(harness.onEditorBlur).toHaveBeenCalledTimes(1)
   })
 
   it('installs input diagnostics when enabled and removes them on teardown', async () => {

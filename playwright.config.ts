@@ -12,12 +12,12 @@ export default defineConfig({
     timeout: 5_000,
   },
   use: {
-    baseURL: 'http://127.0.0.1:5174',
+    baseURL: 'http://127.0.0.1:5180',
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'pnpm dev --host 127.0.0.1 --port 5174 --strictPort',
-    url: 'http://127.0.0.1:5174',
+    command: 'pnpm dev --host 127.0.0.1 --port 5180 --strictPort',
+    url: 'http://127.0.0.1:5180',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     stdout: 'pipe',
