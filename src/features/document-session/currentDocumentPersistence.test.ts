@@ -177,6 +177,52 @@ describe('currentDocumentPersistence', () => {
     expect(disabled.options.persistLocalDrafts).not.toHaveBeenCalled()
   })
 
+  it('reports whether the local draft is durably safe for the incoming-open guard', () => {
+    const dirty = updateDocumentMarkdown(
+      createUntitledDocument({ markdown: '', autosaveTarget: 'local-draft' }),
+      '# Draft body',
+      { markDirty: true },
+    )
+
+    // Persisted content, or nothing to keep, is durable.
+    expect(createPersistence({ documentState: dirty }).persistence.saveDraft()).toBe(true)
+    expect(
+      createPersistence({ canPersistLocalDrafts: false, markdownSnapshot: '   ' })
+        .persistence.saveDraft(),
+    ).toBe(true)
+
+    // Content that cannot be persisted (drafts disabled, or a storage failure) is not.
+    expect(
+      createPersistence({ canPersistLocalDrafts: false, markdownSnapshot: '# unsaved' })
+        .persistence.saveDraft(),
+    ).toBe(false)
+
+    const failing = createPersistence({ documentState: dirty })
+    failing.options.persistLocalDrafts.mockImplementation(() => {
+      throw new Error('quota exceeded')
+    })
+    expect(failing.persistence.saveDraft()).toBe(false)
+    expect(failing.options.status.value).toBe('Autosave failed')
+  })
+
+  it('reports whether an Android recovery draft was durably written', () => {
+    const kept = createPersistence()
+    expect(kept.persistence.persistAndroidRecoveryDraft(ANDROID_URI, '# edits')).toBe(true)
+    expect(
+      kept.options.localDrafts.value.some(draft => draft.id === `android-recovery:${ANDROID_URI}`),
+    ).toBe(true)
+
+    const disabled = createPersistence({ canPersistRecoveryDrafts: false })
+    expect(disabled.persistence.persistAndroidRecoveryDraft(ANDROID_URI, '# edits')).toBe(false)
+    expect(disabled.options.persistLocalDrafts).not.toHaveBeenCalled()
+
+    const failing = createPersistence()
+    failing.options.persistLocalDrafts.mockImplementation(() => {
+      throw new Error('quota exceeded')
+    })
+    expect(failing.persistence.persistAndroidRecoveryDraft(ANDROID_URI, '# edits')).toBe(false)
+  })
+
   it('saves a dirty Android document, updates recents, and drops its recovery draft', async () => {
     const recoveryDraft: LocalDraftRecord = {
       id: `android-recovery:${ANDROID_URI}`,

@@ -43,6 +43,8 @@ function createOrchestration(overrides: {
   documentState?: ReturnType<typeof createUntitledDocument>
   hasEditor?: boolean
   saveResult?: boolean
+  draftSaved?: boolean
+  recoveryKept?: boolean
   canPersistDrafts?: boolean
 } = {}) {
   const options = {
@@ -66,11 +68,12 @@ function createOrchestration(overrides: {
     closeEditorToolbar: vi.fn(),
     openAndroidDocumentResult: vi.fn().mockResolvedValue(undefined),
     saveAndroidDocument: vi.fn().mockResolvedValue(overrides.saveResult ?? true),
-    saveDraft: vi.fn(),
+    saveDraft: vi.fn(() => overrides.draftSaved ?? true),
     syncDocumentFromEditor: vi.fn(),
-    persistAndroidRecoveryDraft: vi.fn(),
+    persistAndroidRecoveryDraft: vi.fn(() => overrides.recoveryKept ?? true),
     canPersistLocalDrafts: () => overrides.canPersistDrafts ?? true,
     persistLocalDrafts: vi.fn(),
+    confirmIncomingOpenAfterBlockedPreserve: vi.fn(),
     getAndroidDocumentUserMessage,
     appLogger: noopLogger,
     documentLogger: noopLogger,
@@ -149,7 +152,88 @@ describe('incomingDocumentOrchestration', () => {
       'content://test/current.md',
       '# Device doc',
     )
+    // A durable recovery write counts as preserved, so the incoming doc opens.
+    expect(options.confirmIncomingOpenAfterBlockedPreserve).not.toHaveBeenCalled()
     expect(options.openAndroidDocumentResult).toHaveBeenCalled()
+  })
+
+  it('blocks the incoming open when a failed Android save cannot be recovered', async () => {
+    const documentState = {
+      ...createUntitledDocument({
+        markdown: '# Device doc',
+        autosaveTarget: 'android-document',
+        sourceUri: 'content://test/current.md',
+      }),
+      isDirty: true,
+    }
+    const { orchestration, options } = createOrchestration({
+      currentScreen: 'editor',
+      hasEditor: true,
+      documentState,
+      saveResult: false,
+      recoveryKept: false,
+    })
+
+    await orchestration.handleOpenWithDocumentEvent({ document: incomingDocument, error: null })
+
+    expect(options.confirmIncomingOpenAfterBlockedPreserve).toHaveBeenCalledTimes(1)
+    const [request] = options.confirmIncomingOpenAfterBlockedPreserve.mock.calls[0]
+    expect(request.incomingName).toBe('incoming.md')
+    expect(typeof request.proceed).toBe('function')
+    // The editor is not replaced and its chrome stays mounted.
+    expect(options.openAndroidDocumentResult).not.toHaveBeenCalled()
+    expect(options.closeEditorMenu).not.toHaveBeenCalled()
+  })
+
+  it('blocks the incoming open when an unsaved local draft cannot be kept', async () => {
+    const { orchestration, options } = createOrchestration({
+      currentScreen: 'editor',
+      hasEditor: true,
+      documentState: createUntitledDocument({ markdown: '# Draft', autosaveTarget: 'local-draft' }),
+      draftSaved: false,
+    })
+
+    await orchestration.handleShareDocumentEvent({ document: sharedTextDocument, error: null })
+
+    expect(options.saveDraft).toHaveBeenCalled()
+    expect(options.confirmIncomingOpenAfterBlockedPreserve).toHaveBeenCalledTimes(1)
+    expect(options.confirmIncomingOpenAfterBlockedPreserve.mock.calls[0][0].incomingName).toBe(
+      'Shared text',
+    )
+    // The shared text is not imported and the editor is not replaced.
+    expect(options.openEditor).not.toHaveBeenCalled()
+    expect(options.persistLocalDrafts).not.toHaveBeenCalled()
+  })
+
+  it('opens the incoming document when the user discards after a blocked preserve', async () => {
+    const documentState = {
+      ...createUntitledDocument({
+        markdown: '# Device doc',
+        autosaveTarget: 'android-document',
+        sourceUri: 'content://test/current.md',
+      }),
+      isDirty: true,
+    }
+    const { orchestration, options } = createOrchestration({
+      currentScreen: 'editor',
+      hasEditor: true,
+      documentState,
+      saveResult: false,
+      recoveryKept: false,
+    })
+
+    await orchestration.handleOpenWithDocumentEvent({ document: incomingDocument, error: null })
+    expect(options.openAndroidDocumentResult).not.toHaveBeenCalled()
+
+    // Running the deferred proceed is the user's "Discard & open" choice.
+    const [request] = options.confirmIncomingOpenAfterBlockedPreserve.mock.calls[0]
+    await request.proceed()
+
+    expect(options.closeEditorMenu).toHaveBeenCalled()
+    expect(options.openAndroidDocumentResult).toHaveBeenCalledWith(incomingDocument, {
+      source: 'open-with',
+      remember: true,
+    })
   })
 
   it('routes a shared Markdown file through the shared open path', async () => {

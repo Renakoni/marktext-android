@@ -8,6 +8,7 @@ import OutlineSheet from './components/OutlineSheet.vue'
 import LinkInsertSheet from './components/LinkInsertSheet.vue'
 import TableInsertSheet from './components/TableInsertSheet.vue'
 import LocalDraftExitPrompt from './components/LocalDraftExitPrompt.vue'
+import IncomingOpenPrompt from './components/IncomingOpenPrompt.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import MobileSelectionToolbar from './components/MobileSelectionToolbar.vue'
 import LinkActionOverlay from './components/LinkActionOverlay.vue'
@@ -60,6 +61,8 @@ const props = defineProps<{
   androidCanSaveCopy: boolean
   androidCanKeepRecovery: boolean
   androidSaving: boolean
+  incomingOpenPromptOpen: boolean
+  incomingOpenName: string
   textDirection: 'ltr' | 'rtl'
   editorStyleVars: CSSProperties
   canPasteSelection: boolean
@@ -116,6 +119,8 @@ const emit = defineEmits<{
   'save-android-copy': []
   'keep-android-recovery': []
   'discard-android-changes': []
+  'keep-incoming': []
+  'discard-incoming': []
   'editor-host-change': [element: HTMLElement | null]
 }>()
 
@@ -136,7 +141,8 @@ const selectionToolbarSuspended = computed(
     props.linkSheetOpen ||
     props.tableSheetOpen ||
     props.draftExitPromptOpen ||
-    props.androidExitPromptOpen,
+    props.androidExitPromptOpen ||
+    props.incomingOpenPromptOpen,
 )
 
 const searchInput = ref<HTMLInputElement | null>(null)
@@ -519,6 +525,15 @@ onBeforeUnmount(() => {
         @save-copy="emit('save-android-copy')"
         @keep-recovery="emit('keep-android-recovery')"
         @discard="emit('discard-android-changes')"
+      />
+    </Transition>
+
+    <Transition name="editor-sheet">
+      <IncomingOpenPrompt
+        v-if="incomingOpenPromptOpen"
+        :incoming-name="incomingOpenName"
+        @keep="emit('keep-incoming')"
+        @discard="emit('discard-incoming')"
       />
     </Transition>
   </main>

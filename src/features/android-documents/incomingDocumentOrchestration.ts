@@ -27,6 +27,20 @@ interface OrchestrationLogger {
   error(message: string, context?: unknown): void
 }
 
+/**
+ * Whether the current document was durably preserved before replacing it with
+ * an incoming one. `blocked` means it holds unsaved content that could not be
+ * saved or recovered, so the editor must stay mounted and the user decides.
+ */
+type IncomingPreservationResult = { kind: 'preserved' } | { kind: 'blocked' }
+
+export interface BlockedIncomingOpenRequest {
+  /** Display name of the incoming document, for the confirmation copy. */
+  incomingName: string
+  /** Runs the deferred replacement once the user chooses to discard. */
+  proceed: () => Promise<void>
+}
+
 export interface IncomingDocumentOrchestrationOptions {
   // App-owned state the incoming flows read and write.
   currentScreen: Ref<AppScreen>
@@ -50,11 +64,14 @@ export interface IncomingDocumentOrchestrationOptions {
     options?: { source?: AndroidDocumentOpenSource, remember?: boolean },
   ) => Promise<void>
   saveAndroidDocument: () => Promise<boolean>
-  saveDraft: () => void
+  saveDraft: () => boolean
   syncDocumentFromEditor: (markDirty: boolean, flushPending: boolean) => void
-  persistAndroidRecoveryDraft: (sourceUri: string, markdown: string) => void
+  persistAndroidRecoveryDraft: (sourceUri: string, markdown: string) => boolean
   canPersistLocalDrafts: () => boolean
   persistLocalDrafts: (drafts: LocalDraftRecord[]) => void
+  // Called instead of replacing the editor when preservation was blocked: keep
+  // the current editor mounted and let the user keep editing or discard + open.
+  confirmIncomingOpenAfterBlockedPreserve: (request: BlockedIncomingOpenRequest) => void
   getAndroidDocumentUserMessage: (error: unknown) => string
   appLogger: OrchestrationLogger
   documentLogger: OrchestrationLogger
@@ -95,7 +112,7 @@ export function createIncomingDocumentOrchestration(
     options.releaseEditorFocusAfterOpen()
   }
 
-  async function preserveCurrentDocumentBeforeIncomingOpen() {
+  async function preserveCurrentDocumentBeforeIncomingOpen(): Promise<IncomingPreservationResult> {
     const preservationAction = getIncomingDocumentPreservationAction({
       currentScreen: options.currentScreen.value,
       hasEditor: options.hasEditor(),
@@ -103,7 +120,7 @@ export function createIncomingDocumentOrchestration(
     })
 
     if (preservationAction.kind === 'none') {
-      return
+      return { kind: 'preserved' }
     }
 
     options.appLogger.info('preserve current document before incoming Android document')
@@ -111,17 +128,50 @@ export function createIncomingDocumentOrchestration(
     if (preservationAction.kind === 'save-android-document') {
       options.syncDocumentFromEditor(options.documentState.value.isDirty, true)
       const sourceUri = options.documentState.value.sourceUri
+      const markdown = options.documentState.value.markdown
       const saved = await options.saveAndroidDocument()
-      if (
-        sourceUri
-        && shouldKeepAndroidRecoveryAfterPreserveFailure(saved, sourceUri, options.documentState.value.markdown)
-      ) {
-        options.persistAndroidRecoveryDraft(sourceUri, options.documentState.value.markdown)
+
+      // Saved to its file, or there is nothing to lose.
+      if (saved || markdown.trim().length === 0) {
+        return { kind: 'preserved' }
       }
+
+      // The save failed with unsaved content: keep it as a recovery draft when
+      // we can. Only a durable recovery write counts as preserved.
+      if (
+        shouldKeepAndroidRecoveryAfterPreserveFailure(saved, sourceUri, markdown)
+        && sourceUri
+        && options.persistAndroidRecoveryDraft(sourceUri, markdown)
+      ) {
+        return { kind: 'preserved' }
+      }
+
+      options.appLogger.warn('incoming open would drop unsaved Android document edits')
+      return { kind: 'blocked' }
+    }
+
+    // Local draft: saveDraft reports whether the content is durably safe.
+    if (options.saveDraft()) {
+      return { kind: 'preserved' }
+    }
+
+    options.appLogger.warn('incoming open would drop an unsaved local draft')
+    return { kind: 'blocked' }
+  }
+
+  // Either replaces the editor with the incoming document now, or — when the
+  // current document could not be preserved — keeps the editor and asks first.
+  async function runIncomingOpen(
+    preservation: IncomingPreservationResult,
+    incomingName: string,
+    proceed: () => Promise<void>,
+  ) {
+    if (preservation.kind === 'blocked') {
+      options.confirmIncomingOpenAfterBlockedPreserve({ incomingName, proceed })
       return
     }
 
-    options.saveDraft()
+    await proceed()
   }
 
   function closeEditorChromeForIncomingOpen() {
@@ -143,11 +193,13 @@ export function createIncomingDocumentOrchestration(
       return
     }
 
-    await preserveCurrentDocumentBeforeIncomingOpen()
-    closeEditorChromeForIncomingOpen()
-    await options.openAndroidDocumentResult(action.document, {
-      source: action.source,
-      remember: action.remember,
+    const preservation = await preserveCurrentDocumentBeforeIncomingOpen()
+    await runIncomingOpen(preservation, action.document.displayName, async () => {
+      closeEditorChromeForIncomingOpen()
+      await options.openAndroidDocumentResult(action.document, {
+        source: action.source,
+        remember: action.remember,
+      })
     })
   }
 
@@ -163,18 +215,23 @@ export function createIncomingDocumentOrchestration(
       return
     }
 
-    await preserveCurrentDocumentBeforeIncomingOpen()
-    closeEditorChromeForIncomingOpen()
+    const preservation = await preserveCurrentDocumentBeforeIncomingOpen()
 
     if (action.kind === 'open-document') {
-      await options.openAndroidDocumentResult(action.document, {
-        source: action.source,
-        remember: action.remember,
+      await runIncomingOpen(preservation, action.document.displayName, async () => {
+        closeEditorChromeForIncomingOpen()
+        await options.openAndroidDocumentResult(action.document, {
+          source: action.source,
+          remember: action.remember,
+        })
       })
       return
     }
 
-    await openSharedTextDocument(action.document)
+    await runIncomingOpen(preservation, action.document.displayName, async () => {
+      closeEditorChromeForIncomingOpen()
+      await openSharedTextDocument(action.document)
+    })
   }
 
   function installListeners() {

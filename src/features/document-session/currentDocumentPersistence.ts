@@ -115,9 +115,15 @@ export interface CurrentDocumentPersistenceOptions {
 }
 
 export interface CurrentDocumentPersistence {
-  persistAndroidRecoveryDraft(sourceUri: string, markdown: string): void
+  /** Returns whether the recovery draft was durably written to storage. */
+  persistAndroidRecoveryDraft(sourceUri: string, markdown: string): boolean
   removeAndroidRecoveryDraft(sourceUri: string): void
-  saveDraft(): void
+  /**
+   * Returns whether the current local-draft content is durably safe: true when
+   * it was persisted or there was nothing to persist, false when there was
+   * content that could not be kept (drafts disabled, or a storage failure).
+   */
+  saveDraft(): boolean
   saveAndroidDocument(): Promise<boolean>
   saveLocalDraftToAndroidDocument(options?: { returnHomeAfterSave?: boolean }): Promise<boolean>
   saveAndroidDocumentCopy(options?: { returnHomeAfterSave?: boolean }): Promise<boolean>
@@ -139,25 +145,32 @@ export function createCurrentDocumentPersistence(
   let androidSaveInFlight = false
   let androidSaveRequestedAfterCurrent = false
 
-  function persistAndroidRecoveryDraft(sourceUri: string, markdown: string) {
+  function persistAndroidRecoveryDraft(sourceUri: string, markdown: string): boolean {
     if (!options.canPersistAndroidRecoveryDrafts()) {
       options.documentLogger.warn('skip Android recovery draft because recovery drafts are disabled', {
         sourceUri,
         characters: markdown.length,
       })
-      return
+      return false
     }
 
     const recoveryDraft = createAndroidRecoveryDraft(sourceUri, markdown, new Date().toISOString())
     if (!recoveryDraft) {
-      return
+      return false
     }
 
-    options.persistLocalDrafts(upsertLocalDraft(options.localDrafts.value, recoveryDraft))
+    try {
+      options.persistLocalDrafts(upsertLocalDraft(options.localDrafts.value, recoveryDraft))
+    } catch (error) {
+      options.draftLogger.error('failed to persist Android recovery draft', { sourceUri, error })
+      return false
+    }
+
     options.draftLogger.warn('kept Android document edits as a local recovery draft', {
       sourceUri,
       characters: markdown.length,
     })
+    return true
   }
 
   function removeAndroidRecoveryDraft(sourceUri: string) {
@@ -191,11 +204,11 @@ export function createCurrentDocumentPersistence(
     removeAndroidRecoveryDraft(sourceUri)
   }
 
-  function saveDraft() {
+  function saveDraft(): boolean {
     options.clearDraftSaveTimer()
 
     if (!options.hasEditor()) {
-      return
+      return true
     }
 
     if (options.documentState.value.autosaveTarget !== 'local-draft') {
@@ -204,18 +217,20 @@ export function createCurrentDocumentPersistence(
         sourceUri: options.documentState.value.sourceUri,
         autosaveState: options.documentState.value.autosaveState,
       })
-      return
+      return true
     }
+
+    const value = options.getEditorMarkdownSnapshot(true)
 
     if (!options.canPersistLocalDrafts()) {
       options.clearDraftSaveTimer()
       options.draftLogger.debug('skip local draft save because local drafts are disabled', {
         id: options.documentState.value.id,
       })
-      return
+      // Nothing was persisted; the content is only safe if there is none to keep.
+      return value.trim().length === 0
     }
 
-    const value = options.getEditorMarkdownSnapshot(true)
     const localDraftAutosave = createLocalDraftAutosaveResult(
       options.documentState.value,
       value,
@@ -228,10 +243,12 @@ export function createCurrentDocumentPersistence(
       options.documentState.value = localDraftAutosave.savedDocument
       options.status.value = localDraftAutosave.hasContent ? 'Autosaved locally' : 'Ready'
       options.draftLogger.debug('local draft saved', options.getDraftLogStats())
+      return true
     } catch (error) {
       options.documentState.value = markDocumentSaveFailed(options.documentState.value, error)
       options.status.value = 'Autosave failed'
       options.draftLogger.error('local draft save failed', error)
+      return false
     }
   }
 
