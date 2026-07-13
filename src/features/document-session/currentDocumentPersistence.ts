@@ -610,7 +610,7 @@ export function createCurrentDocumentPersistence(
     })
 
     if (options.documentState.value.autosaveTarget === 'android-document') {
-      await saveAndroidDocument()
+      await saveAndroidDocument({ waitForPendingSave: true })
     } else {
       saveDraft()
     }

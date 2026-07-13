@@ -365,6 +365,32 @@ describe('currentDocumentPersistence', () => {
     expect(home.options.clearDraftSaveTimer).not.toHaveBeenCalled()
   })
 
+  it('waits for an active Android save during a lifecycle flush', async () => {
+    const { persistence, options } = createPersistence({
+      documentState: dirtyAndroidDocumentState(),
+      androidDocuments: [androidRecentRecord()],
+    })
+    let releaseFirstWrite!: () => void
+    options.writeAndroidMarkdownDocument
+      .mockImplementationOnce(() => new Promise<void>(resolve => (releaseFirstWrite = resolve)))
+      .mockResolvedValueOnce(undefined)
+
+    const first = persistence.saveAndroidDocument()
+    options.documentState.value = dirtyAndroidDocumentState('# edits before backgrounding')
+    const flush = persistence.flushCurrentDocument('app pause')
+
+    await Promise.resolve()
+    expect(options.writeAndroidMarkdownDocument).toHaveBeenCalledTimes(1)
+
+    releaseFirstWrite()
+    await expect(first).resolves.toBe(false)
+    await flush
+    expect(options.writeAndroidMarkdownDocument).toHaveBeenCalledTimes(2)
+    expect(options.writeAndroidMarkdownDocument.mock.calls[1][1]).toBe(
+      '# edits before backgrounding',
+    )
+  })
+
   it('saves a local draft to the device and cleans up the draft copy', async () => {
     const dirtyDraft = updateDocumentMarkdown(
       createUntitledDocument({ markdown: '', autosaveTarget: 'local-draft' }),
