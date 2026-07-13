@@ -34,7 +34,6 @@ import {
 import {
   isAndroidSelectionControlAvailable,
   readAndroidClipboardText,
-  writeAndroidClipboardText,
 } from './lib/androidSelection'
 import { openExternalUrl } from './lib/externalLinks'
 import { createDocumentOutline, waitForViewportSettle } from './features/editor/documentOutline'
@@ -683,20 +682,6 @@ async function openEditorLink(href: string) {
   const opened = await openExternalUrl(href)
   if (!opened) {
     editorLog.warn('could not open external link', { href })
-  }
-}
-
-// Copy a link's href. The Android clipboard bridge wins; the web Clipboard API
-// is the dev/e2e fallback. The overlay owns the "Copied" confirmation.
-async function copyEditorLink(href: string) {
-  if (await writeAndroidClipboardText(href)) {
-    return
-  }
-
-  try {
-    await navigator.clipboard?.writeText(href)
-  } catch {
-    editorLog.warn('could not copy link to clipboard', { href })
   }
 }
 
@@ -1866,7 +1851,6 @@ onBeforeUnmount(() => {
     @run-selection-command="runEditorSelectionCommand"
     @dismiss-selection="finishSelectionToolbarOutsideTap"
     @open-link="openEditorLink"
-    @copy-link="copyEditorLink"
     @toggle-toolbar="toggleEditorToolbarExclusive"
     @set-toolbar-panel="setEditorToolbarPanel"
     @close-link-sheet="closeLinkSheet"

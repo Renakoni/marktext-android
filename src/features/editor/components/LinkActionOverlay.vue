@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { computeSelectionToolbarPlacement } from '../selectionToolbar'
 import { LINK_WRAPPER_SELECTOR, getOpenableLinkTarget, readLinkWrapperHref } from '../linkTargets'
+import { copyTextToClipboard } from '../../../lib/clipboard'
 import { useI18n } from '../../../lib/i18n'
 
 const props = defineProps<{
@@ -20,7 +21,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   open: [href: string]
-  copy: [href: string]
 }>()
 
 const { t } = useI18n()
@@ -183,12 +183,20 @@ function openLink() {
   }
 }
 
-function copyLink() {
-  if (!href.value) {
+async function copyLink() {
+  const target = href.value
+  if (!target) {
     return
   }
 
-  emit('copy', href.value)
+  const written = await copyTextToClipboard(target)
+  // Confirm ONLY after a real write, and only if the overlay is still showing
+  // the same link: during the await the caret may have moved to another link
+  // or left entirely, and a stale success must never light up a new target.
+  if (!written || !visible.value || href.value !== target) {
+    return
+  }
+
   copied.value = true
   if (copiedTimer !== null) {
     window.clearTimeout(copiedTimer)
@@ -209,7 +217,7 @@ function openFromTouch(event: TouchEvent) {
 function copyFromTouch(event: TouchEvent) {
   pressedId.value = null
   if (releasedInside(event)) {
-    copyLink()
+    void copyLink()
   }
 }
 

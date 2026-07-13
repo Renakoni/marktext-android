@@ -71,7 +71,10 @@ following paragraph
   await expect(page.getByTestId('link-action-overlay')).toBeHidden()
 })
 
-test('confirms in place after copying the link', async ({ page }) => {
+test('confirms in place and writes the link to the clipboard on a successful copy', async ({
+  page,
+}) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   await openLocalDraft(page, {
     id: 'link-overlay-copy',
     markdown: OPENABLE_MARKDOWN,
@@ -84,7 +87,42 @@ test('confirms in place after copying the link', async ({ page }) => {
   const copyButton = page.getByTestId('link-action-copy')
   await expect(copyButton).toBeVisible()
   await copyButton.click()
+
+  // The confirmation appears only after a real write...
   await expect(copyButton.locator('.link-action-icon-check')).toBeVisible()
+  // ...and the clipboard actually holds the link.
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe('https://www.baidu.com/')
+})
+
+test('does not confirm when every copy channel fails', async ({ page }) => {
+  // Force the web Clipboard API to reject on every navigation; there is no
+  // Android bridge on the web, so the copy then has no working channel at all.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error('denied')) },
+    })
+  })
+  await openLocalDraft(page, {
+    id: 'link-overlay-copy-fail',
+    markdown: OPENABLE_MARKDOWN,
+    title: /Link overlay probe/,
+  })
+
+  const editor = page.getByTestId('editor-host')
+  await editor.locator('.mu-link').filter({ hasText: 'Baidu' }).click()
+
+  const copyButton = page.getByTestId('link-action-copy')
+  await expect(copyButton).toBeVisible()
+  await copyButton.click()
+
+  // Let the async copy settle, then assert no confirmation was shown: a failed
+  // write must never surface the "Copied" checkmark.
+  await page.waitForTimeout(300)
+  await expect(copyButton.locator('.link-action-icon-check')).toHaveCount(0)
+  await expect(copyButton).toBeVisible()
 })
 
 test('honors the linkPopup setting: the overlay stays hidden when disabled', async ({ page }) => {

@@ -97,7 +97,6 @@ const emit = defineEmits<{
   'run-selection-command': [commandId: SelectionToolbarCommandId, restoreRange: Range | null]
   'dismiss-selection': [caretRange: Range | null]
   'open-link': [href: string]
-  'copy-link': [href: string]
   'toggle-toolbar': []
   'set-toolbar-panel': [panel: MobileEditorToolbarPanel]
   'update:linkText': [value: string]
@@ -416,7 +415,6 @@ onBeforeUnmount(() => {
       :host="editorShell"
       :enabled="linkOverlayEnabled"
       @open="href => emit('open-link', href)"
-      @copy="href => emit('copy-link', href)"
     />
 
     <MobileEditorToolbar
