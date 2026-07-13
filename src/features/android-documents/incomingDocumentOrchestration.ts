@@ -140,8 +140,10 @@ export function createIncomingDocumentOrchestration(
       const sourceUri = options.documentState.value.sourceUri
       const markdown = options.documentState.value.markdown
 
-      // Saved to its file, or there is nothing to lose.
-      if (saved || markdown.trim().length === 0) {
+      // A blank snapshot can still be an unsaved deletion of previously
+      // persisted content. Only the save result proves that the current editor
+      // state reached the provider.
+      if (saved) {
         return { kind: 'preserved' }
       }
 
@@ -197,6 +199,11 @@ export function createIncomingDocumentOrchestration(
     transactionActive = true
     try {
       await next()
+    } catch (error) {
+      const message = options.getAndroidDocumentUserMessage(error)
+      options.homeNotice.value = message
+      options.status.value = message
+      options.documentLogger.error('incoming Android document transaction failed', error)
     } finally {
       transactionActive = false
     }

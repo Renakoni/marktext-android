@@ -185,6 +185,30 @@ describe('incomingDocumentOrchestration', () => {
     expect(options.closeEditorMenu).not.toHaveBeenCalled()
   })
 
+  it('blocks when a failed save leaves a dirty Android document blank', async () => {
+    const documentState = {
+      ...createUntitledDocument({
+        markdown: '',
+        autosaveTarget: 'android-document',
+        sourceUri: 'content://test/current.md',
+      }),
+      isDirty: true,
+    }
+    const { orchestration, options } = createOrchestration({
+      currentScreen: 'editor',
+      hasEditor: true,
+      documentState,
+      saveResult: false,
+      recoveryKept: false,
+    })
+
+    await orchestration.handleOpenWithDocumentEvent({ document: incomingDocument, error: null })
+
+    expect(options.confirmIncomingOpenAfterBlockedPreserve).toHaveBeenCalledTimes(1)
+    expect(options.persistAndroidRecoveryDraft).not.toHaveBeenCalled()
+    expect(options.openAndroidDocumentResult).not.toHaveBeenCalled()
+  })
+
   it('blocks the incoming open when an unsaved local draft cannot be kept', async () => {
     const { orchestration, options } = createOrchestration({
       currentScreen: 'editor',
@@ -311,6 +335,39 @@ describe('incomingDocumentOrchestration', () => {
       'second.md',
     )
     expect(options.openAndroidDocumentResult).not.toHaveBeenCalled()
+  })
+
+  it('continues with a queued incoming open after the active transaction fails', async () => {
+    const { orchestration, options } = createOrchestration({ currentScreen: 'home' })
+    let rejectFirst!: (error: Error) => void
+    const firstOpen = new Promise<void>((_resolve, reject) => {
+      rejectFirst = reject
+    })
+    options.openAndroidDocumentResult
+      .mockImplementationOnce(() => firstOpen)
+      .mockResolvedValue(undefined)
+
+    const first = orchestration.handleOpenWithDocumentEvent({
+      document: incomingDocument,
+      error: null,
+    })
+    await vi.waitFor(() => expect(options.openAndroidDocumentResult).toHaveBeenCalledTimes(1))
+
+    const secondDocument = {
+      ...incomingDocument,
+      sourceUri: 'content://test/second.md',
+      displayName: 'second.md',
+    }
+    await orchestration.handleOpenWithDocumentEvent({ document: secondDocument, error: null })
+
+    rejectFirst(new Error('open failed'))
+    await first
+
+    expect(options.openAndroidDocumentResult).toHaveBeenCalledTimes(2)
+    expect(options.openAndroidDocumentResult).toHaveBeenLastCalledWith(secondDocument, {
+      source: 'open-with',
+      remember: true,
+    })
   })
 
   it('routes a shared Markdown file through the shared open path', async () => {

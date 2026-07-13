@@ -1579,11 +1579,21 @@ async function discardCurrentAndOpenIncoming() {
   pendingIncomingOpenProceed = null
   incomingOpenPromptOpen.value = false
   incomingOpenName.value = ''
-  if (proceed) {
-    await proceed()
+  try {
+    if (proceed) {
+      await proceed()
+    }
+  } catch (error) {
+    const message = getAndroidDocumentUserMessage(error)
+    homeNotice.value = message
+    status.value = message
+    androidDocumentLog.error('open incoming Android document after discard failed', error)
+  } finally {
+    // Always release the decision gate, even when the deferred open fails.
+    // Otherwise every future incoming Intent stays queued with no prompt left
+    // on screen to resume it.
+    void incomingDocuments.resolveIncomingDecision()
   }
-  // Drain after the replacement so a queued intent preserves the new editor.
-  void incomingDocuments.resolveIncomingDecision()
 }
 
 function requestLifecycleFlush(reason: string) {
