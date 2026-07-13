@@ -430,6 +430,38 @@ test('inserts a fenced code block from the paragraph panel', async ({ page }) =>
   await expect.poll(() => getDraftStorage(page)).toContain('```js\\nconst fenced = true\\n```')
 })
 
+// Android WebView scales marker GLYPHS by the user's system font size
+// (textZoom) but not the fence markers' fixed px offsets, so Muya's literal
+// ``` fence pseudo-markers collided with the language label above and the box
+// border below. They are desktop editing chrome, redundant with the box, the
+// language field, and the corner "fenced" tag, so the Android build hides
+// them; the box and tag stay.
+test('hides the literal fence pseudo-markers on an active code block', async ({ page }) => {
+  await newBlankDocument(page)
+
+  await page.getByTestId('editor-host').click()
+  await selectToolbarPanel(page, 'paragraph')
+  await page.getByTestId('toolbar-command-paragraph.code-fence').scrollIntoViewIfNeeded()
+  await page.getByTestId('toolbar-command-paragraph.code-fence').click()
+
+  const fence = page.getByTestId('editor-host').locator('pre.mu-code-block.mu-fenced-code')
+  await expect(fence).toHaveCount(1)
+  // The block is active (just inserted, cursor inside): the app override must
+  // win the cascade over Muya's own marker rule.
+  await expect(fence).toHaveClass(/mu-active/)
+
+  const markerContent = await fence.evaluate(node => [
+    getComputedStyle(node, '::before').content,
+    getComputedStyle(node, '::after').content,
+  ])
+  expect(markerContent).toEqual(['none', 'none'])
+
+  // The "fenced" tag (a different pseudo-element on .mu-code) is untouched.
+  await expect(
+    page.getByTestId('editor-host').locator('.mu-fenced-code.mu-active .mu-code'),
+  ).toHaveCount(1)
+})
+
 // The Table command opens the size sheet (steppers, default 3×3) and inserts
 // through `muya.createTable`. It must not route to `updateParagraph('table')`:
 // that Muya path emits `muya-table-picker`, whose only subscriber is the
@@ -742,12 +774,20 @@ test('renders the toolbar visual system: icons, letterforms, accessible names', 
     await expect(button).toHaveAttribute('aria-label', name)
   }
 
-  // Markdown panel: the script commands stay typographic symbols; the math
-  // pair uses icons whose only difference is composition (inline within a
-  // text line versus a block on its own line), not a math operation.
+  // Markdown panel: the script commands stay typographic, COMPOSED from
+  // primary-font glyphs (base x + scaled mark) instead of Unicode ²/₂ whose
+  // Android font fallback breaks baseline alignment; the math pair uses
+  // icons whose only difference is composition (inline within a text line
+  // versus a block on its own line), not a math operation.
   await selectToolbarPanel(page, 'markdown')
   await expect(page.getByTestId('toolbar-command-format.inline-math').locator('svg')).toHaveCount(1)
-  await expect(page.getByTestId('toolbar-command-format.superscript')).toHaveText('x²')
+  await expect(page.getByTestId('toolbar-command-format.superscript')).toHaveText('x2')
+  await expect(
+    page.getByTestId('toolbar-command-format.superscript').locator('.toolbar-script-mark.is-super'),
+  ).toHaveCount(1)
+  await expect(
+    page.getByTestId('toolbar-command-format.subscript').locator('.toolbar-script-mark.is-sub'),
+  ).toHaveCount(1)
   await expect(
     page.getByTestId('toolbar-command-paragraph.math-formula').locator('svg'),
   ).toHaveCount(1)
