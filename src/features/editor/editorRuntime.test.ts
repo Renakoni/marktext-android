@@ -1,6 +1,61 @@
+// @vitest-environment happy-dom
+
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_EDITING_SETTINGS, type EditingSettings } from '../settings/editingSettings'
-import { applyMuyaEditingSettings, resolveMuyaLocale, type MuyaEditor } from './editorRuntime'
+import {
+  applyMuyaEditingSettings,
+  createMuyaEditor,
+  resolveMuyaLocale,
+  type MuyaEditor,
+} from './editorRuntime'
+
+// A fake Muya that registers a document-level listener during construction (the
+// clipboard/selection globals the real Muya installs) and throws from init(),
+// to prove createMuyaEditor disposes a partially-initialized instance instead
+// of leaking global handlers on a failed init.
+const { FakeMuya, muyaInstances, muyaGlobalListenerCount } = vi.hoisted(() => {
+  const muyaInstances: { destroyed: boolean }[] = []
+  const state = { listeners: 0 }
+  const globalHandler = () => {}
+
+  class FakeMuya {
+    static plugins: { plugin: unknown }[] = []
+    static use(plugin: unknown) {
+      FakeMuya.plugins.push({ plugin })
+    }
+
+    destroyed = false
+
+    constructor() {
+      muyaInstances.push(this)
+      document.addEventListener('copy', globalHandler)
+      state.listeners += 1
+    }
+
+    init() {
+      throw new Error('Muya init failed after registering global listeners')
+    }
+
+    on() {}
+
+    destroy() {
+      this.destroyed = true
+      document.removeEventListener('copy', globalHandler)
+      state.listeners -= 1
+    }
+  }
+
+  return { FakeMuya, muyaInstances, muyaGlobalListenerCount: () => state.listeners }
+})
+
+vi.mock('@muyajs/core', () => ({
+  Muya: FakeMuya,
+  PreviewToolBar: { name: 'PreviewToolBar' },
+  CodeBlockLanguageSelector: { name: 'CodeBlockLanguageSelector' },
+  EmojiSelector: { name: 'EmojiSelector' },
+  en: { resource: {} },
+  zhCN: { resource: {} },
+}))
 
 const fakeCore = {
   en: {
@@ -75,5 +130,28 @@ describe('editorRuntime editing settings', () => {
     )
     expect(editor.domNode.getAttribute('lang')).toBe('de-DE')
     expect(editor.getMarkdown).not.toHaveBeenCalled()
+  })
+})
+
+describe('createMuyaEditor', () => {
+  it('disposes a Muya instance that fails to finish initializing so its globals do not leak', async () => {
+    await expect(
+      createMuyaEditor({
+        element: document.createElement('div'),
+        markdown: '# hi',
+        onContentChange: vi.fn(),
+        onJsonChange: vi.fn(),
+        onFocus: vi.fn(),
+        onBlur: vi.fn(),
+        appLocale: 'en',
+      }),
+    ).rejects.toThrow('Muya init failed')
+
+    // The provisional instance was constructed (registering a global listener),
+    // then disposed, releasing it — so a persistent failure or repeated Retry
+    // cannot accumulate stale editors or document-level handlers.
+    expect(muyaInstances).toHaveLength(1)
+    expect(muyaInstances[0].destroyed).toBe(true)
+    expect(muyaGlobalListenerCount()).toBe(0)
   })
 })

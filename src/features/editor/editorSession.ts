@@ -222,7 +222,8 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
   // screen writes are batched within a frame, so no home flash is painted.
   async function remountEditorHost() {
     const wasEditorOpen = options.currentScreen.value === 'editor'
-    destroyEditor({ updateSelectionMenuSuppression: !wasEditorOpen })
+    // The remount between attempts must NOT cancel its own open loop.
+    destroyEditor({ updateSelectionMenuSuppression: !wasEditorOpen, preserveOpenGeneration: true })
     if (wasEditorOpen) {
       options.currentScreen.value = 'home'
       await nextTick()
@@ -273,7 +274,16 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
     await openEditor(lastOpenedMarkdown)
   }
 
-  function destroyEditor(destroyOptions: { updateSelectionMenuSuppression?: boolean } = {}) {
+  function destroyEditor(
+    destroyOptions: { updateSelectionMenuSuppression?: boolean; preserveOpenGeneration?: boolean } = {},
+  ) {
+    // External teardown (Back to home, app unmount) cancels any in-flight open
+    // or transparent-retry loop, so a pending retry can never remount the editor
+    // behind the user after they left. Only the internal remount between retry
+    // attempts sets preserveOpenGeneration to keep its own loop alive.
+    if (!destroyOptions.preserveOpenGeneration) {
+      openGeneration += 1
+    }
     editorInitToken += 1
     editorReady.value = false
     options.clearDraftSaveTimer()

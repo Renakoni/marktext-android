@@ -429,6 +429,43 @@ describe('editorSession', () => {
     expect(harness.shell.querySelectorAll('.muya-live-root')).toHaveLength(1)
   })
 
+  it('cancels a pending transparent retry when the editor is destroyed during the delay', async () => {
+    vi.useFakeTimers()
+    try {
+      let attempt = 0
+      const harness = createHarness({
+        createMuyaEditor: async () => {
+          attempt += 1
+          throw new Error('init failed')
+        },
+      })
+
+      const openPromise = harness.session.openEditor('# doc')
+
+      // Let attempt 1 run and fail; the loop is now parked in the retry delay.
+      await vi.advanceTimersByTimeAsync(0)
+      expect(attempt).toBe(1)
+      expect(harness.currentScreen.value).toBe('editor')
+      expect(harness.session.editorFailed.value).toBe(false)
+
+      // The user leaves the editor mid-delay: an external destroy + Home.
+      harness.session.destroyEditor()
+      harness.currentScreen.value = 'home'
+
+      // Fire the retry timer and settle the abandoned open.
+      await vi.advanceTimersByTimeAsync(400)
+      await openPromise
+
+      // The pending retry was cancelled: no second attempt, no pull back into
+      // the editor, and no failure surfaced behind the user.
+      expect(attempt).toBe(1)
+      expect(harness.currentScreen.value).toBe('home')
+      expect(harness.session.editorFailed.value).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('installs input diagnostics when enabled and removes them on teardown', async () => {
     const harness = createHarness({ diagnosticsEnabled: true })
     await harness.session.openEditor('content')
