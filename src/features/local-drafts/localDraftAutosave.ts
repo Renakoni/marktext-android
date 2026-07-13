@@ -1,5 +1,6 @@
 import {
   getCustomDisplayName,
+  getDocumentTitle,
   getNextUntitledDisplayName,
   getUntitledNumber,
   hasDerivedTitle,
@@ -73,8 +74,16 @@ export function createLocalDraftAutosaveResult(
 
   const displayName = resolveDraftDisplayName(savedBase, drafts)
   // The document reflects its stored name so the editor's own header shows the
-  // same Untitled-N the recent list does.
-  const savedDocument = { ...savedBase, displayName: displayName ?? savedBase.displayName }
+  // same Untitled-N the recent list does. The title was derived from the name
+  // this draft carried BEFORE numbering, so recompute it from the resolved
+  // name — otherwise the header keeps the old number while storage holds the
+  // new one.
+  const resolvedDisplayName = displayName ?? savedBase.displayName
+  const savedDocument = {
+    ...savedBase,
+    displayName: resolvedDisplayName,
+    title: getDocumentTitle(savedBase.markdown, resolvedDisplayName),
+  }
 
   const nextDrafts = hasContent
     ? upsertLocalDraft(drafts, {

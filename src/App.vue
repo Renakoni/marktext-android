@@ -58,7 +58,7 @@ import {
 import { isAndroidRecoveryDraftId } from './features/android-documents/androidRecoveryDrafts'
 import { rememberAndroidRecentDocument } from './features/android-documents/androidRecentDocuments'
 import { getImageSharingSettings } from './features/android-documents/imageSharingSettings'
-import { createUntitledDocument } from './lib/documentState'
+import { createUntitledDocument, getUntitledFallbackIndex } from './lib/documentState'
 import {
   createDocumentStateFromLocalDraft,
 } from './features/document-session/documentSessionState'
@@ -268,6 +268,7 @@ const homeDocumentText = computed<HomeDocumentText>(() => ({
   detailsSeparator: t('home.detailsSeparator'),
   formatWordCount: count =>
     t(count === 1 ? 'home.wordCount.one' : 'home.wordCount.other', { count }),
+  formatUntitled: index => t('document.untitledNumbered', { index }),
 }))
 
 let lastContentLogAt = 0
@@ -356,17 +357,16 @@ const characterCount = computed(() => documentState.value.stats.characters)
 const wordCount = computed(() => documentState.value.stats.words)
 const documentTitle = computed(() => documentState.value.title)
 const displayDocumentTitle = computed(() => {
-  const untitledMatch = documentState.value.displayName.match(/^Untitled-(\d+)$/)
-  if (
-    untitledMatch &&
-    documentState.value.sourceUri === null &&
-    documentState.value.title === documentState.value.displayName &&
-    documentState.value.markdown.trim() === ''
-  ) {
-    return t('document.untitledNumbered', { index: untitledMatch[1] })
-  }
-
-  return documentTitle.value
+  // A stored Untitled-N is canonical (locale-independent numbering); localize
+  // it for display only when it is genuinely the fallback, never when the
+  // content itself derives that title.
+  const fallbackIndex = getUntitledFallbackIndex(
+    documentState.value.title,
+    documentState.value.markdown,
+  )
+  return fallbackIndex !== null
+    ? t('document.untitledNumbered', { index: fallbackIndex })
+    : documentTitle.value
 })
 const recentDocumentRecords = computed(() =>
   [

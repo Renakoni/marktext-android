@@ -92,6 +92,21 @@ describe('localDraftAutosave', () => {
     expect(result.savedDocument.displayName).toBe('Untitled-1')
   })
 
+  it('recomputes the saved title from the new number so header and storage agree', () => {
+    // A second genuinely untitled draft autosaved while Untitled-1 is held: the
+    // number resolves to 2, and the document the editor keeps must carry that
+    // number as BOTH its displayName and its title, not the stale Untitled-1.
+    const documentState = createUntitledDocument({ markdown: untitledMarkdown })
+    const result = createLocalDraftAutosaveResult(documentState, untitledMarkdown, [
+      { ...existingDraft, id: 'held-1', markdown: untitledMarkdown, displayName: 'Untitled-1' },
+    ])
+
+    expect(result.savedDocument.displayName).toBe('Untitled-2')
+    expect(result.savedDocument.title).toBe('Untitled-2')
+    expect(result.nextDrafts.find(draft => draft.id === documentState.id)?.displayName)
+      .toBe('Untitled-2')
+  })
+
   it('never reserves a number for a draft that shows a content title', () => {
     const documentState = createUntitledDocument({ markdown: '# Real title' })
     const result = createLocalDraftAutosaveResult(documentState, '# Real title', [])

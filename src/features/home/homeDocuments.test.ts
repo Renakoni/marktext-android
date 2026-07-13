@@ -39,6 +39,40 @@ describe('homeDocuments', () => {
     })
   })
 
+  it('localizes a fallback Untitled-N for display but keeps content titles verbatim', () => {
+    const base: RecentDocumentListItem = {
+      id: 'draft-1',
+      kind: 'local-draft',
+      displayName: 'Untitled-2',
+      title: 'Untitled-2',
+      sourceUri: null,
+      providerName: 'Local draft',
+      pathHint: null,
+      markdownPreview: '```\n```',
+      createdAt: '2024-01-01T10:00:00.000Z',
+      updatedAt: '2024-01-01T10:00:00.000Z',
+      lastOpenedAt: '2024-01-01T10:00:00.000Z',
+      lastSavedAt: null,
+      autosaveState: 'clean',
+      canWrite: true,
+      stats: null,
+    }
+    const zh = {
+      localDraftSource: '本地草稿',
+      markdownDocumentSource: 'Markdown 文档',
+      detailsSeparator: ' · ',
+      formatWordCount: (count: number) => `${count} 字`,
+      formatUntitled: (index: number) => `未命名-${index}`,
+    }
+
+    // The titleless draft's canonical Untitled-2 is localized for display.
+    expect(toHomeDocumentItem(base, zh).title).toBe('未命名-2')
+    // A draft whose own content reads "Untitled-2" keeps it verbatim.
+    expect(
+      toHomeDocumentItem({ ...base, markdownPreview: '# Untitled-2' }, zh).title,
+    ).toBe('Untitled-2')
+  })
+
   it('keeps the masthead pin-agnostic and floats pinned documents above Earlier', () => {
     const items = [{ id: 'newest' }, { id: 'older-pin' }, { id: 'plain' }, { id: 'newer-pin' }]
 
@@ -100,6 +134,7 @@ describe('homeDocuments', () => {
         markdownDocumentSource: 'Markdown 文档',
         detailsSeparator: ' · ',
         formatWordCount: count => `${count} 字`,
+        formatUntitled: index => `未命名-${index}`,
       }),
     ).toEqual({
       id: 'draft-1',
