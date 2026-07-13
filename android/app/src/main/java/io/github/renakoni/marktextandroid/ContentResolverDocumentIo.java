@@ -79,6 +79,19 @@ final class ContentResolverDocumentIo implements SafeDocumentWriter.DocumentIo {
         }
     }
 
+    // The length used to verify a write, extracted as a pure decision so it can
+    // be tested without a real descriptor. A non-regular descriptor
+    // (pipe/socket) fstats to a negative size — see
+    // ParcelFileDescriptor.getStatSize(), which returns -1 for non-regular fds —
+    // while its byte-channel size is a meaningless 0 (fstat on a pipe SUCCEEDS
+    // and reports st_size 0, it does NOT throw). So a non-regular descriptor's
+    // length is reported as unknown (-1) and the caller skips verification
+    // instead of aborting a good streaming write; a regular descriptor reports
+    // its real size so short-write detection still works.
+    static long resolveWriteLength(long statSize, long channelSize) {
+        return statSize < 0 ? -1 : channelSize;
+    }
+
     private static final class DescriptorWriteHandle implements SafeDocumentWriter.WriteHandle {
         private final ParcelFileDescriptor descriptor;
         private final FileOutputStream output;
@@ -123,13 +136,16 @@ final class ContentResolverDocumentIo implements SafeDocumentWriter.DocumentIo {
 
         @Override
         public long length() {
+            long channelSize;
             try {
-                return output.getChannel().size();
+                channelSize = output.getChannel().size();
             } catch (IOException error) {
-                // Non-seekable provider (e.g. a cloud pipe): length is unknown,
-                // so the caller skips the verify and relies on sync + close.
                 return -1;
             }
+            // getChannel().size() does NOT throw for a pipe on Android (fstat
+            // succeeds and returns 0), so a non-regular descriptor is filtered by
+            // its stat size, not by a channel exception.
+            return resolveWriteLength(descriptor.getStatSize(), channelSize);
         }
 
         @Override
