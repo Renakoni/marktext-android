@@ -42,11 +42,12 @@ final class SafeDocumentWriter {
         void write(byte[] bytes) throws IOException;
 
         /**
-         * Force bytes to stable storage. Best-effort: a provider backed by a
-         * non-seekable pipe cannot sync, and that must not fail an otherwise
-         * good write.
+         * Force bytes to stable storage. A seekable on-disk descriptor that
+         * cannot sync signals a real durability failure (disk full, I/O error)
+         * and MUST throw so the caller rolls back; a non-seekable streaming
+         * descriptor legitimately cannot sync and returns quietly.
          */
-        void sync();
+        void sync() throws IOException;
 
         /** Bytes currently written, or {@code -1} when the provider cannot report a size. */
         long length();
@@ -70,23 +71,24 @@ final class SafeDocumentWriter {
         // under us, this throws here — before a single byte is truncated.
         byte[] backup = protectExisting ? io.readBytes() : null;
 
-        WriteHandle handle = io.openWrite();
+        WriteHandle handle = null;
         try {
-            handle.write(bytes);
-            handle.sync();
-
-            long written = handle.length();
-            if (written >= 0 && written != bytes.length) {
-                throw new IOException(
-                    "Document write verification failed: wrote " + written + " of " + bytes.length + " bytes");
-            }
-
-            handle.commit();
+            // openWrite() is inside the protected boundary on purpose: opening a
+            // truncating descriptor is itself destructive (a provider may empty
+            // the file before returning, or return null/throw after truncating),
+            // so a failure here — now that the backup is captured — must still
+            // trigger a restore.
+            handle = io.openWrite();
+            writeVerified(handle, bytes);
         } catch (IOException writeError) {
-            // Signal the provider (cloud especially) to discard the partial
-            // write instead of committing a truncation...
-            handle.abort(writeError.getMessage());
-            // ...then put the original bytes back so the file is never left empty.
+            if (handle != null) {
+                // Signal the provider (cloud especially) to discard the partial
+                // write instead of committing a truncation.
+                handle.abort(writeError.getMessage());
+            }
+            // Put the original bytes back so the file is never left empty — even
+            // when openWrite() truncated the target and then failed with no
+            // usable handle.
             if (backup != null) {
                 restore(io, backup, writeError);
             }
@@ -102,18 +104,33 @@ final class SafeDocumentWriter {
         }
     }
 
+    // write -> fsync -> length verify -> commit, applied identically to the
+    // primary write and the rollback so a silent short-write cannot corrupt
+    // either. The verify is skipped only when the provider cannot report a
+    // length (a non-seekable streaming descriptor), where sync + closeWithError
+    // are the remaining guarantees.
+    private static void writeVerified(WriteHandle handle, byte[] bytes) throws IOException {
+        handle.write(bytes);
+        handle.sync();
+
+        long written = handle.length();
+        if (written >= 0 && written != bytes.length) {
+            throw new IOException(
+                "Document write verification failed: wrote " + written + " of " + bytes.length + " bytes");
+        }
+
+        handle.commit();
+    }
+
     private static void restore(DocumentIo io, byte[] backup, IOException cause) {
+        WriteHandle handle = null;
         try {
-            WriteHandle handle = io.openWrite();
-            try {
-                handle.write(backup);
-                handle.sync();
-                handle.commit();
-            } catch (IOException restoreError) {
-                handle.abort(restoreError.getMessage());
-                throw restoreError;
-            }
+            handle = io.openWrite();
+            writeVerified(handle, backup);
         } catch (IOException restoreError) {
+            if (handle != null) {
+                handle.abort(restoreError.getMessage());
+            }
             // Best-effort: the same failing storage may reject the restore too.
             // The file may be left truncated; the JS layer still holds the new
             // content as a recovery draft. Keep the original write error primary.

@@ -8,6 +8,7 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.SyncFailedException;
 
 /**
  * {@link SafeDocumentWriter.DocumentIo} backed by a {@link ContentResolver} and
@@ -49,14 +50,33 @@ final class ContentResolverDocumentIo implements SafeDocumentWriter.DocumentIo {
 
     @Override
     public SafeDocumentWriter.WriteHandle openWrite() throws IOException {
-        // "rwt": read-write + truncate. "rw" implies a seekable on-disk file so
-        // the written length can be verified; "t" forces truncation (since
-        // Android 10 a bare "w" may leave trailing bytes).
-        ParcelFileDescriptor descriptor = resolver.openFileDescriptor(uri, "rwt");
+        // Prefer "rwt": read-write + truncate — a seekable on-disk descriptor
+        // that lets the write be length-verified and fsync'd; "t" forces
+        // truncation (since Android 10 a bare "w" may leave trailing bytes).
+        ParcelFileDescriptor descriptor = tryOpen("rwt");
+        if (descriptor == null) {
+            // A streaming-only provider (some cloud/remote SAF backends) may not
+            // expose a seekable read-write descriptor; fall back to write-only
+            // truncating. Backup/rollback and closeWithError still apply — only
+            // the length verify and fsync are unavailable on the resulting
+            // non-seekable descriptor. A genuinely missing document surfaces
+            // from this final attempt (mapped to DOCUMENT_NOT_FOUND).
+            descriptor = resolver.openFileDescriptor(uri, "wt");
+        }
         if (descriptor == null) {
             throw new IOException("Content resolver returned no file descriptor");
         }
         return new DescriptorWriteHandle(descriptor);
+    }
+
+    // Open in a mode, returning null when the provider does not support it so
+    // the caller can fall back, rather than failing the whole write.
+    private ParcelFileDescriptor tryOpen(String mode) {
+        try {
+            return resolver.openFileDescriptor(uri, mode);
+        } catch (IOException | IllegalArgumentException | UnsupportedOperationException error) {
+            return null;
+        }
     }
 
     private static final class DescriptorWriteHandle implements SafeDocumentWriter.WriteHandle {
@@ -75,18 +95,30 @@ final class ContentResolverDocumentIo implements SafeDocumentWriter.DocumentIo {
         }
 
         @Override
-        public void sync() {
+        public void sync() throws IOException {
             // Durability: on Android (ext4) close() alone does not guarantee the
-            // bytes reach disk. Best-effort — a provider backed by a pipe cannot
-            // sync, and that must not fail an otherwise good write.
-            try {
-                FileDescriptor fd = descriptor.getFileDescriptor();
-                if (fd != null && fd.valid()) {
-                    fd.sync();
-                }
-            } catch (IOException ignored) {
-                // best-effort durability only
+            // bytes reach disk.
+            FileDescriptor fd = descriptor.getFileDescriptor();
+            if (fd == null || !fd.valid()) {
+                return;
             }
+            try {
+                fd.sync();
+            } catch (SyncFailedException error) {
+                // On a seekable on-disk descriptor a sync failure is a real
+                // durability failure (disk full, I/O error) — propagate so the
+                // caller aborts and restores. A non-seekable streaming
+                // descriptor legitimately cannot sync; skip it quietly.
+                if (isSeekable()) {
+                    throw error;
+                }
+            }
+        }
+
+        private boolean isSeekable() {
+            // A regular on-disk file reports a stat size; a pipe/socket returns
+            // -1 — mirrors length()'s capability to report a size.
+            return descriptor.getStatSize() >= 0;
         }
 
         @Override

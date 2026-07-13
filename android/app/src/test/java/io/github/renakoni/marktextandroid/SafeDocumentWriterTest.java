@@ -20,6 +20,7 @@ public class SafeDocumentWriterTest {
     /** A programmable single write attempt. */
     private static final class FakeHandle implements SafeDocumentWriter.WriteHandle {
         IOException writeError;
+        IOException syncError;
         Long lengthOverride; // null = report exactly what was written
 
         byte[] written;
@@ -36,8 +37,11 @@ public class SafeDocumentWriterTest {
         }
 
         @Override
-        public void sync() {
+        public void sync() throws IOException {
             synced = true;
+            if (syncError != null) {
+                throw syncError;
+            }
         }
 
         @Override
@@ -62,9 +66,12 @@ public class SafeDocumentWriterTest {
     private static final class FakeIo implements SafeDocumentWriter.DocumentIo {
         byte[] existing;
         IOException readError;
-        final Deque<FakeHandle> handles = new ArrayDeque<>();
+        // Each entry is either a FakeHandle to return or an IOException to throw
+        // (modelling a destructive openWrite that truncates then fails).
+        final Deque<Object> handles = new ArrayDeque<>();
         final List<FakeHandle> opened = new ArrayList<>();
         int readCount;
+        int openCallCount;
 
         @Override
         public byte[] readBytes() throws IOException {
@@ -76,11 +83,16 @@ public class SafeDocumentWriterTest {
         }
 
         @Override
-        public SafeDocumentWriter.WriteHandle openWrite() {
-            FakeHandle handle = handles.poll();
-            if (handle == null) {
+        public SafeDocumentWriter.WriteHandle openWrite() throws IOException {
+            openCallCount++;
+            Object action = handles.poll();
+            if (action == null) {
                 fail("openWrite() called more times than configured");
             }
+            if (action instanceof IOException) {
+                throw (IOException) action;
+            }
+            FakeHandle handle = (FakeHandle) action;
             opened.add(handle);
             return handle;
         }
@@ -230,5 +242,83 @@ public class SafeDocumentWriterTest {
         }
 
         assertTrue(restore.aborted);
+    }
+
+    @Test
+    public void restoresWhenOpeningTheWriteTruncatesThenFails() {
+        // openWrite() ("rwt"/"wt") is itself destructive: it can empty the file
+        // and then fail while returning the descriptor. That failure must still
+        // trigger a restore even though no usable handle was produced.
+        FakeIo io = new FakeIo();
+        io.existing = new byte[] { 4, 5, 6 };
+        IOException openBoom = new IOException("descriptor lost after truncation");
+        FakeHandle restore = new FakeHandle();
+        io.handles.add(openBoom); // first openWrite truncates then throws
+        io.handles.add(restore); // restore openWrite succeeds
+
+        try {
+            SafeDocumentWriter.write(io, new byte[] { 7, 7 }, true);
+            fail("expected the open error to propagate");
+        } catch (IOException error) {
+            assertSame(openBoom, error);
+        }
+
+        assertEquals(2, io.openCallCount); // failed open + restore open
+        assertArrayEquals(io.existing, restore.written); // original bytes rewritten
+        assertTrue(restore.committed);
+    }
+
+    @Test
+    public void restoresWhenFsyncFails() {
+        // A durability (fsync) failure on a seekable descriptor surfaces even
+        // when write() and the length looked fine — it must abort and restore.
+        FakeIo io = new FakeIo();
+        io.existing = new byte[] { 1, 2 };
+        FakeHandle failing = new FakeHandle();
+        IOException syncBoom = new IOException("fsync failed: disk full");
+        failing.syncError = syncBoom;
+        FakeHandle restore = new FakeHandle();
+        io.handles.add(failing);
+        io.handles.add(restore);
+
+        try {
+            SafeDocumentWriter.write(io, new byte[] { 8, 9 }, true);
+            fail("expected the fsync failure to propagate");
+        } catch (IOException error) {
+            assertSame(syncBoom, error);
+        }
+
+        assertTrue(failing.aborted); // the un-synced partial write is discarded
+        assertFalse(failing.committed);
+        assertArrayEquals(io.existing, restore.written);
+        assertTrue(restore.committed);
+    }
+
+    @Test
+    public void verifiesTheRollbackWriteAndAttachesItsShortWriteToTheOriginalError() {
+        // The rollback runs the SAME length verify as the forward write, so a
+        // silent short-write during restore is caught and attached, not
+        // mistaken for a completed rollback.
+        FakeIo io = new FakeIo();
+        io.existing = new byte[] { 5, 5, 5 };
+        FakeHandle failing = new FakeHandle();
+        IOException boom = new IOException("primary write failed");
+        failing.writeError = boom;
+        FakeHandle restore = new FakeHandle();
+        restore.lengthOverride = 1L; // restore silently writes fewer than 3 bytes
+        io.handles.add(failing);
+        io.handles.add(restore);
+
+        try {
+            SafeDocumentWriter.write(io, new byte[] { 7 }, true);
+            fail("expected the primary write error");
+        } catch (IOException error) {
+            assertSame(boom, error);
+            assertEquals(1, error.getSuppressed().length);
+            assertTrue(error.getSuppressed()[0].getMessage().contains("verification failed"));
+        }
+
+        assertTrue(restore.aborted); // the short rollback write is aborted, not committed
+        assertFalse(restore.committed);
     }
 }
