@@ -147,7 +147,10 @@ describe('incomingDocumentOrchestration', () => {
     await orchestration.handleOpenWithDocumentEvent({ document: incomingDocument, error: null })
 
     expect(options.syncDocumentFromEditor).toHaveBeenCalledWith(true, true)
-    expect(options.saveAndroidDocument).toHaveBeenCalled()
+    expect(options.saveAndroidDocument).toHaveBeenCalledWith({
+      waitForPendingSave: true,
+      persistRecoveryDraftOnFailure: false,
+    })
     expect(options.persistAndroidRecoveryDraft).toHaveBeenCalledWith(
       'content://test/current.md',
       '# Device doc',

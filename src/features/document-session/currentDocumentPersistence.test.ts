@@ -279,6 +279,35 @@ describe('currentDocumentPersistence', () => {
     expect(options.status.value).toBe('user message: disk full')
   })
 
+  it('defers recovery persistence when the caller needs the latest editor snapshot', async () => {
+    const { persistence, options } = createPersistence({
+      documentState: dirtyAndroidDocumentState(),
+      androidDocuments: [androidRecentRecord()],
+    })
+    options.writeAndroidMarkdownDocument.mockRejectedValue(new Error('disk full'))
+
+    const saved = await persistence.saveAndroidDocument({ persistRecoveryDraftOnFailure: false })
+
+    expect(saved).toBe(false)
+    expect(options.persistLocalDrafts).not.toHaveBeenCalled()
+    expect(options.status.value).toBe('user message: disk full')
+  })
+
+  it('does not report a recovery draft that storage failed to persist', async () => {
+    const { persistence, options } = createPersistence({
+      documentState: dirtyAndroidDocumentState(),
+      androidDocuments: [androidRecentRecord()],
+    })
+    options.writeAndroidMarkdownDocument.mockRejectedValue(new Error('disk full'))
+    options.persistLocalDrafts.mockImplementation(() => {
+      throw new Error('quota exceeded')
+    })
+
+    await persistence.saveAndroidDocument()
+
+    expect(options.status.value).toBe('user message: disk full')
+  })
+
   it('coalesces overlapping Android saves and reschedules once the first completes', async () => {
     const { persistence, options } = createPersistence({
       documentState: dirtyAndroidDocumentState(),
@@ -300,6 +329,30 @@ describe('currentDocumentPersistence', () => {
     await first
 
     expect(options.scheduleAndroidDocumentSave).toHaveBeenCalledTimes(1)
+  })
+
+  it('waits for an active Android save and then persists the latest editor snapshot', async () => {
+    const { persistence, options } = createPersistence({
+      documentState: dirtyAndroidDocumentState(),
+      androidDocuments: [androidRecentRecord()],
+    })
+    let releaseFirstWrite!: () => void
+    options.writeAndroidMarkdownDocument
+      .mockImplementationOnce(() => new Promise<void>(resolve => (releaseFirstWrite = resolve)))
+      .mockResolvedValueOnce(undefined)
+
+    const first = persistence.saveAndroidDocument()
+    options.documentState.value = dirtyAndroidDocumentState('# latest edits')
+    const guarded = persistence.saveAndroidDocument({ waitForPendingSave: true })
+
+    await Promise.resolve()
+    expect(options.writeAndroidMarkdownDocument).toHaveBeenCalledTimes(1)
+
+    releaseFirstWrite()
+    await expect(first).resolves.toBe(false)
+    await expect(guarded).resolves.toBe(true)
+    expect(options.writeAndroidMarkdownDocument).toHaveBeenCalledTimes(2)
+    expect(options.writeAndroidMarkdownDocument.mock.calls[1][1]).toBe('# latest edits')
   })
 
   it('flushes to the save path matching the current autosave target', async () => {

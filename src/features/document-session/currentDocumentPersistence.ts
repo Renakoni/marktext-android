@@ -124,12 +124,19 @@ export interface CurrentDocumentPersistence {
    * content that could not be kept (drafts disabled, or a storage failure).
    */
   saveDraft(): boolean
-  saveAndroidDocument(): Promise<boolean>
+  saveAndroidDocument(options?: SaveAndroidDocumentOptions): Promise<boolean>
   saveLocalDraftToAndroidDocument(options?: { returnHomeAfterSave?: boolean }): Promise<boolean>
   saveAndroidDocumentCopy(options?: { returnHomeAfterSave?: boolean }): Promise<boolean>
   shareCurrentMarkdownDocument(): Promise<boolean>
   exportCurrentDocumentPdf(): Promise<boolean>
   flushCurrentDocument(reason: string): Promise<void>
+}
+
+export interface SaveAndroidDocumentOptions {
+  /** Wait for a coalesced save and then retry with the current editor snapshot. */
+  waitForPendingSave?: boolean
+  /** Let a caller that owns a fresher snapshot defer recovery persistence. */
+  persistRecoveryDraftOnFailure?: boolean
 }
 
 /**
@@ -142,7 +149,7 @@ export interface CurrentDocumentPersistence {
 export function createCurrentDocumentPersistence(
   options: CurrentDocumentPersistenceOptions,
 ): CurrentDocumentPersistence {
-  let androidSaveInFlight = false
+  let activeAndroidSave: Promise<boolean> | null = null
   let androidSaveRequestedAfterCurrent = false
 
   function persistAndroidRecoveryDraft(sourceUri: string, markdown: string): boolean {
@@ -252,7 +259,7 @@ export function createCurrentDocumentPersistence(
     }
   }
 
-  async function saveAndroidDocument() {
+  async function saveAndroidDocument(saveOptions: SaveAndroidDocumentOptions = {}) {
     options.clearAndroidDocumentSaveTimer()
 
     if (!options.hasEditor()) {
@@ -288,16 +295,20 @@ export function createCurrentDocumentPersistence(
       return startResult.saved
     }
 
-    if (androidSaveInFlight) {
+    if (activeAndroidSave) {
+      if (saveOptions.waitForPendingSave) {
+        await activeAndroidSave
+        return saveAndroidDocument(saveOptions)
+      }
+
       androidSaveRequestedAfterCurrent = true
       return false
     }
 
-    androidSaveInFlight = true
     options.documentState.value = startResult.request.savingDocument
     options.status.value = startResult.status
 
-    try {
+    const saveOperation = (async () => {
       const result = await saveAndroidDocumentWorkflow({
         request: startResult.request,
         getCurrentDocumentState: () => options.documentState.value,
@@ -320,15 +331,23 @@ export function createCurrentDocumentPersistence(
       }
 
       options.documentState.value = result.failedDocument
-      if (options.canPersistAndroidRecoveryDrafts()) {
-        persistAndroidRecoveryDraft(result.recoveryDraft.sourceUri, result.recoveryDraft.markdown)
-        options.status.value = result.status
-      } else {
-        options.status.value = options.getAndroidDocumentUserMessage(result.error)
-      }
+      const recoveryKept =
+        saveOptions.persistRecoveryDraftOnFailure !== false
+        && options.canPersistAndroidRecoveryDrafts()
+        && persistAndroidRecoveryDraft(result.recoveryDraft.sourceUri, result.recoveryDraft.markdown)
+      options.status.value = recoveryKept
+        ? result.status
+        : options.getAndroidDocumentUserMessage(result.error)
       return false
+    })()
+    activeAndroidSave = saveOperation
+
+    try {
+      return await saveOperation
     } finally {
-      androidSaveInFlight = false
+      if (activeAndroidSave === saveOperation) {
+        activeAndroidSave = null
+      }
       if (androidSaveRequestedAfterCurrent) {
         androidSaveRequestedAfterCurrent = false
         if (

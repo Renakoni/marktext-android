@@ -1566,10 +1566,12 @@ function keepEditingInsteadOfIncomingOpen() {
   pendingIncomingOpenProceed = null
   incomingOpenPromptOpen.value = false
   incomingOpenName.value = ''
-  status.value =
-    documentState.value.autosaveTarget === 'android-document'
-      ? getAndroidEditorStatus()
-      : 'Edited'
+  if (documentState.value.autosaveState !== 'save-failed') {
+    status.value =
+      documentState.value.autosaveTarget === 'android-document'
+        ? getAndroidEditorStatus()
+        : 'Edited'
+  }
   // Resume the queue: any intent that arrived while the prompt was open runs now.
   void incomingDocuments.resolveIncomingDecision()
 }

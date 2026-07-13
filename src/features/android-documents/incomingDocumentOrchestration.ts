@@ -20,6 +20,7 @@ import type {
 import type { AppScreen } from '../../lib/appExitDecisions'
 import type { MarkdownDocumentState } from '../../lib/documentState'
 import { upsertLocalDraft, type LocalDraftRecord } from '../../lib/localDrafts'
+import type { SaveAndroidDocumentOptions } from '../document-session/currentDocumentPersistence'
 
 interface OrchestrationLogger {
   info(message: string, context?: unknown): void
@@ -63,7 +64,7 @@ export interface IncomingDocumentOrchestrationOptions {
     document: OpenedAndroidDocument,
     options?: { source?: AndroidDocumentOpenSource, remember?: boolean },
   ) => Promise<void>
-  saveAndroidDocument: () => Promise<boolean>
+  saveAndroidDocument: (options?: SaveAndroidDocumentOptions) => Promise<boolean>
   saveDraft: () => boolean
   syncDocumentFromEditor: (markDirty: boolean, flushPending: boolean) => void
   persistAndroidRecoveryDraft: (sourceUri: string, markdown: string) => boolean
@@ -129,7 +130,10 @@ export function createIncomingDocumentOrchestration(
 
     if (preservationAction.kind === 'save-android-document') {
       options.syncDocumentFromEditor(options.documentState.value.isDirty, true)
-      const saved = await options.saveAndroidDocument()
+      const saved = await options.saveAndroidDocument({
+        waitForPendingSave: true,
+        persistRecoveryDraftOnFailure: false,
+      })
 
       // Read the payload AFTER the awaited save. A `changed-during-save` result
       // returns false while the editor already holds newer text than the
