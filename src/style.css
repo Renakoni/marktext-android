@@ -869,6 +869,25 @@ body {
   -webkit-text-stroke: 0.035em currentColor;
 }
 
+/* An active fenced code block draws literal ``` fence markers above and below
+   it (Muya's `pre.mu-active.mu-fenced-code::before/::after`). Their positions
+   are fixed px, but Android WebView applies the user's system font scale as
+   textZoom — it enlarges the marker GLYPHS without scaling the px offsets, so
+   at any non-default font scale the top ``` collides with the language-label
+   field and the bottom ``` laps the box border (device-measured: markers at
+   1.25x width over unscaled 20px/-23px offsets). Pure-CSS alignment is
+   impossible because the glyph width tracks textZoom while the offsets do not.
+   The markers are desktop editing chrome and are redundant on mobile: the box,
+   the editable language label, and the corner "fenced" tag already identify the
+   block, so hide just the two ``` pseudo-markers. Android-scoped on purpose —
+   the vendored Muya CSS still shows them for the desktop build. The higher
+   specificity (extra `.mu-editor`) wins over Muya's own rule, which loads later
+   via the dynamic editor import. */
+.mu-editor pre.mu-active.mu-fenced-code::before,
+.mu-editor pre.mu-active.mu-fenced-code::after {
+  content: none;
+}
+
 .status-bar {
   display: flex;
   justify-content: center;
