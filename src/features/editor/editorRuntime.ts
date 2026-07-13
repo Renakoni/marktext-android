@@ -166,26 +166,40 @@ export async function createMuyaEditor({
   logger?.info?.('Muya init start', {
     initialCharacters: markdown.length,
   })
-  const editor = new Muya(element, {
-    markdown,
-    ...getMuyaAppearanceOptions(appearanceTextSettings),
-    ...(editingSettings ? getMuyaEditingOptions(editingSettings) : {}),
-    ...(clipboardText ? { clipboardText } : {}),
-    frontMatter: true,
-    math: true,
-    locale: resolveMuyaLocale(core, appLocale),
-  })
+  let editor: MuyaEditor | null = null
+  try {
+    editor = new Muya(element, {
+      markdown,
+      ...getMuyaAppearanceOptions(appearanceTextSettings),
+      ...(editingSettings ? getMuyaEditingOptions(editingSettings) : {}),
+      ...(clipboardText ? { clipboardText } : {}),
+      frontMatter: true,
+      math: true,
+      locale: resolveMuyaLocale(core, appLocale),
+    })
 
-  editor.init()
-  if (editingSettings) {
-    applyMuyaSpellcheckLanguage(editor, editingSettings.spellcheckerLanguage)
+    editor.init()
+    if (editingSettings) {
+      applyMuyaSpellcheckLanguage(editor, editingSettings.spellcheckerLanguage)
+    }
+    editor.on('content-change', onContentChange)
+    editor.on('json-change', onJsonChange)
+    editor.on('focus', onFocus)
+    editor.on('blur', onBlur)
+
+    return editor
+  } catch (error) {
+    // A Muya instance that constructed but then failed to finish initializing
+    // (init(), spellcheck, event wiring) has already registered document-level
+    // listeners (clipboard, selection) and may have appended plugin nodes to
+    // document.body. Dispose it so a persistent failure or repeated Retry does
+    // not accumulate stale global handlers and orphaned DOM. (A throw from
+    // inside the Muya constructor itself still leaks its own partial side
+    // effects — that needs a rollback-safe boundary in vendored Muya and is out
+    // of scope here.)
+    editor?.destroy()
+    throw error
   }
-  editor.on('content-change', onContentChange)
-  editor.on('json-change', onJsonChange)
-  editor.on('focus', onFocus)
-  editor.on('blur', onBlur)
-
-  return editor
 }
 
 export function destroyMuyaEditor(editor: MuyaEditor | null) {

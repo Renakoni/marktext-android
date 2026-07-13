@@ -16,6 +16,17 @@ const ENABLE_ANDROID_SELECTION_ACTION_MODE_SUPPRESSION = true
 // behavior: leave off unless actively diagnosing selection lifecycle issues.
 const ENABLE_ANDROID_SELECTION_DIAGNOSTICS = false
 
+// Editor init can fail on a transient hiccup (a WebView stall, memory pressure).
+// Retry once transparently before surfacing the failure UI. What a same-page
+// retry can actually clear is a throw AFTER Muya's core import resolved
+// (new Muya()/init): that import is cached on SUCCESS and re-runs cleanly. A
+// rejected dynamic import, by contrast, is cached on FAILURE and will not
+// re-resolve in this page, so it survives every in-page retry — the recovery
+// panel escalates that class to a full page reload (App.vue
+// retryEditorFromRecovery), never an endless in-page Retry.
+const MAX_INIT_ATTEMPTS = 2
+const INIT_RETRY_DELAY_MS = 250
+
 interface EditorSessionLogger {
   debug(message: string, context?: unknown): void
   info(message: string, context?: unknown): void
@@ -55,6 +66,7 @@ export interface EditorSessionOptions {
 
 export interface EditorSession {
   editorReady: Ref<boolean>
+  editorFailed: Ref<boolean>
   setEditorElement(element: HTMLElement | null): void
   getEditorElement(): HTMLElement | null
   getEditor(): MuyaEditor | null
@@ -62,6 +74,7 @@ export interface EditorSession {
   getEditorMarkdownSnapshot(flushPending?: boolean): string
   syncDocumentFromEditor(markDirty?: boolean, flushPending?: boolean): MarkdownDocumentState
   openEditor(markdown: string): Promise<void>
+  retryEditor(): Promise<void>
   destroyEditor(options?: { updateSelectionMenuSuppression?: boolean }): void
   releaseEditorFocusAfterOpen(): void
   installEditorInputDiagnostics(): void
@@ -86,9 +99,18 @@ export function normalizeEditorMarkdown(markdown: string) {
 export function createEditorSession(options: EditorSessionOptions): EditorSession {
   const editorElement = ref<HTMLElement | null>(null)
   const editorReady = ref(false)
+  const editorFailed = ref(false)
+  let lastOpenedMarkdown = ''
 
   let editor: MuyaEditor | null = null
   let editorInitToken = 0
+  // Set only while releaseEditorFocusAfterOpen() programmatically blurs the
+  // editor, so that focus release does not run the app's user-blur handler.
+  let suppressProgrammaticBlur = false
+  // Bumped per openEditor() call so a superseded open (or its retry loop) bails
+  // instead of racing a newer one — a coarser guard than editorInitToken that
+  // also survives the destroy/remount each attempt performs.
+  let openGeneration = 0
   let editorSelectionDiagnosticCleanup: (() => void) | null = null
   let editorInputDiagnosticCleanup: (() => void) | null = null
 
@@ -131,14 +153,22 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
     return options.documentState.value
   }
 
-  async function initEditor(initialMarkdown: string) {
+  // One initialization attempt against the CURRENT host. Muya destructively
+  // replaces the element it is handed (getContainer -> replaceWith), so a
+  // failed attempt leaves that element detached — it must never be retried
+  // against; openEditor remounts a fresh host between attempts. Returns whether
+  // the editor came up, plainly failed, or was superseded by a newer open.
+  async function initEditorAttempt(
+    initialMarkdown: string,
+    attempt: number,
+  ): Promise<'ready' | 'failed' | 'superseded'> {
     const element = editorElement.value
     if (!element) {
-      return
+      return 'failed'
     }
 
+    const token = ++editorInitToken
     try {
-      const token = ++editorInitToken
       try {
         await options.ensureAndroidImageResolver()
       } catch (error) {
@@ -150,7 +180,7 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
         onContentChange: options.syncMarkdown,
         onJsonChange: options.syncMarkdown,
         onFocus: options.onEditorFocus,
-        onBlur: options.onEditorBlur,
+        onBlur: handleEditorBlur,
         appLocale: options.locale.value,
         appearanceTextSettings: options.appearanceTextSettings.value,
         editingSettings: options.editingSettings.value,
@@ -160,7 +190,7 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
       })
       if (!nextEditor) {
         await options.setEditorSelectionMenuSuppression(false, 'editor-init-stale')
-        return
+        return 'superseded'
       }
 
       editor = nextEditor
@@ -173,36 +203,103 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
           ? 'editor-init'
           : 'editor-init-baseline-disabled',
       )
+      // The suppression call crosses the async native bridge; a destroy or a
+      // newer open can invalidate this attempt while it is in flight. Re-check
+      // before any ready-state side effect so a superseded or destroyed attempt
+      // never announces itself ready — openEditor returns immediately on
+      // 'ready', so the outer generation guard cannot catch this one.
+      if (token !== editorInitToken) {
+        return 'superseded'
+      }
       options.syncMarkdown('Ready')
+      editorFailed.value = false
       editorReady.value = true
       options.logger.info('Muya init complete', {
         characters: options.documentState.value.stats.characters,
         words: options.documentState.value.stats.words,
         lines: options.documentState.value.stats.lines,
       })
+      return 'ready'
     } catch (error) {
-      options.status.value = 'Editor failed'
-      options.logger.error('Muya init failed', error)
+      // A newer open or destroy superseded this attempt: leave its state alone.
+      if (token !== editorInitToken) {
+        return 'superseded'
+      }
+      options.logger.error('Muya init failed', { attempt, error })
       await options.setEditorSelectionMenuSuppression(false, 'editor-init-failed')
+      return 'failed'
     }
   }
 
-  async function openEditor(markdown: string) {
-    editorReady.value = false
-    options.closeEditorToolbar()
+  // Mount a fresh, document-connected editor host. Because Muya replaces the
+  // element it is given, every attempt — including the transparent retry — must
+  // init against a newly mounted host, never the detached leftover of a failed
+  // attempt. The home bounce forces EditorScreen to remount its host; the two
+  // screen writes are batched within a frame, so no home flash is painted.
+  async function remountEditorHost() {
     const wasEditorOpen = options.currentScreen.value === 'editor'
-    destroyEditor({ updateSelectionMenuSuppression: !wasEditorOpen })
+    // The remount between attempts must NOT cancel its own open loop.
+    destroyEditor({ updateSelectionMenuSuppression: !wasEditorOpen, preserveOpenGeneration: true })
     if (wasEditorOpen) {
       options.currentScreen.value = 'home'
       await nextTick()
     }
-
     options.currentScreen.value = 'editor'
     await nextTick()
-    await initEditor(markdown)
   }
 
-  function destroyEditor(destroyOptions: { updateSelectionMenuSuppression?: boolean } = {}) {
+  async function openEditor(markdown: string) {
+    const generation = ++openGeneration
+    lastOpenedMarkdown = markdown
+    editorFailed.value = false
+    editorReady.value = false
+    options.closeEditorToolbar()
+
+    for (let attempt = 1; attempt <= MAX_INIT_ATTEMPTS; attempt++) {
+      await remountEditorHost()
+      if (generation !== openGeneration) {
+        return
+      }
+
+      const result = await initEditorAttempt(markdown, attempt)
+      if (result === 'ready' || result === 'superseded') {
+        return
+      }
+      if (generation !== openGeneration) {
+        return
+      }
+
+      // Transparent auto-retry once: the user only sees the loading state, and
+      // the next attempt gets a fresh host from the remount above. A persistent
+      // failure surfaces the recovery panel.
+      if (attempt < MAX_INIT_ATTEMPTS) {
+        await new Promise<void>(resolve => setTimeout(resolve, INIT_RETRY_DELAY_MS))
+        if (generation !== openGeneration) {
+          return
+        }
+      } else {
+        options.status.value = 'Editor failed'
+        editorFailed.value = true
+      }
+    }
+  }
+
+  // Re-open the document that failed to initialize. The full open() loop gives
+  // the retry a freshly mounted, connected host plus its own transparent retry.
+  async function retryEditor() {
+    await openEditor(lastOpenedMarkdown)
+  }
+
+  function destroyEditor(
+    destroyOptions: { updateSelectionMenuSuppression?: boolean; preserveOpenGeneration?: boolean } = {},
+  ) {
+    // External teardown (Back to home, app unmount) cancels any in-flight open
+    // or transparent-retry loop, so a pending retry can never remount the editor
+    // behind the user after they left. Only the internal remount between retry
+    // attempts sets preserveOpenGeneration to keep its own loop alive.
+    if (!destroyOptions.preserveOpenGeneration) {
+      openGeneration += 1
+    }
     editorInitToken += 1
     editorReady.value = false
     options.clearDraftSaveTimer()
@@ -217,11 +314,33 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
     }
   }
 
+  // Muya reports its own blur through this. A programmatic focus release after
+  // open must NOT run the app's user-blur handler, or it clobbers the just-set
+  // open notice (e.g. "Opened temporarily" -> "Read only").
+  function handleEditorBlur() {
+    if (suppressProgrammaticBlur) {
+      return
+    }
+    options.onEditorBlur()
+  }
+
   function releaseEditorFocusAfterOpen() {
     window.requestAnimationFrame(() => {
       const activeElement = document.activeElement
-      if (activeElement instanceof HTMLElement && editorElement.value?.contains(activeElement)) {
-        activeElement.blur()
+      // Muya's getContainer() replaces the template host with its own root, so
+      // the template ref (editorElement) is stale the moment init finishes. Test
+      // containment against the LIVE editor root, or focus landing inside it is
+      // missed and the keyboard springs up against the no-keyboard policy.
+      const editorRoot = resolveEditorDomNode(editor, editorElement.value)
+      if (activeElement instanceof HTMLElement && editorRoot?.contains(activeElement)) {
+        // Muya emits 'blur' synchronously from the DOM blur listener, so the
+        // flag is active for exactly the handler this blur triggers.
+        suppressProgrammaticBlur = true
+        try {
+          activeElement.blur()
+        } finally {
+          suppressProgrammaticBlur = false
+        }
         options.logger.debug('editor focus released after document open')
       }
     })
@@ -333,6 +452,8 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
 
   return {
     editorReady,
+    editorFailed,
+    retryEditor,
     setEditorElement,
     getEditorElement,
     getEditor,

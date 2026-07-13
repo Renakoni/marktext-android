@@ -33,6 +33,7 @@ function createHarness(overrides: {
   screen?: AppScreen
   diagnosticsEnabled?: boolean
   createMuyaEditor?: (options: CreateMuyaEditorOptions) => Promise<MuyaEditor | null>
+  remountHostOnOpen?: boolean
 } = {}) {
   document.body.innerHTML = ''
   const currentScreen = ref<AppScreen>(overrides.screen ?? 'home')
@@ -58,6 +59,7 @@ function createHarness(overrides: {
 
   const destroyMuyaEditor = vi.fn()
   const syncMarkdown = vi.fn()
+  const onEditorBlur = vi.fn()
   const setEditorSelectionMenuSuppression = vi.fn(async () => {})
   const installNativeSelectionTapListener = vi.fn(async () => {})
   const uninstallNativeSelectionTapListener = vi.fn(async () => {})
@@ -77,7 +79,7 @@ function createHarness(overrides: {
     destroyMuyaEditor,
     syncMarkdown,
     onEditorFocus: vi.fn(),
-    onEditorBlur: vi.fn(),
+    onEditorBlur,
     ensureAndroidImageResolver: vi.fn(async () => true),
     getClipboardText: () => undefined,
     setEditorSelectionMenuSuppression,
@@ -89,6 +91,34 @@ function createHarness(overrides: {
     logger,
   })
 
+  // A persistent shell holding the editor host — the containment root the real
+  // EditorScreen provides.
+  const shell = document.createElement('div')
+  document.body.appendChild(shell)
+
+  // Optionally mimic EditorScreen: mount a FRESH .muya-host inside the shell
+  // whenever the screen shows the editor, so the session's per-attempt remount
+  // gets a fresh, connected host exactly as the real UI supplies one.
+  function mountFreshHost() {
+    shell.replaceChildren()
+    const freshHost = document.createElement('div')
+    freshHost.className = 'muya-host'
+    shell.appendChild(freshHost)
+    session.setEditorElement(freshHost)
+  }
+
+  if (overrides.remountHostOnOpen) {
+    watch(
+      currentScreen,
+      screen => {
+        if (screen === 'editor') {
+          mountFreshHost()
+        }
+      },
+      { flush: 'sync' },
+    )
+  }
+
   const host = document.createElement('div')
   document.body.appendChild(host)
   session.setEditorElement(host)
@@ -96,6 +126,7 @@ function createHarness(overrides: {
   return {
     session,
     host,
+    shell,
     currentScreen,
     documentState,
     status,
@@ -106,6 +137,7 @@ function createHarness(overrides: {
     createMuyaEditor,
     destroyMuyaEditor,
     syncMarkdown,
+    onEditorBlur,
     setEditorSelectionMenuSuppression,
     installNativeSelectionTapListener,
     uninstallNativeSelectionTapListener,
@@ -288,7 +320,7 @@ describe('editorSession', () => {
     expect(harness.destroyMuyaEditor).toHaveBeenCalledWith(harness.createdEditors[0])
   })
 
-  it('reports a failed initialization without leaving the session half-open', async () => {
+  it('surfaces a failed initialization only after the transparent retry is exhausted', async () => {
     const harness = createHarness({
       createMuyaEditor: async () => {
         throw new Error('muya exploded')
@@ -297,14 +329,261 @@ describe('editorSession', () => {
 
     await harness.session.openEditor('content')
 
+    // The initial attempt plus one auto-retry both ran before giving up.
+    expect(harness.createMuyaEditor).toHaveBeenCalledTimes(2)
     expect(harness.status.value).toBe('Editor failed')
-    expect(harness.logger.error).toHaveBeenCalledWith('Muya init failed', expect.any(Error))
+    expect(harness.session.editorFailed.value).toBe(true)
+    expect(harness.logger.error).toHaveBeenCalledWith(
+      'Muya init failed',
+      expect.objectContaining({ attempt: 2, error: expect.any(Error) }),
+    )
     expect(harness.setEditorSelectionMenuSuppression).toHaveBeenCalledWith(
       false,
       'editor-init-failed',
     )
     expect(harness.session.editorReady.value).toBe(false)
     expect(harness.session.hasEditor()).toBe(false)
+  })
+
+  it('retries a transient init failure once and recovers without surfacing it', async () => {
+    let attempts = 0
+    const harness = createHarness({
+      createMuyaEditor: async options => {
+        attempts += 1
+        if (attempts === 1) {
+          throw new Error('transient')
+        }
+        return createFakeMuyaEditor(options.markdown) as unknown as MuyaEditor
+      },
+    })
+
+    await harness.session.openEditor('# recover')
+
+    expect(attempts).toBe(2)
+    expect(harness.session.editorReady.value).toBe(true)
+    expect(harness.session.editorFailed.value).toBe(false)
+    expect(harness.status.value).not.toBe('Editor failed')
+    expect(harness.session.getEditorMarkdownSnapshot()).toBe('# recover')
+  })
+
+  it('reopens the failed document when retryEditor runs', async () => {
+    let succeed = false
+    const harness = createHarness({
+      createMuyaEditor: async options => {
+        if (!succeed) {
+          throw new Error('still failing')
+        }
+        return createFakeMuyaEditor(options.markdown) as unknown as MuyaEditor
+      },
+    })
+
+    await harness.session.openEditor('# retry me')
+    expect(harness.session.editorFailed.value).toBe(true)
+    expect(harness.session.editorReady.value).toBe(false)
+
+    succeed = true
+    await harness.session.retryEditor()
+
+    expect(harness.session.editorFailed.value).toBe(false)
+    expect(harness.session.editorReady.value).toBe(true)
+    expect(harness.session.getEditorMarkdownSnapshot()).toBe('# retry me')
+  })
+
+  it('retries against a freshly mounted host after the first attempt replaced and abandoned the old one', async () => {
+    let attempt = 0
+    const harness = createHarness({
+      remountHostOnOpen: true,
+      createMuyaEditor: async options => {
+        attempt += 1
+        if (attempt === 1) {
+          // Muya replaces the element it is handed (getContainer ->
+          // replaceWith), then initialization throws — leaving the old host
+          // detached from the document.
+          const dead = document.createElement('div')
+          dead.className = 'muya-dead-root'
+          options.element.replaceWith(dead)
+          throw new Error('init failed after replacing the host')
+        }
+        // Second attempt: succeed, mounting content inside the given element.
+        const liveRoot = document.createElement('div')
+        liveRoot.className = 'muya-live-root'
+        options.element.appendChild(liveRoot)
+        return createFakeMuyaEditor(options.markdown) as unknown as MuyaEditor
+      },
+    })
+
+    await harness.session.openEditor('# recover')
+
+    expect(attempt).toBe(2)
+    expect(harness.session.editorReady.value).toBe(true)
+    expect(harness.session.editorFailed.value).toBe(false)
+
+    // The successful attempt's host is connected to the document AND contained
+    // by the persistent shell — not the detached leftover of attempt 1.
+    const liveHost = harness.session.getEditorElement()
+    expect(liveHost).not.toBeNull()
+    expect(document.contains(liveHost)).toBe(true)
+    expect(harness.shell.contains(liveHost)).toBe(true)
+
+    // The dead root from attempt 1 was cleared by the remount; exactly one live
+    // editor root remains under the shell.
+    expect(document.querySelectorAll('.muya-dead-root')).toHaveLength(0)
+    expect(harness.shell.querySelectorAll('.muya-live-root')).toHaveLength(1)
+  })
+
+  it('cancels a pending transparent retry when the editor is destroyed during the delay', async () => {
+    vi.useFakeTimers()
+    try {
+      let attempt = 0
+      const harness = createHarness({
+        createMuyaEditor: async () => {
+          attempt += 1
+          throw new Error('init failed')
+        },
+      })
+
+      const openPromise = harness.session.openEditor('# doc')
+
+      // Let attempt 1 run and fail; the loop is now parked in the retry delay.
+      await vi.advanceTimersByTimeAsync(0)
+      expect(attempt).toBe(1)
+      expect(harness.currentScreen.value).toBe('editor')
+      expect(harness.session.editorFailed.value).toBe(false)
+
+      // The user leaves the editor mid-delay: an external destroy + Home.
+      harness.session.destroyEditor()
+      harness.currentScreen.value = 'home'
+
+      // Fire the retry timer and settle the abandoned open.
+      await vi.advanceTimersByTimeAsync(400)
+      await openPromise
+
+      // The pending retry was cancelled: no second attempt, no pull back into
+      // the editor, and no failure surfaced behind the user.
+      expect(attempt).toBe(1)
+      expect(harness.currentScreen.value).toBe('home')
+      expect(harness.session.editorFailed.value).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not announce ready when destroyed while the init suppression bridge is pending', async () => {
+    const harness = createHarness()
+
+    // Defer the 'editor-init' suppression call — it crosses the async native
+    // bridge — so the editor can be destroyed while it is in flight.
+    let releaseSuppression: () => void = () => {}
+    harness.setEditorSelectionMenuSuppression.mockImplementation(
+      async (_suppressed?: boolean, reason?: string) => {
+        if (reason === 'editor-init') {
+          await new Promise<void>(resolve => {
+            releaseSuppression = resolve
+          })
+        }
+      },
+    )
+
+    const openPromise = harness.session.openEditor('# doc')
+
+    // The attempt built its editor and is now parked awaiting the native bridge.
+    await vi.waitFor(() => {
+      expect(harness.setEditorSelectionMenuSuppression).toHaveBeenCalledWith(true, 'editor-init')
+    })
+    expect(harness.session.editorReady.value).toBe(false)
+    expect(harness.session.hasEditor()).toBe(true)
+
+    // The user leaves (Back): destroy the editor while suppression is pending.
+    harness.session.destroyEditor()
+    expect(harness.session.hasEditor()).toBe(false)
+
+    // The native bridge finally resolves the stale attempt.
+    releaseSuppression()
+    await openPromise
+
+    // The superseded attempt never announced itself ready or ran the ready sync
+    // against the destroyed editor.
+    expect(harness.session.editorReady.value).toBe(false)
+    expect(harness.syncMarkdown).not.toHaveBeenCalledWith('Ready')
+  })
+
+  it('releases focus inside the live editor root after Muya replaced the template host', async () => {
+    const harness = createHarness({
+      createMuyaEditor: async options => {
+        const fake = createFakeMuyaEditor(options.markdown)
+        // Mirror Muya's getContainer(): replace the handed template host with the
+        // live editor root, leaving editorElement pointing at a detached node.
+        options.element.replaceWith(fake.domNode)
+        return fake as unknown as MuyaEditor
+      },
+    })
+
+    await harness.session.openEditor('# doc')
+
+    // Muya's init focus lands inside the LIVE root; the stale template host does
+    // not contain it.
+    const liveRoot = harness.session.getEditor()!.domNode
+    const content = document.createElement('div')
+    content.tabIndex = -1
+    liveRoot.appendChild(content)
+    content.focus()
+    expect(document.activeElement).toBe(content)
+    expect(harness.host.contains(content)).toBe(false)
+
+    // Run the rAF-scheduled focus release synchronously.
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      callback(0)
+      return 0
+    })
+    try {
+      harness.session.releaseEditorFocusAfterOpen()
+    } finally {
+      raf.mockRestore()
+    }
+
+    // Focus was released against the live root — the no-keyboard policy holds
+    // even though editorElement is stale.
+    expect(document.activeElement).not.toBe(content)
+  })
+
+  it('does not run the user-blur handler while programmatically releasing focus after open', async () => {
+    const harness = createHarness({
+      createMuyaEditor: async options => {
+        const fake = createFakeMuyaEditor(options.markdown)
+        options.element.replaceWith(fake.domNode)
+        // Mirror Muya: a DOM blur on the root emits the app blur (muya.ts:164).
+        fake.domNode.addEventListener('blur', () => options.onBlur())
+        return fake as unknown as MuyaEditor
+      },
+    })
+
+    await harness.session.openEditor('# doc')
+    const liveRoot = harness.session.getEditor()!.domNode as HTMLElement
+    liveRoot.tabIndex = -1
+    liveRoot.focus()
+    expect(document.activeElement).toBe(liveRoot)
+    harness.onEditorBlur.mockClear()
+
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      callback(0)
+      return 0
+    })
+    try {
+      harness.session.releaseEditorFocusAfterOpen()
+    } finally {
+      raf.mockRestore()
+    }
+
+    // Focus was released, but the programmatic blur did NOT run the user-blur
+    // status handler (which would clobber the just-set open notice).
+    expect(document.activeElement).not.toBe(liveRoot)
+    expect(harness.onEditorBlur).not.toHaveBeenCalled()
+
+    // A later, genuine user blur is still delivered — suppression is scoped to
+    // the focus-release only.
+    liveRoot.focus()
+    liveRoot.blur()
+    expect(harness.onEditorBlur).toHaveBeenCalledTimes(1)
   })
 
   it('installs input diagnostics when enabled and removes them on teardown', async () => {

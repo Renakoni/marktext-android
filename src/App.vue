@@ -48,6 +48,11 @@ import {
 } from './lib/resumePositions'
 import { createEditorSelectionLifecycle } from './features/editor/selectionLifecycle'
 import { createEditorSession, normalizeEditorMarkdown } from './features/editor/editorSession'
+import {
+  consumeEditorRecoveryHandoff,
+  persistEditorRecoveryHandoff,
+  type EditorRecoveryHandoff,
+} from './features/editor/editorRecoveryHandoff'
 import { renderMarkdownToPdfExportHtml } from './features/editor/pdfExportHtml'
 import {
   getAppBackButtonAction,
@@ -468,6 +473,8 @@ const {
 
 const {
   editorReady,
+  editorFailed,
+  retryEditor,
   setEditorElement,
   getEditorElement,
   getEditor,
@@ -738,6 +745,46 @@ async function openEditor(markdown: string) {
   if (!isAndroidSelectionControlAvailable()) {
     attachSelectionToolbarWebFallbacks()
   }
+}
+
+// The recovery panel's Retry drives the session-level retry, which reopens the
+// SAME document and so must not repeat the destructive "new document is opening"
+// resets. But a bare session retry skips the common post-open lifecycle, so on
+// a successful recovery restore it here: restart resume-position tracking and
+// re-apply the focus-release policy (Muya init calls focus(); a normal open
+// releases it so the keyboard does not spring up unprompted).
+async function retryEditorFromRecovery() {
+  const statusAfterRecovery =
+    status.value === 'Editor failed'
+      ? documentState.value.autosaveTarget === 'android-document'
+        ? getAndroidEditorStatus()
+        : 'Ready'
+      : status.value
+  await retryEditor()
+  if (editorReady.value) {
+    status.value = statusAfterRecovery
+    void startResumeForOpenedDocument()
+    releaseEditorFocusAfterOpen()
+    return
+  }
+  // The in-app retry could not recover in this page — e.g. a rejected Muya
+  // dynamic import, which the WebView caches per-specifier and refuses to
+  // re-resolve. Only a full reload gets a fresh module registry. But a temporary
+  // Open With / shared session has no Recents entry and, with init failed, no
+  // live editor to save a draft from, so persist the live document as a one-shot
+  // handoff FIRST and reopen it after boot — the reload must never drop the
+  // only in-memory copy.
+  const handoffPersisted = persistEditorRecoveryHandoff({
+    documentState: documentState.value,
+    status: statusAfterRecovery,
+    currentAndroidDocumentCanWrite: currentAndroidDocumentCanWrite.value,
+    promptLocalDraftSaveOnExit: promptLocalDraftSaveOnExit.value,
+  })
+  if (!handoffPersisted) {
+    appLog.warn('editor recovery reload canceled because the handoff could not be persisted')
+    return
+  }
+  window.location.reload()
 }
 
 function getTransientAndroidSaveMessage() {
@@ -1317,6 +1364,15 @@ function applyDocumentStartupAction() {
     return
   }
 
+  // A recovery reload carried the live document across the page restart as a
+  // one-shot handoff; restoring it takes priority over the configured startup
+  // action so a temporary Open With / shared session is reopened, not lost.
+  const recoveryHandoff = consumeEditorRecoveryHandoff()
+  if (recoveryHandoff) {
+    void restoreEditorRecoveryHandoff(recoveryHandoff)
+    return
+  }
+
   if (documentSettings.value.startUpAction === 'blank') {
     newDocument()
     return
@@ -1325,6 +1381,27 @@ function applyDocumentStartupAction() {
   if (documentSettings.value.startUpAction === 'lastEdit') {
     void openLastEditedDocumentOnStartup()
   }
+}
+
+// Reopen the exact document a recovery reload carried across the page restart.
+// Mirrors a normal incoming open (state, editor, status, focus release) but from
+// the persisted handoff — the only path back to a temporary Open With / shared
+// session that never reached Recents.
+async function restoreEditorRecoveryHandoff(handoff: EditorRecoveryHandoff) {
+  appLog.info('restore editor recovery handoff', {
+    autosaveTarget: handoff.documentState.autosaveTarget,
+  })
+  homeNotice.value = null
+  androidExitPromptOpen.value = false
+  currentAndroidDocumentCanWrite.value = handoff.currentAndroidDocumentCanWrite
+  promptLocalDraftSaveOnExit.value = handoff.promptLocalDraftSaveOnExit
+  documentState.value = handoff.documentState
+  await openEditor(handoff.documentState.markdown)
+  if (!editorReady.value) {
+    return
+  }
+  status.value = handoff.status
+  releaseEditorFocusAfterOpen()
 }
 
 function newDocument() {
@@ -1786,6 +1863,7 @@ onBeforeUnmount(() => {
     :document-title="displayDocumentTitle"
     :status="displayStatus"
     :editor-ready="editorReady"
+    :editor-failed="editorFailed"
     :show-editor-actions="canShowEditorActions()"
     :editor-menu-open="editorMenuOpen"
     :toolbar-visible="toolbarSettings.displayMode !== 'hidden'"
@@ -1831,6 +1909,7 @@ onBeforeUnmount(() => {
     :resume-card-visible="resumeCardVisible"
     :resume-card-text="resumeCardText"
     @back="showHome"
+    @retry-editor="retryEditorFromRecovery"
     @search="openEditorSearch"
     @close-search="closeEditorSearch()"
     @update:search-query="setEditorSearchQuery"
