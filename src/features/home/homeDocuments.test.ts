@@ -39,6 +39,42 @@ describe('homeDocuments', () => {
     })
   })
 
+  it('keeps a canonical Untitled-N verbatim on every surface, never localized', () => {
+    const base: RecentDocumentListItem = {
+      id: 'draft-1',
+      kind: 'local-draft',
+      displayName: 'Untitled-2',
+      title: 'Untitled-2',
+      sourceUri: null,
+      providerName: 'Local draft',
+      pathHint: null,
+      markdownPreview: '```\n```',
+      createdAt: '2024-01-01T10:00:00.000Z',
+      updatedAt: '2024-01-01T10:00:00.000Z',
+      lastOpenedAt: '2024-01-01T10:00:00.000Z',
+      lastSavedAt: null,
+      autosaveState: 'clean',
+      canWrite: true,
+      stats: null,
+    }
+    const zh = {
+      localDraftSource: '本地草稿',
+      markdownDocumentSource: 'Markdown 文档',
+      detailsSeparator: ' · ',
+      formatWordCount: (count: number) => `${count} 字`,
+    }
+
+    // A titleless draft, and a real Android file whose own name is Untitled-2,
+    // both keep the canonical value — no locale-specific rendering.
+    expect(toHomeDocumentItem(base, zh).title).toBe('Untitled-2')
+    expect(
+      toHomeDocumentItem(
+        { ...base, kind: 'android-document', markdownPreview: null },
+        zh,
+      ).title,
+    ).toBe('Untitled-2')
+  })
+
   it('keeps the masthead pin-agnostic and floats pinned documents above Earlier', () => {
     const items = [{ id: 'newest' }, { id: 'older-pin' }, { id: 'plain' }, { id: 'newer-pin' }]
 

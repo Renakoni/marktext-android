@@ -4,9 +4,12 @@ import {
   getCustomDisplayName,
   getDocumentStats,
   getDocumentTitle,
+  getNextUntitledDisplayName,
   getSuggestedMarkdownCopyFileName,
   getSuggestedMarkdownFileName,
   getSuggestedPdfFileName,
+  getUntitledNumber,
+  hasDerivedTitle,
   normalizeMarkdownForEditor,
   prepareMarkdownForSave,
   updateDocumentMarkdown,
@@ -94,6 +97,40 @@ describe('documentState', () => {
     expect(getCustomDisplayName('Untitled-1')).toBeUndefined()
     expect(getCustomDisplayName('  ')).toBeUndefined()
     expect(getCustomDisplayName(' Trip plan ')).toBe('Trip plan')
+  })
+
+  it('reads the number out of an Untitled-N placeholder only', () => {
+    expect(getUntitledNumber('Untitled-1')).toBe(1)
+    expect(getUntitledNumber(' Untitled-42 ')).toBe(42)
+    expect(getUntitledNumber('Untitled-0')).toBeNull()
+    expect(getUntitledNumber('Untitled-01')).toBe(1)
+    expect(getUntitledNumber('Trip plan')).toBeNull()
+    expect(getUntitledNumber('Untitled')).toBeNull()
+    expect(getUntitledNumber(undefined)).toBeNull()
+  })
+
+  it('gap-fills the next Untitled number so a freed slot is reused', () => {
+    expect(getNextUntitledDisplayName([])).toBe('Untitled-1')
+    // A name and a content-titled draft (no placeholder) never reserve numbers.
+    expect(getNextUntitledDisplayName(['Trip plan', undefined])).toBe('Untitled-1')
+    expect(getNextUntitledDisplayName(['Untitled-1', 'Untitled-2'])).toBe('Untitled-3')
+    // The lowest hole wins over marching the sequence onward.
+    expect(getNextUntitledDisplayName(['Untitled-2', 'Untitled-3'])).toBe('Untitled-1')
+    expect(getNextUntitledDisplayName(['Untitled-1', 'Untitled-3'])).toBe('Untitled-2')
+  })
+
+  it('detects whether Markdown carries a title of its own', () => {
+    expect(hasDerivedTitle('# Heading')).toBe(true)
+    expect(hasDerivedTitle('plain first line\nmore')).toBe(true)
+    expect(hasDerivedTitle('- shopping item')).toBe(true)
+    // Existing derivation is unchanged: a code body line is still leading
+    // text, so a code block WITH content keeps deriving its own title.
+    expect(hasDerivedTitle('```js\nconst x = 1\n```')).toBe(true)
+    // A genuinely untitled draft — an empty-bodied fence, a bare thematic
+    // break, or nothing — derives no title and earns a number.
+    expect(hasDerivedTitle('```js\n```')).toBe(false)
+    expect(hasDerivedTitle('')).toBe(false)
+    expect(hasDerivedTitle('# ***')).toBe(false)
   })
 
   it('suggests a Markdown file name from the first heading', () => {

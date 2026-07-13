@@ -1,4 +1,5 @@
 import {
+  getCustomDisplayName,
   getDocumentStats,
   getDocumentTitle,
   type AutosaveState,
@@ -117,9 +118,12 @@ function compareRecentDocuments(
 
 export function createRecentDocumentFromLocalDraft(draft: LocalDraftSource): RecentDocumentRecord {
   // An explicit rename is the draft's identity: it wins over content-derived
-  // titles, headings included.
-  const customName = draft.displayName?.trim()
-  const title = customName || getDocumentTitle(draft.markdown)
+  // titles, headings included. A stored Untitled-N is not a rename — it is the
+  // draft's placeholder identity, so a content title still wins over it, and
+  // it only surfaces (via getDocumentTitle's own fallback) when the draft has
+  // no title of its own.
+  const customName = getCustomDisplayName(draft.displayName ?? '')
+  const title = customName || getDocumentTitle(draft.markdown, draft.displayName ?? undefined)
 
   return {
     id: draft.id,

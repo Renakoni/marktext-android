@@ -27,7 +27,9 @@ test('uses the selected language in a newly created editor session', async ({ pa
   await page.getByTestId('new-document-button').click()
   await expectEditorReady(page)
 
-  await expect(page.getByRole('heading', { name: '未命名-1' })).toBeVisible()
+  // The Untitled-N placeholder is canonical on every surface and is never
+  // localized, so a Chinese session still shows the literal English title.
+  await expect(page.getByRole('heading', { name: 'Untitled-1' })).toBeVisible()
   await expect(page.getByText('就绪')).toBeVisible()
   await page.getByTestId('toolbar-expand-button').click()
   await expect(page.getByTestId('toolbar-group-switcher')).toContainText('格式')

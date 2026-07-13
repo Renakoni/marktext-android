@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  assignUntitledDraftNames,
   normalizeLocalDrafts,
   parseLocalDrafts,
   removeLocalDraft,
@@ -39,6 +40,39 @@ describe('localDrafts', () => {
     ])
 
     expect(drafts.map(draft => draft.id)).toEqual(['newer', 'older'])
+  })
+
+  it('migrates legacy untitled drafts to distinct gap-filled numbers', () => {
+    const untitledOld: LocalDraftRecord = {
+      id: 'u-old',
+      markdown: '```\n```',
+      createdAt: '2026-06-28T00:00:00.000Z',
+      updatedAt: '2026-06-28T00:00:00.000Z',
+      lastSavedAt: null,
+    }
+    const untitledNew: LocalDraftRecord = {
+      ...untitledOld,
+      id: 'u-new',
+      createdAt: '2026-06-30T00:00:00.000Z',
+    }
+    const migrated = assignUntitledDraftNames([
+      untitledNew,
+      untitledOld,
+      olderDraft, // has a content title — keeps deriving it, earns no number
+      { ...newerDraft, id: 'held', markdown: '```\n```', displayName: 'Untitled-1' }, // frozen
+    ])
+
+    const byId = new Map(migrated.map(draft => [draft.id, draft.displayName]))
+    // Oldest untitled first, filling around the already-held number 1.
+    expect(byId.get('u-old')).toBe('Untitled-2')
+    expect(byId.get('u-new')).toBe('Untitled-3')
+    expect(byId.get('held')).toBe('Untitled-1')
+    expect(byId.get('older')).toBeUndefined()
+  })
+
+  it('leaves the draft list untouched when no untitled draft needs a number', () => {
+    const drafts = [olderDraft, { ...newerDraft, displayName: 'Trip plan' }]
+    expect(assignUntitledDraftNames(drafts)).toBe(drafts)
   })
 
   it('upserts drafts by id and keeps the latest markdown', () => {

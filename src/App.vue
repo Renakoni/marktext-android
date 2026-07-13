@@ -98,6 +98,7 @@ import {
   destroyMuyaEditor,
 } from './features/editor/editorRuntime'
 import {
+  assignUntitledDraftNames,
   removeLocalDraft,
   type LocalDraftRecord,
 } from './lib/localDrafts'
@@ -354,19 +355,10 @@ const lineCount = computed(() => documentState.value.stats.lines)
 const characterCount = computed(() => documentState.value.stats.characters)
 const wordCount = computed(() => documentState.value.stats.words)
 const documentTitle = computed(() => documentState.value.title)
-const displayDocumentTitle = computed(() => {
-  const untitledMatch = documentState.value.displayName.match(/^Untitled-(\d+)$/)
-  if (
-    untitledMatch &&
-    documentState.value.sourceUri === null &&
-    documentState.value.title === documentState.value.displayName &&
-    documentState.value.markdown.trim() === ''
-  ) {
-    return t('document.untitledNumbered', { index: untitledMatch[1] })
-  }
-
-  return documentTitle.value
-})
+// The Untitled-N placeholder is canonical everywhere: it is a draft's stable
+// identity, so it stays byte-for-byte the same in the header, the recent list,
+// rename, share, and export — it is never localized to a per-locale form.
+const displayDocumentTitle = computed(() => documentTitle.value)
 const recentDocumentRecords = computed(() =>
   [
     ...localDrafts.value
@@ -1645,7 +1637,11 @@ onMounted(() => {
   systemColorSchemeCleanup = watchSystemColorScheme(prefersDark => {
     systemPrefersDark.value = prefersDark
   })
-  const restoredDrafts = readStoredLocalDrafts()
+  // Drafts saved before per-draft numbering shared the generic Untitled-1;
+  // give each genuinely untitled one a distinct, frozen Untitled-N once so
+  // their identities are stable from here on.
+  const storedDrafts = readStoredLocalDrafts()
+  const restoredDrafts = assignUntitledDraftNames(storedDrafts)
   const restoredRecentDocuments = readStoredAndroidRecentDocuments()
   const legacyDraft = readLegacyDraft()
 
@@ -1653,6 +1649,9 @@ onMounted(() => {
   pinnedDocuments.value = readStoredPinnedDocuments()
 
   if (restoredDrafts.length > 0) {
+    if (restoredDrafts !== storedDrafts) {
+      persistLocalDrafts(restoredDrafts)
+    }
     localDrafts.value = restoredDrafts
     const visibleDraft = restoredDrafts.find(draft => shouldShowLocalDraftRecord(draft.id))
     if (visibleDraft) {
