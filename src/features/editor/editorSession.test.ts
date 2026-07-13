@@ -33,6 +33,7 @@ function createHarness(overrides: {
   screen?: AppScreen
   diagnosticsEnabled?: boolean
   createMuyaEditor?: (options: CreateMuyaEditorOptions) => Promise<MuyaEditor | null>
+  remountHostOnOpen?: boolean
 } = {}) {
   document.body.innerHTML = ''
   const currentScreen = ref<AppScreen>(overrides.screen ?? 'home')
@@ -89,6 +90,34 @@ function createHarness(overrides: {
     logger,
   })
 
+  // A persistent shell holding the editor host — the containment root the real
+  // EditorScreen provides.
+  const shell = document.createElement('div')
+  document.body.appendChild(shell)
+
+  // Optionally mimic EditorScreen: mount a FRESH .muya-host inside the shell
+  // whenever the screen shows the editor, so the session's per-attempt remount
+  // gets a fresh, connected host exactly as the real UI supplies one.
+  function mountFreshHost() {
+    shell.replaceChildren()
+    const freshHost = document.createElement('div')
+    freshHost.className = 'muya-host'
+    shell.appendChild(freshHost)
+    session.setEditorElement(freshHost)
+  }
+
+  if (overrides.remountHostOnOpen) {
+    watch(
+      currentScreen,
+      screen => {
+        if (screen === 'editor') {
+          mountFreshHost()
+        }
+      },
+      { flush: 'sync' },
+    )
+  }
+
   const host = document.createElement('div')
   document.body.appendChild(host)
   session.setEditorElement(host)
@@ -96,6 +125,7 @@ function createHarness(overrides: {
   return {
     session,
     host,
+    shell,
     currentScreen,
     documentState,
     status,
@@ -355,6 +385,48 @@ describe('editorSession', () => {
     expect(harness.session.editorFailed.value).toBe(false)
     expect(harness.session.editorReady.value).toBe(true)
     expect(harness.session.getEditorMarkdownSnapshot()).toBe('# retry me')
+  })
+
+  it('retries against a freshly mounted host after the first attempt replaced and abandoned the old one', async () => {
+    let attempt = 0
+    const harness = createHarness({
+      remountHostOnOpen: true,
+      createMuyaEditor: async options => {
+        attempt += 1
+        if (attempt === 1) {
+          // Muya replaces the element it is handed (getContainer ->
+          // replaceWith), then initialization throws — leaving the old host
+          // detached from the document.
+          const dead = document.createElement('div')
+          dead.className = 'muya-dead-root'
+          options.element.replaceWith(dead)
+          throw new Error('init failed after replacing the host')
+        }
+        // Second attempt: succeed, mounting content inside the given element.
+        const liveRoot = document.createElement('div')
+        liveRoot.className = 'muya-live-root'
+        options.element.appendChild(liveRoot)
+        return createFakeMuyaEditor(options.markdown) as unknown as MuyaEditor
+      },
+    })
+
+    await harness.session.openEditor('# recover')
+
+    expect(attempt).toBe(2)
+    expect(harness.session.editorReady.value).toBe(true)
+    expect(harness.session.editorFailed.value).toBe(false)
+
+    // The successful attempt's host is connected to the document AND contained
+    // by the persistent shell — not the detached leftover of attempt 1.
+    const liveHost = harness.session.getEditorElement()
+    expect(liveHost).not.toBeNull()
+    expect(document.contains(liveHost)).toBe(true)
+    expect(harness.shell.contains(liveHost)).toBe(true)
+
+    // The dead root from attempt 1 was cleared by the remount; exactly one live
+    // editor root remains under the shell.
+    expect(document.querySelectorAll('.muya-dead-root')).toHaveLength(0)
+    expect(harness.shell.querySelectorAll('.muya-live-root')).toHaveLength(1)
   })
 
   it('installs input diagnostics when enabled and removes them on teardown', async () => {

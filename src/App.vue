@@ -742,6 +742,20 @@ async function openEditor(markdown: string) {
   }
 }
 
+// The recovery panel's Retry drives the session-level retry, which reopens the
+// SAME document and so must not repeat the destructive "new document is opening"
+// resets. But a bare session retry skips the common post-open lifecycle, so on
+// a successful recovery restore it here: restart resume-position tracking and
+// re-apply the focus-release policy (Muya init calls focus(); a normal open
+// releases it so the keyboard does not spring up unprompted).
+async function retryEditorFromRecovery() {
+  await retryEditor()
+  if (editorReady.value) {
+    void startResumeForOpenedDocument()
+    releaseEditorFocusAfterOpen()
+  }
+}
+
 function getTransientAndroidSaveMessage() {
   return canPersistLocalDrafts()
     ? TRANSIENT_ANDROID_DOCUMENT_MESSAGE
@@ -1834,7 +1848,7 @@ onBeforeUnmount(() => {
     :resume-card-visible="resumeCardVisible"
     :resume-card-text="resumeCardText"
     @back="showHome"
-    @retry-editor="retryEditor"
+    @retry-editor="retryEditorFromRecovery"
     @search="openEditorSearch"
     @close-search="closeEditorSearch()"
     @update:search-query="setEditorSearchQuery"

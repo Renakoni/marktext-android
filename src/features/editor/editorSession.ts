@@ -99,6 +99,10 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
 
   let editor: MuyaEditor | null = null
   let editorInitToken = 0
+  // Bumped per openEditor() call so a superseded open (or its retry loop) bails
+  // instead of racing a newer one — a coarser guard than editorInitToken that
+  // also survives the destroy/remount each attempt performs.
+  let openGeneration = 0
   let editorSelectionDiagnosticCleanup: (() => void) | null = null
   let editorInputDiagnosticCleanup: (() => void) | null = null
 
@@ -141,10 +145,18 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
     return options.documentState.value
   }
 
-  async function initEditor(initialMarkdown: string, attempt = 1) {
+  // One initialization attempt against the CURRENT host. Muya destructively
+  // replaces the element it is handed (getContainer -> replaceWith), so a
+  // failed attempt leaves that element detached — it must never be retried
+  // against; openEditor remounts a fresh host between attempts. Returns whether
+  // the editor came up, plainly failed, or was superseded by a newer open.
+  async function initEditorAttempt(
+    initialMarkdown: string,
+    attempt: number,
+  ): Promise<'ready' | 'failed' | 'superseded'> {
     const element = editorElement.value
     if (!element) {
-      return
+      return 'failed'
     }
 
     const token = ++editorInitToken
@@ -170,7 +182,7 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
       })
       if (!nextEditor) {
         await options.setEditorSelectionMenuSuppression(false, 'editor-init-stale')
-        return
+        return 'superseded'
       }
 
       editor = nextEditor
@@ -191,49 +203,72 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
         words: options.documentState.value.stats.words,
         lines: options.documentState.value.stats.lines,
       })
+      return 'ready'
     } catch (error) {
       // A newer open or destroy superseded this attempt: leave its state alone.
       if (token !== editorInitToken) {
-        return
+        return 'superseded'
       }
       options.logger.error('Muya init failed', { attempt, error })
       await options.setEditorSelectionMenuSuppression(false, 'editor-init-failed')
-
-      // Retry once transparently: the user only sees the loading state, and a
-      // transient failure clears before ever reaching the failure surface.
-      if (attempt < MAX_INIT_ATTEMPTS) {
-        await new Promise<void>(resolve => setTimeout(resolve, INIT_RETRY_DELAY_MS))
-        if (token === editorInitToken) {
-          await initEditor(initialMarkdown, attempt + 1)
-        }
-        return
-      }
-
-      options.status.value = 'Editor failed'
-      editorFailed.value = true
+      return 'failed'
     }
   }
 
-  async function openEditor(markdown: string) {
-    lastOpenedMarkdown = markdown
-    editorFailed.value = false
-    editorReady.value = false
-    options.closeEditorToolbar()
+  // Mount a fresh, document-connected editor host. Because Muya replaces the
+  // element it is given, every attempt — including the transparent retry — must
+  // init against a newly mounted host, never the detached leftover of a failed
+  // attempt. The home bounce forces EditorScreen to remount its host; the two
+  // screen writes are batched within a frame, so no home flash is painted.
+  async function remountEditorHost() {
     const wasEditorOpen = options.currentScreen.value === 'editor'
     destroyEditor({ updateSelectionMenuSuppression: !wasEditorOpen })
     if (wasEditorOpen) {
       options.currentScreen.value = 'home'
       await nextTick()
     }
-
     options.currentScreen.value = 'editor'
     await nextTick()
-    await initEditor(markdown)
   }
 
-  // Re-open the document that failed to initialize. A full open() gives the
-  // retry a clean host (the failed attempt may have left partial DOM) plus its
-  // own transparent auto-retry.
+  async function openEditor(markdown: string) {
+    const generation = ++openGeneration
+    lastOpenedMarkdown = markdown
+    editorFailed.value = false
+    editorReady.value = false
+    options.closeEditorToolbar()
+
+    for (let attempt = 1; attempt <= MAX_INIT_ATTEMPTS; attempt++) {
+      await remountEditorHost()
+      if (generation !== openGeneration) {
+        return
+      }
+
+      const result = await initEditorAttempt(markdown, attempt)
+      if (result === 'ready' || result === 'superseded') {
+        return
+      }
+      if (generation !== openGeneration) {
+        return
+      }
+
+      // Transparent auto-retry once: the user only sees the loading state, and
+      // the next attempt gets a fresh host from the remount above. A persistent
+      // failure surfaces the recovery panel.
+      if (attempt < MAX_INIT_ATTEMPTS) {
+        await new Promise<void>(resolve => setTimeout(resolve, INIT_RETRY_DELAY_MS))
+        if (generation !== openGeneration) {
+          return
+        }
+      } else {
+        options.status.value = 'Editor failed'
+        editorFailed.value = true
+      }
+    }
+  }
+
+  // Re-open the document that failed to initialize. The full open() loop gives
+  // the retry a freshly mounted, connected host plus its own transparent retry.
   async function retryEditor() {
     await openEditor(lastOpenedMarkdown)
   }
