@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref } from 'vue'
 import type { OutlineItem } from '../documentOutline'
 import { useI18n } from '../../../lib/i18n'
+import { useModalFocus } from '../../../lib/modalFocus'
 
 defineProps<{
   items: OutlineItem[]
@@ -14,46 +15,13 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-// Move accessibility focus into the dialog on open. This is DOM focus only:
-// the editor was blurred before the sheet opened, so Muya's cached editing
-// selection is untouched and the keyboard stays closed.
 const panel = ref<HTMLElement | null>(null)
-
-watch(panel, element => {
-  if (element) {
-    void nextTick(() => element.focus({ preventScroll: true }))
-  }
+const { onModalKeydown } = useModalFocus({
+  root: panel,
+  initialFocus: () => panel.value,
+  onEscape: () => emit('close'),
+  restoreFocus: false,
 })
-
-// The background is inert while the sheet is open, but hardware Tab could
-// still walk focus out of the dialog to the document body. Cycle it inside
-// the panel instead (aria-modal alone does not contain keyboard focus).
-function trapTabKey(event: KeyboardEvent) {
-  const root = panel.value
-  if (!root) {
-    return
-  }
-
-  const focusables = Array.from(root.querySelectorAll<HTMLElement>('button:not(:disabled)'))
-  if (focusables.length === 0) {
-    event.preventDefault()
-    return
-  }
-
-  const first = focusables[0]
-  const last = focusables[focusables.length - 1]
-  const active = document.activeElement
-
-  if (event.shiftKey) {
-    if (active === first || active === root) {
-      event.preventDefault()
-      last.focus()
-    }
-  } else if (active === last) {
-    event.preventDefault()
-    first.focus()
-  }
-}
 </script>
 
 <template>
@@ -72,8 +40,7 @@ function trapTabKey(event: KeyboardEvent) {
       tabindex="-1"
       data-testid="outline-sheet"
       @click.stop
-      @keydown.esc="emit('close')"
-      @keydown.tab="trapTabKey"
+      @keydown="onModalKeydown"
     >
       <header class="outline-header">
         <div class="editor-action-grabber" aria-hidden="true" />

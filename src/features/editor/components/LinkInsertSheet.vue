@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from '../../../lib/i18n'
+import { useModalFocus } from '../../../lib/modalFocus'
 
 const props = defineProps<{
   text: string
@@ -15,7 +16,7 @@ const emit = defineEmits<{
 }>()
 
 const linkUrlInput = ref<HTMLInputElement | null>(null)
-const panel = ref<HTMLElement | null>(null)
+const modalRoot = ref<HTMLElement | null>(null)
 const { t } = useI18n()
 const canInsert = computed(() => props.url.trim().length > 0)
 const textValue = computed({
@@ -27,67 +28,31 @@ const urlValue = computed({
   set: value => emit('update:url', value),
 })
 
-function focusInitialInput() {
-  linkUrlInput.value?.focus()
-}
-
-defineExpose({ focusInitialInput })
-
-onMounted(() => {
-  void nextTick(() => {
-    focusInitialInput()
-  })
+const { focusInitial: focusInitialInput, onModalKeydown } = useModalFocus({
+  root: modalRoot,
+  initialFocus: () => linkUrlInput.value,
+  onEscape: () => emit('cancel'),
+  restoreFocus: false,
+  // Insertion briefly focuses the mounted editor to restore Muya's selection.
+  // EditorScreen hides that background from accessibility without making it inert.
+  isolateBackground: false,
 })
 
-// Keyboard containment relies on this Tab trap ALONE (aria-modal does not
-// contain focus). EditorScreen removes the background from the accessibility
-// tree with aria-hidden, but keeps it non-inert so confirm can temporarily
-// focus the still-mounted editor for insertion.
-function trapTabKey(event: KeyboardEvent) {
-  const root = panel.value
-  if (!root) {
-    return
-  }
-
-  const focusables = Array.from(
-    root.querySelectorAll<HTMLElement>('input:not(:disabled), button:not(:disabled)'),
-  )
-  if (focusables.length === 0) {
-    event.preventDefault()
-    return
-  }
-
-  const first = focusables[0]
-  const last = focusables[focusables.length - 1]
-  const active = document.activeElement
-
-  if (event.shiftKey) {
-    if (active === first || active === root) {
-      event.preventDefault()
-      last.focus()
-    }
-    return
-  }
-
-  if (active === last) {
-    event.preventDefault()
-    first.focus()
-  }
-}
+defineExpose({ focusInitialInput })
 </script>
 
 <template>
   <section
+    ref="modalRoot"
     class="draft-save-sheet"
     role="dialog"
     aria-modal="true"
     aria-labelledby="link-sheet-title"
+    tabindex="-1"
     data-testid="link-insert-sheet"
-    @keydown.esc="emit('cancel')"
-    @keydown.tab="trapTabKey"
+    @keydown="onModalKeydown"
   >
     <form
-      ref="panel"
       class="draft-save-panel link-insert-panel"
       @submit.prevent="emit('insert')"
     >

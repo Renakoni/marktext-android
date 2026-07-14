@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import SettingsChoiceRow from './SettingsChoiceRow.vue'
 import SettingsRow from './SettingsRow.vue'
 import SettingsSection from './SettingsSection.vue'
@@ -37,6 +37,7 @@ import {
   getImportedAndroidImageStorageStats,
   type ImportedAndroidImageStorageStats,
 } from '../../../lib/androidImages'
+import { useModalFocus } from '../../../lib/modalFocus'
 
 const props = defineProps<{
   page: SettingsPage
@@ -56,6 +57,8 @@ const advancedDiagnostics = ref<Record<string, string>>({})
 const importedImageStorageStats = ref<ImportedAndroidImageStorageStats | null>(null)
 const importedImageStorageLoading = ref(false)
 const importedImageStorageError = ref(false)
+const maintenanceModalRoot = ref<HTMLElement | null>(null)
+const maintenanceCancelButton = ref<HTMLButtonElement | null>(null)
 const maintenanceActionCopies: Record<
   MaintenanceActionId,
   {
@@ -229,12 +232,19 @@ function closeMaintenanceSheet() {
   maintenanceActionResult.value = null
 }
 
+const { focusInitial, onModalKeydown } = useModalFocus({
+  root: maintenanceModalRoot,
+  initialFocus: () => maintenanceCancelButton.value,
+  onEscape: closeMaintenanceSheet,
+})
+
 async function confirmMaintenanceAction() {
   const action = maintenanceAction.value
   if (!action || maintenanceActionBusy.value) {
     return
   }
 
+  maintenanceModalRoot.value?.focus({ preventScroll: true })
   maintenanceActionBusy.value = true
   maintenanceActionError.value = null
   maintenanceActionResult.value = null
@@ -252,6 +262,8 @@ async function confirmMaintenanceAction() {
       : t('settings.maintenance.genericError')
   } finally {
     maintenanceActionBusy.value = false
+    await nextTick()
+    focusInitial()
   }
 }
 
@@ -381,12 +393,15 @@ watch(
   <Transition name="editor-sheet">
     <section
       v-if="activeMaintenanceActionCopy"
+      ref="maintenanceModalRoot"
       class="draft-save-sheet"
       role="dialog"
       aria-modal="true"
       aria-labelledby="settings-maintenance-title"
+      tabindex="-1"
       data-testid="settings-maintenance-sheet"
       @click.self="closeMaintenanceSheet"
+      @keydown="onModalKeydown"
     >
       <div class="draft-save-panel">
         <h2 id="settings-maintenance-title">{{ t(activeMaintenanceActionCopy.titleKey) }}</h2>
@@ -410,6 +425,7 @@ watch(
             {{ t(activeMaintenanceActionCopy.confirmKey) }}
           </button>
           <button
+            ref="maintenanceCancelButton"
             type="button"
             :disabled="maintenanceActionBusy"
             data-testid="settings-maintenance-cancel"

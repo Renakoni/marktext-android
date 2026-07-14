@@ -3,9 +3,9 @@ import type { Muya } from '../muya';
 import type { TDiff } from '../utils';
 import type { TState } from './types';
 import * as json1 from 'ot-json1';
-import { deepClone } from '../utils';
 import logger from '../utils/logger';
 import { getTOC } from './getTOC';
+import { cloneStateTree } from './cloneState';
 
 import { MarkdownToState } from './markdownToState';
 import StateToMarkdown from './stateToMarkdown';
@@ -52,6 +52,8 @@ class JSONState {
 
     private _state: TState[] = [];
 
+    private _revision = 0;
+
     constructor(private _muya: Muya, stateOrMarkdown: TState[] | string) {
         this.setContent(stateOrMarkdown);
     }
@@ -63,6 +65,7 @@ class JSONState {
         if (op === null)
             return;
         this._state = asState(json1.type.apply(asDoc(this._state), op));
+        this._revision += 1;
     }
 
     setContent(content: TState[] | string) {
@@ -80,6 +83,12 @@ class JSONState {
             this._setState(content);
         else
             this._setMarkdown(content);
+
+        this._revision += 1;
+    }
+
+    get revision() {
+        return this._revision;
     }
 
     private _setState(state: TState[]) {
@@ -130,7 +139,7 @@ class JSONState {
     } {
         const prevState = this.getState();
         const nextState
-            = typeof content === 'string' ? this.markdownToState(content) : deepClone(content);
+            = typeof content === 'string' ? this.markdownToState(content) : cloneStateTree(content);
 
         const components: JSONOpList[] = [];
         const max = Math.max(prevState.length, nextState.length);
@@ -208,19 +217,16 @@ class JSONState {
     dispatch(op: JSONOp, source = 'user' /* user, api */) {
         const prevDoc = this.getState();
         this._apply(op);
-        // TODO: remove doc in future
-        const doc = this.getState();
         debug.log(JSON.stringify(op));
         this._muya.eventCenter.emit('json-change', {
             op,
             source,
             prevDoc,
-            doc,
         });
     }
 
     getState(): TState[] {
-        return deepClone(this._state);
+        return cloneStateTree(this._state);
     }
 
     getMarkdown() {
@@ -280,8 +286,6 @@ class JSONState {
         );
         const prevDoc = this.getState();
         this._apply(op);
-        // TODO: remove doc in future
-        const doc = this.getState();
         // Clear before emitting: a listener that edits synchronously then starts
         // a fresh batch instead of mutating the one being flushed.
         this._operationCache = [];
@@ -293,7 +297,6 @@ class JSONState {
             op,
             source: 'user',
             prevDoc,
-            doc,
         });
     }
 }

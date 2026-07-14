@@ -9,8 +9,12 @@ export interface CreateDocumentSearchOptions {
   getEditor: () => MuyaEditor | null
   /** Bring the active `.mu-highlight` span into view after search/navigation. */
   scrollActiveMatchIntoView?: () => void
+  /** Delay repeated input while typing; zero keeps deterministic synchronous behavior. */
+  queryDebounceMs?: number
   logger?: DocumentSearchLogger
 }
+
+export const DOCUMENT_SEARCH_QUERY_DEBOUNCE_MS = 120
 
 export interface CloseDocumentSearchOptions {
   /**
@@ -62,12 +66,14 @@ export function handleSearchEnterKeydown(event: KeyboardEvent, findNext: () => v
 export function createDocumentSearch({
   getEditor,
   scrollActiveMatchIntoView,
+  queryDebounceMs = DOCUMENT_SEARCH_QUERY_DEBOUNCE_MS,
   logger,
 }: CreateDocumentSearchOptions): DocumentSearch {
   const searchOpen = ref(false)
   const searchQuery = ref('')
   const matchCount = ref(0)
   const activeMatchIndex = ref(-1)
+  let queryTimer: ReturnType<typeof setTimeout> | null = null
 
   function applySearchState(state: { matches: unknown[]; index: number }) {
     matchCount.value = state.matches.length
@@ -78,6 +84,34 @@ export function createDocumentSearch({
     searchQuery.value = ''
     matchCount.value = 0
     activeMatchIndex.value = -1
+  }
+
+  function cancelPendingQuery() {
+    if (queryTimer !== null) {
+      clearTimeout(queryTimer)
+      queryTimer = null
+    }
+  }
+
+  function applyQuery(value: string) {
+    const editor = getEditor()
+    if (!editor) {
+      return
+    }
+
+    applySearchState(editor.search(value))
+
+    if (value && matchCount.value > 0) {
+      scrollActiveMatchIntoView?.()
+    }
+  }
+
+  function flushPendingQuery() {
+    if (queryTimer === null) {
+      return
+    }
+    cancelPendingQuery()
+    applyQuery(searchQuery.value)
   }
 
   function openSearch() {
@@ -94,6 +128,7 @@ export function createDocumentSearch({
       return
     }
 
+    cancelPendingQuery()
     const editor = getEditor()
     const hadActiveMatch = activeMatchIndex.value >= 0
 
@@ -116,20 +151,21 @@ export function createDocumentSearch({
 
   function setQuery(value: string) {
     searchQuery.value = value
+    cancelPendingQuery()
 
-    const editor = getEditor()
-    if (!editor) {
+    if (!value || queryDebounceMs <= 0) {
+      applyQuery(value)
       return
     }
 
-    applySearchState(editor.search(value))
-
-    if (value && matchCount.value > 0) {
-      scrollActiveMatchIntoView?.()
-    }
+    queryTimer = setTimeout(() => {
+      queryTimer = null
+      applyQuery(value)
+    }, queryDebounceMs)
   }
 
   function findInDirection(action: 'previous' | 'next') {
+    flushPendingQuery()
     const editor = getEditor()
     if (!editor || matchCount.value === 0) {
       return
@@ -152,12 +188,8 @@ export function createDocumentSearch({
       return
     }
 
-    const editor = getEditor()
-    if (!editor) {
-      return
-    }
-
-    applySearchState(editor.search(searchQuery.value))
+    cancelPendingQuery()
+    applyQuery(searchQuery.value)
   }
 
   function resetForNewDocument() {
@@ -165,6 +197,7 @@ export function createDocumentSearch({
       return
     }
 
+    cancelPendingQuery()
     // Muya resets its own match state on setContent; only the app-side
     // find-bar state needs dropping here.
     clearSearchState()
