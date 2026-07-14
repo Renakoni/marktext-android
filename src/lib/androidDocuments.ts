@@ -166,6 +166,17 @@ interface AndroidDocumentsPlugin {
   }): Promise<SavedAndroidDocument>
   configureMarkdownSettings(options: AndroidMarkdownSettings): Promise<void>
   getImportedImageDirectory(): Promise<{ fileUri: string; webBaseUri?: string }>
+  getImportedImageStorageStats(): Promise<{ fileCount: number; bytes: number }>
+  cleanupImportedImages(options: {
+    referencedFileNames: string[]
+    managedFileNames: string[]
+  }): Promise<{
+    fileCount: number
+    bytes: number
+    removedFileCount: number
+    removedBytes: number
+    failedFileCount: number
+  }>
   pickImageDocument(options?: { copyImage?: boolean }): Promise<{
     canceled?: false
     sourceUri: string

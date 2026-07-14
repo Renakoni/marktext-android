@@ -990,6 +990,21 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
           testId: 'settings-advanced-export-logs',
         },
         {
+          kind: 'status',
+          id: 'importedImageStorage',
+          implementation: 'derived',
+          labelKey: 'settings.advanced.importedImageStorage',
+          valueKey: 'settings.value.androidOnly',
+          testId: 'settings-advanced-imported-image-storage',
+        },
+        {
+          kind: 'action',
+          id: 'cleanImportedImages',
+          implementation: 'runtime',
+          labelKey: 'settings.advanced.cleanImportedImages',
+          testId: 'settings-advanced-clean-imported-images',
+        },
+        {
           kind: 'action',
           id: 'clearDrafts',
           implementation: 'runtime',

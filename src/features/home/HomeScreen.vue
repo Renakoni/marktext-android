@@ -6,7 +6,7 @@ import SettingsScreen from '../settings/SettingsScreen.vue'
 import type { HomeDocumentItem } from './homeDocuments'
 import { HOME_TABS, type HomeTab } from './homeNavigation'
 import { SETTINGS_PAGES, type SettingsPage } from '../settings/settingsNavigation'
-import type { AdvancedMaintenanceActionId } from '../settings/advancedSettings'
+import type { AdvancedMaintenanceActionHandler } from '../settings/advancedSettings'
 
 interface Props {
   activeTab: HomeTab
@@ -21,6 +21,7 @@ interface Props {
   allSelectedPinned: boolean
   deleteSheetOpen: boolean
   renameSheetOpen: boolean
+  runMaintenanceAction: AdvancedMaintenanceActionHandler
 }
 
 const props = defineProps<Props>()
@@ -31,7 +32,6 @@ const emit = defineEmits<{
   openFile: []
   newDocument: []
   setSettingsPage: [page: SettingsPage]
-  runMaintenanceAction: [action: AdvancedMaintenanceActionId]
   selectDocument: [id: string]
   toggleDocument: [id: string]
   exitSelection: []
@@ -91,8 +91,8 @@ watch(
       <SettingsScreen
         v-else
         :active-page="settingsPage"
+        :run-maintenance-action="runMaintenanceAction"
         @set-page="page => emit('setSettingsPage', page)"
-        @run-maintenance-action="action => emit('runMaintenanceAction', action)"
       />
     </div>
     <AppBottomNavigation

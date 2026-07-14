@@ -20,9 +20,11 @@ import {
 } from './lib/androidDocuments'
 import {
   ensureAndroidImageResolver,
+  formatImportedImageStorageBytes,
   getAndroidImageUserMessage,
   isAndroidImageImportAvailable,
   pickAndroidImageDocument,
+  type ImportedAndroidImageCleanupResult,
 } from './lib/androidImages'
 import {
   installAppLifecycleListeners as installAppLifecycleListenerHandles,
@@ -64,6 +66,14 @@ import {
 import { isAndroidRecoveryDraftId } from './features/android-documents/androidRecoveryDrafts'
 import { rememberAndroidRecentDocument } from './features/android-documents/androidRecentDocuments'
 import { getImageSharingSettings } from './features/android-documents/imageSharingSettings'
+import {
+  ImportedImageCleanupBlockedError,
+  cleanupUnusedImportedImages,
+} from './features/android-documents/importedImageMaintenance'
+import {
+  protectImportedImagesInAndroidDocument,
+  registerImportedImageCopy,
+} from './features/android-documents/importedImageRegistry'
 import { createUntitledDocument } from './lib/documentState'
 import {
   createDocumentStateFromLocalDraft,
@@ -1052,6 +1062,7 @@ async function insertImageFromAndroidPicker(restoreRange: Range | null = null) {
   }
 
   const beforeMarkdown = activeEditor.getMarkdown()
+  const protectImportedImageFromCleanup = Boolean(documentState.value.sourceUri)
   pendingInlineInsertRange = restoreRange?.cloneRange() ?? captureEditorSelection()
   const selectedText = normalizeToolbarSelectionText(pendingInlineInsertRange?.toString() ?? '')
   closeEditorMenu()
@@ -1063,9 +1074,18 @@ async function insertImageFromAndroidPicker(restoreRange: Range | null = null) {
     const result = await insertAndroidImageWorkflow({
       selectedText,
       ensureAndroidImageResolver,
-      pickAndroidImageDocument: () => pickAndroidImageDocument({
-        copyImage: imageSharingSettings.value.imageCopyImages,
-      }),
+      pickAndroidImageDocument: async () => {
+        const image = await pickAndroidImageDocument({
+          copyImage: imageSharingSettings.value.imageCopyImages,
+        })
+        if (
+          !image.canceled
+          && !registerImportedImageCopy(image.markdownSrc, protectImportedImageFromCleanup)
+        ) {
+          editorLog.warn('imported image registry could not be updated')
+        }
+        return image
+      },
       insertMarkdown: insertMarkdownAtPendingSelection,
       getAndroidImageUserMessage,
       logger: editorLog,
@@ -1226,7 +1246,16 @@ const {
   documentLogger: androidDocumentLog,
   draftLogger: draftLog,
 })
+function protectAndroidDocumentImportedImages(document: OpenedAndroidDocument) {
+  if (!protectImportedImagesInAndroidDocument(document.markdown)) {
+    androidDocumentLog.warn('imported image protection could not be updated', {
+      sourceUri: document.sourceUri,
+    })
+  }
+}
+
 function rememberAndroidDocument(document: OpenedAndroidDocument) {
+  protectAndroidDocumentImportedImages(document)
   persistAndroidRecentDocuments(rememberAndroidRecentDocument(androidRecentDocuments.value, document))
 }
 
@@ -1245,6 +1274,8 @@ async function openAndroidDocumentResult(
   homeNotice.value = openResult.homeNotice
   if (openResult.rememberDocument) {
     rememberAndroidDocument(openResult.rememberDocument)
+  } else {
+    protectAndroidDocumentImportedImages(document)
   }
   promptLocalDraftSaveOnExit.value = openResult.promptLocalDraftSaveOnExit
   currentAndroidDocumentCanWrite.value = openResult.currentAndroidDocumentCanWrite
@@ -1769,6 +1800,70 @@ function resetSettingsMaintenanceState() {
   appLog.info('reset settings from Advanced maintenance')
 }
 
+async function cleanImportedImagesMaintenanceState() {
+  if (!isAndroidImageImportAvailable()) {
+    throw new Error(t('settings.maintenance.cleanImagesUnavailable'))
+  }
+
+  let result: ImportedAndroidImageCleanupResult
+  try {
+    result = await cleanupUnusedImportedImages({
+      currentDocument: {
+        sourceUri: documentState.value.sourceUri,
+        markdown: documentState.value.markdown,
+      },
+      localDrafts: localDrafts.value,
+      recentDocuments: androidRecentDocuments.value,
+      readRecentMarkdown: sourceUri =>
+        readAndroidMarkdownDocument(sourceUri, androidMarkdownSettings.value),
+    })
+  } catch (error) {
+    if (error instanceof ImportedImageCleanupBlockedError) {
+      throw new Error(
+        t(error.unreadableDocumentCount === 1
+          ? 'settings.maintenance.cleanImagesUnreadable.one'
+          : 'settings.maintenance.cleanImagesUnreadable.other', {
+          count: error.unreadableDocumentCount,
+        }),
+        { cause: error },
+      )
+    }
+    throw error
+  }
+
+  androidDocumentLog.info('cleaned unused imported images from Advanced maintenance', result)
+  if (result.removedFileCount === 0) {
+    if (result.failedFileCount > 0) {
+      return {
+        message: t(result.failedFileCount === 1
+          ? 'settings.maintenance.cleanImagesFailed.one'
+          : 'settings.maintenance.cleanImagesFailed.other', {
+          count: result.failedFileCount,
+        }),
+      }
+    }
+    return { message: t('settings.maintenance.cleanImagesNone') }
+  }
+
+  const params = {
+    count: result.removedFileCount,
+    size: formatImportedImageStorageBytes(result.removedBytes, locale.value),
+    failed: result.failedFileCount,
+  }
+  return {
+    message: t(
+      result.failedFileCount > 0
+        ? (result.removedFileCount === 1
+            ? 'settings.maintenance.cleanImagesPartial.one'
+            : 'settings.maintenance.cleanImagesPartial.other')
+        : (result.removedFileCount === 1
+            ? 'settings.maintenance.cleanImagesSuccess.one'
+            : 'settings.maintenance.cleanImagesSuccess.other'),
+      params,
+    ),
+  }
+}
+
 async function runAdvancedMaintenanceAction(action: AdvancedMaintenanceActionId) {
   if (action === 'exportLogs') {
     const result = await exportNativeLogs()
@@ -1777,6 +1872,10 @@ async function runAdvancedMaintenanceAction(action: AdvancedMaintenanceActionId)
     }
     loggingLog.info('exported native logs', result)
     return
+  }
+
+  if (action === 'cleanImportedImages') {
+    return cleanImportedImagesMaintenanceState()
   }
 
   if (action === 'clearDrafts') {
@@ -1904,12 +2003,12 @@ onBeforeUnmount(() => {
     :all-selected-pinned="allSelectedDocumentsPinned"
     :delete-sheet-open="homeDeleteSheetOpen"
     :rename-sheet-open="homeRenameSheetOpen"
+    :run-maintenance-action="runAdvancedMaintenanceAction"
     @new-document="newDocument"
     @open-document="openDocument"
     @open-file="openFileFromAndroid"
     @set-tab="setHomeTab"
     @set-settings-page="setSettingsPage"
-    @run-maintenance-action="runAdvancedMaintenanceAction"
     @select-document="homeSelection.beginWith"
     @toggle-document="homeSelection.toggle"
     @exit-selection="homeSelection.clear"

@@ -515,6 +515,52 @@ public class AndroidDocumentsPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void getImportedImageStorageStats(PluginCall call) {
+        ImportedImageStorage.Stats stats = ImportedImageStorage.inspect(getImportedImageDirectoryFile());
+        JSObject result = new JSObject();
+        result.put("fileCount", stats.fileCount);
+        result.put("bytes", stats.bytes);
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void cleanupImportedImages(PluginCall call) {
+        JSArray referencedValues = call.getArray("referencedFileNames");
+        JSArray managedValues = call.getArray("managedFileNames");
+        if (referencedValues == null || managedValues == null) {
+            call.reject("Imported image cleanup metadata is required", "INVALID_IMAGE_REFERENCES");
+            return;
+        }
+        Set<String> referencedFileNames = new java.util.HashSet<>();
+        for (int index = 0; index < referencedValues.length(); index++) {
+            String fileName = referencedValues.optString(index, "").trim();
+            if (fileName.length() > 0) {
+                referencedFileNames.add(fileName);
+            }
+        }
+        Set<String> managedFileNames = new java.util.HashSet<>();
+        for (int index = 0; index < managedValues.length(); index++) {
+            String fileName = managedValues.optString(index, "").trim();
+            if (fileName.length() > 0) {
+                managedFileNames.add(fileName);
+            }
+        }
+
+        ImportedImageStorage.CleanupResult cleanup = ImportedImageStorage.cleanup(
+            getImportedImageDirectoryFile(),
+            referencedFileNames,
+            managedFileNames
+        );
+        JSObject result = new JSObject();
+        result.put("fileCount", cleanup.stats.fileCount);
+        result.put("bytes", cleanup.stats.bytes);
+        result.put("removedFileCount", cleanup.removedFileCount);
+        result.put("removedBytes", cleanup.removedBytes);
+        result.put("failedFileCount", cleanup.failedFileCount);
+        call.resolve(result);
+    }
+
+    @PluginMethod
     public void pickImageDocument(PluginCall call) {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);

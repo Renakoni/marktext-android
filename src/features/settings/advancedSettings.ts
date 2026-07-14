@@ -41,7 +41,19 @@ export type MarkdownEncoding =
 
 export type AdvancedLineEnding = 'default' | LineEnding
 export type TrailingNewlineMode = 0 | 1 | 2
-export type AdvancedMaintenanceActionId = 'exportLogs' | 'clearDrafts' | 'resetSettings'
+export type AdvancedMaintenanceActionId =
+  | 'exportLogs'
+  | 'cleanImportedImages'
+  | 'clearDrafts'
+  | 'resetSettings'
+
+export interface AdvancedMaintenanceActionResult {
+  message?: string
+}
+
+export type AdvancedMaintenanceActionHandler = (
+  action: AdvancedMaintenanceActionId,
+) => Promise<AdvancedMaintenanceActionResult | void> | AdvancedMaintenanceActionResult | void
 
 export type AdvancedSettingKey =
   | 'defaultEncoding'
@@ -79,6 +91,7 @@ export const ADVANCED_SETTING_KEYS = [
 
 export const ADVANCED_MAINTENANCE_ACTION_IDS = [
   'exportLogs',
+  'cleanImportedImages',
   'clearDrafts',
   'resetSettings',
 ] as const satisfies readonly AdvancedMaintenanceActionId[]
