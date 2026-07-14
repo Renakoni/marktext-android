@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from '../../../lib/i18n'
+import { useModalFocus } from '../../../lib/modalFocus'
 
 const props = defineProps<{
   count: number
@@ -16,7 +17,6 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const sheet = ref<HTMLElement | null>(null)
 const cancelButton = ref<HTMLButtonElement | null>(null)
-let restoreFocusTo: HTMLElement | null = null
 
 const bodyText = computed(() => {
   if (props.draftCount > 0 && props.androidDocumentCount > 0) {
@@ -30,40 +30,10 @@ function cancel() {
   emit('cancel')
 }
 
-function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    cancel()
-    return
-  }
-
-  if (event.key !== 'Tab') {
-    return
-  }
-
-  const focusable = [...(sheet.value?.querySelectorAll<HTMLElement>('button:not(:disabled)') ?? [])]
-  const first = focusable[0]
-  const last = focusable.at(-1)
-  if (!first || !last) {
-    return
-  }
-
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
-}
-
-onMounted(() => {
-  restoreFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null
-  void nextTick(() => cancelButton.value?.focus())
-})
-
-onBeforeUnmount(() => {
-  restoreFocusTo?.focus()
+const { onModalKeydown } = useModalFocus({
+  root: sheet,
+  initialFocus: () => cancelButton.value,
+  onEscape: cancel,
 })
 </script>
 
@@ -74,9 +44,10 @@ onBeforeUnmount(() => {
     role="dialog"
     aria-modal="true"
     aria-labelledby="home-delete-title"
+    tabindex="-1"
     data-testid="home-delete-sheet"
     @click.self="cancel"
-    @keydown="onKeydown"
+    @keydown="onModalKeydown"
   >
     <div class="draft-save-panel">
       <h2 id="home-delete-title">

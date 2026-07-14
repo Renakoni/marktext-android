@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useI18n } from '../../../lib/i18n'
+import { useModalFocus } from '../../../lib/modalFocus'
 
 defineProps<{
   canSaveToDevice: boolean
@@ -14,15 +16,20 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const modalRoot = ref<HTMLElement | null>(null)
+const { onModalKeydown } = useModalFocus({ root: modalRoot })
 </script>
 
 <template>
   <section
+    ref="modalRoot"
     class="draft-save-sheet"
     role="dialog"
     aria-modal="true"
     aria-labelledby="draft-save-title"
+    tabindex="-1"
     data-testid="draft-save-prompt"
+    @keydown="onModalKeydown"
   >
     <div class="draft-save-panel">
       <h2 id="draft-save-title">{{ t('editor.exit.localDraftTitle') }}</h2>

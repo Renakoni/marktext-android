@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from '../../../lib/i18n'
+import { useModalFocus } from '../../../lib/modalFocus'
 
 const props = defineProps<{
   initialName: string
@@ -26,23 +27,28 @@ function submit() {
   }
 }
 
-onMounted(() => {
-  void nextTick(() => {
-    nameInput.value?.focus()
+const modalRoot = ref<HTMLElement | null>(null)
+const { onModalKeydown } = useModalFocus({
+  root: modalRoot,
+  initialFocus: () => {
     nameInput.value?.select()
-  })
+    return nameInput.value
+  },
+  onEscape: () => emit('cancel'),
 })
 </script>
 
 <template>
   <section
+    ref="modalRoot"
     class="draft-save-sheet"
     role="dialog"
     aria-modal="true"
     aria-labelledby="home-rename-title"
+    tabindex="-1"
     data-testid="home-rename-sheet"
     @click.self="emit('cancel')"
-    @keydown.esc="emit('cancel')"
+    @keydown="onModalKeydown"
   >
     <form class="draft-save-panel link-insert-panel" @submit.prevent="submit">
       <h2 id="home-rename-title">{{ t('home.rename.title') }}</h2>

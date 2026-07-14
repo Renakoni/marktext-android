@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import DocumentDeleteConfirmSheet from './components/DocumentDeleteConfirmSheet.vue'
 import DocumentRenameSheet from './components/DocumentRenameSheet.vue'
 import DocumentSelectionBar from './components/DocumentSelectionBar.vue'
@@ -41,6 +41,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const homeScreen = ref<HTMLElement | null>(null)
 
 const longPress = useLongPress({
   onLongPress: id => emit('selectDocument', id),
@@ -113,10 +114,28 @@ watch(
     }
   },
 )
+
+watch(
+  () => props.renameSheetOpen,
+  (open, wasOpen) => {
+    if (!open && wasOpen) {
+      void nextTick(() => {
+        homeScreen.value
+          ?.querySelector<HTMLElement>('[data-testid="home-selection-menu"]')
+          ?.focus({ preventScroll: true })
+      })
+    }
+  },
+)
 </script>
 
 <template>
-  <section class="home-screen" :aria-label="t('home.documents.aria')" data-testid="documents-screen">
+  <section
+    ref="homeScreen"
+    class="home-screen"
+    :aria-label="t('home.documents.aria')"
+    data-testid="documents-screen"
+  >
     <header class="home-top">
       <Transition name="home-top-swap" mode="out-in">
         <DocumentSelectionBar
