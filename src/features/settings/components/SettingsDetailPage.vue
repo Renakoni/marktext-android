@@ -23,13 +23,19 @@ import { SETTINGS_PAGES, type SettingsPage } from '../settingsNavigation'
 import { useSettingsState } from '../settingsState'
 import {
   isAdvancedMaintenanceActionId,
+  type AdvancedMaintenanceActionHandler,
   type AdvancedMaintenanceActionId,
 } from '../advancedSettings'
 import { getAdvancedDiagnostics } from '../advancedDiagnostics'
+import {
+  formatImportedImageStorageBytes,
+  getImportedAndroidImageStorageStats,
+  type ImportedAndroidImageStorageStats,
+} from '../../../lib/androidImages'
 
 const props = defineProps<{
   page: SettingsPage
-  runMaintenanceAction?: (action: AdvancedMaintenanceActionId) => Promise<void> | void
+  runMaintenanceAction: AdvancedMaintenanceActionHandler
 }>()
 
 const { locale, setLocale, t } = useI18n()
@@ -40,7 +46,10 @@ type MaintenanceActionId = AdvancedMaintenanceActionId
 const maintenanceAction = ref<MaintenanceActionId | null>(null)
 const maintenanceActionBusy = ref(false)
 const maintenanceActionError = ref<string | null>(null)
+const maintenanceActionResult = ref<string | null>(null)
 const advancedDiagnostics = ref<Record<string, string>>({})
+const importedImageStorageStats = ref<ImportedAndroidImageStorageStats | null>(null)
+const importedImageStorageLoading = ref(false)
 const maintenanceActionCopies: Record<
   MaintenanceActionId,
   {
@@ -58,6 +67,14 @@ const maintenanceActionCopies: Record<
     actionKey: 'settings.maintenance.exportLogsAction',
     confirmKey: 'settings.maintenance.exportLogsConfirm',
     confirmTestId: 'settings-maintenance-export-confirm',
+  },
+  cleanImportedImages: {
+    titleKey: 'settings.maintenance.cleanImagesTitle',
+    bodyKey: 'settings.maintenance.cleanImagesBody',
+    actionKey: 'settings.maintenance.cleanImagesAction',
+    confirmKey: 'settings.maintenance.cleanImagesConfirm',
+    confirmTestId: 'settings-maintenance-clean-images-confirm',
+    danger: true,
   },
   clearDrafts: {
     titleKey: 'settings.maintenance.clearDraftsTitle',
@@ -124,6 +141,19 @@ function getActionValue(row: SettingsActionRow) {
 }
 
 function getStatusValue(row: SettingsStatusRow) {
+  if (props.page === SETTINGS_PAGES.ADVANCED && row.id === 'importedImageStorage') {
+    if (importedImageStorageLoading.value) {
+      return t('settings.value.checking')
+    }
+    if (!importedImageStorageStats.value) {
+      return t('settings.value.androidOnly')
+    }
+    return t('settings.value.importedImageStorageUsage', {
+      count: importedImageStorageStats.value.fileCount,
+      size: formatImportedImageStorageBytes(importedImageStorageStats.value.bytes, locale.value),
+    })
+  }
+
   if (props.page === SETTINGS_PAGES.ADVANCED) {
     const value = advancedDiagnostics.value[row.id]
     if (value) {
@@ -166,6 +196,7 @@ function recordAction(row: SettingsActionRow) {
   if (maintenanceActionId) {
     maintenanceAction.value = maintenanceActionId
     maintenanceActionError.value = null
+    maintenanceActionResult.value = null
     return
   }
   setValue(`action:${row.id}`, Date.now())
@@ -177,6 +208,7 @@ function closeMaintenanceSheet() {
   }
   maintenanceAction.value = null
   maintenanceActionError.value = null
+  maintenanceActionResult.value = null
 }
 
 async function confirmMaintenanceAction() {
@@ -187,8 +219,14 @@ async function confirmMaintenanceAction() {
 
   maintenanceActionBusy.value = true
   maintenanceActionError.value = null
+  maintenanceActionResult.value = null
   try {
-    await props.runMaintenanceAction?.(action)
+    const result = await props.runMaintenanceAction(action)
+    await refreshImportedImageStorage()
+    if (result?.message) {
+      maintenanceActionResult.value = result.message
+      return
+    }
     maintenanceAction.value = null
   } catch (error) {
     maintenanceActionError.value = error instanceof Error
@@ -199,6 +237,28 @@ async function confirmMaintenanceAction() {
   }
 }
 
+async function refreshImportedImageStorage() {
+  importedImageStorageLoading.value = true
+  try {
+    importedImageStorageStats.value = await getImportedAndroidImageStorageStats()
+  } catch {
+    importedImageStorageStats.value = null
+  } finally {
+    importedImageStorageLoading.value = false
+  }
+}
+
+async function refreshAdvancedInformation() {
+  const [diagnostics] = await Promise.all([
+    getAdvancedDiagnostics(),
+    refreshImportedImageStorage(),
+  ])
+  advancedDiagnostics.value = {
+    deviceInfo: diagnostics.deviceInfo,
+    webviewInfo: diagnostics.webViewInfo,
+  }
+}
+
 watch(
   () => props.page,
   page => {
@@ -206,12 +266,7 @@ watch(
       return
     }
 
-    getAdvancedDiagnostics().then(result => {
-      advancedDiagnostics.value = {
-        deviceInfo: result.deviceInfo,
-        webviewInfo: result.webViewInfo,
-      }
-    })
+    void refreshAdvancedInformation()
   },
   { immediate: true },
 )
@@ -316,11 +371,15 @@ watch(
       <div class="draft-save-panel">
         <h2 id="settings-maintenance-title">{{ t(activeMaintenanceActionCopy.titleKey) }}</h2>
         <p>{{ t(activeMaintenanceActionCopy.bodyKey) }}</p>
+        <p v-if="maintenanceActionResult" role="status">
+          {{ maintenanceActionResult }}
+        </p>
         <p v-if="maintenanceActionError" role="alert">
           {{ maintenanceActionError }}
         </p>
         <div class="draft-save-actions">
           <button
+            v-if="!maintenanceActionResult"
             type="button"
             :class="{ 'danger-action': activeMaintenanceActionCopy.danger, 'primary-action': !activeMaintenanceActionCopy.danger }"
             :disabled="maintenanceActionBusy"
@@ -336,7 +395,7 @@ watch(
             data-testid="settings-maintenance-cancel"
             @click="closeMaintenanceSheet"
           >
-            {{ t('editor.link.cancel') }}
+            {{ maintenanceActionResult ? t('settings.maintenance.done') : t('editor.link.cancel') }}
           </button>
         </div>
       </div>

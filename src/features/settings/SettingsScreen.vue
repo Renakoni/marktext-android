@@ -10,15 +10,15 @@ import {
   SETTINGS_PAGES,
   type SettingsPage,
 } from './settingsNavigation'
-import type { AdvancedMaintenanceActionId } from './advancedSettings'
+import type { AdvancedMaintenanceActionHandler } from './advancedSettings'
 
 defineProps<{
   activePage: SettingsPage
+  runMaintenanceAction: AdvancedMaintenanceActionHandler
 }>()
 
 const emit = defineEmits<{
   setPage: [page: SettingsPage]
-  runMaintenanceAction: [action: AdvancedMaintenanceActionId]
 }>()
 
 const { t } = useI18n()
@@ -73,7 +73,7 @@ const { t } = useI18n()
         <SettingsDetailPage
           v-else
           :page="activePage"
-          :run-maintenance-action="action => emit('runMaintenanceAction', action)"
+          :run-maintenance-action="runMaintenanceAction"
         />
       </div>
     </Transition>

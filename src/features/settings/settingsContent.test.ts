@@ -59,6 +59,7 @@ const EXPECTED_UNFINISHED_ROW_IDS = new Set([
 
 const EXPECTED_DERIVED_ROW_IDS = new Set([
   'deviceInfo',
+  'importedImageStorage',
   'webviewInfo',
 ])
 
@@ -239,7 +240,7 @@ describe('settings content governance', () => {
     const derivedRows = getRows().filter(row => row.implementation === 'derived')
 
     expect(derivedRows.map(row => row.id).sort()).toEqual([...EXPECTED_DERIVED_ROW_IDS].sort())
-    expect(derivedRows.map(row => row.kind)).toEqual(['status', 'status'])
+    expect(derivedRows.map(row => row.kind)).toEqual(['status', 'status', 'status'])
   })
 
   it('keeps choice defaults valid and option ids unique', () => {
@@ -288,5 +289,6 @@ describe('settings content governance', () => {
       .sort()
 
     expect(runtimeActionIds).toEqual([...ADVANCED_MAINTENANCE_ACTION_IDS].sort())
+    expect(runtimeActionIds).toContain('cleanImportedImages')
   })
 })

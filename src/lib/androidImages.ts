@@ -24,6 +24,17 @@ export interface AndroidImagePickOptions {
   copyImage: boolean
 }
 
+export interface ImportedAndroidImageStorageStats {
+  fileCount: number
+  bytes: number
+}
+
+export interface ImportedAndroidImageCleanupResult extends ImportedAndroidImageStorageStats {
+  removedFileCount: number
+  removedBytes: number
+  failedFileCount: number
+}
+
 export class AndroidImageError extends Error {
   code: string
 
@@ -36,6 +47,7 @@ export class AndroidImageError extends Error {
 
 const MARKTEXT_LOCAL_IMAGE_SOURCE_REGEXP = /^marktext-image:\/\/local\/([^/?#]+)$/i
 const MARKTEXT_ANDROID_IMAGE_SOURCE_REGEXP = /^marktext-image:\/\/android\/([^/?#]+)$/i
+const MARKTEXT_LOCAL_IMAGE_REFERENCE_REGEXP = /marktext-image:\/\/local\/([^/?#\s"'<>()[\]]+)/gi
 
 let imageDirectory: ImportedAndroidImageDirectory | null = null
 
@@ -127,6 +139,56 @@ export async function pickAndroidImageDocument(
   return normalizeImportedImage(result)
 }
 
+export async function getImportedAndroidImageStorageStats() {
+  if (!isAndroidImageImportAvailable()) {
+    return null
+  }
+  return normalizeStorageStats(await AndroidDocuments.getImportedImageStorageStats())
+}
+
+export async function cleanupImportedAndroidImages(referencedFileNames: readonly string[]) {
+  ensureAndroidImagesAvailable()
+  const result = await AndroidDocuments.cleanupImportedImages({
+    referencedFileNames: [...new Set(referencedFileNames)],
+  })
+  return {
+    ...normalizeStorageStats(result),
+    removedFileCount: normalizeCount(result.removedFileCount),
+    removedBytes: normalizeBytes(result.removedBytes),
+    failedFileCount: normalizeCount(result.failedFileCount),
+  } satisfies ImportedAndroidImageCleanupResult
+}
+
+export function collectMarkTextLocalImageFileNames(markdown: string) {
+  const fileNames = new Set<string>()
+  for (const match of markdown.matchAll(MARKTEXT_LOCAL_IMAGE_REFERENCE_REGEXP)) {
+    try {
+      const fileName = getMarkTextLocalImageFileName(`marktext-image://local/${match[1]}`)
+      if (fileName) {
+        fileNames.add(fileName)
+      }
+    } catch {
+      // Malformed sources cannot name a file created by the import workflow.
+    }
+  }
+  return [...fileNames]
+}
+
+export function formatImportedImageStorageBytes(bytes: number, locale: string) {
+  const safeBytes = normalizeBytes(bytes)
+  const units = ['B', 'KB', 'MB', 'GB'] as const
+  let value = safeBytes
+  let unitIndex = 0
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+  const formatted = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: unitIndex === 0 ? 0 : 1,
+  }).format(value)
+  return `${formatted} ${units[unitIndex]}`
+}
+
 function getAndroidImageErrorCode(error: unknown) {
   if (error instanceof AndroidImageError) {
     return error.code
@@ -204,6 +266,21 @@ function normalizeImportedImage(value: ImportedAndroidImage): ImportedAndroidIma
     fileUri: value.fileUri,
     bytes: typeof value.bytes === 'number' ? value.bytes : 0,
   }
+}
+
+function normalizeStorageStats(value: ImportedAndroidImageStorageStats) {
+  return {
+    fileCount: normalizeCount(value.fileCount),
+    bytes: normalizeBytes(value.bytes),
+  }
+}
+
+function normalizeCount(value: number) {
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0
+}
+
+function normalizeBytes(value: number) {
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0
 }
 
 function getMarkTextLocalImageFileName(source: string) {

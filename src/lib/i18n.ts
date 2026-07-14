@@ -372,6 +372,8 @@ const MESSAGES = {
     'settings.spelling.removeWord': 'Remove word',
 
     'settings.advanced.exportLogs': 'Export logs',
+    'settings.advanced.importedImageStorage': 'Imported images',
+    'settings.advanced.cleanImportedImages': 'Clean unused images',
     'settings.advanced.clearDrafts': 'Clear local drafts',
     'settings.advanced.reset': 'Reset settings',
     'settings.advanced.diagnostics': 'Device info',
@@ -396,6 +398,18 @@ const MESSAGES = {
     'settings.maintenance.exportLogsAction': 'Export',
     'settings.maintenance.exportLogsConfirm': 'Export ZIP',
     'settings.maintenance.exportLogsUnavailable': 'Export logs from the Android app build.',
+    'settings.maintenance.cleanImagesTitle': 'Clean unused images?',
+    'settings.maintenance.cleanImagesBody':
+      'Checks the current document, local drafts, and recent files for unused imported images.',
+    'settings.maintenance.cleanImagesAction': 'Clean up',
+    'settings.maintenance.cleanImagesConfirm': 'Clean up',
+    'settings.maintenance.cleanImagesUnavailable': 'Clean imported images from the Android app build.',
+    'settings.maintenance.cleanImagesUnreadable': 'Could not check {count} recent files.',
+    'settings.maintenance.cleanImagesNone': 'Nothing to clean up.',
+    'settings.maintenance.cleanImagesSuccess': 'Cleaned up {count} images · {size} freed.',
+    'settings.maintenance.cleanImagesPartial':
+      'Cleaned up {count} images · {size} freed · {failed} failed.',
+    'settings.maintenance.cleanImagesFailed': '{count} images could not be cleaned up.',
     'settings.maintenance.clearDraftsTitle': 'Clear local drafts?',
     'settings.maintenance.clearDraftsBody':
       'This removes local drafts stored inside MarkText. Markdown files on the device are not deleted.',
@@ -406,6 +420,7 @@ const MESSAGES = {
       'This restores settings to defaults. Documents and local drafts are not deleted.',
     'settings.maintenance.resetSettingsAction': 'Reset',
     'settings.maintenance.resetSettingsConfirm': 'Reset',
+    'settings.maintenance.done': 'Done',
     'settings.maintenance.genericError': 'Action failed.',
 
     'settings.value.on': 'On',
@@ -414,6 +429,9 @@ const MESSAGES = {
     'settings.value.default': 'Default',
     'settings.value.medium': 'Medium',
     'settings.value.normal': 'Normal',
+    'settings.value.androidOnly': 'Android app only',
+    'settings.value.checking': 'Checking…',
+    'settings.value.importedImageStorageUsage': 'Files: {count} · {size}',
     'settings.value.format': 'Format',
     'settings.value.atxHeading': 'ATX (#)',
     'settings.value.yaml': 'YAML',
@@ -940,6 +958,8 @@ const MESSAGES = {
     'settings.spelling.removeWord': '移除词',
 
     'settings.advanced.exportLogs': '导出日志',
+    'settings.advanced.importedImageStorage': '导入的图片',
+    'settings.advanced.cleanImportedImages': '清理未使用图片',
     'settings.advanced.clearDrafts': '清除本地草稿',
     'settings.advanced.reset': '重置设置',
     'settings.advanced.diagnostics': '设备信息',
@@ -964,6 +984,18 @@ const MESSAGES = {
     'settings.maintenance.exportLogsAction': '导出',
     'settings.maintenance.exportLogsConfirm': '导出压缩包',
     'settings.maintenance.exportLogsUnavailable': '请在 Android 应用内导出日志。',
+    'settings.maintenance.cleanImagesTitle': '清理未使用的图片？',
+    'settings.maintenance.cleanImagesBody':
+      '检查当前文档、本地草稿和最近文件，清理未引用的导入图片。',
+    'settings.maintenance.cleanImagesAction': '清理',
+    'settings.maintenance.cleanImagesConfirm': '清理',
+    'settings.maintenance.cleanImagesUnavailable': '请在 Android 应用内清理导入图片。',
+    'settings.maintenance.cleanImagesUnreadable': '无法检查 {count} 个最近文件。',
+    'settings.maintenance.cleanImagesNone': '没有可清理的图片。',
+    'settings.maintenance.cleanImagesSuccess': '已清理 {count} 张图片 · 释放 {size}',
+    'settings.maintenance.cleanImagesPartial':
+      '已清理 {count} 张图片 · 释放 {size} · {failed} 张失败',
+    'settings.maintenance.cleanImagesFailed': '{count} 张图片清理失败。',
     'settings.maintenance.clearDraftsTitle': '清除本地草稿？',
     'settings.maintenance.clearDraftsBody':
       '这会删除保存在 MarkText 内的本地草稿，不会删除设备上的 Markdown 文件。',
@@ -974,6 +1006,7 @@ const MESSAGES = {
       '这会恢复所有设置为默认值，不会删除文档和本地草稿。',
     'settings.maintenance.resetSettingsAction': '重置',
     'settings.maintenance.resetSettingsConfirm': '重置',
+    'settings.maintenance.done': '完成',
     'settings.maintenance.genericError': '操作失败。',
 
     'settings.value.on': '开',
@@ -982,6 +1015,9 @@ const MESSAGES = {
     'settings.value.default': '默认',
     'settings.value.medium': '中',
     'settings.value.normal': '标准',
+    'settings.value.androidOnly': '仅 Android 应用',
+    'settings.value.checking': '正在检查…',
+    'settings.value.importedImageStorageUsage': '文件：{count} · {size}',
     'settings.value.format': '格式',
     'settings.value.atxHeading': 'ATX (#)',
     'settings.value.yaml': 'YAML',

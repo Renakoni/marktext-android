@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { AndroidImageError, resolveMarkTextImageSource } from './androidImages'
+import {
+  AndroidImageError,
+  collectMarkTextLocalImageFileNames,
+  formatImportedImageStorageBytes,
+  resolveMarkTextImageSource,
+} from './androidImages'
 
 describe('androidImages', () => {
   it('resolves app-local Markdown image sources', () => {
@@ -48,5 +53,23 @@ describe('androidImages', () => {
         fileUri: 'file:///data/user/0/io.github.renakoni.marktextandroid/files/images',
       }),
     ).toThrow(AndroidImageError)
+  })
+
+  it('collects unique app-local image references from Markdown and HTML', () => {
+    expect(collectMarkTextLocalImageFileNames(`
+![first](marktext-image://local/1700000000000-a1b2c3d4-first.png)
+<img src="marktext-image://local/1700000000001-b2c3d4e5-second.webp">
+![duplicate](marktext-image://local/1700000000000-a1b2c3d4-first.png)
+![linked](marktext-image://android/content%3A%2F%2Fmedia%2Fimage%2F1)
+`)).toEqual([
+      '1700000000000-a1b2c3d4-first.png',
+      '1700000000001-b2c3d4e5-second.webp',
+    ])
+  })
+
+  it('formats imported image storage without overstating precision', () => {
+    expect(formatImportedImageStorageBytes(0, 'en')).toBe('0 B')
+    expect(formatImportedImageStorageBytes(1536, 'en')).toBe('1.5 KB')
+    expect(formatImportedImageStorageBytes(5 * 1024 * 1024, 'en')).toBe('5 MB')
   })
 })
