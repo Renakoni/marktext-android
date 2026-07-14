@@ -7,7 +7,9 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import org.junit.Test;
 
 public class ImportedImageStorageTest {
@@ -26,28 +28,32 @@ public class ImportedImageStorageTest {
     }
 
     @Test
-    public void removesOnlyUnreferencedFilesAndKeepsDirectories() throws Exception {
+    public void removesOnlyManagedUnreferencedFilesAndKeepsDirectories() throws Exception {
         File directory = Files.createTempDirectory("imported-images-test").toFile();
         File referenced = new File(directory, "shared.png");
         File orphan = new File(directory, "orphan.png");
+        File legacy = new File(directory, "legacy.png");
         File nested = new File(directory, "nested");
         writeBytes(referenced, 4);
         writeBytes(orphan, 6);
+        writeBytes(legacy, 8);
         assertTrue(nested.mkdir());
 
         ImportedImageStorage.CleanupResult result = ImportedImageStorage.cleanup(
             directory,
-            Collections.singleton("shared.png")
+            Collections.singleton("shared.png"),
+            new HashSet<>(Arrays.asList("shared.png", "orphan.png"))
         );
 
         assertTrue(referenced.exists());
         assertFalse(orphan.exists());
+        assertTrue(legacy.exists());
         assertTrue(nested.exists());
         assertEquals(1, result.removedFileCount);
         assertEquals(6L, result.removedBytes);
         assertEquals(0, result.failedFileCount);
-        assertEquals(1, result.stats.fileCount);
-        assertEquals(4L, result.stats.bytes);
+        assertEquals(2, result.stats.fileCount);
+        assertEquals(12L, result.stats.bytes);
     }
 
     @Test
@@ -57,6 +63,7 @@ public class ImportedImageStorageTest {
         ImportedImageStorage.Stats stats = ImportedImageStorage.inspect(missing);
         ImportedImageStorage.CleanupResult cleanup = ImportedImageStorage.cleanup(
             missing,
+            Collections.emptySet(),
             Collections.emptySet()
         );
 

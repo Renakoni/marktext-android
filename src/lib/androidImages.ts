@@ -146,10 +146,14 @@ export async function getImportedAndroidImageStorageStats() {
   return normalizeStorageStats(await AndroidDocuments.getImportedImageStorageStats())
 }
 
-export async function cleanupImportedAndroidImages(referencedFileNames: readonly string[]) {
+export async function cleanupImportedAndroidImages(
+  referencedFileNames: readonly string[],
+  managedFileNames: readonly string[],
+) {
   ensureAndroidImagesAvailable()
   const result = await AndroidDocuments.cleanupImportedImages({
     referencedFileNames: [...new Set(referencedFileNames)],
+    managedFileNames: [...new Set(managedFileNames)],
   })
   return {
     ...normalizeStorageStats(result),

@@ -404,12 +404,17 @@ const MESSAGES = {
     'settings.maintenance.cleanImagesAction': 'Clean up',
     'settings.maintenance.cleanImagesConfirm': 'Clean up',
     'settings.maintenance.cleanImagesUnavailable': 'Clean imported images from the Android app build.',
-    'settings.maintenance.cleanImagesUnreadable': 'Could not check {count} recent files.',
+    'settings.maintenance.cleanImagesUnreadable.one': 'Could not check 1 recent file.',
+    'settings.maintenance.cleanImagesUnreadable.other': 'Could not check {count} recent files.',
     'settings.maintenance.cleanImagesNone': 'Nothing to clean up.',
-    'settings.maintenance.cleanImagesSuccess': 'Cleaned up {count} images · {size} freed.',
-    'settings.maintenance.cleanImagesPartial':
-      'Cleaned up {count} images · {size} freed · {failed} failed.',
-    'settings.maintenance.cleanImagesFailed': '{count} images could not be cleaned up.',
+    'settings.maintenance.cleanImagesSuccess.one': 'Cleaned up 1 image · {size} freed.',
+    'settings.maintenance.cleanImagesSuccess.other': 'Cleaned up {count} images · {size} freed.',
+    'settings.maintenance.cleanImagesPartial.one':
+      'Cleaned up 1 image · {size} freed · Failed: {failed}',
+    'settings.maintenance.cleanImagesPartial.other':
+      'Cleaned up {count} images · {size} freed · Failed: {failed}',
+    'settings.maintenance.cleanImagesFailed.one': '1 image could not be cleaned up.',
+    'settings.maintenance.cleanImagesFailed.other': '{count} images could not be cleaned up.',
     'settings.maintenance.clearDraftsTitle': 'Clear local drafts?',
     'settings.maintenance.clearDraftsBody':
       'This removes local drafts stored inside MarkText. Markdown files on the device are not deleted.',
@@ -430,6 +435,7 @@ const MESSAGES = {
     'settings.value.medium': 'Medium',
     'settings.value.normal': 'Normal',
     'settings.value.androidOnly': 'Android app only',
+    'settings.value.unavailable': 'Unavailable',
     'settings.value.checking': 'Checking…',
     'settings.value.importedImageStorageUsage': 'Files: {count} · {size}',
     'settings.value.format': 'Format',
@@ -990,12 +996,17 @@ const MESSAGES = {
     'settings.maintenance.cleanImagesAction': '清理',
     'settings.maintenance.cleanImagesConfirm': '清理',
     'settings.maintenance.cleanImagesUnavailable': '请在 Android 应用内清理导入图片。',
-    'settings.maintenance.cleanImagesUnreadable': '无法检查 {count} 个最近文件。',
+    'settings.maintenance.cleanImagesUnreadable.one': '无法检查 {count} 个最近文件。',
+    'settings.maintenance.cleanImagesUnreadable.other': '无法检查 {count} 个最近文件。',
     'settings.maintenance.cleanImagesNone': '没有可清理的图片。',
-    'settings.maintenance.cleanImagesSuccess': '已清理 {count} 张图片 · 释放 {size}',
-    'settings.maintenance.cleanImagesPartial':
+    'settings.maintenance.cleanImagesSuccess.one': '已清理 {count} 张图片 · 释放 {size}',
+    'settings.maintenance.cleanImagesSuccess.other': '已清理 {count} 张图片 · 释放 {size}',
+    'settings.maintenance.cleanImagesPartial.one':
       '已清理 {count} 张图片 · 释放 {size} · {failed} 张失败',
-    'settings.maintenance.cleanImagesFailed': '{count} 张图片清理失败。',
+    'settings.maintenance.cleanImagesPartial.other':
+      '已清理 {count} 张图片 · 释放 {size} · {failed} 张失败',
+    'settings.maintenance.cleanImagesFailed.one': '{count} 张图片清理失败。',
+    'settings.maintenance.cleanImagesFailed.other': '{count} 张图片清理失败。',
     'settings.maintenance.clearDraftsTitle': '清除本地草稿？',
     'settings.maintenance.clearDraftsBody':
       '这会删除保存在 MarkText 内的本地草稿，不会删除设备上的 Markdown 文件。',
@@ -1016,6 +1027,7 @@ const MESSAGES = {
     'settings.value.medium': '中',
     'settings.value.normal': '标准',
     'settings.value.androidOnly': '仅 Android 应用',
+    'settings.value.unavailable': '暂不可用',
     'settings.value.checking': '正在检查…',
     'settings.value.importedImageStorageUsage': '文件：{count} · {size}',
     'settings.value.format': '格式',

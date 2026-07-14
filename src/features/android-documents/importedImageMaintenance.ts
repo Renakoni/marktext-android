@@ -3,6 +3,10 @@ import {
   collectMarkTextLocalImageFileNames,
   type ImportedAndroidImageCleanupResult,
 } from '../../lib/androidImages'
+import {
+  readImportedImageRegistry,
+  type ImportedImageRegistrySnapshot,
+} from './importedImageRegistry'
 
 interface MarkdownSource {
   markdown: string
@@ -21,7 +25,11 @@ interface ImportedImageMaintenanceOptions {
   localDrafts: readonly MarkdownSource[]
   recentDocuments: readonly RecentDocumentSource[]
   readRecentMarkdown: (sourceUri: string) => Promise<MarkdownSource>
-  cleanup?: (referencedFileNames: readonly string[]) => Promise<ImportedAndroidImageCleanupResult>
+  imageRegistry?: ImportedImageRegistrySnapshot
+  cleanup?: (
+    referencedFileNames: readonly string[],
+    managedFileNames: readonly string[],
+  ) => Promise<ImportedAndroidImageCleanupResult>
 }
 
 export class ImportedImageCleanupBlockedError extends Error {
@@ -61,6 +69,10 @@ export async function cleanupUnusedImportedImages(options: ImportedImageMaintena
   }
 
   const referencedFileNames = new Set<string>()
+  const imageRegistry = options.imageRegistry ?? readImportedImageRegistry()
+  for (const fileName of imageRegistry.protectedFileNames) {
+    referencedFileNames.add(fileName)
+  }
   for (const markdown of markdownSources) {
     for (const fileName of collectMarkTextLocalImageFileNames(markdown)) {
       referencedFileNames.add(fileName)
@@ -68,5 +80,8 @@ export async function cleanupUnusedImportedImages(options: ImportedImageMaintena
   }
 
   const cleanup = options.cleanup ?? cleanupImportedAndroidImages
-  return cleanup([...referencedFileNames])
+  return cleanup(
+    [...referencedFileNames],
+    [...new Set(imageRegistry.managedFileNames)],
+  )
 }

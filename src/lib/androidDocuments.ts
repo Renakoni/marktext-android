@@ -167,7 +167,10 @@ interface AndroidDocumentsPlugin {
   configureMarkdownSettings(options: AndroidMarkdownSettings): Promise<void>
   getImportedImageDirectory(): Promise<{ fileUri: string; webBaseUri?: string }>
   getImportedImageStorageStats(): Promise<{ fileCount: number; bytes: number }>
-  cleanupImportedImages(options: { referencedFileNames: string[] }): Promise<{
+  cleanupImportedImages(options: {
+    referencedFileNames: string[]
+    managedFileNames: string[]
+  }): Promise<{
     fileCount: number
     bytes: number
     removedFileCount: number

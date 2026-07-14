@@ -526,8 +526,9 @@ public class AndroidDocumentsPlugin extends Plugin {
     @PluginMethod
     public void cleanupImportedImages(PluginCall call) {
         JSArray referencedValues = call.getArray("referencedFileNames");
-        if (referencedValues == null) {
-            call.reject("Imported image references are required", "INVALID_IMAGE_REFERENCES");
+        JSArray managedValues = call.getArray("managedFileNames");
+        if (referencedValues == null || managedValues == null) {
+            call.reject("Imported image cleanup metadata is required", "INVALID_IMAGE_REFERENCES");
             return;
         }
         Set<String> referencedFileNames = new java.util.HashSet<>();
@@ -537,10 +538,18 @@ public class AndroidDocumentsPlugin extends Plugin {
                 referencedFileNames.add(fileName);
             }
         }
+        Set<String> managedFileNames = new java.util.HashSet<>();
+        for (int index = 0; index < managedValues.length(); index++) {
+            String fileName = managedValues.optString(index, "").trim();
+            if (fileName.length() > 0) {
+                managedFileNames.add(fileName);
+            }
+        }
 
         ImportedImageStorage.CleanupResult cleanup = ImportedImageStorage.cleanup(
             getImportedImageDirectoryFile(),
-            referencedFileNames
+            referencedFileNames,
+            managedFileNames
         );
         JSObject result = new JSObject();
         result.put("fileCount", cleanup.stats.fileCount);

@@ -52,13 +52,21 @@ final class ImportedImageStorage {
         return new Stats(fileCount, bytes);
     }
 
-    static CleanupResult cleanup(File directory, Set<String> referencedFileNames) {
+    static CleanupResult cleanup(
+        File directory,
+        Set<String> referencedFileNames,
+        Set<String> managedFileNames
+    ) {
         int removedFileCount = 0;
         long removedBytes = 0;
         int failedFileCount = 0;
 
         for (File file : listFiles(directory)) {
-            if (!file.isFile() || referencedFileNames.contains(file.getName())) {
+            if (
+                !file.isFile()
+                || !managedFileNames.contains(file.getName())
+                || referencedFileNames.contains(file.getName())
+            ) {
                 continue;
             }
 

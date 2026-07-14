@@ -41,11 +41,35 @@ describe('imported image maintenance', () => {
     })).resolves.toEqual(cleanupResult)
 
     expect(readRecentMarkdown).toHaveBeenCalledTimes(2)
-    expect(cleanup).toHaveBeenCalledWith([
-      'shared.png',
-      'draft.png',
-      'recent.png',
-    ])
+    expect(cleanup).toHaveBeenCalledWith(
+      [
+        'shared.png',
+        'draft.png',
+        'recent.png',
+      ],
+      [],
+    )
+  })
+
+  it('protects Android document references after they leave the recent list', async () => {
+    const cleanup = vi.fn(async () => cleanupResult)
+
+    await cleanupUnusedImportedImages({
+      currentDocument: { sourceUri: null, markdown: '' },
+      localDrafts: [],
+      recentDocuments: [],
+      readRecentMarkdown: vi.fn(),
+      imageRegistry: {
+        managedFileNames: ['archived.png', 'orphan.png'],
+        protectedFileNames: ['archived.png'],
+      },
+      cleanup,
+    })
+
+    expect(cleanup).toHaveBeenCalledWith(
+      ['archived.png'],
+      ['archived.png', 'orphan.png'],
+    )
   })
 
   it('deletes nothing when any tracked recent document cannot be checked', async () => {

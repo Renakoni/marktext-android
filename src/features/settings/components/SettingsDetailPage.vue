@@ -50,6 +50,7 @@ const maintenanceActionResult = ref<string | null>(null)
 const advancedDiagnostics = ref<Record<string, string>>({})
 const importedImageStorageStats = ref<ImportedAndroidImageStorageStats | null>(null)
 const importedImageStorageLoading = ref(false)
+const importedImageStorageError = ref(false)
 const maintenanceActionCopies: Record<
   MaintenanceActionId,
   {
@@ -144,6 +145,9 @@ function getStatusValue(row: SettingsStatusRow) {
   if (props.page === SETTINGS_PAGES.ADVANCED && row.id === 'importedImageStorage') {
     if (importedImageStorageLoading.value) {
       return t('settings.value.checking')
+    }
+    if (importedImageStorageError.value) {
+      return t('settings.value.unavailable')
     }
     if (!importedImageStorageStats.value) {
       return t('settings.value.androidOnly')
@@ -241,8 +245,10 @@ async function refreshImportedImageStorage() {
   importedImageStorageLoading.value = true
   try {
     importedImageStorageStats.value = await getImportedAndroidImageStorageStats()
+    importedImageStorageError.value = false
   } catch {
     importedImageStorageStats.value = null
+    importedImageStorageError.value = true
   } finally {
     importedImageStorageLoading.value = false
   }

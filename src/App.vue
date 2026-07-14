@@ -70,6 +70,10 @@ import {
   ImportedImageCleanupBlockedError,
   cleanupUnusedImportedImages,
 } from './features/android-documents/importedImageMaintenance'
+import {
+  protectImportedImagesInAndroidDocument,
+  registerImportedImageCopy,
+} from './features/android-documents/importedImageRegistry'
 import { createUntitledDocument } from './lib/documentState'
 import {
   createDocumentStateFromLocalDraft,
@@ -1058,6 +1062,7 @@ async function insertImageFromAndroidPicker(restoreRange: Range | null = null) {
   }
 
   const beforeMarkdown = activeEditor.getMarkdown()
+  const protectImportedImageFromCleanup = Boolean(documentState.value.sourceUri)
   pendingInlineInsertRange = restoreRange?.cloneRange() ?? captureEditorSelection()
   const selectedText = normalizeToolbarSelectionText(pendingInlineInsertRange?.toString() ?? '')
   closeEditorMenu()
@@ -1069,9 +1074,18 @@ async function insertImageFromAndroidPicker(restoreRange: Range | null = null) {
     const result = await insertAndroidImageWorkflow({
       selectedText,
       ensureAndroidImageResolver,
-      pickAndroidImageDocument: () => pickAndroidImageDocument({
-        copyImage: imageSharingSettings.value.imageCopyImages,
-      }),
+      pickAndroidImageDocument: async () => {
+        const image = await pickAndroidImageDocument({
+          copyImage: imageSharingSettings.value.imageCopyImages,
+        })
+        if (
+          !image.canceled
+          && !registerImportedImageCopy(image.markdownSrc, protectImportedImageFromCleanup)
+        ) {
+          editorLog.warn('imported image registry could not be updated')
+        }
+        return image
+      },
       insertMarkdown: insertMarkdownAtPendingSelection,
       getAndroidImageUserMessage,
       logger: editorLog,
@@ -1232,7 +1246,16 @@ const {
   documentLogger: androidDocumentLog,
   draftLogger: draftLog,
 })
+function protectAndroidDocumentImportedImages(document: OpenedAndroidDocument) {
+  if (!protectImportedImagesInAndroidDocument(document.markdown)) {
+    androidDocumentLog.warn('imported image protection could not be updated', {
+      sourceUri: document.sourceUri,
+    })
+  }
+}
+
 function rememberAndroidDocument(document: OpenedAndroidDocument) {
+  protectAndroidDocumentImportedImages(document)
   persistAndroidRecentDocuments(rememberAndroidRecentDocument(androidRecentDocuments.value, document))
 }
 
@@ -1251,6 +1274,8 @@ async function openAndroidDocumentResult(
   homeNotice.value = openResult.homeNotice
   if (openResult.rememberDocument) {
     rememberAndroidDocument(openResult.rememberDocument)
+  } else {
+    protectAndroidDocumentImportedImages(document)
   }
   promptLocalDraftSaveOnExit.value = openResult.promptLocalDraftSaveOnExit
   currentAndroidDocumentCanWrite.value = openResult.currentAndroidDocumentCanWrite
@@ -1795,7 +1820,9 @@ async function cleanImportedImagesMaintenanceState() {
   } catch (error) {
     if (error instanceof ImportedImageCleanupBlockedError) {
       throw new Error(
-        t('settings.maintenance.cleanImagesUnreadable', {
+        t(error.unreadableDocumentCount === 1
+          ? 'settings.maintenance.cleanImagesUnreadable.one'
+          : 'settings.maintenance.cleanImagesUnreadable.other', {
           count: error.unreadableDocumentCount,
         }),
         { cause: error },
@@ -1808,7 +1835,9 @@ async function cleanImportedImagesMaintenanceState() {
   if (result.removedFileCount === 0) {
     if (result.failedFileCount > 0) {
       return {
-        message: t('settings.maintenance.cleanImagesFailed', {
+        message: t(result.failedFileCount === 1
+          ? 'settings.maintenance.cleanImagesFailed.one'
+          : 'settings.maintenance.cleanImagesFailed.other', {
           count: result.failedFileCount,
         }),
       }
@@ -1824,8 +1853,12 @@ async function cleanImportedImagesMaintenanceState() {
   return {
     message: t(
       result.failedFileCount > 0
-        ? 'settings.maintenance.cleanImagesPartial'
-        : 'settings.maintenance.cleanImagesSuccess',
+        ? (result.removedFileCount === 1
+            ? 'settings.maintenance.cleanImagesPartial.one'
+            : 'settings.maintenance.cleanImagesPartial.other')
+        : (result.removedFileCount === 1
+            ? 'settings.maintenance.cleanImagesSuccess.one'
+            : 'settings.maintenance.cleanImagesSuccess.other'),
       params,
     ),
   }
