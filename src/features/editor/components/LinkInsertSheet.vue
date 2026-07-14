@@ -27,17 +27,22 @@ const urlValue = computed({
   set: value => emit('update:url', value),
 })
 
+function focusInitialInput() {
+  linkUrlInput.value?.focus()
+}
+
+defineExpose({ focusInitialInput })
+
 onMounted(() => {
   void nextTick(() => {
-    linkUrlInput.value?.focus()
+    focusInitialInput()
   })
 })
 
 // Keyboard containment relies on this Tab trap ALONE (aria-modal does not
-// contain focus). Unlike the outline and table sheets, the background must
-// NOT be inert here: the confirm inserts through focus + execCommand into
-// the still-mounted editor, and an inert editor refuses focus, which turns
-// every insert into a silent failure.
+// contain focus). EditorScreen removes the background from the accessibility
+// tree with aria-hidden, but keeps it non-inert so confirm can temporarily
+// focus the still-mounted editor for insertion.
 function trapTabKey(event: KeyboardEvent) {
   const root = panel.value
   if (!root) {

@@ -584,6 +584,19 @@ test('the link sheet contains keyboard focus and rescues it on cancel', async ({
   await page.getByTestId('toolbar-command-format.hyperlink').click()
   await expect(page.getByTestId('link-insert-sheet')).toBeVisible()
 
+  const backgroundSurfaces = [
+    page.locator('header.top-bar'),
+    page.locator('section.editor-pane'),
+    page.getByTestId('mobile-editor-toolbar'),
+  ]
+  for (const surface of backgroundSurfaces) {
+    await expect(surface).toHaveAttribute('aria-hidden', 'true')
+  }
+  await expect.poll(() =>
+    page.getByTestId('link-insert-sheet').evaluate(element =>
+      element.closest('[aria-hidden="true"]') === null,
+    )).toBe(true)
+
   const activeTestId = () =>
     page.evaluate(
       () =>
@@ -608,6 +621,9 @@ test('the link sheet contains keyboard focus and rescues it on cancel', async ({
   // Closing without inserting must not leave focus dangling on <body>.
   await page.getByTestId('link-cancel-button').click()
   await expect(page.getByTestId('link-insert-sheet')).toBeHidden()
+  for (const surface of backgroundSurfaces) {
+    await expect(surface).not.toHaveAttribute('aria-hidden', 'true')
+  }
   await expect.poll(activeTestId).toBe('toolbar-expand-button')
 })
 
@@ -1000,9 +1016,35 @@ test('inserts a link from selected editor text through the mobile link sheet', a
   await expect(page.getByTestId('link-insert-sheet')).toBeVisible()
   await expect(page.getByTestId('link-text-input')).toHaveValue('MarkText for Android')
   await page.getByTestId('link-url-input').fill('https://github.com/Renakoni/marktext-android')
+  await page.evaluate(() => {
+    const state = window as typeof window & {
+      __linkHiddenFocusViolation?: boolean
+      __linkHiddenFocusListener?: (event: FocusEvent) => void
+    }
+    state.__linkHiddenFocusViolation = false
+    state.__linkHiddenFocusListener = event => {
+      if (
+        event.target instanceof Element
+        && event.target.closest('[aria-hidden="true"]')
+      ) {
+        state.__linkHiddenFocusViolation = true
+      }
+    }
+    document.addEventListener('focusin', state.__linkHiddenFocusListener)
+  })
   await page.getByTestId('link-insert-button').click()
 
   await expect(page.getByTestId('link-insert-sheet')).toBeHidden()
+  expect(await page.evaluate(() => {
+    const state = window as typeof window & {
+      __linkHiddenFocusViolation?: boolean
+      __linkHiddenFocusListener?: (event: FocusEvent) => void
+    }
+    if (state.__linkHiddenFocusListener) {
+      document.removeEventListener('focusin', state.__linkHiddenFocusListener)
+    }
+    return state.__linkHiddenFocusViolation
+  })).toBe(false)
   await expect.poll(() => getDraftStorage(page)).toContain(
     '[MarkText for Android](https://github.com/Renakoni/marktext-android)',
   )

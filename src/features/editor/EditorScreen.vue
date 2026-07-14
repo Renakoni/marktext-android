@@ -144,6 +144,31 @@ const selectionToolbarSuspended = computed(
     props.androidExitPromptOpen ||
     props.incomingOpenPromptOpen,
 )
+const linkInsertDispatching = ref(false)
+const linkInsertSheet = ref<InstanceType<typeof LinkInsertSheet> | null>(null)
+const linkSheetBackgroundAriaHidden = computed(() =>
+  props.linkSheetOpen && !linkInsertDispatching.value ? 'true' : undefined,
+)
+
+async function dispatchLinkInsert() {
+  if (linkInsertDispatching.value) {
+    return
+  }
+
+  linkInsertDispatching.value = true
+  try {
+    // Keep the sheet and captured selection intact, but flush aria-hidden off
+    // the editor before App temporarily focuses it for the insertion.
+    await nextTick()
+    emit('insert-link')
+    await nextTick()
+  } finally {
+    if (props.linkSheetOpen) {
+      linkInsertSheet.value?.focusInitialInput()
+    }
+    linkInsertDispatching.value = false
+  }
+}
 
 const searchInput = ref<HTMLInputElement | null>(null)
 const outlineButton = ref<HTMLButtonElement | null>(null)
@@ -243,6 +268,7 @@ onBeforeUnmount(() => {
       class="top-bar search-bar"
       data-testid="editor-search-bar"
       :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
+      :aria-hidden="linkSheetBackgroundAriaHidden"
     >
       <button
         class="nav-button"
@@ -308,7 +334,12 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </header>
-    <header v-else class="top-bar" :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen">
+    <header
+      v-else
+      class="top-bar"
+      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
+      :aria-hidden="linkSheetBackgroundAriaHidden"
+    >
       <button
         class="nav-button"
         type="button"
@@ -375,7 +406,12 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <section class="editor-pane" :aria-label="t('editor.markdownEditor')" :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen">
+    <section
+      class="editor-pane"
+      :aria-label="t('editor.markdownEditor')"
+      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
+      :aria-hidden="linkSheetBackgroundAriaHidden"
+    >
       <div
         ref="editorShell"
         class="editor-host-shell"
@@ -408,6 +444,7 @@ onBeforeUnmount(() => {
 
     <MobileSelectionToolbar
       :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
+      :aria-hidden="linkSheetBackgroundAriaHidden"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
       :host="editorShell"
@@ -426,6 +463,7 @@ onBeforeUnmount(() => {
 
     <LinkActionOverlay
       :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
+      :aria-hidden="linkSheetBackgroundAriaHidden"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
       :caret-session="selectionCaretSession"
@@ -437,6 +475,7 @@ onBeforeUnmount(() => {
     <MobileEditorToolbar
       v-if="toolbarVisible && !editorFailed"
       :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
+      :aria-hidden="linkSheetBackgroundAriaHidden"
       :expanded="toolbarExpanded"
       :active-panel="toolbarPanel"
       :editor-ready="editorReady"
@@ -482,12 +521,13 @@ onBeforeUnmount(() => {
     <Transition name="editor-sheet">
       <LinkInsertSheet
         v-if="linkSheetOpen"
+        ref="linkInsertSheet"
         :text="linkText"
         :url="linkUrl"
         @update:text="value => emit('update:linkText', value)"
         @update:url="value => emit('update:linkUrl', value)"
         @cancel="emit('close-link-sheet')"
-        @insert="emit('insert-link')"
+        @insert="dispatchLinkInsert"
       />
     </Transition>
 
