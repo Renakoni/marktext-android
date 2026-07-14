@@ -292,6 +292,7 @@ export const ja = {
   'settings.section.search': '検索',
 
   'settings.language.app': '言語',
+  'settings.language.automatic': '自動',
   'settings.language.english': 'English',
   'settings.language.chineseSimplified': '简体中文',
   'settings.language.chineseTraditional': '繁體中文',

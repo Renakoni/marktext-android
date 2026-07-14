@@ -292,6 +292,7 @@ export const fr = {
   'settings.section.search': 'Recherche',
 
   'settings.language.app': 'Langue',
+  'settings.language.automatic': 'Automatique',
   'settings.language.english': 'English',
   'settings.language.chineseSimplified': '简体中文',
   'settings.language.chineseTraditional': '繁體中文',

@@ -120,7 +120,14 @@ test('switches between document home and the settings about screen', async ({ pa
 
   await page.getByTestId('settings-entry-appearance').click()
   await expect(page.getByTestId('settings-title')).toContainText('Appearance')
-  await expect(page.getByTestId('settings-language-app')).toContainText('English')
+  await expect(page.getByTestId('settings-language-app-trigger')).toContainText('Auto')
+  await page.getByTestId('settings-language-app-trigger').click()
+  await expect(page.getByTestId('settings-language-app-option-auto')).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await expect(page.getByRole('option')).toHaveCount(11)
+  await page.getByTestId('settings-language-app-option-auto').click()
   await expect(page.getByTestId('settings-appearance-theme-mode-option-system')).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -142,12 +149,14 @@ test('switches between document home and the settings about screen', async ({ pa
     '72ch',
   )
 
-  await page.getByTestId('settings-language-option-zh-cn').click()
+  await page.getByTestId('settings-language-app-trigger').click()
+  await page.getByTestId('settings-language-app-option-zh-CN').click()
   await expect(page.getByTestId('settings-title')).toContainText('外观')
-  await expect(page.getByTestId('settings-language-app')).toContainText('中文')
+  await expect(page.getByTestId('settings-language-app-trigger')).toContainText('简体中文')
   await expect(page.getByTestId('settings-appearance-theme-mode')).toContainText('模式')
 
-  await page.getByTestId('settings-language-option-en').click()
+  await page.getByTestId('settings-language-app-trigger').click()
+  await page.getByTestId('settings-language-app-option-en').click()
   await expect(page.getByTestId('settings-title')).toContainText('Appearance')
 
   await page.getByTestId('settings-detail-back').click()
@@ -241,7 +250,7 @@ test('switches between document home and the settings about screen', async ({ pa
   await expect(page.getByTestId('settings-advanced-clear-drafts-action')).toContainText('Clear')
   await expect(page.getByTestId('settings-advanced-reset-action')).toContainText('Reset')
   await page.getByTestId('settings-advanced-export-logs-action').click()
-  await expect(page.getByTestId('settings-maintenance-sheet')).toContainText('ZIP archive')
+  await expect(page.getByTestId('settings-maintenance-sheet')).toContainText('ZIP to share')
   await expect(page.getByTestId('settings-maintenance-export-confirm')).toContainText('Export ZIP')
   await page.getByTestId('settings-maintenance-sheet').click({ position: { x: 12, y: 12 } })
   await expect(page.getByTestId('settings-maintenance-sheet')).toHaveCount(0)

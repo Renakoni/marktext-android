@@ -25,10 +25,13 @@ const APP_LOCALES = Object.freeze({
   TR: 'tr',
 } as const)
 
-type AppLocale = (typeof APP_LOCALES)[keyof typeof APP_LOCALES]
+export type AppLocale = (typeof APP_LOCALES)[keyof typeof APP_LOCALES]
+export const AUTO_APP_LOCALE = 'auto' as const
+export type AppLocalePreference = typeof AUTO_APP_LOCALE | AppLocale
 
 const DEFAULT_APP_LOCALE: AppLocale = APP_LOCALES.EN
 const APP_LOCALE_STORAGE_KEY = 'marktext-for-android:locale'
+const SUPPORTED_APP_LOCALES = Object.values(APP_LOCALES)
 
 const MESSAGES: Record<AppLocale, Record<I18nKey, string>> = {
   [APP_LOCALES.EN]: en,
@@ -114,83 +117,121 @@ export const APP_LANGUAGE_OPTIONS = [
   {
     id: APP_LOCALES.EN,
     labelKey: 'settings.language.english',
-    testId: 'settings-language-option-en',
   },
   {
     id: APP_LOCALES.ZH_CN,
     labelKey: 'settings.language.chineseSimplified',
-    testId: 'settings-language-option-zh-cn',
   },
   {
     id: APP_LOCALES.ZH_TW,
     labelKey: 'settings.language.chineseTraditional',
-    testId: 'settings-language-option-zh-tw',
   },
   {
     id: APP_LOCALES.DE,
     labelKey: 'settings.language.german',
-    testId: 'settings-language-option-de',
   },
   {
     id: APP_LOCALES.ES,
     labelKey: 'settings.language.spanish',
-    testId: 'settings-language-option-es',
   },
   {
     id: APP_LOCALES.FR,
     labelKey: 'settings.language.french',
-    testId: 'settings-language-option-fr',
   },
   {
     id: APP_LOCALES.JA,
     labelKey: 'settings.language.japanese',
-    testId: 'settings-language-option-ja',
   },
   {
     id: APP_LOCALES.KO,
     labelKey: 'settings.language.korean',
-    testId: 'settings-language-option-ko',
   },
   {
     id: APP_LOCALES.PT,
     labelKey: 'settings.language.portuguese',
-    testId: 'settings-language-option-pt',
   },
   {
     id: APP_LOCALES.TR,
     labelKey: 'settings.language.turkish',
-    testId: 'settings-language-option-tr',
   },
 ] as const satisfies readonly {
   id: AppLocale
   labelKey: I18nKey
-  testId: string
 }[]
 
 function isAppLocale(value: unknown): value is AppLocale {
-  return Object.values(APP_LOCALES).includes(value as AppLocale)
+  return SUPPORTED_APP_LOCALES.includes(value as AppLocale)
 }
 
-function getStoredLocale() {
+function getSystemLanguages() {
+  if (typeof navigator === 'undefined') {
+    return []
+  }
+  return navigator.languages.length > 0
+    ? navigator.languages
+    : navigator.language
+      ? [navigator.language]
+      : []
+}
+
+export function resolveSystemLocale(languages: readonly string[]): AppLocale {
+  for (const language of languages) {
+    const normalized = language.replaceAll('_', '-').toLowerCase()
+    const exactLocale = SUPPORTED_APP_LOCALES.find(locale => locale.toLowerCase() === normalized)
+    if (exactLocale) {
+      return exactLocale
+    }
+
+    const [baseLanguage, ...subtags] = normalized.split('-')
+    if (baseLanguage === 'zh') {
+      if (subtags.includes('hant')) {
+        return APP_LOCALES.ZH_TW
+      }
+      if (subtags.includes('hans')) {
+        return APP_LOCALES.ZH_CN
+      }
+      return subtags.some(subtag => ['tw', 'hk', 'mo'].includes(subtag))
+        ? APP_LOCALES.ZH_TW
+        : APP_LOCALES.ZH_CN
+    }
+
+    const baseLocale = SUPPORTED_APP_LOCALES.find(locale => locale === baseLanguage)
+    if (baseLocale) {
+      return baseLocale
+    }
+  }
+
+  return DEFAULT_APP_LOCALE
+}
+
+function resolveLocalePreference(preference: AppLocalePreference) {
+  return preference === AUTO_APP_LOCALE
+    ? resolveSystemLocale(getSystemLanguages())
+    : preference
+}
+
+function getStoredLocalePreference(): AppLocalePreference {
   if (typeof window === 'undefined') {
-    return DEFAULT_APP_LOCALE
+    return AUTO_APP_LOCALE
   }
 
   try {
     const storedLocale = window.localStorage.getItem(APP_LOCALE_STORAGE_KEY)
-    return isAppLocale(storedLocale) ? storedLocale : DEFAULT_APP_LOCALE
+    return storedLocale === AUTO_APP_LOCALE || isAppLocale(storedLocale)
+      ? storedLocale
+      : AUTO_APP_LOCALE
   } catch {
-    return DEFAULT_APP_LOCALE
+    return AUTO_APP_LOCALE
   }
 }
 
-function writeStoredLocale(nextLocale: AppLocale) {
+function writeStoredLocalePreference(nextPreference: AppLocalePreference) {
   if (typeof window === 'undefined') {
     return
   }
 
   try {
-    window.localStorage.setItem(APP_LOCALE_STORAGE_KEY, nextLocale)
+    window.localStorage.setItem(APP_LOCALE_STORAGE_KEY, nextPreference)
   } catch {
     // Changing language should still work for the current session if storage is unavailable.
   }
@@ -208,13 +249,28 @@ function interpolate(message: string, params: Record<string, string | number> = 
   )
 }
 
-const appLocale = ref<AppLocale>(getStoredLocale())
+const appLocalePreference = ref<AppLocalePreference>(getStoredLocalePreference())
+const appLocale = ref<AppLocale>(resolveLocalePreference(appLocalePreference.value))
 applyDocumentLocale(appLocale.value)
 
+function setAppLocalePreference(nextPreference: AppLocalePreference) {
+  appLocalePreference.value = nextPreference
+  appLocale.value = resolveLocalePreference(nextPreference)
+  writeStoredLocalePreference(nextPreference)
+  applyDocumentLocale(appLocale.value)
+}
+
 function setAppLocale(nextLocale: AppLocale) {
-  appLocale.value = nextLocale
-  writeStoredLocale(nextLocale)
-  applyDocumentLocale(nextLocale)
+  setAppLocalePreference(nextLocale)
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('languagechange', () => {
+    if (appLocalePreference.value === AUTO_APP_LOCALE) {
+      appLocale.value = resolveLocalePreference(AUTO_APP_LOCALE)
+      applyDocumentLocale(appLocale.value)
+    }
+  })
 }
 
 function t(key: I18nKey, params?: Record<string, string | number>) {
@@ -230,7 +286,9 @@ export function translateKnownText(message: string) {
 export function useI18n() {
   return {
     locale: readonly(appLocale),
+    localePreference: readonly(appLocalePreference),
     setLocale: setAppLocale,
+    setLocalePreference: setAppLocalePreference,
     t,
   }
 }

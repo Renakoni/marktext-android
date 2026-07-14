@@ -292,6 +292,7 @@ export const zhTW = {
   'settings.section.search': '搜尋',
 
   'settings.language.app': '語言',
+  'settings.language.automatic': '自動',
   'settings.language.english': 'English',
   'settings.language.chineseSimplified': '简体中文',
   'settings.language.chineseTraditional': '繁體中文',

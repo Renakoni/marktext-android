@@ -287,6 +287,7 @@ export const en = {
   'settings.section.search': 'Search',
 
   'settings.language.app': 'Language',
+  'settings.language.automatic': 'Auto',
   'settings.language.english': 'English',
   'settings.language.chineseSimplified': '简体中文',
   'settings.language.chineseTraditional': '繁體中文',

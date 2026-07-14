@@ -292,6 +292,7 @@ export const ko = {
   'settings.section.search': '검색',
 
   'settings.language.app': '언어',
+  'settings.language.automatic': '자동',
   'settings.language.english': 'English',
   'settings.language.chineseSimplified': '简体中文',
   'settings.language.chineseTraditional': '繁體中文',

@@ -292,6 +292,7 @@ export const pt = {
   'settings.section.search': 'Pesquisa',
 
   'settings.language.app': 'Idioma',
+  'settings.language.automatic': 'Automático',
   'settings.language.english': 'English',
   'settings.language.chineseSimplified': '简体中文',
   'settings.language.chineseTraditional': '繁體中文',

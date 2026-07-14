@@ -285,6 +285,7 @@ export const zhCN = {
   'settings.section.search': '搜索',
 
   'settings.language.app': '语言',
+  'settings.language.automatic': '自动',
   'settings.language.english': 'English',
   'settings.language.chineseSimplified': '简体中文',
   'settings.language.chineseTraditional': '繁體中文',

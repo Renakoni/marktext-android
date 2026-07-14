@@ -292,6 +292,7 @@ export const tr = {
   'settings.section.search': 'Arama',
 
   'settings.language.app': 'Dil',
+  'settings.language.automatic': 'Otomatik',
   'settings.language.english': 'English',
   'settings.language.chineseSimplified': '简体中文',
   'settings.language.chineseTraditional': '繁體中文',
