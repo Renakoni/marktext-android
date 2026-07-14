@@ -584,6 +584,19 @@ test('the link sheet contains keyboard focus and rescues it on cancel', async ({
   await page.getByTestId('toolbar-command-format.hyperlink').click()
   await expect(page.getByTestId('link-insert-sheet')).toBeVisible()
 
+  const backgroundSurfaces = [
+    page.locator('header.top-bar'),
+    page.locator('section.editor-pane'),
+    page.getByTestId('mobile-editor-toolbar'),
+  ]
+  for (const surface of backgroundSurfaces) {
+    await expect(surface).toHaveAttribute('aria-hidden', 'true')
+  }
+  await expect.poll(() =>
+    page.getByTestId('link-insert-sheet').evaluate(element =>
+      element.closest('[aria-hidden="true"]') === null,
+    )).toBe(true)
+
   const activeTestId = () =>
     page.evaluate(
       () =>
@@ -608,6 +621,9 @@ test('the link sheet contains keyboard focus and rescues it on cancel', async ({
   // Closing without inserting must not leave focus dangling on <body>.
   await page.getByTestId('link-cancel-button').click()
   await expect(page.getByTestId('link-insert-sheet')).toBeHidden()
+  for (const surface of backgroundSurfaces) {
+    await expect(surface).not.toHaveAttribute('aria-hidden', 'true')
+  }
   await expect.poll(activeTestId).toBe('toolbar-expand-button')
 })
 
