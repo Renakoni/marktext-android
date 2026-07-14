@@ -267,7 +267,6 @@ onBeforeUnmount(() => {
       v-if="searchOpen"
       class="top-bar search-bar"
       data-testid="editor-search-bar"
-      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :aria-hidden="linkSheetBackgroundAriaHidden"
     >
       <button
@@ -337,7 +336,6 @@ onBeforeUnmount(() => {
     <header
       v-else
       class="top-bar"
-      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :aria-hidden="linkSheetBackgroundAriaHidden"
     >
       <button
@@ -409,7 +407,6 @@ onBeforeUnmount(() => {
     <section
       class="editor-pane"
       :aria-label="t('editor.markdownEditor')"
-      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :aria-hidden="linkSheetBackgroundAriaHidden"
     >
       <div
@@ -443,7 +440,6 @@ onBeforeUnmount(() => {
     </section>
 
     <MobileSelectionToolbar
-      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :aria-hidden="linkSheetBackgroundAriaHidden"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
@@ -462,7 +458,6 @@ onBeforeUnmount(() => {
     />
 
     <LinkActionOverlay
-      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :aria-hidden="linkSheetBackgroundAriaHidden"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
@@ -474,7 +469,6 @@ onBeforeUnmount(() => {
 
     <MobileEditorToolbar
       v-if="toolbarVisible && !editorFailed"
-      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :aria-hidden="linkSheetBackgroundAriaHidden"
       :expanded="toolbarExpanded"
       :active-panel="toolbarPanel"

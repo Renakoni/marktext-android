@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useI18n } from '../../../lib/i18n'
+import { useModalFocus } from '../../../lib/modalFocus'
 
 defineProps<{
   message: string
@@ -15,15 +17,20 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const modalRoot = ref<HTMLElement | null>(null)
+const { onModalKeydown } = useModalFocus({ root: modalRoot })
 </script>
 
 <template>
   <section
+    ref="modalRoot"
     class="draft-save-sheet"
     role="dialog"
     aria-modal="true"
     aria-labelledby="android-exit-title"
+    tabindex="-1"
     data-testid="android-exit-prompt"
+    @keydown="onModalKeydown"
   >
     <div class="draft-save-panel">
       <h2 id="android-exit-title">{{ t('editor.exit.androidTitle') }}</h2>

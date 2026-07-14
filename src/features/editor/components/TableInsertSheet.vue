@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from '../../../lib/i18n'
+import { useModalFocus } from '../../../lib/modalFocus'
 import {
   TABLE_SHEET_LIMITS,
   clampTableSheetDimension,
@@ -22,7 +23,7 @@ const emit = defineEmits<{
 }>()
 
 const insertButton = ref<HTMLButtonElement | null>(null)
-const panel = ref<HTMLElement | null>(null)
+const modalRoot = ref<HTMLElement | null>(null)
 const { t } = useI18n()
 
 const canDecrease = computed(() => ({
@@ -44,60 +45,26 @@ function step(kind: 'rows' | 'columns', delta: 1 | -1) {
   }
 }
 
-onMounted(() => {
-  // The default size is ready to insert, so lead the focus there; steppers
-  // never summon the soft keyboard.
-  void nextTick(() => {
-    insertButton.value?.focus({ preventScroll: true })
-  })
+const { onModalKeydown } = useModalFocus({
+  root: modalRoot,
+  initialFocus: () => insertButton.value,
+  onEscape: () => emit('cancel'),
+  restoreFocus: false,
 })
-
-// The background is inert while the sheet is open, but hardware Tab could
-// still walk focus out of the dialog to the document body. Cycle it inside
-// the panel instead (aria-modal alone does not contain keyboard focus).
-function trapTabKey(event: KeyboardEvent) {
-  const root = panel.value
-  if (!root) {
-    return
-  }
-
-  const focusables = Array.from(root.querySelectorAll<HTMLElement>('button:not(:disabled)'))
-  if (focusables.length === 0) {
-    event.preventDefault()
-    return
-  }
-
-  const first = focusables[0]
-  const last = focusables[focusables.length - 1]
-  const active = document.activeElement
-
-  if (event.shiftKey) {
-    if (active === first || active === root) {
-      event.preventDefault()
-      last.focus()
-    }
-    return
-  }
-
-  if (active === last) {
-    event.preventDefault()
-    first.focus()
-  }
-}
 </script>
 
 <template>
   <section
+    ref="modalRoot"
     class="draft-save-sheet"
     role="dialog"
     aria-modal="true"
     aria-labelledby="table-sheet-title"
+    tabindex="-1"
     data-testid="table-insert-sheet"
-    @keydown.esc="emit('cancel')"
-    @keydown.tab="trapTabKey"
+    @keydown="onModalKeydown"
   >
     <form
-      ref="panel"
       class="draft-save-panel table-insert-panel"
       @submit.prevent="emit('insert')"
     >

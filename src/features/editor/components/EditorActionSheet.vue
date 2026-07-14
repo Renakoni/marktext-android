@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useI18n } from '../../../lib/i18n'
+import { useModalFocus } from '../../../lib/modalFocus'
 
 defineProps<{
   canShare: boolean
@@ -21,17 +23,24 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const modalRoot = ref<HTMLElement | null>(null)
+const { onModalKeydown } = useModalFocus({
+  root: modalRoot,
+  onEscape: () => emit('close'),
+})
 </script>
 
 <template>
   <section
+    ref="modalRoot"
     class="editor-action-sheet"
     role="dialog"
     aria-modal="true"
     :aria-label="t('editor.actions.documentActions')"
+    tabindex="-1"
     data-testid="editor-action-sheet"
     @click="emit('close')"
-    @keydown.esc="emit('close')"
+    @keydown="onModalKeydown"
   >
     <div class="editor-action-panel" @click.stop>
       <div class="editor-action-grabber" aria-hidden="true" />
