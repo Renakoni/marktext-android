@@ -19,6 +19,7 @@ describe('modal focus contract', () => {
     const source = readFileSync(new URL(relativePath, import.meta.url), 'utf8')
 
     expect(source).toContain('role="dialog"')
+    expect(source).toContain('tabindex="-1"')
     expect(source).toContain('useModalFocus({')
     expect(source).toContain('@keydown="onModalKeydown"')
   })

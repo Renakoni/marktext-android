@@ -16,6 +16,8 @@ interface BackgroundIsolationState {
   ariaHidden: string | null
 }
 
+// Overlapping modal transitions share background branches. Capture each
+// branch's original attributes once and restore them after the final release.
 const backgroundIsolationStates = new WeakMap<HTMLElement, BackgroundIsolationState>()
 
 interface ModalFocusOptions {
@@ -48,6 +50,8 @@ export function trapModalTabKey(root: HTMLElement, event: KeyboardEvent) {
   const focusables = getModalFocusableElements(root)
   if (focusables.length === 0) {
     event.preventDefault()
+    // Every shared modal root has tabindex="-1", so it remains a focus sink
+    // while all controls are temporarily disabled.
     root.focus({ preventScroll: true })
     return
   }
