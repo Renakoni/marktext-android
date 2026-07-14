@@ -149,6 +149,11 @@ const MESSAGES = {
       'This file cannot be saved directly. Save a copy or keep a recovery draft before leaving.',
     'editor.exit.androidSaveFailedMessage':
       'MarkText could not save this file. Save a copy or keep a recovery draft before leaving.',
+    'editor.incomingOpen.title': 'Discard unsaved changes?',
+    'editor.incomingOpen.body':
+      'Opening “{name}” will replace the current document, but its unsaved changes couldn’t be saved. Keep editing, or discard them and open the new one?',
+    'editor.incomingOpen.keep': 'Keep editing',
+    'editor.incomingOpen.discard': 'Discard & open',
 
     'toolbar.markdownTools': 'Markdown editing tools',
     'toolbar.quickActions': 'Quick editing actions',
@@ -716,6 +721,11 @@ const MESSAGES = {
       '此文件不能直接保存。离开前请保存副本，或保留恢复草稿。',
     'editor.exit.androidSaveFailedMessage':
       'MarkText 未能保存此文件。离开前请保存副本，或保留恢复草稿。',
+    'editor.incomingOpen.title': '要丢弃未保存的更改吗？',
+    'editor.incomingOpen.body':
+      '打开「{name}」会替换当前文档，但它未保存的更改无法保存。是继续编辑，还是丢弃更改并打开新文档？',
+    'editor.incomingOpen.keep': '继续编辑',
+    'editor.incomingOpen.discard': '丢弃并打开',
 
     'toolbar.markdownTools': 'Markdown 编辑工具',
     'toolbar.quickActions': '快捷编辑操作',

@@ -177,6 +177,52 @@ describe('currentDocumentPersistence', () => {
     expect(disabled.options.persistLocalDrafts).not.toHaveBeenCalled()
   })
 
+  it('reports whether the local draft is durably safe for the incoming-open guard', () => {
+    const dirty = updateDocumentMarkdown(
+      createUntitledDocument({ markdown: '', autosaveTarget: 'local-draft' }),
+      '# Draft body',
+      { markDirty: true },
+    )
+
+    // Persisted content, or nothing to keep, is durable.
+    expect(createPersistence({ documentState: dirty }).persistence.saveDraft()).toBe(true)
+    expect(
+      createPersistence({ canPersistLocalDrafts: false, markdownSnapshot: '   ' })
+        .persistence.saveDraft(),
+    ).toBe(true)
+
+    // Content that cannot be persisted (drafts disabled, or a storage failure) is not.
+    expect(
+      createPersistence({ canPersistLocalDrafts: false, markdownSnapshot: '# unsaved' })
+        .persistence.saveDraft(),
+    ).toBe(false)
+
+    const failing = createPersistence({ documentState: dirty })
+    failing.options.persistLocalDrafts.mockImplementation(() => {
+      throw new Error('quota exceeded')
+    })
+    expect(failing.persistence.saveDraft()).toBe(false)
+    expect(failing.options.status.value).toBe('Autosave failed')
+  })
+
+  it('reports whether an Android recovery draft was durably written', () => {
+    const kept = createPersistence()
+    expect(kept.persistence.persistAndroidRecoveryDraft(ANDROID_URI, '# edits')).toBe(true)
+    expect(
+      kept.options.localDrafts.value.some(draft => draft.id === `android-recovery:${ANDROID_URI}`),
+    ).toBe(true)
+
+    const disabled = createPersistence({ canPersistRecoveryDrafts: false })
+    expect(disabled.persistence.persistAndroidRecoveryDraft(ANDROID_URI, '# edits')).toBe(false)
+    expect(disabled.options.persistLocalDrafts).not.toHaveBeenCalled()
+
+    const failing = createPersistence()
+    failing.options.persistLocalDrafts.mockImplementation(() => {
+      throw new Error('quota exceeded')
+    })
+    expect(failing.persistence.persistAndroidRecoveryDraft(ANDROID_URI, '# edits')).toBe(false)
+  })
+
   it('saves a dirty Android document, updates recents, and drops its recovery draft', async () => {
     const recoveryDraft: LocalDraftRecord = {
       id: `android-recovery:${ANDROID_URI}`,
@@ -233,6 +279,35 @@ describe('currentDocumentPersistence', () => {
     expect(options.status.value).toBe('user message: disk full')
   })
 
+  it('defers recovery persistence when the caller needs the latest editor snapshot', async () => {
+    const { persistence, options } = createPersistence({
+      documentState: dirtyAndroidDocumentState(),
+      androidDocuments: [androidRecentRecord()],
+    })
+    options.writeAndroidMarkdownDocument.mockRejectedValue(new Error('disk full'))
+
+    const saved = await persistence.saveAndroidDocument({ persistRecoveryDraftOnFailure: false })
+
+    expect(saved).toBe(false)
+    expect(options.persistLocalDrafts).not.toHaveBeenCalled()
+    expect(options.status.value).toBe('user message: disk full')
+  })
+
+  it('does not report a recovery draft that storage failed to persist', async () => {
+    const { persistence, options } = createPersistence({
+      documentState: dirtyAndroidDocumentState(),
+      androidDocuments: [androidRecentRecord()],
+    })
+    options.writeAndroidMarkdownDocument.mockRejectedValue(new Error('disk full'))
+    options.persistLocalDrafts.mockImplementation(() => {
+      throw new Error('quota exceeded')
+    })
+
+    await persistence.saveAndroidDocument()
+
+    expect(options.status.value).toBe('user message: disk full')
+  })
+
   it('coalesces overlapping Android saves and reschedules once the first completes', async () => {
     const { persistence, options } = createPersistence({
       documentState: dirtyAndroidDocumentState(),
@@ -256,6 +331,30 @@ describe('currentDocumentPersistence', () => {
     expect(options.scheduleAndroidDocumentSave).toHaveBeenCalledTimes(1)
   })
 
+  it('waits for an active Android save and then persists the latest editor snapshot', async () => {
+    const { persistence, options } = createPersistence({
+      documentState: dirtyAndroidDocumentState(),
+      androidDocuments: [androidRecentRecord()],
+    })
+    let releaseFirstWrite!: () => void
+    options.writeAndroidMarkdownDocument
+      .mockImplementationOnce(() => new Promise<void>(resolve => (releaseFirstWrite = resolve)))
+      .mockResolvedValueOnce(undefined)
+
+    const first = persistence.saveAndroidDocument()
+    options.documentState.value = dirtyAndroidDocumentState('# latest edits')
+    const guarded = persistence.saveAndroidDocument({ waitForPendingSave: true })
+
+    await Promise.resolve()
+    expect(options.writeAndroidMarkdownDocument).toHaveBeenCalledTimes(1)
+
+    releaseFirstWrite()
+    await expect(first).resolves.toBe(false)
+    await expect(guarded).resolves.toBe(true)
+    expect(options.writeAndroidMarkdownDocument).toHaveBeenCalledTimes(2)
+    expect(options.writeAndroidMarkdownDocument.mock.calls[1][1]).toBe('# latest edits')
+  })
+
   it('flushes to the save path matching the current autosave target', async () => {
     const android = createPersistence({ documentState: dirtyAndroidDocumentState() })
     await android.persistence.flushCurrentDocument('test')
@@ -264,6 +363,32 @@ describe('currentDocumentPersistence', () => {
     const home = createPersistence({ currentScreen: 'home' })
     await home.persistence.flushCurrentDocument('test')
     expect(home.options.clearDraftSaveTimer).not.toHaveBeenCalled()
+  })
+
+  it('waits for an active Android save during a lifecycle flush', async () => {
+    const { persistence, options } = createPersistence({
+      documentState: dirtyAndroidDocumentState(),
+      androidDocuments: [androidRecentRecord()],
+    })
+    let releaseFirstWrite!: () => void
+    options.writeAndroidMarkdownDocument
+      .mockImplementationOnce(() => new Promise<void>(resolve => (releaseFirstWrite = resolve)))
+      .mockResolvedValueOnce(undefined)
+
+    const first = persistence.saveAndroidDocument()
+    options.documentState.value = dirtyAndroidDocumentState('# edits before backgrounding')
+    const flush = persistence.flushCurrentDocument('app pause')
+
+    await Promise.resolve()
+    expect(options.writeAndroidMarkdownDocument).toHaveBeenCalledTimes(1)
+
+    releaseFirstWrite()
+    await expect(first).resolves.toBe(false)
+    await flush
+    expect(options.writeAndroidMarkdownDocument).toHaveBeenCalledTimes(2)
+    expect(options.writeAndroidMarkdownDocument.mock.calls[1][1]).toBe(
+      '# edits before backgrounding',
+    )
   })
 
   it('saves a local draft to the device and cleans up the draft copy', async () => {

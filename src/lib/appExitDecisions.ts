@@ -16,6 +16,7 @@ export interface AppBackButtonState {
   currentScreen: AppScreen
   homeTab: HomeTab
   settingsPage: SettingsPage
+  incomingOpenPromptOpen: boolean
   androidExitPromptOpen: boolean
   draftExitPromptOpen: boolean
   linkSheetOpen: boolean
@@ -29,6 +30,7 @@ export interface AppBackButtonState {
 }
 
 export type AppBackButtonAction =
+  | 'close-incoming-open-prompt'
   | 'close-android-exit-prompt'
   | 'close-local-draft-exit-prompt'
   | 'close-link-sheet'
@@ -76,6 +78,7 @@ export function getAppBackButtonAction({
   currentScreen,
   homeTab,
   settingsPage,
+  incomingOpenPromptOpen,
   androidExitPromptOpen,
   draftExitPromptOpen,
   linkSheetOpen,
@@ -87,6 +90,11 @@ export function getAppBackButtonAction({
   homeSelectionActive,
   homeSheetOpen,
 }: AppBackButtonState): AppBackButtonAction {
+  // The blocked-preservation prompt guards unsaved work; Back keeps editing.
+  if (incomingOpenPromptOpen) {
+    return 'close-incoming-open-prompt'
+  }
+
   if (androidExitPromptOpen) {
     return 'close-android-exit-prompt'
   }

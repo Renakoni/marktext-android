@@ -13,6 +13,7 @@ const baseBackState: AppBackButtonState = {
   currentScreen: 'home',
   homeTab: HOME_TABS.DOCUMENTS,
   settingsPage: SETTINGS_PAGES.INDEX,
+  incomingOpenPromptOpen: false,
   androidExitPromptOpen: false,
   draftExitPromptOpen: false,
   linkSheetOpen: false,
@@ -59,6 +60,18 @@ describe('appExitDecisions', () => {
   })
 
   it('preserves Android back priority for prompts, sheets, menu, toolbar, and editor exit', () => {
+    // The blocked-preservation prompt guards unsaved work above every other layer.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'editor',
+      incomingOpenPromptOpen: true,
+      androidExitPromptOpen: true,
+      draftExitPromptOpen: true,
+      linkSheetOpen: true,
+      editorMenuOpen: true,
+      editorToolbarExpanded: true,
+    })).toBe('close-incoming-open-prompt')
+
     expect(getAppBackButtonAction({
       ...baseBackState,
       currentScreen: 'editor',

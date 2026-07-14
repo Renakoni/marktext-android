@@ -8,6 +8,7 @@ import OutlineSheet from './components/OutlineSheet.vue'
 import LinkInsertSheet from './components/LinkInsertSheet.vue'
 import TableInsertSheet from './components/TableInsertSheet.vue'
 import LocalDraftExitPrompt from './components/LocalDraftExitPrompt.vue'
+import IncomingOpenPrompt from './components/IncomingOpenPrompt.vue'
 import MobileEditorToolbar from './components/MobileEditorToolbar.vue'
 import MobileSelectionToolbar from './components/MobileSelectionToolbar.vue'
 import LinkActionOverlay from './components/LinkActionOverlay.vue'
@@ -60,6 +61,8 @@ const props = defineProps<{
   androidCanSaveCopy: boolean
   androidCanKeepRecovery: boolean
   androidSaving: boolean
+  incomingOpenPromptOpen: boolean
+  incomingOpenName: string
   textDirection: 'ltr' | 'rtl'
   editorStyleVars: CSSProperties
   canPasteSelection: boolean
@@ -116,6 +119,8 @@ const emit = defineEmits<{
   'save-android-copy': []
   'keep-android-recovery': []
   'discard-android-changes': []
+  'keep-incoming': []
+  'discard-incoming': []
   'editor-host-change': [element: HTMLElement | null]
 }>()
 
@@ -136,7 +141,8 @@ const selectionToolbarSuspended = computed(
     props.linkSheetOpen ||
     props.tableSheetOpen ||
     props.draftExitPromptOpen ||
-    props.androidExitPromptOpen,
+    props.androidExitPromptOpen ||
+    props.incomingOpenPromptOpen,
 )
 
 const searchInput = ref<HTMLInputElement | null>(null)
@@ -236,7 +242,7 @@ onBeforeUnmount(() => {
       v-if="searchOpen"
       class="top-bar search-bar"
       data-testid="editor-search-bar"
-      :inert="outlineOpen || tableSheetOpen"
+      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
     >
       <button
         class="nav-button"
@@ -302,7 +308,7 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </header>
-    <header v-else class="top-bar" :inert="outlineOpen || tableSheetOpen">
+    <header v-else class="top-bar" :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen">
       <button
         class="nav-button"
         type="button"
@@ -369,7 +375,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <section class="editor-pane" :aria-label="t('editor.markdownEditor')" :inert="outlineOpen || tableSheetOpen">
+    <section class="editor-pane" :aria-label="t('editor.markdownEditor')" :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen">
       <div
         ref="editorShell"
         class="editor-host-shell"
@@ -401,7 +407,7 @@ onBeforeUnmount(() => {
     </section>
 
     <MobileSelectionToolbar
-      :inert="outlineOpen || tableSheetOpen"
+      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
       :host="editorShell"
@@ -419,7 +425,7 @@ onBeforeUnmount(() => {
     />
 
     <LinkActionOverlay
-      :inert="outlineOpen || tableSheetOpen"
+      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
       :caret-session="selectionCaretSession"
@@ -430,7 +436,7 @@ onBeforeUnmount(() => {
 
     <MobileEditorToolbar
       v-if="toolbarVisible && !editorFailed"
-      :inert="outlineOpen || tableSheetOpen"
+      :inert="outlineOpen || tableSheetOpen || incomingOpenPromptOpen"
       :expanded="toolbarExpanded"
       :active-panel="toolbarPanel"
       :editor-ready="editorReady"
@@ -519,6 +525,15 @@ onBeforeUnmount(() => {
         @save-copy="emit('save-android-copy')"
         @keep-recovery="emit('keep-android-recovery')"
         @discard="emit('discard-android-changes')"
+      />
+    </Transition>
+
+    <Transition name="editor-sheet">
+      <IncomingOpenPrompt
+        v-if="incomingOpenPromptOpen"
+        :incoming-name="incomingOpenName"
+        @keep="emit('keep-incoming')"
+        @discard="emit('discard-incoming')"
       />
     </Transition>
   </main>

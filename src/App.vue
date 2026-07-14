@@ -210,6 +210,11 @@ const homeTab = ref<HomeTab>(DEFAULT_HOME_TAB)
 const settingsPage = ref<SettingsPage>(DEFAULT_SETTINGS_PAGE)
 const draftExitPromptOpen = ref(false)
 const androidExitPromptOpen = ref(false)
+const incomingOpenPromptOpen = ref(false)
+const incomingOpenName = ref('')
+// The deferred replacement to run if the user discards the current document
+// after preservation was blocked; cleared whenever the prompt resolves.
+let pendingIncomingOpenProceed: (() => Promise<void>) | null = null
 const promptLocalDraftSaveOnExit = ref(false)
 const savingLocalDraftToAndroid = ref(false)
 const savingAndroidDocumentCopy = ref(false)
@@ -1530,6 +1535,63 @@ function discardAndroidChangesAndShowHome() {
   closeEditorToHome()
 }
 
+// An incoming Intent could not durably preserve the current document. Keep the
+// editor mounted and let the user decide instead of silently replacing it.
+function confirmIncomingOpenAfterBlockedPreserve(request: {
+  incomingName: string
+  proceed: () => Promise<void>
+}) {
+  // The safety prompt must be the only surface on screen so it is visible and
+  // Android Back answers it — otherwise an open menu/outline (z-index 40) would
+  // cover it. Close transient editor chrome WITHOUT touching the editor, which
+  // stays mounted with its unsaved content.
+  closeEditorMenu()
+  closeEditorToolbar()
+  closeEditorOutline()
+  closeEditorSearch({ restoreCursor: false })
+  closeLinkSheet()
+  closeTableSheet()
+  draftExitPromptOpen.value = false
+  androidExitPromptOpen.value = false
+
+  pendingIncomingOpenProceed = request.proceed
+  incomingOpenName.value = request.incomingName
+  incomingOpenPromptOpen.value = true
+  appLog.warn('incoming open blocked: current document could not be preserved', {
+    incomingName: request.incomingName,
+  })
+}
+
+function keepEditingInsteadOfIncomingOpen() {
+  pendingIncomingOpenProceed = null
+  incomingOpenPromptOpen.value = false
+  incomingOpenName.value = ''
+  // Resume the queue: any intent that arrived while the prompt was open runs now.
+  void incomingDocuments.resolveIncomingDecision()
+}
+
+async function discardCurrentAndOpenIncoming() {
+  const proceed = pendingIncomingOpenProceed
+  pendingIncomingOpenProceed = null
+  incomingOpenPromptOpen.value = false
+  incomingOpenName.value = ''
+  try {
+    if (proceed) {
+      await proceed()
+    }
+  } catch (error) {
+    const message = getAndroidDocumentUserMessage(error)
+    homeNotice.value = message
+    status.value = message
+    androidDocumentLog.error('open incoming Android document after discard failed', error)
+  } finally {
+    // Always release the decision gate, even when the deferred open fails.
+    // Otherwise every future incoming Intent stays queued with no prompt left
+    // on screen to resume it.
+    void incomingDocuments.resolveIncomingDecision()
+  }
+}
+
 function requestLifecycleFlush(reason: string) {
   void flushCurrentDocument(reason)
   // Same lifecycle moments the document flush uses; the position write is
@@ -1554,6 +1616,7 @@ async function handleAppBackButton() {
     currentScreen: currentScreen.value,
     homeTab: homeTab.value,
     settingsPage: settingsPage.value,
+    incomingOpenPromptOpen: incomingOpenPromptOpen.value,
     androidExitPromptOpen: androidExitPromptOpen.value,
     draftExitPromptOpen: draftExitPromptOpen.value,
     linkSheetOpen: linkSheetOpen.value,
@@ -1567,6 +1630,9 @@ async function handleAppBackButton() {
   })
 
   switch (action) {
+    case 'close-incoming-open-prompt':
+      keepEditingInsteadOfIncomingOpen()
+      return
     case 'close-android-exit-prompt':
       androidExitPromptOpen.value = false
       status.value = getAndroidEditorStatus()
@@ -1657,6 +1723,7 @@ const incomingDocuments = createIncomingDocumentOrchestration({
   persistAndroidRecoveryDraft,
   canPersistLocalDrafts,
   persistLocalDrafts,
+  confirmIncomingOpenAfterBlockedPreserve,
   getAndroidDocumentUserMessage,
   appLogger: appLog,
   documentLogger: androidDocumentLog,
@@ -1893,6 +1960,8 @@ onBeforeUnmount(() => {
     :android-can-save-copy="canSaveAndroidDocumentCopy()"
     :android-can-keep-recovery="canPersistAndroidRecoveryDrafts()"
     :android-saving="savingAndroidDocumentCopy"
+    :incoming-open-prompt-open="incomingOpenPromptOpen"
+    :incoming-open-name="incomingOpenName"
     :text-direction="appearanceTextSettings.textDirection"
     :editor-style-vars="editorStyleVars"
     :can-paste-selection="selectionClipboardHasText"
@@ -1942,6 +2011,8 @@ onBeforeUnmount(() => {
     @save-android-copy="saveAndroidDocumentCopy({ returnHomeAfterSave: true })"
     @keep-android-recovery="keepAndroidRecoveryAndShowHome"
     @discard-android-changes="discardAndroidChangesAndShowHome"
+    @keep-incoming="keepEditingInsteadOfIncomingOpen"
+    @discard-incoming="discardCurrentAndOpenIncoming"
     @editor-host-change="setEditorElement"
   />
 </template>
