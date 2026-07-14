@@ -38,6 +38,26 @@ test('toggles a task list checkbox and persists the checked markdown state', asy
   await expect.poll(() => getDraftStorage(page)).toContain('- [x] Tap this task')
 })
 
+test('keeps broken image alt text visible and accessible', async ({ page }) => {
+  await page.route('https://example.com/broken-alt.png', route => route.abort())
+  await openLocalDraft(page, {
+    id: 'broken-image-alt-draft',
+    markdown: `# Broken image
+
+![Descriptive broken image alternative](https://example.com/broken-alt.png)
+`,
+    title: /Broken image/,
+  })
+
+  const fallback = page.locator('.mu-inline-image.mu-image-fail')
+  const failureText = 'Load image failed: Descriptive broken image alternative'
+  await expect(fallback).toHaveAttribute('role', 'img')
+  await expect(fallback).toHaveAttribute('aria-label', failureText)
+  await expect.poll(() =>
+    fallback.evaluate(element => getComputedStyle(element, '::before').content),
+  ).toContain(failureText)
+})
+
 test('continues unordered and ordered lists from mobile keyboard input', async ({ page }) => {
   await newBlankDocument(page)
 

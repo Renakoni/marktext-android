@@ -97,6 +97,13 @@ export default function loadImageAsync(
                 if (imageText) {
                     operateClassName(imageText, 'remove', CLASS_NAMES.MU_IMAGE_LOADING);
                     operateClassName(imageText, 'add', CLASS_NAMES.MU_IMAGE_FAIL);
+                    if (imageText.classList.contains(CLASS_NAMES.MU_INLINE_IMAGE)) {
+                        const failureText = imageText.getAttribute('fail-text');
+                        if (failureText) {
+                            imageText.setAttribute('role', 'img');
+                            imageText.setAttribute('aria-label', failureText);
+                        }
+                    }
                     const image = imageText.querySelector('img');
                     if (image)
                         image.remove();

@@ -72,6 +72,10 @@ function getWrapperSelector(vnodes: VNode | VNode[]): string {
     return arr[0].sel as string;
 }
 
+function getWrapper(vnodes: VNode | VNode[]): VNode {
+    return Array.isArray(vnodes) ? vnodes[0] : vnodes;
+}
+
 function findImgSrc(vnodes: VNode | VNode[]): string | undefined {
     const arr = Array.isArray(vnodes) ? vnodes : [vnodes];
     let found: string | undefined;
@@ -248,6 +252,44 @@ describe('image renderer — fail / empty wrapper classes', () => {
         expect(selector).toContain('.mu-image-fail');
         expect(selector).not.toContain('.mu-image-success');
         expect(selector).not.toContain('.mu-empty-image');
+    });
+
+    it('keeps the image alt in the visible and accessible failure fallback', () => {
+        const renderer = makeRenderer({
+            id: 'mu-image-alt-failure',
+            isSuccess: false,
+        });
+        const token = makeImageToken({ alt: 'Descriptive broken image alternative' });
+
+        const out = image.call(
+            asRenderer(renderer),
+            { h, block: fakeBlock, token, cursor: fakeCursor },
+        );
+
+        expect(getWrapper(out).data?.attrs).toMatchObject({
+            'fail-text': 'Load image failed: Descriptive broken image alternative',
+            'role': 'img',
+            'aria-label': 'Load image failed: Descriptive broken image alternative',
+        });
+    });
+
+    it('does not add empty punctuation to the fallback for an empty alt', () => {
+        const renderer = makeRenderer({
+            id: 'mu-image-empty-alt-failure',
+            isSuccess: false,
+        });
+        const token = makeImageToken({ alt: '' });
+
+        const out = image.call(
+            asRenderer(renderer),
+            { h, block: fakeBlock, token, cursor: fakeCursor },
+        );
+
+        expect(getWrapper(out).data?.attrs).toMatchObject({
+            'fail-text': 'Load image failed',
+            'role': 'img',
+            'aria-label': 'Load image failed',
+        });
     });
 
     it('adds `mu-empty-image` class when the token has no resolvable src', () => {
