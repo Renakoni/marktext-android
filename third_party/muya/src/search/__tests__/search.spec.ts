@@ -141,6 +141,19 @@ describe('search.search() — selectHighlight restores the editor cursor', () =>
 });
 
 describe('search.find() — cursor navigation across matches', () => {
+    it('recovers when the configured highlight index is outside the result set', () => {
+        const muya = bootMuya('x and x and x\n');
+        placeCursorOnFirstBlock(muya);
+
+        const search = muya.editor.searchModule;
+        search.search('x', { highlightIndex: 100 });
+
+        expect(search.index).toBe(0);
+        expect(() => search.find('next')).not.toThrow();
+        expect(search.index).toBe(1);
+        expect(highlightCount(muya)).toBe(1);
+    });
+
     it('wraps forward 0 -> 1 -> 2 -> 0 and backward 0 -> 2, moving the active mu-highlight', () => {
         const muya = bootMuya('x and x and x\n');
         placeCursorOnFirstBlock(muya);

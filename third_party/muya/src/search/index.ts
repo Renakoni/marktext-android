@@ -14,6 +14,7 @@ export const MAX_FULL_SEARCH_HIGHLIGHTS = 100;
 
 export class Search {
     private _value: string = '';
+    private _matchesByBlock = new Map<Content, IMatch[]>();
     public matches: IMatch[] = [];
     public index: number = -1;
 
@@ -31,6 +32,7 @@ export class Search {
     // stale matches don't reference the previous document's blocks (#1932).
     reset() {
         this._value = '';
+        this._matchesByBlock.clear();
         this.matches = [];
         this.index = -1;
     }
@@ -75,13 +77,13 @@ export class Search {
     private _updateMatchBlocks(blocks: ReadonlySet<Content>) {
         const { matches, index } = this;
         const activeOnly = matches.length > MAX_FULL_SEARCH_HIGHLIGHTS;
+        const activeMatch = matches[index];
 
         for (const block of blocks) {
             const highlights: IHighlight[] = [];
-            for (let matchIndex = 0; matchIndex < matches.length; matchIndex++) {
-                const match = matches[matchIndex];
-                const active = matchIndex === index;
-                if (match.block === block && (!activeOnly || active)) {
+            for (const match of this._matchesByBlock.get(block) ?? []) {
+                const active = match === activeMatch;
+                if (!activeOnly || active) {
                     highlights.push({
                         start: match.start,
                         end: match.end,
@@ -177,9 +179,12 @@ export class Search {
         if (index >= len)
             index = 0;
 
-        const previousBlock = matches[this.index].block;
+        const previousBlock = matches[this.index]?.block;
         this.index = index;
-        this._updateMatchBlocks(new Set([previousBlock, matches[index].block]));
+        const changedBlocks = new Set<Content>([matches[index].block]);
+        if (previousBlock)
+            changedBlocks.add(previousBlock);
+        this._updateMatchBlocks(changedBlocks);
 
         return this;
     }
@@ -226,8 +231,8 @@ export class Search {
             });
         }
 
-        if (highlightIndex !== -1) {
-            // If set the highlight index, then highlight the highlighIndex
+        if (highlightIndex >= 0 && highlightIndex < matches.length) {
+            // If set a valid highlight index, highlight that match.
             index = highlightIndex;
         }
         else if (matches.length) {
@@ -235,7 +240,21 @@ export class Search {
             index = 0;
         }
 
-        Object.assign(this, { _value: value, matches, index });
+        const matchesByBlock = new Map<Content, IMatch[]>();
+        for (const match of matches) {
+            const blockMatches = matchesByBlock.get(match.block);
+            if (blockMatches)
+                blockMatches.push(match);
+            else
+                matchesByBlock.set(match.block, [match]);
+        }
+
+        Object.assign(this, {
+            _value: value,
+            _matchesByBlock: matchesByBlock,
+            matches,
+            index,
+        });
 
         this._updateMatches();
 
