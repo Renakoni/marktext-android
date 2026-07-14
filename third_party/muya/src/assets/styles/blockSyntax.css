@@ -525,7 +525,7 @@ li.mu-task-list-item > span.mu-task-list-checkbox {
 
 li.mu-task-list-item > input.mu-checkbox-checked ~ *,
 li.mu-task-list-item > span.mu-checkbox-checked ~ * {
-    color: var(--editor-color-50);
+    color: var(--task-completed-color);
 }
 
 li.mu-task-list-item > input[type='checkbox']::before,
