@@ -6,7 +6,7 @@
  * Every theme must define the full semantic contract:
  *
  *   Surfaces   --app-bg --surface --surface-muted --surface-sunken --surface-raised
- *   Content    --text --text-muted --text-faint --on-accent
+ *   Content    --text --text-muted --text-faint --task-completed-color --on-accent
  *   Lines      --border --border-strong --separator
  *   Accent     --accent --accent-strong --accent-hover --accent-soft
  *              --accent-tint-10 --accent-tint-11

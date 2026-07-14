@@ -7,6 +7,15 @@ import { describe, expect, it } from 'vitest'
 const sourceRoot = join(process.cwd(), 'src')
 const themesRoot = join(sourceRoot, 'styles', 'themes')
 const structuralTokensPath = join(sourceRoot, 'styles', 'theme-tokens.css')
+const taskListStylesPath = join(
+  process.cwd(),
+  'third_party',
+  'muya',
+  'src',
+  'assets',
+  'styles',
+  'blockSyntax.css',
+)
 
 // Every shipped palette; the first entry is the canonical token set the
 // others are compared against. Prism overlay files are rule-only (no token
@@ -31,6 +40,7 @@ const REQUIRED_SEMANTIC_TOKENS = [
   '--text',
   '--text-muted',
   '--text-faint',
+  '--task-completed-color',
   '--on-accent',
   '--border',
   '--border-strong',
@@ -70,6 +80,62 @@ function collectDefinedTokens(css: string): Set<string> {
   return new Set(Array.from(css.matchAll(/(--[\w-]+)\s*:/g), match => match[1]))
 }
 
+function collectTokenValues(css: string): Map<string, string> {
+  return new Map(
+    Array.from(css.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g), match => [
+      match[1],
+      match[2].trim(),
+    ]),
+  )
+}
+
+function resolveHexToken(
+  tokens: Map<string, string>,
+  token: string,
+  visited = new Set<string>(),
+): [number, number, number] {
+  if (visited.has(token)) {
+    throw new Error(`circular color token: ${token}`)
+  }
+  visited.add(token)
+
+  const value = tokens.get(token)
+  if (!value) {
+    throw new Error(`missing color token: ${token}`)
+  }
+
+  const reference = value.match(/^var\(\s*(--[\w-]+)\s*\)$/)
+  if (reference) {
+    return resolveHexToken(tokens, reference[1], visited)
+  }
+
+  const hex = value.match(/^#([\da-f]{6})$/i)
+  if (!hex) {
+    throw new Error(`expected an opaque hex color for ${token}, received: ${value}`)
+  }
+
+  return [
+    Number.parseInt(hex[1].slice(0, 2), 16),
+    Number.parseInt(hex[1].slice(2, 4), 16),
+    Number.parseInt(hex[1].slice(4, 6), 16),
+  ]
+}
+
+function relativeLuminance([red, green, blue]: [number, number, number]) {
+  const linearize = (channel: number) => {
+    const value = channel / 255
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+  }
+
+  return 0.2126 * linearize(red) + 0.7152 * linearize(green) + 0.0722 * linearize(blue)
+}
+
+function contrastRatio(foreground: [number, number, number], background: [number, number, number]) {
+  const lighter = Math.max(relativeLuminance(foreground), relativeLuminance(background))
+  const darker = Math.min(relativeLuminance(foreground), relativeLuminance(background))
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
 function collectReferencedTokens(css: string): Set<string> {
   return new Set(Array.from(css.matchAll(/var\(\s*(--[\w-]+)/g), match => match[1]))
 }
@@ -106,6 +172,28 @@ describe('theme token architecture', () => {
       const missing = REQUIRED_SEMANTIC_TOKENS.filter(token => !tokens.has(token))
       expect(missing, `missing in ${relative(process.cwd(), path)}`).toEqual([])
     }
+  })
+
+  it('keeps completed task text at WCAG AA contrast in every theme', () => {
+    for (const path of themePaths) {
+      const tokens = collectTokenValues(readFileSync(path, 'utf8'))
+      const ratio = contrastRatio(
+        resolveHexToken(tokens, '--task-completed-color'),
+        resolveHexToken(tokens, '--editor-bg-color'),
+      )
+      const name = relative(process.cwd(), path)
+
+      expect(ratio, `${name}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('uses the completed-task token for checked task content', () => {
+    const taskListStyles = readFileSync(taskListStylesPath, 'utf8')
+    const checkedTaskRule = taskListStyles.match(
+      /li\.mu-task-list-item > input\.mu-checkbox-checked ~ \*,[\s\S]*?\{([\s\S]*?)\}/,
+    )
+
+    expect(checkedTaskRule?.[1]).toMatch(/color:\s*var\(--task-completed-color\)/)
   })
 
   it('never references an undefined token from app styles', () => {
