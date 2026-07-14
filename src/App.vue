@@ -184,7 +184,7 @@ import {
   type AdvancedMaintenanceActionId,
 } from './features/settings/advancedSettings'
 import { createMuyaMobileEditorCommandTarget } from './lib/muyaMobileAdapter'
-import { translateKnownText, useI18n } from './lib/i18n'
+import { AUTO_APP_LOCALE, translateKnownText, useI18n } from './lib/i18n'
 import {
   createRecentDocumentFromLocalDraft,
   getRecentDocumentListItems,
@@ -252,7 +252,7 @@ const {
   openTableSheet: openEditorTableSheet,
   closeTableSheet: resetEditorTableSheet,
 } = useEditorToolbar()
-const { locale, setLocale, t } = useI18n()
+const { locale, setLocalePreference, t } = useI18n()
 const { getValue, clearSettings } = useSettingsState()
 const appearanceTextSettings = computed(() => getAppearanceTextSettings(getValue))
 const appearanceThemeSettings = computed(() => getAppearanceThemeSettings(getValue))
@@ -1796,7 +1796,7 @@ function clearLocalDraftMaintenanceState() {
 
 function resetSettingsMaintenanceState() {
   clearSettings()
-  setLocale('en')
+  setLocalePreference(AUTO_APP_LOCALE)
   appLog.info('reset settings from Advanced maintenance')
 }
 

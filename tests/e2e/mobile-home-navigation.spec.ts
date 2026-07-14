@@ -261,7 +261,11 @@ test('switches between document home and the settings about screen', async ({ pa
   await page.getByTestId('settings-advanced-reset-action').click()
   await expect(page.getByTestId('settings-maintenance-sheet')).toContainText('Reset settings?')
   await expect(page.getByTestId('settings-maintenance-reset-confirm')).toContainText('Reset')
-  await page.getByTestId('settings-maintenance-cancel').click()
+  await page.getByTestId('settings-maintenance-reset-confirm').click()
+  await expect(page.getByTestId('settings-maintenance-sheet')).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() =>
+    localStorage.getItem('marktext-for-android:locale'),
+  )).toBe('auto')
   await expect(page.getByTestId('settings-advanced-normalize-endings')).toHaveCount(0)
   await expect(page.getByTestId('settings-advanced-search-exclusions')).toHaveCount(0)
   await expect(page.getByTestId('settings-advanced-keybindings')).toHaveCount(0)

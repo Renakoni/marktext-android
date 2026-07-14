@@ -167,7 +167,7 @@ function getSystemLanguages() {
   if (typeof navigator === 'undefined') {
     return []
   }
-  return navigator.languages.length > 0
+  return navigator.languages?.length > 0
     ? navigator.languages
     : navigator.language
       ? [navigator.language]

@@ -55,6 +55,16 @@ describe('locale preference', () => {
     expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBeNull()
   })
 
+  it('falls back to navigator.language when navigator.languages is unavailable', async () => {
+    vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(undefined as never)
+    vi.spyOn(window.navigator, 'language', 'get').mockReturnValue('de-DE')
+    const { useI18n } = await import('./i18n')
+    const { locale, localePreference } = useI18n()
+
+    expect(localePreference.value).toBe('auto')
+    expect(locale.value).toBe('de')
+  })
+
   it('persists an explicit selection and stops following system changes', async () => {
     const languages = ['de-DE']
     const languageSpy = setSystemLanguages(languages)
