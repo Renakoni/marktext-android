@@ -6,6 +6,12 @@ import type { IMatch } from './types';
 import { DEFAULT_SEARCH_OPTIONS } from '../config';
 import { buildRegexValue, matchString } from '../utils/search';
 
+// Re-rendering inline DOM is substantially more expensive than collecting
+// matches on Android WebView. Above this bound, keep the exact result set and
+// navigation but render only the active match instead of blocking on hundreds
+// or thousands of background highlights.
+export const MAX_FULL_SEARCH_HIGHLIGHTS = 100;
+
 export class Search {
     private _value: string = '';
     public matches: IMatch[] = [];
@@ -33,11 +39,14 @@ export class Search {
         const { matches, index } = this;
         let i;
         const len = matches.length;
+        const activeOnly = len > MAX_FULL_SEARCH_HIGHLIGHTS;
         const matchesMap = new Map<Content, IHighlight[]>();
 
         for (i = 0; i < len; i++) {
             const { block, start, end } = matches[i];
             const active = i === index;
+            if (activeOnly && !active)
+                continue;
             const highlight: IHighlight = { start, end, active };
             const highlights = matchesMap.get(block);
 
@@ -59,6 +68,35 @@ export class Search {
                 block.blurHandler();
 
             if (isActive && !isClear)
+                block.focusHandler();
+        }
+    }
+
+    private _updateMatchBlocks(blocks: ReadonlySet<Content>) {
+        const { matches, index } = this;
+        const activeOnly = matches.length > MAX_FULL_SEARCH_HIGHLIGHTS;
+
+        for (const block of blocks) {
+            const highlights: IHighlight[] = [];
+            for (let matchIndex = 0; matchIndex < matches.length; matchIndex++) {
+                const match = matches[matchIndex];
+                const active = matchIndex === index;
+                if (match.block === block && (!activeOnly || active)) {
+                    highlights.push({
+                        start: match.start,
+                        end: match.end,
+                        active,
+                    });
+                }
+            }
+
+            const isActive = highlights.some(highlight => highlight.active);
+            block.update(undefined, highlights);
+
+            if (block.parent?.active && !isActive)
+                block.blurHandler();
+
+            if (isActive)
                 block.focusHandler();
         }
     }
@@ -139,10 +177,9 @@ export class Search {
         if (index >= len)
             index = 0;
 
+        const previousBlock = matches[this.index].block;
         this.index = index;
-
-        this._updateMatches(true);
-        this._updateMatches();
+        this._updateMatchBlocks(new Set([previousBlock, matches[index].block]));
 
         return this;
     }
