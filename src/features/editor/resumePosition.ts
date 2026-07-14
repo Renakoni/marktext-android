@@ -137,6 +137,54 @@ export function computeResumeAnchor(
   return { index: blocks.length - 1, ratio: 1 }
 }
 
+/**
+ * Indexed equivalent of computeResumeAnchor for vertically ordered DOM
+ * blocks. Binary search avoids forcing layout for every block during an exit
+ * or lifecycle flush on very large documents.
+ */
+export function computeResumeAnchorFromRects(
+  viewportTop: number,
+  blockCount: number,
+  readRect: (index: number) => ResumeBlockRect,
+): { index: number; ratio: number } | null {
+  if (blockCount === 0) {
+    return null
+  }
+
+  const rectCache = new Map<number, ResumeBlockRect>()
+  const getRect = (index: number) => {
+    const cached = rectCache.get(index)
+    if (cached) {
+      return cached
+    }
+    const rect = readRect(index)
+    rectCache.set(index, rect)
+    return rect
+  }
+
+  let low = 0
+  let high = blockCount
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2)
+    const rect = getRect(middle)
+    if (viewportTop < rect.top + rect.height) {
+      high = middle
+    } else {
+      low = middle + 1
+    }
+  }
+
+  if (low === blockCount) {
+    return { index: blockCount - 1, ratio: 1 }
+  }
+
+  const block = getRect(low)
+  if (viewportTop <= block.top || block.height <= 0) {
+    return { index: low, ratio: 0 }
+  }
+  return { index: low, ratio: (viewportTop - block.top) / block.height }
+}
+
 /** Scroll offset that puts the viewport top at `ratio` inside the block. */
 export function computeResumeScrollTop({
   scrollTop,
@@ -285,13 +333,10 @@ export function createResumePosition({
 
     const blocks = Array.from(blockContainer.children)
     const viewportTop = scrollContainer.getBoundingClientRect().top
-    const computed = computeResumeAnchor(
-      viewportTop,
-      blocks.map(block => {
-        const rect = block.getBoundingClientRect()
-        return { top: rect.top, height: rect.height }
-      }),
-    )
+    const computed = computeResumeAnchorFromRects(viewportTop, blocks.length, index => {
+      const rect = blocks[index].getBoundingClientRect()
+      return { top: rect.top, height: rect.height }
+    })
     if (!computed) {
       return null
     }

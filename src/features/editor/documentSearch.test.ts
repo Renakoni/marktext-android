@@ -39,6 +39,7 @@ function createSearchHarness(options: FakeEditorOptions & { editorMissing?: bool
   const documentSearch = createDocumentSearch({
     getEditor: () => (options.editorMissing ? null : editor),
     scrollActiveMatchIntoView,
+    queryDebounceMs: 0,
   })
 
   return { editor, scrollActiveMatchIntoView, documentSearch }
@@ -221,6 +222,55 @@ describe('createDocumentSearch', () => {
 
     expect(documentSearch.searchOpen.value).toBe(false)
     expect(documentSearch.matchCount.value).toBe(0)
+  })
+
+  it('coalesces rapid query input into one search', () => {
+    vi.useFakeTimers()
+    try {
+      const editor = createFakeEditor({ matchCounts: { apple: 2 } })
+      const documentSearch = createDocumentSearch({
+        getEditor: () => editor,
+        queryDebounceMs: 120,
+      })
+      documentSearch.openSearch()
+
+      documentSearch.setQuery('a')
+      documentSearch.setQuery('app')
+      documentSearch.setQuery('apple')
+
+      expect(editor.search).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(119)
+      expect(editor.search).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(1)
+      expect(editor.search).toHaveBeenCalledTimes(1)
+      expect(editor.search).toHaveBeenCalledWith('apple')
+      expect(documentSearch.matchCount.value).toBe(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('flushes a pending query before next-match navigation', () => {
+    vi.useFakeTimers()
+    try {
+      const editor = createFakeEditor({ matchCounts: { apple: 2 } })
+      const documentSearch = createDocumentSearch({
+        getEditor: () => editor,
+        queryDebounceMs: 120,
+      })
+      documentSearch.openSearch()
+      documentSearch.setQuery('apple')
+
+      documentSearch.findNext()
+
+      expect(editor.search).toHaveBeenCalledWith('apple')
+      expect(editor.find).toHaveBeenCalledWith('next')
+      expect(documentSearch.activeMatchIndex.value).toBe(1)
+      vi.runAllTimers()
+      expect(editor.search).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   computeResumeAnchor,
+  computeResumeAnchorFromRects,
   computeResumeScrollTop,
   createResumePosition,
 } from './resumePosition'
@@ -48,6 +49,30 @@ describe('computeResumeAnchor', () => {
       index: 1,
       ratio: 0,
     })
+  })
+
+  it('finds the same anchors through indexed layout reads', () => {
+    for (const viewportTop of [-600, -290, 0, 130, 500]) {
+      expect(
+        computeResumeAnchorFromRects(viewportTop, BLOCKS.length, index => BLOCKS[index]),
+      ).toEqual(computeResumeAnchor(viewportTop, BLOCKS))
+    }
+  })
+
+  it('uses logarithmic layout reads for a very large block list', () => {
+    const blocks = Array.from({ length: 8_192 }, (_, index) => ({
+      top: index * 20,
+      height: 16,
+    }))
+    let reads = 0
+
+    const anchor = computeResumeAnchorFromRects(120_017, blocks.length, index => {
+      reads += 1
+      return blocks[index]
+    })
+
+    expect(anchor).toEqual({ index: 6_001, ratio: 0 })
+    expect(reads).toBeLessThanOrEqual(15)
   })
 })
 

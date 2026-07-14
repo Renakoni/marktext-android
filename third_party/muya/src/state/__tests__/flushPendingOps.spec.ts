@@ -66,6 +66,22 @@ describe('muya.flush() — make pending edits durable synchronously (#2938)', ()
         expect(changes).toBe(1);
     });
 
+    it('does not attach a redundant post-edit state snapshot', () => {
+        const muya = boot('hello\n');
+        const leaf = muya.editor.scrollPage!.firstContentInDescendant() as Content;
+        let change: Record<string, unknown> | null = null;
+
+        muya.eventCenter.on('json-change', (payload: Record<string, unknown>) => {
+            change = payload;
+        });
+
+        leaf.text = 'hello world';
+        muya.flush();
+
+        expect(change).toHaveProperty('prevDoc');
+        expect(change).not.toHaveProperty('doc');
+    });
+
     it('flushing before setContent persists the outgoing edit (no loss, no double-flush)', async () => {
         const muya = boot('hello\n');
         const leaf = muya.editor.scrollPage!.firstContentInDescendant() as Content;
