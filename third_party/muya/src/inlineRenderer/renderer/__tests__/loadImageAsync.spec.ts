@@ -238,3 +238,39 @@ describe('loadImageAsync — small image class on first load', () => {
         expect(wrapper.classList.contains('mu-small-image')).toBe(false);
     });
 });
+
+describe('loadImageAsync — accessible failure state on first load', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        document.body.innerHTML = '';
+    });
+
+    it('exposes the rendered failure text as the image accessible name', async () => {
+        const { loadImage } = await import('../../../utils/image');
+        vi.mocked(loadImage).mockRejectedValueOnce(new Error('image unavailable'));
+        const r = makeRenderer();
+
+        const { id } = loadImageAsync.call(
+            asRenderer(r),
+            { isUnknownType: false, src: 'https://example.com/broken.png' },
+            { alt: 'Descriptive broken image alternative' },
+        );
+
+        const wrapper = document.createElement('span');
+        wrapper.id = id!;
+        wrapper.classList.add('mu-inline-image', 'mu-image-loading');
+        wrapper.setAttribute(
+            'fail-text',
+            'Load image failed: Descriptive broken image alternative',
+        );
+        wrapper.appendChild(document.createElement('span'));
+        document.body.appendChild(wrapper);
+
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+
+        expect(wrapper.getAttribute('role')).toBe('img');
+        expect(wrapper.getAttribute('aria-label')).toBe(
+            'Load image failed: Descriptive broken image alternative',
+        );
+    });
+});

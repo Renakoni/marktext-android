@@ -83,11 +83,16 @@ export default function image(
     const imageSrc = getImageSrc(token.attrs.src);
     const selectedImage = this.muya.editor.selection.image;
     const { i18n } = this.muya;
+    const alt = token.attrs.alt;
+    const plainAlt = alt.replace(/[`*{}[\]()#+\-.!_>~:|<$]/g, '');
+    const loadFailedText = plainAlt
+        ? `${i18n.t('Load image failed')}: ${plainAlt}`
+        : i18n.t('Load image failed');
     const data = {
         attrs: {
             'contenteditable': 'false',
             'empty-text': i18n.t('Click to add an image'),
-            'fail-text': i18n.t('Load image failed'),
+            'fail-text': loadFailedText,
         },
         dataset: {
             raw: token.raw,
@@ -100,7 +105,6 @@ export default function image(
     let resolvedUrl: string | undefined;
     // `src` stays the plain path — it is the key the `urlMap`/cache lookups use.
     const src = imageSrc.src;
-    const alt = token.attrs.alt;
     const title = token.attrs.title;
     const width = token.attrs.width;
     const height = token.attrs.height;
@@ -191,6 +195,10 @@ export default function image(
         }
         else {
             wrapperSelector += `.${CLASS_NAMES.MU_IMAGE_FAIL}`;
+            Object.assign(data.attrs, {
+                'role': 'img',
+                'aria-label': loadFailedText,
+            });
         }
 
         // Add image selected class name.
@@ -200,7 +208,7 @@ export default function image(
         const renderImage = () => {
             const data = {
                 props: {
-                    alt: alt.replace(/[`*{}[\]()#+\-.!_>~:|<$]/g, ''),
+                    alt: plainAlt,
                     src: imgSrc,
                     title,
                 },
