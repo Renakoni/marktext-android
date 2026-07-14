@@ -3,6 +3,7 @@
 import type Content from '../../block/base/content';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Muya } from '../../muya';
+import { MAX_FULL_SEARCH_HIGHLIGHTS } from '../index';
 
 // Coverage for the Search module (src/search/index.ts) — the find/replace
 // engine the desktop "Find in document" / "Find and replace" surfaces drive.
@@ -91,6 +92,27 @@ describe('search.search()', () => {
         expect(highlightCount(muya)).toBe(0);
         expect(selectionCount(muya)).toBe(0);
     });
+
+    it('keeps an exact large result set but renders only its active match', () => {
+        const markdown = Array.from(
+            { length: MAX_FULL_SEARCH_HIGHLIGHTS + 1 },
+            (_, index) => `x result ${index}`,
+        ).join('\n\n');
+        const muya = bootMuya(markdown);
+        placeCursorOnFirstBlock(muya);
+
+        const search = muya.editor.searchModule;
+        search.search('x');
+
+        expect(search.matches.length).toBe(MAX_FULL_SEARCH_HIGHLIGHTS + 1);
+        expect(highlightCount(muya)).toBe(1);
+        expect(selectionCount(muya)).toBe(0);
+
+        search.find('next');
+        expect(search.index).toBe(1);
+        expect(highlightCount(muya)).toBe(1);
+        expect(selectionCount(muya)).toBe(0);
+    });
 });
 
 describe('search.search() — selectHighlight restores the editor cursor', () => {
@@ -119,6 +141,19 @@ describe('search.search() — selectHighlight restores the editor cursor', () =>
 });
 
 describe('search.find() — cursor navigation across matches', () => {
+    it('recovers when the configured highlight index is outside the result set', () => {
+        const muya = bootMuya('x and x and x\n');
+        placeCursorOnFirstBlock(muya);
+
+        const search = muya.editor.searchModule;
+        search.search('x', { highlightIndex: 100 });
+
+        expect(search.index).toBe(0);
+        expect(() => search.find('next')).not.toThrow();
+        expect(search.index).toBe(1);
+        expect(highlightCount(muya)).toBe(1);
+    });
+
     it('wraps forward 0 -> 1 -> 2 -> 0 and backward 0 -> 2, moving the active mu-highlight', () => {
         const muya = bootMuya('x and x and x\n');
         placeCursorOnFirstBlock(muya);
@@ -145,6 +180,24 @@ describe('search.find() — cursor navigation across matches', () => {
         // previous from index 0 wraps backward to the last match (2).
         search.find('previous');
         expect(search.index).toBe(2);
+        expect(highlightCount(muya)).toBe(1);
+        expect(selectionCount(muya)).toBe(2);
+    });
+
+    it('redraws only the blocks whose active match changed', () => {
+        const muya = bootMuya('x first\n\nx second\n\nx third\n');
+        placeCursorOnFirstBlock(muya);
+
+        const search = muya.editor.searchModule;
+        search.search('x');
+        const blocks = search.matches.map(match => match.block);
+        const updateSpies = blocks.map(block => vi.spyOn(block, 'update'));
+
+        search.find('next');
+
+        expect(updateSpies[0]).toHaveBeenCalledTimes(1);
+        expect(updateSpies[1]).toHaveBeenCalledTimes(1);
+        expect(updateSpies[2]).not.toHaveBeenCalled();
         expect(highlightCount(muya)).toBe(1);
         expect(selectionCount(muya)).toBe(2);
     });

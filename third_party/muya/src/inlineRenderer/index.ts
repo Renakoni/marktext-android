@@ -14,6 +14,7 @@ const debug = logger('inlineRenderer:');
 class InlineRenderer {
     public labels: Labels = new Map();
     public renderer: Renderer;
+    private _labelsRevision = -1;
 
     constructor(public muya: Muya) {
         this.renderer = new Renderer(muya, this);
@@ -75,7 +76,11 @@ class InlineRenderer {
     }
 
     private _collectReferenceDefinitions() {
-        const state = this.muya.editor.jsonState.getState();
+        const { jsonState } = this.muya.editor;
+        if (this._labelsRevision === jsonState.revision)
+            return;
+
+        const state = jsonState.getState();
         const labels = new Map();
 
         const travel = (sts: TState[]) => {
@@ -96,6 +101,7 @@ class InlineRenderer {
         travel(state);
 
         this.labels = labels;
+        this._labelsRevision = jsonState.revision;
     }
 
     getLabelInfo(blockOrState: ParagraphContent | IParagraphState) {
