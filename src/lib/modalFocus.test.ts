@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   isolateModalBackground,
   trapModalTabKey,
@@ -88,15 +88,42 @@ describe('modal focus', () => {
     }
   })
 
-  it('prevents Tab when a dialog temporarily has no enabled controls', () => {
-    document.body.innerHTML = '<section id="dialog"><button disabled>Busy</button></section>'
+  it('keeps focus on a dialog that temporarily has no enabled controls', () => {
+    document.body.innerHTML = `
+      <section id="dialog" tabindex="-1"><button disabled>Busy</button></section>
+    `
     const dialog = document.querySelector<HTMLElement>('#dialog')!
     const event = createTabEvent()
-    const focusSpy = vi.spyOn(dialog, 'focus')
 
     trapModalTabKey(dialog, event)
 
     expect(event.defaultPrevented).toBe(true)
-    expect(focusSpy).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(dialog)
+  })
+
+  it('keeps shared background branches isolated until the last modal closes', () => {
+    document.body.innerHTML = `
+      <main class="app-shell">
+        <header id="header"></header>
+        <section id="first-dialog"></section>
+      </main>
+    `
+    const shell = document.querySelector<HTMLElement>('.app-shell')!
+    const firstDialog = document.querySelector<HTMLElement>('#first-dialog')!
+    const header = document.querySelector<HTMLElement>('#header')!
+
+    const restoreFirst = isolateModalBackground(firstDialog)
+    const secondDialog = document.createElement('section')
+    secondDialog.id = 'second-dialog'
+    shell.append(secondDialog)
+    const restoreSecond = isolateModalBackground(secondDialog)
+
+    restoreFirst()
+    expect(header.hasAttribute('inert')).toBe(true)
+    expect(header.getAttribute('aria-hidden')).toBe('true')
+
+    restoreSecond()
+    expect(header.hasAttribute('inert')).toBe(false)
+    expect(header.hasAttribute('aria-hidden')).toBe(false)
   })
 })

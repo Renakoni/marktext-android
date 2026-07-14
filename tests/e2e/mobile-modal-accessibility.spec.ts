@@ -79,6 +79,9 @@ test('incoming-open safety prompt isolates the unsaved editor', async ({ page })
     const win = window as unknown as MockCapacitorWindow
     return (win.__androidDocumentListenerCount?.('openWithDocument') ?? 0) > 0
   })
+  await page.getByTestId('outline-open-button').click()
+  const outlineSheet = page.getByTestId('outline-sheet')
+  await expect(outlineSheet).toBeVisible()
 
   await page.evaluate(() => {
     const win = window as unknown as MockCapacitorWindow
@@ -94,6 +97,7 @@ test('incoming-open safety prompt isolates the unsaved editor', async ({ page })
   })
 
   const prompt = page.getByTestId('incoming-open-prompt')
+  await expect(outlineSheet).toHaveCount(0)
   await expectModalContract(page, prompt)
   await page.getByTestId('prompt-keep-editing-button').click()
   await expect(prompt).toHaveCount(0)

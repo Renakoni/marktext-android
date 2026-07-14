@@ -35,6 +35,7 @@ const { onModalKeydown } = useModalFocus({
     return nameInput.value
   },
   onEscape: () => emit('cancel'),
+  restoreFocus: false,
 })
 </script>
 

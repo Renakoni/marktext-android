@@ -10,11 +10,13 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ')
 
-interface BackgroundAttributeState {
-  element: HTMLElement
+interface BackgroundIsolationState {
+  activeCount: number
   inert: string | null
   ariaHidden: string | null
 }
+
+const backgroundIsolationStates = new WeakMap<HTMLElement, BackgroundIsolationState>()
 
 interface ModalFocusOptions {
   root: Ref<HTMLElement | null>
@@ -46,6 +48,7 @@ export function trapModalTabKey(root: HTMLElement, event: KeyboardEvent) {
   const focusables = getModalFocusableElements(root)
   if (focusables.length === 0) {
     event.preventDefault()
+    root.focus({ preventScroll: true })
     return
   }
 
@@ -68,7 +71,7 @@ export function trapModalTabKey(root: HTMLElement, event: KeyboardEvent) {
 }
 
 export function isolateModalBackground(modal: HTMLElement) {
-  const state: BackgroundAttributeState[] = []
+  const isolatedElements: HTMLElement[] = []
   const boundary = modal.closest<HTMLElement>('.app-shell') ?? document.body
   let branch = modal
 
@@ -78,21 +81,42 @@ export function isolateModalBackground(modal: HTMLElement) {
       if (sibling === branch || !(sibling instanceof HTMLElement)) {
         continue
       }
-      state.push({
-        element: sibling,
-        inert: sibling.getAttribute('inert'),
-        ariaHidden: sibling.getAttribute('aria-hidden'),
-      })
+      const existingState = backgroundIsolationStates.get(sibling)
+      if (existingState) {
+        existingState.activeCount += 1
+      } else {
+        backgroundIsolationStates.set(sibling, {
+          activeCount: 1,
+          inert: sibling.getAttribute('inert'),
+          ariaHidden: sibling.getAttribute('aria-hidden'),
+        })
+      }
+      isolatedElements.push(sibling)
       sibling.setAttribute('inert', '')
       sibling.setAttribute('aria-hidden', 'true')
     }
     branch = parent
   }
 
+  let active = true
   return () => {
-    for (const entry of state.reverse()) {
-      restoreAttribute(entry.element, 'inert', entry.inert)
-      restoreAttribute(entry.element, 'aria-hidden', entry.ariaHidden)
+    if (!active) {
+      return
+    }
+    active = false
+
+    for (const element of isolatedElements.reverse()) {
+      const state = backgroundIsolationStates.get(element)
+      if (!state) {
+        continue
+      }
+      state.activeCount -= 1
+      if (state.activeCount > 0) {
+        continue
+      }
+      restoreAttribute(element, 'inert', state.inert)
+      restoreAttribute(element, 'aria-hidden', state.ariaHidden)
+      backgroundIsolationStates.delete(element)
     }
   }
 }

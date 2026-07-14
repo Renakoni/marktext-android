@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import SettingsChoiceRow from './SettingsChoiceRow.vue'
 import SettingsRow from './SettingsRow.vue'
 import SettingsSection from './SettingsSection.vue'
@@ -218,7 +218,7 @@ function closeMaintenanceSheet() {
   maintenanceActionResult.value = null
 }
 
-const { onModalKeydown } = useModalFocus({
+const { focusInitial, onModalKeydown } = useModalFocus({
   root: maintenanceModalRoot,
   initialFocus: () => maintenanceCancelButton.value,
   onEscape: closeMaintenanceSheet,
@@ -230,6 +230,7 @@ async function confirmMaintenanceAction() {
     return
   }
 
+  maintenanceModalRoot.value?.focus({ preventScroll: true })
   maintenanceActionBusy.value = true
   maintenanceActionError.value = null
   maintenanceActionResult.value = null
@@ -247,6 +248,8 @@ async function confirmMaintenanceAction() {
       : t('settings.maintenance.genericError')
   } finally {
     maintenanceActionBusy.value = false
+    await nextTick()
+    focusInitial()
   }
 }
 
