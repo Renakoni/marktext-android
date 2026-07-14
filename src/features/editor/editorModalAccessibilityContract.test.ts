@@ -6,12 +6,29 @@ const editorScreenSource = readFileSync(
   'utf8',
 )
 
-function openingTag(marker: string) {
-  const start = editorScreenSource.indexOf(marker)
+function openingTag(source: string, marker: string) {
+  const start = source.indexOf(marker)
   if (start < 0) {
     throw new Error(`Missing editor surface: ${marker}`)
   }
-  return editorScreenSource.slice(start, editorScreenSource.indexOf('>', start) + 1)
+
+  let quote: '"' | "'" | null = null
+  for (let index = start; index < source.length; index += 1) {
+    const character = source[index]
+    if (quote) {
+      if (character === quote) {
+        quote = null
+      }
+      continue
+    }
+    if (character === '"' || character === "'") {
+      quote = character
+    } else if (character === '>') {
+      return source.slice(start, index + 1)
+    }
+  }
+
+  throw new Error(`Unterminated editor surface: ${marker}`)
 }
 
 describe('editor modal accessibility contract', () => {
@@ -26,7 +43,15 @@ describe('editor modal accessibility contract', () => {
     ]
 
     for (const surface of backgroundSurfaces) {
-      expect(openingTag(surface)).toContain(':aria-hidden="linkSheetBackgroundAriaHidden"')
+      expect(openingTag(editorScreenSource, surface)).toContain(
+        ':aria-hidden="linkSheetBackgroundAriaHidden"',
+      )
     }
+  })
+
+  it('does not mistake an arrow handler for the end of an opening tag', () => {
+    const source = '<button @click="value => save(value)" :aria-hidden="hidden">'
+
+    expect(openingTag(source, '<button')).toContain(':aria-hidden="hidden"')
   })
 })

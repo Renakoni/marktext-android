@@ -27,9 +27,15 @@ const urlValue = computed({
   set: value => emit('update:url', value),
 })
 
+function focusInitialInput() {
+  linkUrlInput.value?.focus()
+}
+
+defineExpose({ focusInitialInput })
+
 onMounted(() => {
   void nextTick(() => {
-    linkUrlInput.value?.focus()
+    focusInitialInput()
   })
 })
 

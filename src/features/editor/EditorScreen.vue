@@ -144,9 +144,31 @@ const selectionToolbarSuspended = computed(
     props.androidExitPromptOpen ||
     props.incomingOpenPromptOpen,
 )
+const linkInsertDispatching = ref(false)
+const linkInsertSheet = ref<InstanceType<typeof LinkInsertSheet> | null>(null)
 const linkSheetBackgroundAriaHidden = computed(() =>
-  props.linkSheetOpen ? 'true' : undefined,
+  props.linkSheetOpen && !linkInsertDispatching.value ? 'true' : undefined,
 )
+
+async function dispatchLinkInsert() {
+  if (linkInsertDispatching.value) {
+    return
+  }
+
+  linkInsertDispatching.value = true
+  try {
+    // Keep the sheet and captured selection intact, but flush aria-hidden off
+    // the editor before App temporarily focuses it for the insertion.
+    await nextTick()
+    emit('insert-link')
+    await nextTick()
+  } finally {
+    if (props.linkSheetOpen) {
+      linkInsertSheet.value?.focusInitialInput()
+    }
+    linkInsertDispatching.value = false
+  }
+}
 
 const searchInput = ref<HTMLInputElement | null>(null)
 const outlineButton = ref<HTMLButtonElement | null>(null)
@@ -499,12 +521,13 @@ onBeforeUnmount(() => {
     <Transition name="editor-sheet">
       <LinkInsertSheet
         v-if="linkSheetOpen"
+        ref="linkInsertSheet"
         :text="linkText"
         :url="linkUrl"
         @update:text="value => emit('update:linkText', value)"
         @update:url="value => emit('update:linkUrl', value)"
         @cancel="emit('close-link-sheet')"
-        @insert="emit('insert-link')"
+        @insert="dispatchLinkInsert"
       />
     </Transition>
 
