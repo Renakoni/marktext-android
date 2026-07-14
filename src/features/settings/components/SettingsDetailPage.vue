@@ -18,7 +18,12 @@ import {
   type SettingsTextRow as SettingsTextDescriptor,
   type SettingsToggleRow as SettingsToggleDescriptor,
 } from '../settingsContent'
-import { APP_LANGUAGE_OPTIONS, useI18n, type I18nKey } from '../../../lib/i18n'
+import {
+  APP_LANGUAGE_OPTIONS,
+  AUTO_APP_LOCALE,
+  useI18n,
+  type I18nKey,
+} from '../../../lib/i18n'
 import { SETTINGS_PAGES, type SettingsPage } from '../settingsNavigation'
 import { useSettingsState } from '../settingsState'
 import {
@@ -39,7 +44,7 @@ const props = defineProps<{
   runMaintenanceAction: AdvancedMaintenanceActionHandler
 }>()
 
-const { locale, setLocale, t } = useI18n()
+const { locale, localePreference, setLocalePreference, t } = useI18n()
 const { getValue, setValue } = useSettingsState()
 const sections = computed(() => SETTINGS_DETAIL_SECTIONS[props.page] ?? [])
 type MaintenanceActionId = AdvancedMaintenanceActionId
@@ -101,17 +106,26 @@ const activeMaintenanceActionCopy = computed(() =>
   maintenanceAction.value ? maintenanceActionCopies[maintenanceAction.value] : null,
 )
 const languageOptions = computed(() =>
-  APP_LANGUAGE_OPTIONS.map(option => ({
-    id: option.id,
-    label: t(option.labelKey),
-    testId: option.testId,
-  })),
+  [
+    {
+      id: AUTO_APP_LOCALE,
+      label: t('settings.language.automatic'),
+    },
+    ...APP_LANGUAGE_OPTIONS.map(option => ({
+      id: option.id,
+      label: t(option.labelKey),
+    })),
+  ],
 )
 
 function setLanguage(value: string) {
+  if (value === AUTO_APP_LOCALE) {
+    setLocalePreference(AUTO_APP_LOCALE)
+    return
+  }
   const nextLocale = APP_LANGUAGE_OPTIONS.find(option => option.id === value)?.id
   if (nextLocale) {
-    setLocale(nextLocale)
+    setLocalePreference(nextLocale)
   }
 }
 
@@ -295,9 +309,9 @@ watch(
     v-if="page === SETTINGS_PAGES.APPEARANCE"
     :title="t('settings.section.language')"
   >
-    <SettingsChoiceRow
-      :aria-label="t('settings.language.app')"
-      :model-value="locale"
+    <SettingsSelectRow
+      :label="t('settings.language.app')"
+      :model-value="localePreference"
       :options="languageOptions"
       test-id="settings-language-app"
       @update:model-value="setLanguage"

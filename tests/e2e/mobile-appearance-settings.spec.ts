@@ -19,7 +19,8 @@ test('uses the selected language in a newly created editor session', async ({ pa
   await page.reload()
 
   await openAppearanceSettings(page)
-  await page.getByTestId('settings-language-option-zh-cn').click()
+  await page.getByTestId('settings-language-app-trigger').click()
+  await page.getByTestId('settings-language-app-option-zh-CN').click()
   await expect(page.getByTestId('settings-title')).toContainText('外观')
 
   await page.getByTestId('settings-detail-back').click()
