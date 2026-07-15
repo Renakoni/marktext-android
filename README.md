@@ -70,8 +70,13 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
 
 ### Make it yours
 
-Customization is a first-class feature, not an afterthought — from the settings
-screen to the bars you actually touch while writing:
+<table width="100%">
+<tr>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="The docked format toolbar and a customized selection (paste) bar shown while editing" width="200"></td>
+<td valign="middle">
+
+Customization is a first-class feature, not an afterthought — right down to the
+bars you touch while writing:
 
 - **Build your own toolbars.** Compose the bottom quick bar from a command pool
   and drag to reorder it. Even the floating selection toolbar — the clipboard bar
@@ -88,9 +93,9 @@ screen to the bars you actually touch while writing:
 - **File-level control.** Per-document encoding, line endings, and trailing
   newline handling.
 
-<p align="center">
-  <img src="docs/screenshots/makeityours.png" alt="The toolbar settings screen, next to the real quick toolbar and a customized selection (paste) bar" width="780">
-</p>
+</td>
+</tr>
+</table>
 
 ### Built for the phone, polished for everyone
 
