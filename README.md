@@ -55,7 +55,7 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
 - Full CommonMark and GitHub Flavored Markdown: math (KaTeX), tables, footnotes,
   front matter, diagrams, and syntax-highlighted code.
 - A document outline and in-editor search that stay smooth even in long files.
-- Export to **PDF** and share to any Android app.
+- Export to **PDF** with math, code highlighting, and fonts all baked in.
 - **Never loses your work.** Autosave and recovery drafts keep every change, and
   atomic, all-or-nothing writes mean an interrupted save never leaves a
   half-written or corrupted file.
@@ -103,14 +103,13 @@ Customization runs deep here, right down to the bars you touch while writing:
 <td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="The editor showing a Chinese document with a Chinese interface" width="200"></td>
 <td valign="middle">
 
-- **Real Android files.** Open and save through the Storage Access Framework.
-- **Opens what you share.** Receive Markdown sent from other apps through open and
-  share intents.
-- **Made for the thumb.** Comfortable one-handed touch targets and a calm,
-  editor-first layout, with wide tables that scroll on their own instead of
-  shifting the page.
-- **Accessible and restrained.** A quiet graphite design with WCAG 2.2 AA contrast,
-  visible focus order, and respect for reduced-motion.
+- **Your files stay put.** Edit `.md` straight from any storage provider through
+  the system picker, and pass documents to and from other apps with the share
+  sheet — no import/export shuffle, no second copy in a sandbox.
+- **Made for the thumb.** Comfortable one-handed reach and a calm, editor-first
+  layout, with wide tables that scroll on their own instead of shifting the page.
+- **Accessible and restrained.** A quiet graphite design that meets WCAG 2.2 AA,
+  with visible focus order and respect for reduced-motion.
 - **Ten languages,** chosen automatically from your system: English, German,
   Spanish, French, Japanese, Korean, Portuguese, Turkish, and Simplified and
   Traditional Chinese.
