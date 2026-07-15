@@ -45,7 +45,7 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
 
 ## Highlights
 
-### A real Markdown editor that never loses a word
+### A lightweight Markdown editor that never loses a word
 
 <table width="100%">
 <tr>
@@ -62,6 +62,9 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
   and drafts are kept, not silently evicted.
 - **Fully on-device:** no account, no cloud sync, no telemetry, and your document
   text is never written to logs.
+- **Lightweight:** a focused Vue + Capacitor web shell, not a heavy native stack —
+  the debug build is around 9.6 MB, a fraction of what many commercial Markdown
+  apps ship, and a shrunk release build is smaller still.
 
 </td>
 <td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="200"></td>
@@ -117,12 +120,6 @@ bars you touch while writing:
 </td>
 </tr>
 </table>
-
-### Lightweight
-
-A focused Vue + Capacitor web shell rather than a heavy native stack. The debug
-build is around 9.6 MB — a fraction of what many commercial Markdown apps ship,
-and a shrunk release build is smaller still.
 
 ## Project status
 
