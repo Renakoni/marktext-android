@@ -1,0 +1,162 @@
+name: Android Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  signed-apk:
+    name: Build signed APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup
+
+      - name: Install JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '22'
+          cache: gradle
+
+      - name: Validate release secrets
+        shell: bash
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in \
+            ANDROID_RELEASE_KEYSTORE_BASE64 \
+            ANDROID_RELEASE_STORE_PASSWORD \
+            ANDROID_RELEASE_KEY_ALIAS \
+            ANDROID_RELEASE_KEY_PASSWORD
+          do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::$name is not configured"
+              missing=1
+            fi
+          done
+          [[ "$missing" -eq 0 ]]
+
+      - name: Validate release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_version="$(node -p "require('./package.json').version")"
+          if [[ "$GITHUB_REF_TYPE" == 'tag' && "$GITHUB_REF_NAME" != "v$app_version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match app version v$app_version"
+            exit 1
+          fi
+          echo "APP_VERSION=$app_version" >> "$GITHUB_ENV"
+
+      - name: Run release source gates
+        run: |
+          pnpm lint
+          pnpm test
+          pnpm test:muya
+          pnpm build
+
+      - name: Sync Capacitor Android assets
+        run: pnpm exec cap sync android
+
+      - name: Decode release keystore
+        shell: bash
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$ANDROID_RELEASE_KEYSTORE_BASE64" \
+            | base64 --decode \
+            > "$RUNNER_TEMP/marktext-release.jks"
+          chmod 600 "$RUNNER_TEMP/marktext-release.jks"
+
+      - name: Build signed release APK
+        env:
+          ANDROID_RELEASE_KEYSTORE_FILE: ${{ runner.temp }}/marktext-release.jks
+          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          chmod +x android/gradlew
+          ./android/gradlew -p android testDebugUnitTest assembleRelease --no-daemon
+
+      - name: Verify signature and prepare artifacts
+        id: artifact
+        shell: bash
+        env:
+          EXPECTED_CERT_SHA256: 6ec922525bce1803428b80f0e2577d18246b2290b4f3bb16150fa707d1819c67
+        run: |
+          set -euo pipefail
+          source_apk='android/app/build/outputs/apk/release/app-release.apk'
+          apk_name="marktext-android-v${APP_VERSION}.apk"
+          artifact_dir='release-artifacts'
+          mkdir -p "$artifact_dir"
+          cp "$source_apk" "$artifact_dir/$apk_name"
+
+          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [[ -z "$apksigner" ]]; then
+            echo '::error::apksigner was not found in ANDROID_HOME'
+            exit 1
+          fi
+
+          signer_output="$("$apksigner" verify --verbose --print-certs "$artifact_dir/$apk_name")"
+          printf '%s\n' "$signer_output"
+          actual_cert_sha256="$(printf '%s\n' "$signer_output" \
+            | sed -n -E 's/^(Signer #[0-9]+|V[0-9.]+ Signer):? certificate SHA-256 digest: //p' \
+            | head -n 1 \
+            | tr '[:upper:]' '[:lower:]')"
+          if [[ "$actual_cert_sha256" != "$EXPECTED_CERT_SHA256" ]]; then
+            echo "::error::Release certificate mismatch: $actual_cert_sha256"
+            exit 1
+          fi
+
+          (
+            cd "$artifact_dir"
+            sha256sum "$apk_name" > "$apk_name.sha256"
+          )
+          echo "apk_name=$apk_name" >> "$GITHUB_OUTPUT"
+
+      - name: Upload signed APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: marktext-android-v${{ env.APP_VERSION }}
+          path: release-artifacts/
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Create or update draft GitHub Release
+        if: github.ref_type == 'tag'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          apk_path="release-artifacts/${{ steps.artifact.outputs.apk_name }}"
+          checksum_path="$apk_path.sha256"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$apk_path" "$checksum_path" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              "$apk_path" \
+              "$checksum_path" \
+              --verify-tag \
+              --draft \
+              --generate-notes \
+              --title "MarkText $GITHUB_REF_NAME"
+          fi

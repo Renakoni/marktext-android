@@ -151,6 +151,7 @@ pnpm android:open     # open it in Android Studio, then run on a device or emula
 ```
 
 Other scripts (`test`, `lint`, `typecheck`, `build`) are in `package.json`.
+Release maintainers should follow [`docs/RELEASING.md`](docs/RELEASING.md).
 
 > [!TIP]
 > The Markdown editor core is a vendored, **modified** copy of `@muyajs/core` (Muya)

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launch background; the night variant lives in values-night/colors.xml. -->
+    <color name="splash_background">#F7F8FA</color>
+    <!-- Muted grey splash mark; light-mode uses a darker grey for contrast. -->
+    <color name="splash_icon_tint">#5F6368</color>
+</resources>

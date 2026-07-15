@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The launcher foreground art nearly fills the 108dp canvas, so adaptive masks
+  crop it close to the edges. Inset it so the mark sits inside the safe zone with
+  breathing room on every side.
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@mipmap/ic_launcher_foreground"
+    android:inset="15%" />
