@@ -1,74 +1,189 @@
-# MarkText for Android
+<p align="center">
+  <img src="docs/assets/logo.png" alt="MarkText for Android logo" width="96" height="96">
+</p>
 
-Android app scaffold for a MarkText-like editor. The first version uses Vue, Vite, Capacitor Android, and `@muyajs/core` so the Markdown editing core stays close to MarkText/Muya instead of being rewritten in a native UI toolkit.
+<h1 align="center">MarkText for Android</h1>
 
-## Stack
+<p align="center">
+  <em>Markdown, quietly.</em>
+</p>
 
-- Vue 3 + Vite for the web shell.
-- Capacitor Android for the native Android project.
-- `@muyajs/core` for the Markdown editor.
+<p align="center">
+  <sub>A focused editor for Android — the desktop <a href="https://github.com/marktext/marktext">MarkText</a> experience, shaped for the phone.</sub>
+</p>
 
-## Commands
+<p align="center">
+  <img src="https://img.shields.io/badge/License-MIT-4c566a?style=flat-square" alt="License: MIT">
+  &nbsp;
+  <img src="https://img.shields.io/badge/Android-7.0%2B-4c8492?style=flat-square&logo=android&logoColor=white" alt="Android 7.0+">
+  &nbsp;
+  <img src="https://img.shields.io/badge/Status-pre--release%200.1.0-c98a4b?style=flat-square" alt="Pre-release 0.1.0">
+</p>
+
+<p align="center">
+  <a href="#highlights">Highlights</a> ·
+  <a href="#build-from-source">Build from source</a> ·
+  <a href="#license--attribution">License</a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/editor-light.png" alt="Editing a Markdown document — light theme" width="240">
+  &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
+  <img src="docs/screenshots/editor-dark.png" alt="The same document in a dark theme" width="240">
+</p>
+
+<p align="center">
+  <sub>☀&nbsp; Light &nbsp;·&nbsp; Dark &nbsp;☾&nbsp; — whichever your system prefers</sub>
+</p>
+
+> [!NOTE]
+> **Unofficial community port** — not affiliated with, endorsed by, or maintained
+> by the MarkText team. It builds on and modifies MarkText's open-source editor
+> core (Muya) for Android; see [License & attribution](#license--attribution).
+
+## What it is
+
+MarkText for Android brings MarkText's live-preview Markdown editing to the phone,
+without rewriting it as a native app. Its editor is Muya, MarkText's open-source
+core, heavily adapted for mobile: faster on large documents, re-laid-out for a
+phone's width, and given the touch selection and toolbars a desktop never needed.
+What you write renders with the same fidelity as on desktop, in an interface built
+for one hand.
+
+## Highlights
+
+### A lightweight Markdown editor that never loses a word
+
+<table width="100%">
+<tr>
+<td valign="middle">
+
+- True live-preview (WYSIWYG) editing — the desktop MarkText writing experience,
+  not a plain text box.
+- Full CommonMark and GitHub Flavored Markdown: math (KaTeX), tables, footnotes,
+  front matter, diagrams, and syntax-highlighted code.
+- A document outline and in-editor search that stay smooth even in long files.
+- Export to **PDF** with math, code highlighting, and fonts all baked in.
+- **Never loses your work.** Autosave and recovery drafts keep every change, and
+  atomic, all-or-nothing writes mean an interrupted save never leaves a
+  half-written or corrupted file.
+- **Private by default.** No account, no cloud, no telemetry; everything stays on
+  the device.
+- **Lightweight.** A focused Vue + Capacitor shell rather than a heavy native stack
+  keeps the whole app around 9.6 MB — small and light, yet fully featured.
+
+</td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="200"></td>
+</tr>
+</table>
+
+### Make it yours
+
+<table width="100%">
+<tr>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="The docked format toolbar and a customized selection (paste) bar shown while editing" width="200"></td>
+<td valign="middle">
+
+Customization runs deep here, right down to the bars you touch while writing:
+
+- **Build your own toolbars.** Compose the bottom quick bar from a pool of commands
+  and drag to reorder it. Even the selection toolbar — the clipboard bar that
+  appears over highlighted text — can hold your own commands, in one row or two.
+- **Themes and type.** Light, dark, and custom themes (`ayu-light`, `one-dark`);
+  adjustable font family, size, line height, line width, and text direction (LTR
+  or RTL).
+- **Markdown to your taste.** List markers and indentation, heading style, front
+  matter format (YAML/TOML/JSON), footnotes, super/subscript, HTML rendering, and
+  GitLab compatibility.
+- **File-level control.** Per-document encoding, line endings, and trailing
+  newline handling.
+
+</td>
+</tr>
+</table>
+
+### Built for the phone, polished for everyone
+
+<table width="100%">
+<tr>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="The editor showing a Chinese document with a Chinese interface" width="200"></td>
+<td valign="middle">
+
+- **Your files stay put.** Edit `.md` straight from any storage provider through
+  the system picker, and pass documents to and from other apps with the share
+  sheet — no import/export shuffle, no second copy in a sandbox.
+- **Made for the thumb.** Comfortable one-handed reach and a calm, editor-first
+  layout, with wide tables that scroll on their own instead of shifting the page.
+- **Accessible and restrained.** A quiet graphite design that meets WCAG 2.2 AA,
+  with visible focus order and respect for reduced-motion.
+- **Ten languages,** chosen automatically from your system: English, German,
+  Spanish, French, Japanese, Korean, Portuguese, Turkish, and Simplified and
+  Traditional Chinese.
+
+</td>
+</tr>
+</table>
+
+---
+
+## Project status
+
+> [!IMPORTANT]
+> A mature debug/beta build — **not yet a signed public release**. The editor and
+> its document-safety features are stable and well-tested; what remains is the
+> release pipeline (app signing, published builds, and on-device verification).
+> For now, the way to try it is to build from source.
+
+Signed builds will appear on the
+[Releases](https://github.com/Renakoni/marktext-android/releases) page when ready.
+
+## Build from source
+
+You'll need [Node.js](https://nodejs.org/) with [pnpm](https://pnpm.io/) and
+[Android Studio](https://developer.android.com/studio) (Android SDK — min API 24,
+target 36 — and a JDK).
 
 ```sh
-pnpm install
-pnpm dev
-pnpm test
-pnpm test:muya
-pnpm test:e2e
-pnpm lint
-pnpm typecheck
-pnpm build
-pnpm android:sync
-pnpm android:open
-pnpm logs:android
+pnpm install          # install dependencies
+pnpm dev              # preview the web shell in a browser
+pnpm android:sync     # build the web app and sync it into the Android project
+pnpm android:open     # open it in Android Studio, then run on a device or emulator
 ```
 
-`pnpm test` runs the app unit tests, `pnpm test:muya` runs the vendored editor-core
-gate, and `pnpm test:e2e` runs the mobile WebView journeys in Playwright.
-`pnpm lint` runs ESLint. `pnpm typecheck` runs `vue-tsc`.
-`pnpm android:sync` builds the web app and copies it into the Android project. Use `pnpm android:open` to open the generated Android project in Android Studio.
-`pnpm logs:android` captures MuMu/ADB diagnostics into the ignored local `logs/` directory.
+Other scripts (`test`, `lint`, `typecheck`, `build`) are in `package.json`.
 
-## Debug Logging
+> [!TIP]
+> The Markdown editor core is a vendored, **modified** copy of `@muyajs/core` (Muya)
+> under `third_party/muya`. If you change it, sync your edits into
+> `node_modules/@muyajs/core/src/**` before building — a contract test catches drift.
 
-The app writes categorized, timestamped runtime logs from the web shell to:
+## Contributing
 
-- Browser/WebView console.
-- Android logcat with tag `MarkTextAndroid`.
-- The app private Android directory `files/logs/marktext-android-YYYY-MM-DD.log`.
-- A bounded in-browser local log buffer for developer diagnostics.
+Issues and pull requests are welcome. Keep each change focused, and add tests
+where they make sense.
 
-Markdown document text is not written to logs. Editor logs use metadata such as character count, word count, line count, event name, and error details.
+## License & attribution
 
-Capture a local diagnostics bundle:
+MarkText for Android is released under the [MIT License](LICENSE).
 
-```powershell
-pnpm logs:android
-```
+It is an **unofficial** port, built on MarkText's open-source work and not
+affiliated with or endorsed by the MarkText project:
 
-By default this connects to MuMu at `127.0.0.1:7555`, captures filtered `MarkTextAndroid` logcat output, captures Android error logs, lists app private log files, and copies readable app private logs into `logs/android-YYYY-MM-DD_HH-mm-ss/`.
+- **MarkText** — the desktop editor and design this port follows. Copyright © Luo
+  Ran and the MarkText contributors, MIT licensed.
+- **Muya** (`@muyajs/core`) — the editor core, vendored and modified under
+  `third_party/muya` with its original MIT license kept
+  ([`third_party/muya/LICENSE`](third_party/muya/LICENSE)).
 
-Useful direct MuMu/ADB commands:
+## Acknowledgements
 
-```powershell
-& 'E:\Android\Sdk\platform-tools\adb.exe' -s 127.0.0.1:7555 logcat -c
-& 'E:\Android\Sdk\platform-tools\adb.exe' -s 127.0.0.1:7555 logcat -s MarkTextAndroid:*
-& 'E:\Android\Sdk\platform-tools\adb.exe' -s 127.0.0.1:7555 shell run-as io.github.renakoni.marktextandroid ls -la files/logs
-$day = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')
-& 'E:\Android\Sdk\platform-tools\adb.exe' -s 127.0.0.1:7555 shell run-as io.github.renakoni.marktextandroid cat "files/logs/marktext-android-$day.log"
-```
+MarkText for Android stands on a lot of open-source work: the
+[MarkText](https://github.com/marktext/marktext) editor and its
+[contributors](https://github.com/marktext/marktext/graphs/contributors), the
+[Muya](https://github.com/marktext/muya) editing engine, and
+[Vue](https://vuejs.org/), [Vite](https://vite.dev/), and
+[Capacitor](https://capacitorjs.com/). Thank you to everyone who built them.
 
-For host-side captures, write output under the local `logs/` directory; it is ignored by Git.
+---
 
-## GitHub Workflow
-
-This repository keeps a small Android-specific CI setup inspired by upstream MarkText's `.github/workflows` structure:
-
-- `.github/actions/setup/action.yml` installs pnpm, Node.js, and dependencies.
-- `.github/workflows/web-quality.yml` runs ESLint, TypeScript typecheck, and the Vite production build.
-- `.github/workflows/android-debug.yml` runs Capacitor sync and Gradle `assembleDebug`.
-- `.github/workflows/dependency-review.yml` reviews `package.json` and `pnpm-lock.yaml` changes on pull requests.
-- Successful Android debug runs upload `android/app/build/outputs/apk/debug/app-debug.apk` as a short-lived artifact.
-
-The upstream desktop/Electron build workflows are intentionally not copied. This project validates the Android web shell with unit, Muya, and Playwright suites plus the Capacitor Android debug build; release signing, Android device smoke tests, and license validation can be added when those surfaces exist.
+<p align="center"><sub><em>Markdown, quietly.</em></sub></p>
