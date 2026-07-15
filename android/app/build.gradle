@@ -1,5 +1,19 @@
 apply plugin: 'com.android.application'
 
+def releaseSigningEnvironment = [
+    storeFile: 'ANDROID_RELEASE_KEYSTORE_FILE',
+    storePassword: 'ANDROID_RELEASE_STORE_PASSWORD',
+    keyAlias: 'ANDROID_RELEASE_KEY_ALIAS',
+    keyPassword: 'ANDROID_RELEASE_KEY_PASSWORD'
+]
+def releaseSigningValues = releaseSigningEnvironment.collectEntries { key, variableName ->
+    [(key): System.getenv(variableName)]
+}
+def missingReleaseSigningVariables = releaseSigningValues.findAll { key, value ->
+    value == null || value.trim().isEmpty()
+}.keySet()
+def releaseSigningConfigured = missingReleaseSigningVariables.isEmpty()
+
 android {
     namespace = "io.github.renakoni.marktextandroid"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,11 +30,43 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            release {
+                storeFile file(releaseSigningValues.storeFile)
+                storePassword releaseSigningValues.storePassword
+                keyAlias releaseSigningValues.keyAlias
+                keyPassword releaseSigningValues.keyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (releaseSigningConfigured) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+}
+
+def requireReleaseSigning = tasks.register('requireReleaseSigning') {
+    doLast {
+        if (!releaseSigningConfigured) {
+            def names = missingReleaseSigningVariables.collect { key -> releaseSigningEnvironment[key] }
+            throw new GradleException("Release signing is incomplete. Missing environment variables: ${names.join(', ')}")
+        }
+
+        if (!file(releaseSigningValues.storeFile).isFile()) {
+            throw new GradleException("Release keystore not found: ${releaseSigningValues.storeFile}")
+        }
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name in ['assembleRelease', 'bundleRelease', 'packageRelease']) {
+        task.dependsOn requireReleaseSigning
     }
 }
 
