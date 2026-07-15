@@ -69,6 +69,7 @@ jobs:
         run: |
           pnpm lint
           pnpm test
+          pnpm test:muya
           pnpm build
 
       - name: Sync Capacitor Android assets
