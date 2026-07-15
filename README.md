@@ -23,9 +23,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="Editing a Markdown document — light theme" width="248">
-  &nbsp;
-  <img src="docs/screenshots/theme-dark.png" alt="The same editor in a dark theme" width="248">
+  <img src="docs/screenshots/editor-light.png" alt="Editing a Markdown document — light theme" width="240">
+  &emsp;&emsp;
+  <img src="docs/screenshots/editor-dark.png" alt="The same document in a dark theme" width="240">
 </p>
 
 > **Unofficial community port.** Not affiliated with, endorsed by, or maintained
@@ -48,7 +48,7 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
 
 ### A real Markdown editor, not a textarea
 
-<table>
+<table width="100%">
 <tr>
 <td valign="top">
 
@@ -60,18 +60,14 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
 - Export to **PDF** and share straight to any Android app.
 
 </td>
-<td width="210"><img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="210"></td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="200"></td>
 </tr>
 </table>
 
 ### Make it yours
 
-<table>
-<tr>
-<td width="210"><img src="docs/screenshots/customize-toolbar.png" alt="Reordering commands on the custom quick toolbar" width="210"></td>
-<td valign="top">
-
-Customization is a first-class feature, not an afterthought:
+Customization is a first-class feature, not an afterthought — from the settings
+screen to the bars you actually touch while writing:
 
 - **Build your own toolbars.** Compose the bottom quick bar from a command pool
   and drag to reorder it. Even the floating selection toolbar — the clipboard bar
@@ -88,15 +84,11 @@ Customization is a first-class feature, not an afterthought:
 - **File-level control.** Per-document encoding, line endings, and trailing
   newline handling.
 
-</td>
-</tr>
-</table>
+<p align="center">
+  <img src="docs/screenshots/makeityours.png" alt="The toolbar settings screen, next to the real quick toolbar and a customized selection (paste) bar" width="780">
+</p>
 
 ### Your words stay safe
-
-<table>
-<tr>
-<td valign="top">
 
 - Autosave with a configurable delay, plus recovery drafts for interrupted
   sessions.
@@ -107,31 +99,18 @@ Customization is a first-class feature, not an afterthought:
 - **Fully on-device.** No account, no cloud sync, no telemetry. Your document
   text is never written to logs.
 
-</td>
-<td width="210"><img src="docs/screenshots/home.png" alt="The home screen listing recent documents" width="210"></td>
-</tr>
-</table>
-
 ### Built for the phone
-
-<table>
-<tr>
-<td width="210"><img src="docs/screenshots/export-pdf.png" alt="Exporting a document to PDF and sharing it" width="210"></td>
-<td valign="top">
 
 - Open and save real files through Android's Storage Access Framework.
 - Handle incoming **open** and **share** intents from other apps.
 - Comfortable one-handed touch targets and a calm, editor-first layout.
 - Wide tables scroll within their own frame instead of shifting the whole page.
 
-</td>
-</tr>
-</table>
-
 ### Polished and accessible
 
-<table>
+<table width="100%">
 <tr>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="The editor showing a Chinese document with a Chinese interface" width="200"></td>
 <td valign="top">
 
 - Restrained graphite design that stays out of the way of the text.
@@ -141,7 +120,6 @@ Customization is a first-class feature, not an afterthought:
   Traditional Chinese.
 
 </td>
-<td width="210"><img src="docs/screenshots/cjk.png" alt="The editor showing a Chinese document with a Chinese interface" width="210"></td>
 </tr>
 </table>
 
