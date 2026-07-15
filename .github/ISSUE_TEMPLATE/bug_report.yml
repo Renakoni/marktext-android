@@ -7,8 +7,6 @@ body:
     attributes:
       value: |
         Thanks for the report. Please search [existing issues](https://github.com/Renakoni/marktext-android/issues) first — a 👍 on a match helps more than a duplicate.
-
-        This is an **unofficial Android port**; report app issues here, not to upstream MarkText.
   - type: textarea
     id: summary
     attributes:

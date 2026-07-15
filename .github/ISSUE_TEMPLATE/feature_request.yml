@@ -7,8 +7,6 @@ body:
     attributes:
       value: |
         Search [existing issues](https://github.com/Renakoni/marktext-android/issues) first to avoid duplicates.
-
-        This app aims to stay a quiet, focused mobile Markdown editor — small in scope by choice.
   - type: textarea
     id: problem
     attributes:
