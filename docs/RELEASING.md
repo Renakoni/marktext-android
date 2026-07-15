@@ -55,6 +55,20 @@ high-entropy password. Clear the clipboard after each secret is entered.
    creates a draft GitHub Release containing the APK and SHA-256 checksum.
 8. Inspect the draft notes and assets, then publish the Release manually.
 
+## First release record
+
+`v0.1.0` was published on July 15, 2026 from commit `0cca3ed`. The tag workflow
+produced `marktext-android-v0.1.0.apk` and its SHA-256 file. The published APK:
+
+- is 7,849,488 bytes;
+- has SHA-256 `E506604D62377DD448FBA67F0B60F0CE110BC9A27FDFA60D47686953A141E2EB`;
+- passed APK Signature Scheme v2 and release-certificate verification; and
+- passed clean install, same-key replacement, cold launch, and draft-retention
+  checks on an Android 14 physical device.
+
+Runtime coverage at the declared minimum API 24 was not completed for this
+release and remains part of the compatibility matrix for future updates.
+
 The in-app update checker reads GitHub's latest published release. APK
 installation remains an Android user-confirmed action. AAB delivery is deferred
 until Google Play is selected as a distribution channel.

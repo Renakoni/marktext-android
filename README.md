@@ -129,13 +129,12 @@ Customization runs deep here, right down to the bars you touch while writing:
 ## Project status
 
 > [!IMPORTANT]
-> A mature debug/beta build — **not yet a signed public release**. The editor and
-> its document-safety features are stable and well-tested; what remains is the
-> release pipeline (app signing, published builds, and on-device verification).
-> For now, the way to try it is to build from source.
+> The first signed public release, **v0.1.0**, is available. Its APK is built by
+> the repository's release workflow, pinned to the official release certificate,
+> and has passed clean-install and same-key upgrade checks on Android 14.
 
-Signed builds will appear on the
-[Releases](https://github.com/Renakoni/marktext-android/releases) page when ready.
+Download signed builds from the
+[Releases](https://github.com/Renakoni/marktext-android/releases/latest) page.
 
 ## Build from source
 
