@@ -1,0 +1,90 @@
+name: Bug report
+description: Report a problem with the MarkText for Android app
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please search [existing issues](https://github.com/Renakoni/marktext-android/issues) first — a 👍 on a match helps more than a duplicate.
+
+        This is an **unofficial Android port**; report app issues here, not to upstream MarkText.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: What went wrong, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a `.md` file from '…'
+        2. Tap '…'
+        3. See the problem
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: Settings → About, or the APK file name.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-source
+    attributes:
+      label: How did you install it?
+      options:
+        - APK from GitHub Releases
+        - Built from source
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      placeholder: "Android 14"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device (make and model)
+      placeholder: "Xiaomi 14 / Pixel 7 / Galaxy S23"
+    validations:
+      required: true
+  - type: input
+    id: webview
+    attributes:
+      label: Android System WebView version
+      description: The editor runs in the system WebView, so this often matters. Settings → Apps → Android System WebView (or Chrome).
+      placeholder: "126.0.6478.122"
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area (optional)
+      description: Where does it happen?
+      options:
+        - Editing / formatting
+        - Opening, saving, or sharing files
+        - Import / open-with / share intents
+        - PDF export
+        - Themes / settings
+        - Startup / crash
+        - Other
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots, screen recording, or logs
+      description: A screen recording is ideal for UI or editing bugs. You can export logs from Settings → Advanced → Export logs. Please don't paste private document contents.
+    validations:
+      required: false

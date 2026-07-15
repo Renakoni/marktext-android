@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Build & usage (README)
+    url: https://github.com/Renakoni/marktext-android#readme
+    about: Features, build-from-source, and current project status.
+  - name: Upstream MarkText (desktop / Muya core)
+    url: https://github.com/marktext/marktext
+    about: This is an unofficial Android port. For the desktop editor or the Muya editor core itself, use the upstream project.

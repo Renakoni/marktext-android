@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest an idea or improvement
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search [existing issues](https://github.com/Renakoni/marktext-android/issues) first to avoid duplicates.
+
+        This app aims to stay a quiet, focused mobile Markdown editor — small in scope by choice.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: The use case or frustration behind the idea.
+      placeholder: "When I'm writing on my phone, I want … so that …"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should the app do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+    validations:
+      required: false

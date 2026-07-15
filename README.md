@@ -17,7 +17,7 @@
   &nbsp;
   <img src="https://img.shields.io/badge/Android-7.0%2B-4c8492?style=flat-square&logo=android&logoColor=white" alt="Android 7.0+">
   &nbsp;
-  <img src="https://img.shields.io/badge/Status-pre--release%200.1.0-c98a4b?style=flat-square" alt="Pre-release 0.1.0">
+  <a href="https://github.com/Renakoni/marktext-android/releases/latest"><img src="https://img.shields.io/github/v/release/Renakoni/marktext-android?style=flat-square&color=c98a4b&label=release" alt="Latest release"></a>
 </p>
 
 <p align="center">
