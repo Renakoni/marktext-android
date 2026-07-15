@@ -70,7 +70,7 @@ for one hand.
 - **Private by default.** No account, no cloud, no telemetry; everything stays on
   the device.
 - **Lightweight.** A focused Vue + Capacitor shell rather than a heavy native stack
-  keeps the whole app around 9.6 MB — small and light, yet fully featured.
+  keeps the whole app around 7.8 MB — small and light, yet fully featured.
 
 </td>
 <td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="200"></td>
