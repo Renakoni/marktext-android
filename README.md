@@ -23,9 +23,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="Editing a Markdown document — light theme" width="232">
-  <img src="docs/screenshots/customize-toolbar.png" alt="Building a custom quick toolbar" width="232">
-  <img src="docs/screenshots/theme-dark.png" alt="The editor in a dark theme" width="232">
+  <img src="docs/screenshots/editor-light.png" alt="Editing a Markdown document — light theme" width="248">
+  &nbsp;
+  <img src="docs/screenshots/theme-dark.png" alt="The same editor in a dark theme" width="248">
 </p>
 
 > **Unofficial community port.** Not affiliated with, endorsed by, or maintained
@@ -48,6 +48,10 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
 
 ### A real Markdown editor, not a textarea
 
+<table>
+<tr>
+<td valign="top">
+
 - True live-preview (WYSIWYG) editing — the desktop MarkText writing experience,
   not a plain text box.
 - CommonMark and GitHub Flavored Markdown, with math (KaTeX), diagrams, front
@@ -55,7 +59,17 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
 - Document outline and in-document search, tuned to stay smooth in large files.
 - Export to **PDF** and share straight to any Android app.
 
+</td>
+<td width="210"><img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="210"></td>
+</tr>
+</table>
+
 ### Make it yours
+
+<table>
+<tr>
+<td width="210"><img src="docs/screenshots/customize-toolbar.png" alt="Reordering commands on the custom quick toolbar" width="210"></td>
+<td valign="top">
 
 Customization is a first-class feature, not an afterthought:
 
@@ -74,14 +88,15 @@ Customization is a first-class feature, not an afterthought:
 - **File-level control.** Per-document encoding, line endings, and trailing
   newline handling.
 
-<p align="center">
-  <img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="180">
-  <img src="docs/screenshots/export-pdf.png" alt="Exporting a document to PDF and sharing it" width="180">
-  <img src="docs/screenshots/home.png" alt="Recent documents on the home screen" width="180">
-  <img src="docs/screenshots/cjk.png" alt="A Chinese document with a Chinese interface" width="180">
-</p>
+</td>
+</tr>
+</table>
 
 ### Your words stay safe
+
+<table>
+<tr>
+<td valign="top">
 
 - Autosave with a configurable delay, plus recovery drafts for interrupted
   sessions.
@@ -92,20 +107,43 @@ Customization is a first-class feature, not an afterthought:
 - **Fully on-device.** No account, no cloud sync, no telemetry. Your document
   text is never written to logs.
 
+</td>
+<td width="210"><img src="docs/screenshots/home.png" alt="The home screen listing recent documents" width="210"></td>
+</tr>
+</table>
+
 ### Built for the phone
+
+<table>
+<tr>
+<td width="210"><img src="docs/screenshots/export-pdf.png" alt="Exporting a document to PDF and sharing it" width="210"></td>
+<td valign="top">
 
 - Open and save real files through Android's Storage Access Framework.
 - Handle incoming **open** and **share** intents from other apps.
 - Comfortable one-handed touch targets and a calm, editor-first layout.
 - Wide tables scroll within their own frame instead of shifting the whole page.
 
+</td>
+</tr>
+</table>
+
 ### Polished and accessible
+
+<table>
+<tr>
+<td valign="top">
 
 - Restrained graphite design that stays out of the way of the text.
 - WCAG 2.2 AA contrast, visible focus order, and respect for reduced-motion.
 - **Ten languages** with automatic system-language selection: English, German,
   Spanish, French, Japanese, Korean, Portuguese, Turkish, and Simplified and
   Traditional Chinese.
+
+</td>
+<td width="210"><img src="docs/screenshots/cjk.png" alt="The editor showing a Chinese document with a Chinese interface" width="210"></td>
+</tr>
+</table>
 
 ### Lightweight
 
