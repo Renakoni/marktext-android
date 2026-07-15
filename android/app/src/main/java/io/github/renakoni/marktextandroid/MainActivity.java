@@ -34,13 +34,38 @@ public class MainActivity extends BridgeActivity {
         new WeakReference<>(null);
     private final ArrayDeque<String> selectionActionModeEvents = new ArrayDeque<>();
 
+    private volatile boolean webContentReady = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Drive the Android 12+ splash (and its compat backport) ourselves so the
+        // launch shows the app icon on the splash colour and hands off to the app
+        // theme cleanly. Must run before super.onCreate().
+        androidx.core.splashscreen.SplashScreen splashScreen =
+            androidx.core.splashscreen.SplashScreen.installSplashScreen(this);
+
         registerPlugin(AndroidDocumentsPlugin.class);
         registerPlugin(NativeLoggerPlugin.class);
         registerPlugin(AndroidAppInfoPlugin.class);
         registerPlugin(AndroidSelectionPlugin.class);
         super.onCreate(savedInstanceState);
+
+        // Keep the splash up until the web layer has loaded, so the wait reads as
+        // the icon holding rather than a blank frame while the bundle initializes.
+        splashScreen.setKeepOnScreenCondition(() -> !webContentReady);
+        // Register the timeout first, so the splash is always released even when
+        // the bridge never came up: a missing or broken WebView provider makes
+        // BridgeActivity show its fallback page and leaves getBridge() null.
+        new android.os.Handler(getMainLooper()).postDelayed(() -> webContentReady = true, 4000L);
+        com.getcapacitor.Bridge bridge = getBridge();
+        if (bridge != null) {
+            bridge.addWebViewListener(new com.getcapacitor.WebViewListener() {
+                @Override
+                public void onPageLoaded(android.webkit.WebView webView) {
+                    webContentReady = true;
+                }
+            });
+        }
     }
 
     @Override
