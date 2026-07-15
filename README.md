@@ -46,7 +46,7 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
 
 ## Highlights
 
-### A real Markdown editor, not a textarea
+### A real Markdown editor that never loses a word
 
 <table width="100%">
 <tr>
@@ -58,6 +58,11 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
   matter, footnotes, tables, and syntax-highlighted code blocks.
 - Document outline and in-document search, tuned to stay smooth in large files.
 - Export to **PDF** and share straight to any Android app.
+- **Atomic, all-or-nothing saves**, with autosave and recovery drafts — an
+  interrupted or failed write never leaves a half-written or corrupted document,
+  and drafts are kept, not silently evicted.
+- **Fully on-device:** no account, no cloud sync, no telemetry, and your document
+  text is never written to logs.
 
 </td>
 <td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="200"></td>
@@ -88,33 +93,19 @@ screen to the bars you actually touch while writing:
   <img src="docs/screenshots/makeityours.png" alt="The toolbar settings screen, next to the real quick toolbar and a customized selection (paste) bar" width="780">
 </p>
 
-### Your words stay safe
-
-- Autosave with a configurable delay, plus recovery drafts for interrupted
-  sessions.
-- **Atomic, all-or-nothing saves.** A file is replaced only once the full write
-  succeeds; with backup and restore, an interrupted or failed save never leaves a
-  half-written or corrupted document.
-- Drafts are kept, not silently evicted.
-- **Fully on-device.** No account, no cloud sync, no telemetry. Your document
-  text is never written to logs.
-
-### Built for the phone
-
-- Open and save real files through Android's Storage Access Framework.
-- Handle incoming **open** and **share** intents from other apps.
-- Comfortable one-handed touch targets and a calm, editor-first layout.
-- Wide tables scroll within their own frame instead of shifting the whole page.
-
-### Polished and accessible
+### Built for the phone, polished for everyone
 
 <table width="100%">
 <tr>
 <td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="The editor showing a Chinese document with a Chinese interface" width="200"></td>
 <td valign="top">
 
-- Restrained graphite design that stays out of the way of the text.
-- WCAG 2.2 AA contrast, visible focus order, and respect for reduced-motion.
+- Open and save real files through Android's Storage Access Framework.
+- Handle incoming **open** and **share** intents from other apps.
+- Comfortable one-handed touch targets and a calm, editor-first layout.
+- Wide tables scroll within their own frame instead of shifting the whole page.
+- Restrained graphite design with WCAG 2.2 AA contrast, visible focus order, and
+  respect for reduced-motion.
 - **Ten languages** with automatic system-language selection: English, German,
   Spanish, French, Japanese, Korean, Portuguese, Turkish, and Simplified and
   Traditional Chinese.
