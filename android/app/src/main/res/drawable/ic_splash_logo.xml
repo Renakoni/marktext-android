@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Splash icon: the launcher mark flattened to a single muted grey (its alpha
+  silhouette, tinted), so the launch reads as a quiet monochrome mark rather than
+  the full-colour app icon. Inset to sit inside the splash icon's safe zone.
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:inset="15%">
+    <bitmap
+        android:src="@mipmap/ic_launcher_foreground"
+        android:tint="@color/splash_icon_tint"
+        android:gravity="center" />
+</inset>
