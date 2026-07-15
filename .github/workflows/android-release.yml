@@ -65,6 +65,9 @@ jobs:
           fi
           echo "APP_VERSION=$app_version" >> "$GITHUB_ENV"
 
+      - name: Install Muya dependencies
+        run: pnpm --dir third_party/muya install
+
       - name: Run release source gates
         run: |
           pnpm lint
