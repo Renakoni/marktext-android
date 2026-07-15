@@ -47,7 +47,9 @@ android/**/.externalNativeBuild/
 android/**/captures/
 *.apk
 *.aab
+*.jks
 *.keystore
+keystore.properties
 
 # Editor directories and files
 .vscode/*

@@ -1,7 +1,7 @@
 import type { I18nKey } from './en'
 
 export const zhTW = {
-  'app.name': 'MarkText for Android',
+  'app.name': 'MarkText',
 
   'home.documents.aria': '最近文件',
   'home.open': '開啟',
