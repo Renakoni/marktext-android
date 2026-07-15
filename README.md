@@ -60,9 +60,9 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
   atomic, all-or-nothing writes mean an interrupted save never leaves a
   half-written or corrupted file.
 - **Private by default.** No account, no cloud, no telemetry; everything stays on
-  the device, and your text is never written to logs.
-- **Lightweight.** A focused Vue + Capacitor shell instead of a heavy native stack
-  keeps the app around 9.6 MB, a fraction of what many commercial editors ship.
+  the device.
+- **Lightweight.** A focused Vue + Capacitor shell rather than a heavy native stack
+  keeps the whole app around 9.6 MB — small and light, yet fully featured.
 
 </td>
 <td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="200"></td>
@@ -81,8 +81,6 @@ Customization runs deep here, right down to the bars you touch while writing:
 - **Build your own toolbars.** Compose the bottom quick bar from a pool of commands
   and drag to reorder it. Even the selection toolbar — the clipboard bar that
   appears over highlighted text — can hold your own commands, in one row or two.
-- **Toolbar behavior.** Docked, hidden, or compact; choose the default panel and
-  whether the app remembers your last one.
 - **Themes and type.** Light, dark, and custom themes (`ayu-light`, `one-dark`);
   adjustable font family, size, line height, line width, and text direction (LTR
   or RTL).
@@ -150,9 +148,8 @@ into `node_modules/@muyajs/core/src/**` before building; a contract test catches
 
 ## Contributing
 
-Issues and pull requests are welcome. Keep each change focused, add tests where
-they make sense, and make sure `pnpm test`, `pnpm lint`, and `pnpm typecheck` pass
-before opening a PR.
+Issues and pull requests are welcome. Keep each change focused, and add tests
+where they make sense.
 
 ## License & attribution
 
