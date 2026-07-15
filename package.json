@@ -1,7 +1,7 @@
 {
   "name": "marktext-for-android",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "packageManager": "pnpm@10.33.3",
   "type": "module",
   "scripts": {

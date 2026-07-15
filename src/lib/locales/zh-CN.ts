@@ -1,7 +1,7 @@
 import type { I18nKey } from './en'
 
 export const zhCN = {
-  'app.name': 'MarkText for Android',
+  'app.name': 'MarkText',
 
   'home.documents.aria': '最近文档',
   'home.open': '打开',

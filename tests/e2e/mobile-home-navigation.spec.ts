@@ -89,8 +89,8 @@ test('switches between document home and the settings about screen', async ({ pa
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        tag_name: 'v0.1.0',
-        html_url: 'https://github.com/Renakoni/marktext-android/releases/tag/v0.1.0',
+        tag_name: 'v1.0.0',
+        html_url: 'https://github.com/Renakoni/marktext-android/releases/tag/v1.0.0',
       }),
     }),
   )
@@ -278,7 +278,7 @@ test('switches between document home and the settings about screen', async ({ pa
   await expect(page.getByTestId('settings-title')).toContainText('About')
   await expect(page.getByTestId('settings-about-page')).toBeVisible()
   await expect(page.getByTestId('settings-about-app')).toBeVisible()
-  await expect(page.getByTestId('settings-about-version')).toContainText('0.0.0')
+  await expect(page.getByTestId('settings-about-version')).toContainText('0.1.0')
   await expect(page.getByTestId('settings-about-github')).toHaveAttribute(
     'href',
     'https://github.com/Renakoni/marktext-android',
@@ -292,7 +292,7 @@ test('switches between document home and the settings about screen', async ({ pa
 
   await page.getByTestId('settings-check-updates').click()
   await expect(page.getByTestId('settings-check-updates')).toContainText(
-    'Update available: v0.1.0',
+    'Update available: v1.0.0',
   )
 
   await page.getByTestId('settings-detail-back').click()

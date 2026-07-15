@@ -1,7 +1,7 @@
 import type { I18nKey } from './en'
 
 export const fr = {
-  'app.name': 'MarkText for Android',
+  'app.name': 'MarkText',
 
   'home.documents.aria': 'Documents récents',
   'home.open': 'Ouvrir',

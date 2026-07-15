@@ -1,5 +1,5 @@
 export const en = {
-  'app.name': 'MarkText for Android',
+  'app.name': 'MarkText',
 
   'home.documents.aria': 'Recent documents',
   'home.open': 'Open',
