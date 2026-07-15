@@ -53,15 +53,19 @@ public class MainActivity extends BridgeActivity {
         // Keep the splash up until the web layer has loaded, so the wait reads as
         // the icon holding rather than a blank frame while the bundle initializes.
         splashScreen.setKeepOnScreenCondition(() -> !webContentReady);
-        getBridge().addWebViewListener(new com.getcapacitor.WebViewListener() {
-            @Override
-            public void onPageLoaded(android.webkit.WebView webView) {
-                webContentReady = true;
-            }
-        });
-        // Safety net: never hold the splash longer than a few seconds, whatever
-        // happens to the page load.
+        // Register the timeout first, so the splash is always released even when
+        // the bridge never came up: a missing or broken WebView provider makes
+        // BridgeActivity show its fallback page and leaves getBridge() null.
         new android.os.Handler(getMainLooper()).postDelayed(() -> webContentReady = true, 4000L);
+        com.getcapacitor.Bridge bridge = getBridge();
+        if (bridge != null) {
+            bridge.addWebViewListener(new com.getcapacitor.WebViewListener() {
+                @Override
+                public void onPageLoaded(android.webkit.WebView webView) {
+                    webContentReady = true;
+                }
+            });
+        }
     }
 
     @Override
