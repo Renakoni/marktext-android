@@ -36,9 +36,10 @@
   <sub>☀&nbsp; Light &nbsp;·&nbsp; Dark &nbsp;☾&nbsp; — whichever your system prefers</sub>
 </p>
 
-> **Unofficial community port.** Not affiliated with, endorsed by, or maintained
+> [!NOTE]
+> **Unofficial community port** — not affiliated with, endorsed by, or maintained
 > by the MarkText team. It builds on and modifies MarkText's open-source editor
-> core (Muya) for Android — see [License & attribution](#license--attribution).
+> core (Muya) for Android; see [License & attribution](#license--attribution).
 
 ## What it is
 
@@ -48,8 +49,6 @@ core, heavily adapted for mobile: faster on large documents, re-laid-out for a
 phone's width, and given the touch selection and toolbars a desktop never needed.
 What you write renders with the same fidelity as on desktop, in an interface built
 for one hand.
-
-The goal is simple: open a `.md` file, edit it, and never lose a word.
 
 ## Highlights
 
@@ -127,11 +126,11 @@ Customization runs deep here, right down to the bars you touch while writing:
 
 ## Project status
 
-MarkText for Android is a mature debug/beta build, but **not yet a signed public
-release**. The editor and its document-safety features are stable and well-tested;
-what remains is the release pipeline — app signing, published builds, and on-device
-verification of the signed app. Until that lands, the way to try it is to build
-from source.
+> [!IMPORTANT]
+> A mature debug/beta build — **not yet a signed public release**. The editor and
+> its document-safety features are stable and well-tested; what remains is the
+> release pipeline (app signing, published builds, and on-device verification).
+> For now, the way to try it is to build from source.
 
 Signed builds will appear on the
 [Releases](https://github.com/Renakoni/marktext-android/releases) page when ready.
