@@ -50,7 +50,7 @@ The goal is simple: open a `.md` file, edit it, and never lose a word.
 
 <table width="100%">
 <tr>
-<td valign="top">
+<td valign="middle">
 
 - True live-preview (WYSIWYG) editing — the desktop MarkText writing experience,
   not a plain text box.
@@ -98,7 +98,7 @@ screen to the bars you actually touch while writing:
 <table width="100%">
 <tr>
 <td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="The editor showing a Chinese document with a Chinese interface" width="200"></td>
-<td valign="top">
+<td valign="middle">
 
 - Open and save real files through Android's Storage Access Framework.
 - Handle incoming **open** and **share** intents from other apps.
