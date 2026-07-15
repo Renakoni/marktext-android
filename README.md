@@ -124,6 +124,8 @@ Customization runs deep here, right down to the bars you touch while writing:
 </tr>
 </table>
 
+---
+
 ## Project status
 
 > [!IMPORTANT]
@@ -150,9 +152,10 @@ pnpm android:open     # open it in Android Studio, then run on a device or emula
 
 Other scripts (`test`, `lint`, `typecheck`, `build`) are in `package.json`.
 
-One non-obvious note: the Markdown editor core is a vendored, modified copy of
-`@muyajs/core` (Muya) under `third_party/muya`. If you change it, sync your edits
-into `node_modules/@muyajs/core/src/**` before building; a contract test catches drift.
+> [!TIP]
+> The Markdown editor core is a vendored, **modified** copy of `@muyajs/core` (Muya)
+> under `third_party/muya`. If you change it, sync your edits into
+> `node_modules/@muyajs/core/src/**` before building — a contract test catches drift.
 
 ## Contributing
 
