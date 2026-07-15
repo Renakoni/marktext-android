@@ -18,7 +18,6 @@
 <p align="center">
   <a href="#highlights">Highlights</a> ·
   <a href="#build-from-source">Build from source</a> ·
-  <a href="#development">Development</a> ·
   <a href="#license--attribution">License</a>
 </p>
 
@@ -133,64 +132,22 @@ Signed builds will be published on the
 
 ## Build from source
 
-Requirements:
-
-- [Node.js](https://nodejs.org/) with [pnpm](https://pnpm.io/) (the repository
-  pins the version via `packageManager`).
-- [Android Studio](https://developer.android.com/studio) with an Android SDK
-  (min API 24, target API 36) and a JDK.
+You'll need [Node.js](https://nodejs.org/) with [pnpm](https://pnpm.io/) and
+[Android Studio](https://developer.android.com/studio) (Android SDK — min API 24,
+target 36 — and a JDK).
 
 ```sh
 pnpm install          # install dependencies
 pnpm dev              # preview the web shell in a browser
 pnpm android:sync     # build the web app and sync it into the Android project
-pnpm android:open     # open the Android project in Android Studio
+pnpm android:open     # open it in Android Studio, then run on a device or emulator
 ```
 
-From Android Studio, run the app on an emulator or a connected device.
+Other scripts (`test`, `lint`, `typecheck`, `build`) are in `package.json`.
 
-## Development
-
-Common tasks:
-
-| Command            | Purpose                                              |
-| ------------------ | ---------------------------------------------------- |
-| `pnpm dev`         | Vite dev server for the web shell                    |
-| `pnpm test`        | App unit tests (Vitest)                              |
-| `pnpm test:muya`   | Vendored editor-core (Muya) gate                     |
-| `pnpm test:e2e`    | Mobile WebView journeys (Playwright)                 |
-| `pnpm lint`        | ESLint                                               |
-| `pnpm typecheck`   | `vue-tsc` type checking                              |
-| `pnpm build`       | Type-check and produce the production web build      |
-| `pnpm android:sync`| Build the web app and copy it into the Android project |
-
-Architecture, at a glance:
-
-```
-Vue screens and feature UI
-  -> feature workflows (editor, documents, home, settings)
-  -> shared typed web adapters and document models
-  -> Capacitor bridge -> focused native helpers + Android platform APIs
-```
-
-The Markdown editor core lives in `third_party/muya` as a vendored **and modified**
-copy of `@muyajs/core` (Muya): it carries this project's Android and large-document
-changes on top of upstream, alongside ported upstream fixes. Edits under
-`third_party/muya/src/**` must be synced into `node_modules/@muyajs/core/src/**`
-before local build/verification; a contract test detects drift.
-
-The app writes categorized, timestamped runtime logs to the WebView console, to
-Android logcat under the tag `MarkTextAndroid`, and to a rotating file in the
-app's private storage. Document text is never logged — editor logs use metadata
-only (character/word/line counts, event names, error details).
-
-### Continuous integration
-
-- **Web quality** — ESLint, TypeScript type-check, and the Vite production build.
-- **Android debug** — Capacitor sync and a Gradle `assembleDebug`, uploading the
-  resulting debug APK as a short-lived artifact.
-- **Dependency review** — reviews `package.json`/lockfile changes on pull
-  requests.
+One thing that isn't obvious: the Markdown editor core is a vendored, modified copy
+of `@muyajs/core` (Muya) under `third_party/muya`. If you change it, sync your edits
+into `node_modules/@muyajs/core/src/**` before building — a contract test catches drift.
 
 ## Tech stack
 
