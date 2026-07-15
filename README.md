@@ -5,14 +5,19 @@
 <h1 align="center">MarkText for Android</h1>
 
 <p align="center">
-  A quiet, focused Markdown editor for Android —<br>
-  the desktop <a href="https://github.com/marktext/marktext">MarkText</a> writing experience, shaped for the phone.
+  <em>Markdown, quietly.</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
-  <img src="https://img.shields.io/badge/Android-7.0%2B-3ddc84.svg" alt="Android 7.0+">
-  <img src="https://img.shields.io/badge/status-pre--release%200.1.0-orange.svg" alt="Pre-release 0.1.0">
+  <sub>A focused editor for Android — the desktop <a href="https://github.com/marktext/marktext">MarkText</a> experience, shaped for the phone.</sub>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/License-MIT-4c566a?style=flat-square" alt="License: MIT">
+  &nbsp;
+  <img src="https://img.shields.io/badge/Android-7.0%2B-4c8492?style=flat-square&logo=android&logoColor=white" alt="Android 7.0+">
+  &nbsp;
+  <img src="https://img.shields.io/badge/Status-pre--release%200.1.0-c98a4b?style=flat-square" alt="Pre-release 0.1.0">
 </p>
 
 <p align="center">
@@ -25,6 +30,10 @@
   <img src="docs/screenshots/editor-light.png" alt="Editing a Markdown document — light theme" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
   <img src="docs/screenshots/editor-dark.png" alt="The same document in a dark theme" width="240">
+</p>
+
+<p align="center">
+  <sub>☀&nbsp; Light &nbsp;·&nbsp; Dark &nbsp;☾&nbsp; — whichever your system prefers</sub>
 </p>
 
 > **Unofficial community port.** Not affiliated with, endorsed by, or maintained
@@ -172,3 +181,7 @@ MarkText for Android stands on a lot of open-source work: the
 [Muya](https://github.com/marktext/muya) editing engine, and
 [Vue](https://vuejs.org/), [Vite](https://vite.dev/), and
 [Capacitor](https://capacitorjs.com/). Thank you to everyone who built them.
+
+---
+
+<p align="center"><sub><em>Markdown, quietly.</em></sub></p>
