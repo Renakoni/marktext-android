@@ -23,7 +23,7 @@
 
 <p align="center">
   <img src="docs/screenshots/editor-light.png" alt="Editing a Markdown document — light theme" width="240">
-  &emsp;&emsp;&emsp;&emsp;&emsp;
+  &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
   <img src="docs/screenshots/editor-dark.png" alt="The same document in a dark theme" width="240">
 </p>
 
