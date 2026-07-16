@@ -23,6 +23,7 @@ export interface CreateMuyaEditorOptions {
   markdown: string
   onContentChange: (...args: unknown[]) => void
   onJsonChange: (...args: unknown[]) => void
+  onSelectionChange?: (...args: unknown[]) => void
   onFocus: (...args: unknown[]) => void
   onBlur: (...args: unknown[]) => void
   appLocale?: string
@@ -148,6 +149,7 @@ export async function createMuyaEditor({
   markdown,
   onContentChange,
   onJsonChange,
+  onSelectionChange,
   onFocus,
   onBlur,
   appLocale,
@@ -184,6 +186,9 @@ export async function createMuyaEditor({
     }
     editor.on('content-change', onContentChange)
     editor.on('json-change', onJsonChange)
+    if (onSelectionChange) {
+      editor.on('selection-change', onSelectionChange)
+    }
     editor.on('focus', onFocus)
     editor.on('blur', onBlur)
 

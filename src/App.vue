@@ -42,6 +42,7 @@ import { createDocumentOutline, waitForViewportSettle } from './features/editor/
 import { createDocumentSearch } from './features/editor/documentSearch'
 import { createSelectionToolbarLongPress } from './features/editor/selectionToolbarLongPress'
 import type { SelectionToolbarCommandId } from './features/editor/selectionToolbar'
+import { createCaretFollow } from './features/editor/caretFollow'
 import { createResumePosition } from './features/editor/resumePosition'
 import {
   readStoredResumePosition,
@@ -486,6 +487,13 @@ const {
   saveAndroidDocument: () => saveAndroidDocument(),
 })
 
+// Deferred lookup: the editor session below owns the editor instance; the
+// follow handler only dereferences it per selection-change event.
+const caretFollow = createCaretFollow({
+  getEditor: () => getEditor(),
+  logger: editorLog,
+})
+
 const {
   editorReady,
   editorFailed,
@@ -513,6 +521,7 @@ const {
   createMuyaEditor,
   destroyMuyaEditor,
   syncMarkdown: nextStatus => syncMarkdown(nextStatus),
+  onEditorSelectionChange: caretFollow.onEditorSelectionChange,
   onEditorFocus: () => {
     status.value =
       documentState.value.autosaveTarget === 'android-document' &&
