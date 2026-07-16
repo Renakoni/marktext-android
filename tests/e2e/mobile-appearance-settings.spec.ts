@@ -41,6 +41,39 @@ test('uses the selected language in a newly created editor session', async ({ pa
   await expect(page.locator('[hint]').first()).toHaveAttribute('hint', /输入程序语言标识/)
 })
 
+test('keeps the theme mode segments on screen with long locale labels', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => {
+    localStorage.clear()
+    // German has the longest mode label ("Benutzerdefiniert"); it used to push
+    // the segmented control past the right screen edge.
+    localStorage.setItem('marktext-for-android:locale', 'de')
+  })
+  await page.reload()
+
+  await openAppearanceSettings(page)
+  const modeControl = page.getByTestId('settings-appearance-theme-mode')
+  await expect(modeControl).toBeVisible()
+
+  const viewport = page.viewportSize()!
+  const controlBox = await modeControl.boundingBox()
+  expect(controlBox).not.toBeNull()
+  expect(controlBox!.x + controlBox!.width).toBeLessThanOrEqual(viewport.width + 0.5)
+
+  for (const option of ['system', 'light', 'dark', 'custom']) {
+    const segment = page.getByTestId(`settings-appearance-theme-mode-option-${option}`)
+    const box = await segment.boundingBox()
+    expect(box, `segment ${option}`).not.toBeNull()
+    expect(box!.x, `segment ${option} left edge`).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width, `segment ${option} right edge`).toBeLessThanOrEqual(
+      viewport.width + 0.5,
+    )
+    // The label must be fully rendered, not ellipsized inside the segment.
+    const clipped = await segment.evaluate(element => element.scrollWidth > element.clientWidth)
+    expect(clipped, `segment ${option} label clipped`).toBe(false)
+  }
+})
+
 test('applies Appearance text settings without rewriting existing draft Markdown', async ({ page }) => {
   const markdown = '# Appearance Probe\r\n\r\n- [ ] untouched\r\n'
   const now = '2026-07-03T08:00:00.000Z'

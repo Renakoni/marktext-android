@@ -42,6 +42,9 @@ defineEmits<{
 .settings-choice-row {
   position: relative;
   display: grid;
+  /* Cap the implicit track at the available width so the options track can
+     never be sized by its single-line max-content and push past the screen. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   width: 100%;
   min-width: 0;
@@ -65,21 +68,30 @@ defineEmits<{
   overflow-wrap: anywhere;
 }
 
-/* Segmented control: sunken track, the active segment floats as a thumb. */
+/* Segmented control: sunken track, the active segment floats as a thumb.
+   Segments size from their label and wrap onto a second track line when the
+   localized labels outgrow the row (for example German "Benutzerdefiniert"
+   with four options on a phone), instead of pushing past the screen edge. */
 .settings-choice-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 2px;
   width: 100%;
+  min-width: 0;
   padding: 2px;
   border-radius: var(--radius-sm);
   background: var(--surface-sunken);
 }
 
 .settings-choice-option {
-  min-width: 0;
+  flex: 1 0 auto;
+  min-width: 72px;
+  max-width: 100%;
   min-height: 36px;
   padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   border: 0;
   border-radius: 8px;
   background: transparent;
