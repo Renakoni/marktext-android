@@ -50,6 +50,7 @@ export interface EditorSessionOptions {
   destroyMuyaEditor: (editor: MuyaEditor | null) => void
   // Editor-content handlers owned by App (status + autosave coordination).
   syncMarkdown: (nextStatus?: unknown) => void
+  onEditorSelectionChange?: (...args: unknown[]) => void
   onEditorFocus: () => void
   onEditorBlur: () => void
   // Collaborators owned by App or sibling factories.
@@ -179,6 +180,7 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
         markdown: initialMarkdown,
         onContentChange: options.syncMarkdown,
         onJsonChange: options.syncMarkdown,
+        onSelectionChange: options.onEditorSelectionChange,
         onFocus: options.onEditorFocus,
         onBlur: handleEditorBlur,
         appLocale: options.locale.value,
