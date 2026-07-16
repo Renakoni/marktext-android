@@ -354,6 +354,132 @@ describe('scrollPage chunked mount', () => {
         muya.destroy();
     });
 
+    it('clicking the blank area below the content appends at the real end (review: blank-click)', () => {
+        const muya = bootMuya();
+        expect(mountedParagraphs(muya)).toBe(512);
+
+        // Clicking below the last block is an end-of-document gesture; with
+        // only the prefix mounted, `lastChild` is the mount frontier and the
+        // new paragraph would land at index 512 — mid-document.
+        const click = new MouseEvent('click', {
+            clientY: 10_000,
+            bubbles: true,
+            cancelable: true,
+        });
+        // muya's isMouseEvent guard checks the `x` alias, which happy-dom's
+        // MouseEvent does not implement.
+        if (!('x' in click))
+            Object.defineProperty(click, 'x', { value: 0 });
+        muya.editor.scrollPage!.domNode!.dispatchEvent(click);
+        muya.editor.jsonState.flush();
+
+        const states = muya.editor.jsonState.rawState;
+        expect(states).toHaveLength(SECTIONS + 1);
+        expect((states[SECTIONS] as { text: string }).text).toBe('');
+        expect((states[SECTIONS - 1] as { text: string }).text).toBe(
+            `Paragraph ${SECTIONS - 1}`,
+        );
+        vi.runAllTimers();
+        expectDomMatchesState(muya);
+        muya.destroy();
+    });
+
+    it('the footnote tool sees definitions in the unmounted tail (review: footnote create)', () => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const parts = Array.from({ length: 599 }, (_, i) => `Paragraph ${i}`);
+        parts[0] = 'Intro with a footnote[^tail] reference.';
+        const markdown = `${parts.join('\n\n')}\n\n[^tail]: The definition lives in the tail.\n`;
+        const muya = new Muya(host, {
+            markdown,
+            footnote: true,
+        } as ConstructorParameters<typeof Muya>[1]);
+        muya.init();
+        bootedHosts.push(muya.domNode);
+        expect(mountedParagraphs(muya)).toBeLessThan(599);
+
+        const payloads: { footnotes: Map<string, unknown> }[] = [];
+        muya.on('muya-footnote-tool', ((payload: { footnotes: Map<string, unknown> }) =>
+            void payloads.push(payload)) as never);
+
+        // The identifier→definition map must cover the WHOLE document: a
+        // definition in the unmounted tail resolving as "missing" would make
+        // the tool offer Create and duplicate it.
+        const reference = document.createElement('sup');
+        reference.id = 'noteref-tail';
+        const first = muya.editor.scrollPage!.firstContentInDescendant()!;
+        (first as unknown as {
+            _emitFootnoteToolEvent: (el: HTMLElement) => void;
+        })._emitFootnoteToolEvent(reference);
+
+        expect(payloads).toHaveLength(1);
+        expect(payloads[0].footnotes.has('tail')).toBe(true);
+        muya.destroy();
+    });
+
+    it('heading copy-link resolves against the flushed state (review: index skew)', () => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const muya = new Muya(host, {
+            markdown: 'Paragraph 0\n\n# Section\n\nParagraph 2\n',
+        } as ConstructorParameters<typeof Muya>[1]);
+        muya.init();
+        bootedHosts.push(muya.domNode);
+
+        const slug = muya.getTOC()[0].slug;
+        const handler = vi.fn();
+        muya.on('heading-copy-link', handler);
+
+        // A structural edit whose op still sits in the rAF batch: the live
+        // tree moves the heading to index 0 while rawState keeps it at 1 —
+        // resolving the block path against the unflushed state would slug
+        // the wrong node.
+        (muya.editor.scrollPage!.firstChild as unknown as {
+            remove: (source?: string) => void;
+        }).remove('user');
+
+        muya.domNode
+            .querySelector<HTMLElement>('[class*="copy-header-link"]')!
+            .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(handler.mock.calls[0][0]).toEqual({ key: slug });
+        muya.destroy();
+    });
+
+    it('arrowDown on the mount frontier navigates into the pending tail (review: frontier arrow)', () => {
+        const muya = bootMuya();
+        expect(mountedParagraphs(muya)).toBe(512);
+
+        // Block 511 is the last MOUNTED block, not the last block: ArrowDown
+        // must reach Paragraph 512, not append an empty paragraph between
+        // the prefix and the pending tail.
+        const frontier = (muya.editor.scrollPage!.find(511) as unknown as {
+            lastContentInDescendant: () => {
+                text: string;
+                setCursor: (start: number, end: number, focus?: boolean) => void;
+                arrowHandler: (event: Event) => void;
+            };
+        }).lastContentInDescendant();
+        expect(frontier.text).toBe('Paragraph 511');
+
+        muya.editor.activeContentBlock = frontier as never;
+        frontier.setCursor(frontier.text.length, frontier.text.length, true);
+        frontier.arrowHandler(
+            new KeyboardEvent('keydown', { key: 'ArrowDown', cancelable: true }),
+        );
+        muya.editor.jsonState.flush();
+
+        // No paragraph was inserted at the frontier...
+        expect(muya.editor.jsonState.rawState).toHaveLength(SECTIONS);
+        // ...and the successor is now mounted with the caret available in it.
+        expect(mountedParagraphs(muya)).toBeGreaterThanOrEqual(513);
+        expect(muya.domNode.textContent).toContain('Paragraph 512');
+        vi.runAllTimers();
+        expectDomMatchesState(muya);
+        muya.destroy();
+    });
+
     it('destroy cancels a pending mount so timers never fire afterwards', () => {
         const muya = bootMuya();
         expect(mountedParagraphs(muya)).toBe(512);

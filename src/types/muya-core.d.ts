@@ -77,6 +77,12 @@ declare module '@muyajs/core' {
       activeContentBlock: unknown
       clipboard: IMuyaClipboard
       selection: IMuyaSelection
+      /**
+       * The complete logical document. `rawState` is the live state root
+       * (no clone) — read-only consumers only, e.g. bounds checks against
+       * the top-level block count during a progressive mount.
+       */
+      jsonState: { readonly rawState: readonly unknown[] }
     }
     constructor(element: HTMLElement, options?: Record<string, unknown>)
     init(): void

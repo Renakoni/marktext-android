@@ -1847,6 +1847,12 @@ class Format extends Content {
         if (!scrollPage)
             return;
 
+        // The identifier -> definition map must cover the WHOLE document: a
+        // definition still in the unmounted tail (#4887) resolving as
+        // "missing" would make the tool offer Create and duplicate it. Same
+        // documented whole-document trade as search.
+        scrollPage.flushPendingMount();
+
         // Collect the first definition for each identifier — duplicates in
         // the document share the same `#fn-{N}` target on the HTML side.
         const footnotes = new Map<string, unknown>();

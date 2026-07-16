@@ -455,6 +455,11 @@ export class ScrollPage extends Parent {
         const target = event.target;
 
         if (target[BLOCK_DOM_PROPERTY] === this) {
+            // Clicking the blank area below the content is an end-of-document
+            // gesture: materialize the pending tail first (#4887), or
+            // `lastChild` is the mount frontier and the new paragraph would
+            // land mid-document.
+            this.flushPendingMount();
             const lastChild = this.lastChild as Parent;
             const lastContentBlock = lastChild.lastContentInDescendant()!;
             const { clientY } = event;
