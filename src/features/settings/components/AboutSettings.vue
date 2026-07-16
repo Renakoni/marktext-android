@@ -63,21 +63,7 @@ async function checkUpdates() {
 <template>
   <section class="about-page" :aria-label="t('settings.about')" data-testid="settings-about-page">
     <div class="about-hero" data-testid="settings-about-app">
-      <svg class="about-mark" viewBox="0 0 160 124" aria-hidden="true" focusable="false">
-        <path
-          class="about-mark-shadow"
-          d="M33 31c15-5 31-3 47 8 16-11 32-13 47-8 4 1 7 5 7 10v55c0 4-4 6-8 5-15-4-31-1-46 9-15-10-31-13-46-9-4 1-8-1-8-5V41c0-5 3-9 7-10Z"
-        />
-        <path
-          d="M31 25c16-5 33-2 49 11v68c-16-13-33-16-49-11V25Z"
-        />
-        <path
-          d="M129 25c-16-5-33-2-49 11v68c16-13 33-16 49-11V25Z"
-        />
-        <path d="M80 36v68" />
-        <path class="about-mark-spark" d="M115 6l4 10 10 4-10 4-4 10-4-10-10-4 10-4 4-10Z" />
-        <path class="about-mark-spark is-small" d="M137 27l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z" />
-      </svg>
+      <span class="about-mark" aria-hidden="true" />
       <p>{{ APP_INFO.name }}</p>
     </div>
 
@@ -200,30 +186,25 @@ async function checkUpdates() {
   letter-spacing: 0;
 }
 
+/* The real app mark: the launcher/splash silhouette (its only source is the
+   launcher foreground bitmap, cropped to content in src/assets/logo-mark.png)
+   tinted with the theme accent — the same alpha-mask technique the Android
+   splash uses with its grey tint in ic_splash_logo.xml. */
 .about-mark {
-  width: 168px;
-  max-width: 42vw;
-  color: var(--accent);
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  width: 148px;
+  max-width: 40vw;
+  aspect-ratio: 290 / 244;
+  background: var(--accent);
+  -webkit-mask: url('../../../assets/logo-mark.png') center / contain no-repeat;
+  mask: url('../../../assets/logo-mark.png') center / contain no-repeat;
 }
 
-.about-mark-shadow {
-  stroke: var(--accent-tint-10);
-  stroke-width: 10;
-}
-
-.about-mark-spark {
-  fill: var(--accent-soft);
-  stroke: var(--accent-soft);
-  stroke-width: 2.2;
-}
-
-.about-mark-spark.is-small {
-  opacity: 0.78;
+/* A WebView without mask support shows the untinted launcher mark instead of
+   an accent-colored square. */
+@supports not ((mask-repeat: no-repeat) or (-webkit-mask-repeat: no-repeat)) {
+  .about-mark {
+    background: transparent url('../../../assets/logo-mark.png') center / contain no-repeat;
+  }
 }
 
 .about-list {
