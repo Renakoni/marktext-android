@@ -1847,6 +1847,12 @@ class Format extends Content {
         if (!scrollPage)
             return;
 
+        // Hosts without a footnote tool never consume the event — skip the
+        // whole-document preparation below instead of freezing a large file
+        // for nothing (#4887).
+        if (!this.muya.eventCenter.hasListeners('muya-footnote-tool'))
+            return;
+
         // The identifier -> definition map must cover the WHOLE document: a
         // definition still in the unmounted tail (#4887) resolving as
         // "missing" would make the tool offer Create and duplicate it. Same

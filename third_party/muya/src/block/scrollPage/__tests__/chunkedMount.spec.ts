@@ -354,31 +354,83 @@ describe('scrollPage chunked mount', () => {
         muya.destroy();
     });
 
-    it('clicking the blank area below the content appends at the real end (review: blank-click)', () => {
+    it('clicking below the frontier is inert while pending, appends after completion (review: blank-click)', () => {
         const muya = bootMuya();
         expect(mountedParagraphs(muya)).toBe(512);
 
-        // Clicking below the last block is an end-of-document gesture; with
-        // only the prefix mounted, `lastChild` is the mount frontier and the
-        // new paragraph would land at index 512 — mid-document.
-        const click = new MouseEvent('click', {
-            clientY: 10_000,
-            bubbles: true,
-            cancelable: true,
-        });
         // muya's isMouseEvent guard checks the `x` alias, which happy-dom's
         // MouseEvent does not implement.
-        if (!('x' in click))
-            Object.defineProperty(click, 'x', { value: 0 });
-        muya.editor.scrollPage!.domNode!.dispatchEvent(click);
-        muya.editor.jsonState.flush();
+        const makeClick = () => {
+            const click = new MouseEvent('click', {
+                clientY: 10_000,
+                bubbles: true,
+                cancelable: true,
+            });
+            if (!('x' in click))
+                Object.defineProperty(click, 'x', { value: 0 });
+            return click;
+        };
 
+        // While the tail is pending, the area below the frontier is NOT
+        // blank — the document continues there. No insert (the paragraph
+        // would land at index 512, mid-document) and no forced mount (a
+        // container tap must not freeze a large file).
+        muya.editor.scrollPage!.domNode!.dispatchEvent(makeClick());
+        muya.editor.jsonState.flush();
+        expect(muya.editor.jsonState.rawState).toHaveLength(SECTIONS);
+        expect(mountedParagraphs(muya)).toBe(512);
+
+        // Once the background mount completes, the same click is a real
+        // end-of-document gesture again.
+        vi.runAllTimers();
+        muya.editor.scrollPage!.domNode!.dispatchEvent(makeClick());
+        muya.editor.jsonState.flush();
         const states = muya.editor.jsonState.rawState;
         expect(states).toHaveLength(SECTIONS + 1);
         expect((states[SECTIONS] as { text: string }).text).toBe('');
-        expect((states[SECTIONS - 1] as { text: string }).text).toBe(
-            `Paragraph ${SECTIONS - 1}`,
+        muya.destroy();
+    });
+
+    it('arrow-down across an empty container at the frontier keeps mounting to a content (review: empty container)', () => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const muya = new Muya(host, { markdown: 'seed\n' } as ConstructorParameters<typeof Muya>[1]);
+        muya.init();
+        bootedHosts.push(muya.domNode);
+
+        // 512 paragraphs, an EMPTY container (no content descendant), then a
+        // trailing paragraph — one mount step past the frontier lands on the
+        // empty container, which is NOT the document end.
+        const states = [
+            ...Array.from({ length: 512 }, (_, i) => ({
+                name: 'paragraph',
+                text: `Paragraph ${i}`,
+            })),
+            { name: 'block-quote', children: [] },
+            { name: 'paragraph', text: 'Paragraph after empty container' },
+        ];
+        muya.setContent(states as never);
+        expect(mountedParagraphs(muya)).toBe(512);
+
+        const frontier = (muya.editor.scrollPage!.find(511) as unknown as {
+            lastContentInDescendant: () => {
+                text: string;
+                setCursor: (start: number, end: number, focus?: boolean) => void;
+                arrowHandler: (event: Event) => void;
+            };
+        }).lastContentInDescendant();
+        expect(frontier.text).toBe('Paragraph 511');
+
+        muya.editor.activeContentBlock = frontier as never;
+        frontier.setCursor(0, 0, true);
+        frontier.arrowHandler(
+            new KeyboardEvent('keydown', { key: 'ArrowDown', cancelable: true }),
         );
+        muya.editor.jsonState.flush();
+
+        // No paragraph inserted between the prefix and the logical tail.
+        expect(muya.editor.jsonState.rawState).toHaveLength(514);
+        expect(muya.domNode.textContent).toContain('Paragraph after empty container');
         vi.runAllTimers();
         expectDomMatchesState(muya);
         muya.destroy();
@@ -477,6 +529,156 @@ describe('scrollPage chunked mount', () => {
         expect(muya.domNode.textContent).toContain('Paragraph 512');
         vi.runAllTimers();
         expectDomMatchesState(muya);
+        muya.destroy();
+    });
+
+    it('a click between blocks or in the gutter never flushes the pending tail (review: eager flush)', () => {
+        const muya = bootMuya();
+        expect(mountedParagraphs(muya)).toBe(512);
+
+        // clientY does not clear the mounted tail's bottom: not an
+        // end-of-document gesture — nothing mounts, nothing is inserted.
+        const click = new MouseEvent('click', { clientY: 0, bubbles: true, cancelable: true });
+        if (!('x' in click))
+            Object.defineProperty(click, 'x', { value: 0 });
+        muya.editor.scrollPage!.domNode!.dispatchEvent(click);
+        muya.editor.jsonState.flush();
+
+        expect(mountedParagraphs(muya)).toBe(512);
+        expect(muya.editor.jsonState.rawState).toHaveLength(SECTIONS);
+        muya.destroy();
+    });
+
+    it('enter in the last table row at the frontier navigates into the pending tail (review: table exit)', () => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const parts = Array.from({ length: SECTIONS }, (_, i) => `Paragraph ${i}`);
+        parts[550] = '| a | b |\n| - | - |\n| c | d |';
+        const muya = new Muya(host, {
+            markdown: `${parts.join('\n\n')}\n`,
+        } as ConstructorParameters<typeof Muya>[1]);
+        muya.init();
+        bootedHosts.push(muya.domNode);
+
+        // Put the mount frontier exactly at the table.
+        muya.editor.scrollPage!.ensureMountedThrough(550);
+        const before = mountedParagraphs(muya);
+        const cell = (muya.editor.scrollPage!.find(550) as unknown as {
+            lastContentInDescendant: () => {
+                text: string;
+                setCursor: (start: number, end: number, focus?: boolean) => void;
+                enterHandler: (event: Event) => void;
+            };
+        }).lastContentInDescendant();
+        expect(cell.text).toBe('d');
+
+        muya.editor.activeContentBlock = cell as never;
+        cell.setCursor(1, 1, true);
+        cell.enterHandler(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+        muya.editor.jsonState.flush();
+
+        // No paragraph inserted at the frontier; the successor was mounted.
+        expect(muya.editor.jsonState.rawState).toHaveLength(SECTIONS);
+        expect(mountedParagraphs(muya)).toBeGreaterThan(before);
+        vi.runAllTimers();
+        expectDomMatchesState(muya);
+        muya.destroy();
+    });
+
+    it('arrow-down in the last table row at the frontier navigates into the pending tail (review: table exit)', () => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const parts = Array.from({ length: SECTIONS }, (_, i) => `Paragraph ${i}`);
+        parts[550] = '| a | b |\n| - | - |\n| c | d |';
+        const muya = new Muya(host, {
+            markdown: `${parts.join('\n\n')}\n`,
+        } as ConstructorParameters<typeof Muya>[1]);
+        muya.init();
+        bootedHosts.push(muya.domNode);
+
+        muya.editor.scrollPage!.ensureMountedThrough(550);
+        const before = mountedParagraphs(muya);
+        const cell = (muya.editor.scrollPage!.find(550) as unknown as {
+            lastContentInDescendant: () => {
+                text: string;
+                setCursor: (start: number, end: number, focus?: boolean) => void;
+                arrowHandler: (event: Event) => void;
+            };
+        }).lastContentInDescendant();
+
+        muya.editor.activeContentBlock = cell as never;
+        cell.setCursor(1, 1, true);
+        cell.arrowHandler(new KeyboardEvent('keydown', { key: 'ArrowDown', cancelable: true }));
+        muya.editor.jsonState.flush();
+
+        expect(muya.editor.jsonState.rawState).toHaveLength(SECTIONS);
+        expect(mountedParagraphs(muya)).toBeGreaterThan(before);
+        vi.runAllTimers();
+        expectDomMatchesState(muya);
+        muya.destroy();
+    });
+
+    it('shift-enter out of a code block at the frontier navigates into the pending tail (review: code exit)', () => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const parts = Array.from({ length: SECTIONS }, (_, i) => `Paragraph ${i}`);
+        parts[550] = '```js\ncode\n```';
+        const muya = new Muya(host, {
+            markdown: `${parts.join('\n\n')}\n`,
+        } as ConstructorParameters<typeof Muya>[1]);
+        muya.init();
+        bootedHosts.push(muya.domNode);
+
+        muya.editor.scrollPage!.ensureMountedThrough(550);
+        const before = mountedParagraphs(muya);
+        const content = (muya.editor.scrollPage!.find(550) as unknown as {
+            lastContentInDescendant: () => {
+                text: string;
+                setCursor: (start: number, end: number, focus?: boolean) => void;
+                enterHandler: (event: KeyboardEvent) => void;
+            };
+        }).lastContentInDescendant();
+        expect(content.text).toBe('code');
+
+        muya.editor.activeContentBlock = content as never;
+        content.setCursor(4, 4, true);
+        content.enterHandler(
+            new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, cancelable: true }),
+        );
+        muya.editor.jsonState.flush();
+
+        expect(muya.editor.jsonState.rawState).toHaveLength(SECTIONS);
+        expect(mountedParagraphs(muya)).toBeGreaterThan(before);
+        vi.runAllTimers();
+        expectDomMatchesState(muya);
+        muya.destroy();
+    });
+
+    it('a footnote tap without a tool listener never flushes the pending tail (review: consumer gate)', () => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const parts = Array.from({ length: 599 }, (_, i) => `Paragraph ${i}`);
+        parts[0] = 'Intro with a footnote[^tail] reference.';
+        const markdown = `${parts.join('\n\n')}\n\n[^tail]: The definition lives in the tail.\n`;
+        const muya = new Muya(host, {
+            markdown,
+            footnote: true,
+        } as ConstructorParameters<typeof Muya>[1]);
+        muya.init();
+        bootedHosts.push(muya.domNode);
+        const before = mountedParagraphs(muya);
+        expect(before).toBeLessThan(599);
+
+        // No `muya-footnote-tool` subscriber: preparing the whole-document
+        // definition map would freeze a large file for nothing.
+        const reference = document.createElement('sup');
+        reference.id = 'noteref-tail';
+        const first = muya.editor.scrollPage!.firstContentInDescendant()!;
+        (first as unknown as {
+            _emitFootnoteToolEvent: (el: HTMLElement) => void;
+        })._emitFootnoteToolEvent(reference);
+
+        expect(mountedParagraphs(muya)).toBe(before);
         muya.destroy();
     });
 

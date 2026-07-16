@@ -522,20 +522,8 @@ class Content extends TreeNode {
         ) {
             event.preventDefault();
             event.stopPropagation();
-            // The context traversal only sees mounted blocks: at the
-            // progressive-mount frontier (#4887) the real successor is still
-            // pending, and the append below would insert a paragraph
-            // mid-document. Materialize one more top-level block and
-            // re-resolve; at the genuine document end this mounts nothing
-            // and the append still applies.
-            let targetContentBlock = nextContentBlock;
-            if (!targetContentBlock) {
-                const topIndex = this.path[0];
-                if (typeof topIndex === 'number') {
-                    this.scrollPage?.ensureMountedThrough(topIndex + 1);
-                    targetContentBlock = this.nextContentInContext();
-                }
-            }
+            const targetContentBlock
+                = nextContentBlock ?? this.resolveNextContentInContext();
             if (targetContentBlock) {
                 cursorBlock = targetContentBlock;
             }

@@ -97,7 +97,7 @@ class TableCellContent extends Format {
         }
         else {
             const lastCellContent = row.lastContentInDescendant();
-            const nextContent = lastCellContent?.nextContentInContext();
+            const nextContent = lastCellContent?.resolveNextContentInContext();
 
             if (nextContent) {
                 cursorBlock = nextContent;
@@ -176,8 +176,10 @@ class TableCellContent extends Format {
             }
             else {
                 let cursorBlock = null;
-                if (tableNextContent) {
-                    cursorBlock = tableNextContent;
+                const nextContent
+                    = tableNextContent ?? this.resolveNextContentInContext();
+                if (nextContent) {
+                    cursorBlock = nextContent;
                 }
                 else {
                     const state = {

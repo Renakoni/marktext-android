@@ -169,6 +169,47 @@ class TreeNode implements ILinkedNode {
     }
 
     /**
+     * Like `nextContentInContext`, but pending-mount aware (#4887): the
+     * traversal only sees mounted blocks, so at the progressive-mount
+     * frontier a still-pending successor reads as "no successor" and
+     * end-of-document fallbacks (append a trailing paragraph) would insert
+     * it between the mounted prefix and the logical tail. Keep
+     * materializing until a content appears or the mount stops making
+     * progress — a single step is not enough, because the next top-level
+     * block can be an empty container with no content descendant. At the
+     * genuine document end this mounts nothing and returns null.
+     *
+     * Call it on a CONTENT receiver (as `nextContentInContext` itself): the
+     * sibling walk starts at the receiver's parent, so a top-level Parent
+     * receiver would skip its own successors.
+     */
+    resolveNextContentInContext(): Nullable<Content> {
+        let next = this.nextContentInContext();
+        if (next)
+            return next;
+
+        const { scrollPage } = this;
+        // `path` is declared on the concrete subclasses (Content/Parent),
+        // not on TreeNode itself — narrow structurally.
+        const topIndex = (this as { path?: (string | number)[] }).path?.[0];
+        if (!scrollPage || typeof topIndex !== 'number')
+            return null;
+
+        let mountThrough = topIndex + 1;
+        while (!next) {
+            const mounted = scrollPage.children.length;
+            scrollPage.ensureMountedThrough(mountThrough);
+            if (scrollPage.children.length === mounted)
+                break;
+
+            next = this.nextContentInContext();
+            mountThrough += 1;
+        }
+
+        return next;
+    }
+
+    /**
      * Weather `this` is the only child of its parent.
      */
     isOnlyChild() {

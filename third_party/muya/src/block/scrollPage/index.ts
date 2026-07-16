@@ -455,11 +455,17 @@ export class ScrollPage extends Parent {
         const target = event.target;
 
         if (target[BLOCK_DOM_PROPERTY] === this) {
-            // Clicking the blank area below the content is an end-of-document
-            // gesture: materialize the pending tail first (#4887), or
-            // `lastChild` is the mount frontier and the new paragraph would
-            // land mid-document.
-            this.flushPendingMount();
+            // While a tail is pending, the area below the mount frontier is
+            // NOT blank — the document logically continues there (#4887).
+            // Appending would land mid-document; materializing the tail on a
+            // container click would freeze a large file for taps in the
+            // gutter or between blocks, and the forced reflow then moves the
+            // real bottom below the click point anyway. Do nothing —
+            // background chunks finish shortly and end-of-document clicks
+            // behave normally again.
+            if (this._pendingMount)
+                return;
+
             const lastChild = this.lastChild as Parent;
             const lastContentBlock = lastChild.lastContentInDescendant()!;
             const { clientY } = event;
