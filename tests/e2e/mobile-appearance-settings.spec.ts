@@ -55,23 +55,39 @@ test('keeps the theme mode segments on screen with long locale labels', async ({
   const modeControl = page.getByTestId('settings-appearance-theme-mode')
   await expect(modeControl).toBeVisible()
 
-  const viewport = page.viewportSize()!
-  const controlBox = await modeControl.boundingBox()
-  expect(controlBox).not.toBeNull()
-  expect(controlBox!.x + controlBox!.width).toBeLessThanOrEqual(viewport.width + 0.5)
+  const expectSegmentsOnScreen = async () => {
+    const viewport = page.viewportSize()!
+    const controlBox = await modeControl.boundingBox()
+    expect(controlBox).not.toBeNull()
+    expect(controlBox!.x + controlBox!.width).toBeLessThanOrEqual(viewport.width + 0.5)
 
-  for (const option of ['system', 'light', 'dark', 'custom']) {
-    const segment = page.getByTestId(`settings-appearance-theme-mode-option-${option}`)
-    const box = await segment.boundingBox()
-    expect(box, `segment ${option}`).not.toBeNull()
-    expect(box!.x, `segment ${option} left edge`).toBeGreaterThanOrEqual(0)
-    expect(box!.x + box!.width, `segment ${option} right edge`).toBeLessThanOrEqual(
-      viewport.width + 0.5,
-    )
-    // The label must be fully rendered, not ellipsized inside the segment.
-    const clipped = await segment.evaluate(element => element.scrollWidth > element.clientWidth)
-    expect(clipped, `segment ${option} label clipped`).toBe(false)
+    for (const option of ['system', 'light', 'dark', 'custom']) {
+      const segment = page.getByTestId(`settings-appearance-theme-mode-option-${option}`)
+      const box = await segment.boundingBox()
+      expect(box, `segment ${option}`).not.toBeNull()
+      expect(box!.x, `segment ${option} left edge`).toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width, `segment ${option} right edge`).toBeLessThanOrEqual(
+        viewport.width + 0.5,
+      )
+      // The label must be fully rendered, not ellipsized inside the segment.
+      const clipped = await segment.evaluate(element => element.scrollWidth > element.clientWidth)
+      expect(clipped, `segment ${option} label clipped`).toBe(false)
+    }
   }
+
+  await expectSegmentsOnScreen()
+
+  // On a narrower phone the segments stack into two balanced columns; every
+  // label must still be fully on screen and unclipped.
+  await page.setViewportSize({ width: 360, height: 800 })
+  await expect
+    .poll(() =>
+      modeControl
+        .locator('.settings-choice-options')
+        .evaluate(element => element.classList.contains('is-stacked')),
+    )
+    .toBe(true)
+  await expectSegmentsOnScreen()
 })
 
 test('applies Appearance text settings without rewriting existing draft Markdown', async ({ page }) => {
