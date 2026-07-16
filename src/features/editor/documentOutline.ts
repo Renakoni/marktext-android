@@ -26,6 +26,8 @@ interface MuyaTocItem {
   content: string
   lvl: number
   slug: string
+  /** Top-level state index — pre-mount key during a progressive mount. */
+  index: number
 }
 
 /**
@@ -50,9 +52,10 @@ export function projectOutlineItems(toc: readonly MuyaTocItem[]): OutlineItem[] 
 
 /**
  * Muya's TOC slug is NOT stamped onto the heading DOM. getTOC() walks only
- * the top-level scrollPage children, and those blocks render as the DIRECT
+ * the top-level JSON-state nodes, and those blocks render as the DIRECT
  * children of the scrollPage root (`.mu-container`), so the flat TOC index
- * maps 1:1 onto this ordered element set. Headings inside blockquotes,
+ * maps 1:1 onto this ordered element set (once the target is mounted —
+ * selectHeading materializes it first). Headings inside blockquotes,
  * lists, or raw HTML are NOT direct `.mu-container` children and must stay
  * out of the query, or every later index would shift.
  */
@@ -233,6 +236,13 @@ export function createDocumentOutline({
     }
 
     const editor = getEditor()
+    // With a progressive mount in flight the heading's DOM may not exist yet
+    // even though the TOC (collected from the JSON state) lists it —
+    // materialize blocks through the heading before resolving its element.
+    const target = tocSnapshot.find(item => item.slug === slug)
+    if (editor && target && typeof target.index === 'number') {
+      editor.ensureMountedThrough(target.index)
+    }
     const heading = editor
       ? resolveOutlineHeadingElement(editor.domNode, tocSnapshot, slug)
       : null

@@ -20,6 +20,12 @@ declare module '@muyajs/core' {
     lvl: number
     slug: string
     githubSlug: string
+    /**
+     * Top-level state index of the heading. During a progressive mount the
+     * heading's DOM may not exist yet; pass this to
+     * `muya.ensureMountedThrough(index)` before resolving the element.
+     */
+    index: number
   }
 
   export interface IMuyaClipboard {
@@ -99,6 +105,11 @@ declare module '@muyajs/core' {
     selectAll(): void
     search(value: string, opts?: IMuyaSearchOptions): IMuyaSearchState
     find(action: 'previous' | 'next'): IMuyaSearchState
+    /**
+     * Materialize blocks through the given top-level state index (progressive
+     * mount, marktext#4887). No-op when the index is already mounted.
+     */
+    ensureMountedThrough(index: number): void
     destroy(): void
   }
 

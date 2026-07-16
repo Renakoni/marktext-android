@@ -408,6 +408,11 @@ export function createResumePosition({
       return
     }
 
+    // With a progressive mount in flight the stored block may not have DOM
+    // yet even though the (hash-validated) document contains it —
+    // materialize through it first; out-of-range stays a discard.
+    getEditor()?.ensureMountedThrough(record.topBlockIndex)
+
     const block = blockContainer.children[record.topBlockIndex]
     if (!block) {
       logger?.debug('resume position discarded: block index out of range', {
@@ -610,6 +615,10 @@ export function createResumePosition({
 
     const scrollContainer = getScrollContainer()
     const blockContainer = getBlockContainer()
+    // The offer pre-mounted through the target, but a background chunk
+    // schedule is not obligated to have finished anything else — re-assert
+    // before resolving (no-op when already mounted).
+    getEditor()?.ensureMountedThrough(target.topBlockIndex)
     const block = blockContainer?.children[target.topBlockIndex] ?? null
     if (!scrollContainer || !block) {
       logger?.debug('resume activation aborted: target unresolvable')

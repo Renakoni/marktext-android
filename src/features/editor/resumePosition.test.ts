@@ -168,7 +168,8 @@ function createControllerHarness({ createRecord, readPosition }: ControllerHarne
   const store = new Map<string, ResumePositionRecord>()
 
   const controller = createResumePosition({
-    getEditor: () => ({ domNode: editorRoot }) as unknown as MuyaEditor,
+    getEditor: () =>
+      ({ domNode: editorRoot, ensureMountedThrough: () => {} }) as unknown as MuyaEditor,
     isEditorReady: () => true,
     getDocumentKey: () => 'doc',
     getMarkdown: () => 'markdown',
