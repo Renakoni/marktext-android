@@ -682,6 +682,117 @@ describe('scrollPage chunked mount', () => {
         muya.destroy();
     });
 
+    it('arrow-down across an ALREADY-MOUNTED empty container still reaches the tail (review: frontier start)', () => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const muya = new Muya(host, { markdown: 'seed\n' } as ConstructorParameters<typeof Muya>[1]);
+        muya.init();
+        bootedHosts.push(muya.domNode);
+
+        // 511 paragraphs + an empty container fill the synchronous prefix
+        // EXACTLY (512 weight), so the empty container sits at the frontier
+        // already mounted — a resolver that starts mounting at the
+        // receiver's index + 1 finds that index mounted, makes no progress,
+        // and misreads the pending tail as the document end.
+        const states = [
+            ...Array.from({ length: 511 }, (_, i) => ({
+                name: 'paragraph',
+                text: `Paragraph ${i}`,
+            })),
+            { name: 'block-quote', children: [] },
+            { name: 'paragraph', text: 'Paragraph after empty container' },
+        ];
+        muya.setContent(states as never);
+        expect(mountedParagraphs(muya)).toBe(511);
+        expect(
+            (muya.editor.scrollPage!.find(511) as unknown as { blockName: string }).blockName,
+        ).toBe('block-quote');
+
+        const frontier = (muya.editor.scrollPage!.find(510) as unknown as {
+            lastContentInDescendant: () => {
+                text: string;
+                setCursor: (start: number, end: number, focus?: boolean) => void;
+                arrowHandler: (event: Event) => void;
+            };
+        }).lastContentInDescendant();
+        expect(frontier.text).toBe('Paragraph 510');
+
+        muya.editor.activeContentBlock = frontier as never;
+        frontier.setCursor(0, 0, true);
+        frontier.arrowHandler(
+            new KeyboardEvent('keydown', { key: 'ArrowDown', cancelable: true }),
+        );
+        muya.editor.jsonState.flush();
+
+        expect(muya.editor.jsonState.rawState).toHaveLength(513);
+        expect(muya.domNode.textContent).toContain('Paragraph after empty container');
+        vi.runAllTimers();
+        expectDomMatchesState(muya);
+        muya.destroy();
+    });
+
+    it('delete at the end of the frontier paragraph merges with the pending successor (review: delete merge)', () => {
+        const muya = bootMuya();
+        expect(mountedParagraphs(muya)).toBe(512);
+
+        const frontier = (muya.editor.scrollPage!.find(511) as unknown as {
+            lastContentInDescendant: () => {
+                text: string;
+                setCursor: (start: number, end: number, focus?: boolean) => void;
+                deleteHandler: (event: KeyboardEvent) => void;
+            };
+        }).lastContentInDescendant();
+        expect(frontier.text).toBe('Paragraph 511');
+
+        muya.editor.activeContentBlock = frontier as never;
+        frontier.setCursor(frontier.text.length, frontier.text.length, true);
+        frontier.deleteHandler(
+            new KeyboardEvent('keydown', { key: 'Delete', cancelable: true }),
+        );
+        muya.editor.jsonState.flush();
+
+        // Same as at full mount: the two paragraphs merge — the keystroke is
+        // not swallowed by the mount frontier.
+        expect(muya.editor.jsonState.rawState).toHaveLength(SECTIONS - 1);
+        expect(frontier.text).toBe('Paragraph 511Paragraph 512');
+        vi.runAllTimers();
+        expectDomMatchesState(muya);
+        muya.destroy();
+    });
+
+    it('tab out of the last table cell at the frontier reaches the pending successor (review: table tab)', () => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const parts = Array.from({ length: SECTIONS }, (_, i) => `Paragraph ${i}`);
+        parts[550] = '| a | b |\n| - | - |\n| c | d |';
+        const muya = new Muya(host, {
+            markdown: `${parts.join('\n\n')}\n`,
+        } as ConstructorParameters<typeof Muya>[1]);
+        muya.init();
+        bootedHosts.push(muya.domNode);
+
+        muya.editor.scrollPage!.ensureMountedThrough(550);
+        const before = mountedParagraphs(muya);
+        const cell = (muya.editor.scrollPage!.find(550) as unknown as {
+            lastContentInDescendant: () => {
+                text: string;
+                setCursor: (start: number, end: number, focus?: boolean) => void;
+                tabHandler: (event: Event) => void;
+            };
+        }).lastContentInDescendant();
+        expect(cell.text).toBe('d');
+
+        muya.editor.activeContentBlock = cell as never;
+        cell.setCursor(1, 1, true);
+        cell.tabHandler(new KeyboardEvent('keydown', { key: 'Tab', cancelable: true }));
+        muya.editor.jsonState.flush();
+
+        expect(muya.editor.jsonState.rawState).toHaveLength(SECTIONS);
+        expect(mountedParagraphs(muya)).toBeGreaterThan(before);
+        expect(muya.domNode.textContent).toContain('Paragraph 551');
+        muya.destroy();
+    });
+
     it('destroy cancels a pending mount so timers never fire afterwards', () => {
         const muya = bootMuya();
         expect(mountedParagraphs(muya)).toBe(512);

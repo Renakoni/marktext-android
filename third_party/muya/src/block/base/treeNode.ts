@@ -189,21 +189,23 @@ class TreeNode implements ILinkedNode {
             return next;
 
         const { scrollPage } = this;
-        // `path` is declared on the concrete subclasses (Content/Parent),
-        // not on TreeNode itself — narrow structurally.
-        const topIndex = (this as { path?: (string | number)[] }).path?.[0];
-        if (!scrollPage || typeof topIndex !== 'number')
+        if (!scrollPage)
             return null;
 
-        let mountThrough = topIndex + 1;
+        // `nextContentInContext` has already scanned every MOUNTED
+        // successor — including mounted empty containers — so the search
+        // can only advance by extending the mount frontier itself. Ask for
+        // the first UNMOUNTED index (`children.length`) each round: any
+        // request below the frontier is a no-op (`ensureMountedThrough`
+        // returns early for mounted indices), which would misread the
+        // pending tail as the document end.
         while (!next) {
             const mounted = scrollPage.children.length;
-            scrollPage.ensureMountedThrough(mountThrough);
+            scrollPage.ensureMountedThrough(mounted);
             if (scrollPage.children.length === mounted)
                 break;
 
             next = this.nextContentInContext();
-            mountThrough += 1;
         }
 
         return next;

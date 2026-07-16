@@ -1531,7 +1531,10 @@ class Format extends Content {
 
         this.muya.editor.history.markInputBoundary('deleteContentForward', null);
 
-        const nextBlock = this.nextContentInContext();
+        // Pending-mount aware: at the frontier the paragraph to merge with
+        // may not be materialized yet (#4887) — a plain context walk would
+        // silently swallow the keystroke.
+        const nextBlock = this.resolveNextContentInContext();
         if (!nextBlock || nextBlock.blockName !== 'paragraph.content') {
             // If the next block is code content or table cell, nothing need to do.
             event.preventDefault();

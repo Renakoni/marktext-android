@@ -245,9 +245,13 @@ class TableCellContent extends Format {
         // always pass a KeyboardEvent in practice. The structural check just
         // keeps unit tests that pass a partial event object passing.
         const isShiftTab = 'shiftKey' in event && event.shiftKey === true;
+        // Forward Tab is pending-mount aware (#4887): from the last cell it
+        // must reach the table's successor even when that block is still in
+        // the unmounted tail. Shift+Tab walks backwards through the always-
+        // mounted prefix and needs nothing.
         const cursorBlock = isShiftTab
             ? this.previousContentInContext()
-            : this.nextContentInContext();
+            : this.resolveNextContentInContext();
 
         if (cursorBlock)
             cursorBlock.setCursor(0, 0, true);
