@@ -607,4 +607,5 @@ export const zhTW = {
   'about.update.noReleases': '尚無發行版本',
   'about.update.badRelease': '最新發行版本未包含版本號',
   'about.update.unavailable': '無法連線至 GitHub 發行版',
+  'about.update.openRelease': '開啟 GitHub 發行頁',
 } satisfies Record<I18nKey, string>

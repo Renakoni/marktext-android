@@ -16,6 +16,14 @@ const updateStatus = computed(() => {
   return updateResult.value ? getUpdateStatus(updateResult.value) : undefined
 })
 
+const availableReleaseUrl = computed(() => {
+  if (checkingUpdates.value || updateResult.value?.status !== 'available') {
+    return null
+  }
+
+  return updateResult.value.releaseUrl ?? APP_INFO.releasesUrl
+})
+
 function getUpdateStatus(result: AppUpdateCheckResult) {
   if (result.status === 'available' && result.latestVersion) {
     return t('about.update.available', { version: result.latestVersion })
@@ -109,6 +117,33 @@ async function checkUpdates() {
           <span v-if="updateStatus" class="about-row-value">{{ updateStatus }}</span>
         </span>
       </button>
+
+      <a
+        v-if="availableReleaseUrl"
+        class="about-row is-link"
+        :href="availableReleaseUrl"
+        target="_blank"
+        rel="noreferrer"
+        data-testid="settings-open-release"
+      >
+        <span class="about-row-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M12 4v10" />
+            <path d="M8 10l4 4 4-4" />
+            <path d="M5 19h14" />
+          </svg>
+        </span>
+        <span class="about-row-main">
+          <span class="about-row-label">{{ t('about.update.openRelease') }}</span>
+        </span>
+        <span class="about-row-trailing" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M8 8h8v8" />
+            <path d="M16 8l-9 9" />
+            <path d="M7 7h-1a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-1" />
+          </svg>
+        </span>
+      </a>
 
       <a
         class="about-row is-link"

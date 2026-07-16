@@ -607,4 +607,5 @@ export const de = {
   'about.update.noReleases': 'Noch keine veröffentlichten Releases',
   'about.update.badRelease': 'Das neueste Release enthielt keine Version',
   'about.update.unavailable': 'GitHub-Releases konnten nicht erreicht werden',
+  'about.update.openRelease': 'GitHub-Release öffnen',
 } satisfies Record<I18nKey, string>

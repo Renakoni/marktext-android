@@ -598,4 +598,5 @@ export const zhCN = {
   'about.update.noReleases': '暂无发布版本',
   'about.update.badRelease': '最新发布未包含版本号',
   'about.update.unavailable': '无法连接 GitHub Releases',
+  'about.update.openRelease': '打开 GitHub 发布页',
 } satisfies Record<I18nKey, string>

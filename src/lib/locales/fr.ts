@@ -607,4 +607,5 @@ export const fr = {
   'about.update.noReleases': 'Aucune version publiée pour l’instant',
   'about.update.badRelease': 'La dernière version ne comportait pas de numéro de version',
   'about.update.unavailable': 'Impossible de joindre les versions GitHub',
+  'about.update.openRelease': 'Ouvrir la version sur GitHub',
 } satisfies Record<I18nKey, string>
