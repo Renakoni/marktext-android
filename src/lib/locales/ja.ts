@@ -607,4 +607,5 @@ export const ja = {
   'about.update.noReleases': 'まだ公開されたリリースはありません',
   'about.update.badRelease': '最新リリースにバージョンが含まれていません',
   'about.update.unavailable': 'GitHub のリリースに接続できませんでした',
+  'about.update.openRelease': 'GitHub のリリースを開く',
 } satisfies Record<I18nKey, string>

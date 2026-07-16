@@ -601,6 +601,7 @@ export const en = {
   'about.update.noReleases': 'No published releases yet',
   'about.update.badRelease': 'Latest release did not include a version',
   'about.update.unavailable': 'Could not reach GitHub releases',
+  'about.update.openRelease': 'Open GitHub release',
 }
 
 export type I18nKey = keyof typeof en

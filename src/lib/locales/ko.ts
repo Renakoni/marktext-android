@@ -607,4 +607,5 @@ export const ko = {
   'about.update.noReleases': '아직 게시된 릴리스가 없습니다',
   'about.update.badRelease': '최신 릴리스에 버전이 포함되지 않았습니다',
   'about.update.unavailable': 'GitHub 릴리스에 연결할 수 없습니다',
+  'about.update.openRelease': 'GitHub 릴리스 열기',
 } satisfies Record<I18nKey, string>

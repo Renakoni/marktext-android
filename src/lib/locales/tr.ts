@@ -607,4 +607,5 @@ export const tr = {
   'about.update.noReleases': 'Henüz yayımlanmış sürüm yok',
   'about.update.badRelease': 'En son sürüm bir sürüm numarası içermiyordu',
   'about.update.unavailable': 'GitHub sürümlerine ulaşılamadı',
+  'about.update.openRelease': 'GitHub sürümünü aç',
 } satisfies Record<I18nKey, string>

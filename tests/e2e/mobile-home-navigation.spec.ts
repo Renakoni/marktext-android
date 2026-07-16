@@ -290,9 +290,16 @@ test('switches between document home and the settings about screen', async ({ pa
   await expect(page.getByTestId('settings-reference-muya')).toHaveCount(0)
   await expect(page.getByTestId('settings-about-notices')).toHaveCount(0)
 
+  await expect(page.getByTestId('settings-open-release')).toHaveCount(0)
+
   await page.getByTestId('settings-check-updates').click()
   await expect(page.getByTestId('settings-check-updates')).toContainText(
     'Update available: v1.0.0',
+  )
+  await expect(page.getByTestId('settings-open-release')).toContainText('Open GitHub release')
+  await expect(page.getByTestId('settings-open-release')).toHaveAttribute(
+    'href',
+    'https://github.com/Renakoni/marktext-android/releases/tag/v1.0.0',
   )
 
   await page.getByTestId('settings-detail-back').click()
