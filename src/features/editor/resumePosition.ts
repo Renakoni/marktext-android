@@ -408,27 +408,41 @@ export function createResumePosition({
       return
     }
 
-    const block = blockContainer.children[record.topBlockIndex]
+    // This probe runs on every open without user action, so it must NEVER
+    // materialize blocks: with a progressive mount in flight, a stored
+    // near-end index would otherwise synchronously deep-mount the document
+    // and reintroduce the very freeze progressive mounting removes. The
+    // stored block may therefore have no DOM yet — the hash match above
+    // proved the document identical, so validate the index against the
+    // LOGICAL top-level count instead and defer materialization to the
+    // user's explicit tap (activateResume).
+    const block = blockContainer.children[record.topBlockIndex] ?? null
     if (!block) {
-      logger?.debug('resume position discarded: block index out of range', {
-        docKey,
-        topBlockIndex: record.topBlockIndex,
+      const logicalCount = getEditor()?.editor.jsonState.rawState.length ?? 0
+      if (record.topBlockIndex >= logicalCount) {
+        logger?.debug('resume position discarded: block index out of range', {
+          docKey,
+          topBlockIndex: record.topBlockIndex,
+        })
+        return
+      }
+      // In the pending tail: the target sits past the synchronous mount
+      // prefix — hundreds of blocks, far beyond the min-distance threshold —
+      // so eligibility holds by construction and the rect check is skipped.
+    } else {
+      const containerRect = scrollContainer.getBoundingClientRect()
+      const blockRect = block.getBoundingClientRect()
+      const target = computeResumeScrollTop({
+        scrollTop: scrollContainer.scrollTop,
+        containerTop: containerRect.top,
+        blockTop: blockRect.top,
+        blockHeight: blockRect.height,
+        ratio: record.topBlockRatio,
       })
-      return
-    }
-
-    const containerRect = scrollContainer.getBoundingClientRect()
-    const blockRect = block.getBoundingClientRect()
-    const target = computeResumeScrollTop({
-      scrollTop: scrollContainer.scrollTop,
-      containerTop: containerRect.top,
-      blockTop: blockRect.top,
-      blockHeight: blockRect.height,
-      ratio: record.topBlockRatio,
-    })
-    if (target < scrollContainer.clientHeight * RESUME_MIN_DISTANCE_VIEWPORTS) {
-      logger?.debug('resume position skipped: too close to the top', { docKey })
-      return
+      if (target < scrollContainer.clientHeight * RESUME_MIN_DISTANCE_VIEWPORTS) {
+        logger?.debug('resume position skipped: too close to the top', { docKey })
+        return
+      }
     }
 
     // The user started scrolling or editing while validation ran: they are
@@ -610,6 +624,10 @@ export function createResumePosition({
 
     const scrollContainer = getScrollContainer()
     const blockContainer = getBlockContainer()
+    // Materialization happens HERE, on the user's explicit tap — the offer
+    // deliberately never mounts (a stored near-end index would deep-mount
+    // the whole document during the automatic probe). No-op once mounted.
+    getEditor()?.ensureMountedThrough(target.topBlockIndex)
     const block = blockContainer?.children[target.topBlockIndex] ?? null
     if (!scrollContainer || !block) {
       logger?.debug('resume activation aborted: target unresolvable')

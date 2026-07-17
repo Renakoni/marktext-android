@@ -18,9 +18,9 @@ describe('projectOutlineItems', () => {
 
   it('normalizes indentation from the lowest heading level present', () => {
     const items = projectOutlineItems([
-      { content: 'Alpha', lvl: 3, slug: 'a' },
-      { content: 'Beta', lvl: 4, slug: 'b' },
-      { content: 'Gamma', lvl: 3, slug: 'c' },
+      { content: 'Alpha', lvl: 3, slug: 'a', index: 0 },
+      { content: 'Beta', lvl: 4, slug: 'b', index: 1 },
+      { content: 'Gamma', lvl: 3, slug: 'c', index: 2 },
     ])
 
     expect(items.map(item => item.indent)).toEqual([0, 1, 0])
@@ -29,9 +29,9 @@ describe('projectOutlineItems', () => {
 
   it('caps deep hierarchies at MAX_OUTLINE_INDENT steps', () => {
     const items = projectOutlineItems([
-      { content: 'H1', lvl: 1, slug: 'a' },
-      { content: 'H5', lvl: 5, slug: 'b' },
-      { content: 'H6', lvl: 6, slug: 'c' },
+      { content: 'H1', lvl: 1, slug: 'a', index: 0 },
+      { content: 'H5', lvl: 5, slug: 'b', index: 1 },
+      { content: 'H6', lvl: 6, slug: 'c', index: 2 },
     ])
 
     expect(items[1].indent).toBe(MAX_OUTLINE_INDENT)
@@ -40,8 +40,8 @@ describe('projectOutlineItems', () => {
 
   it('keeps repeated headings in document order with distinct slugs', () => {
     const items = projectOutlineItems([
-      { content: 'Foo', lvl: 2, slug: 'first' },
-      { content: 'Foo', lvl: 2, slug: 'second' },
+      { content: 'Foo', lvl: 2, slug: 'first', index: 0 },
+      { content: 'Foo', lvl: 2, slug: 'second', index: 1 },
     ])
 
     expect(items).toHaveLength(2)
@@ -161,7 +161,7 @@ describe('waitForViewportSettle', () => {
 })
 
 interface FakeEditorOptions {
-  toc?: { content: string; lvl: number; slug: string; githubSlug: string }[]
+  toc?: { content: string; lvl: number; slug: string; githubSlug: string; index: number }[]
   headingsHtml?: string
 }
 
@@ -169,10 +169,12 @@ function createFakeEditor({ toc = [], headingsHtml = '' }: FakeEditorOptions = {
   const domNode = document.createElement('div')
   domNode.innerHTML = `<div class="mu-container">${headingsHtml}</div>`
   const getTOC = vi.fn(() => toc)
+  const ensureMountedThrough = vi.fn()
 
-  return { domNode, getTOC } as unknown as MuyaEditor & {
+  return { domNode, getTOC, ensureMountedThrough } as unknown as MuyaEditor & {
     domNode: HTMLElement
     getTOC: typeof getTOC
+    ensureMountedThrough: typeof ensureMountedThrough
   }
 }
 
@@ -195,8 +197,8 @@ function createOutlineHarness(options: FakeEditorOptions & { editorMissing?: boo
 }
 
 const TOC_FIXTURE = [
-  { content: 'Alpha', lvl: 1, slug: 'alpha', githubSlug: 'alpha' },
-  { content: 'Beta', lvl: 2, slug: 'beta', githubSlug: 'beta' },
+  { content: 'Alpha', lvl: 1, slug: 'alpha', githubSlug: 'alpha', index: 0 },
+  { content: 'Beta', lvl: 2, slug: 'beta', githubSlug: 'beta', index: 2 },
 ]
 
 const HEADINGS_FIXTURE = '<h1>Alpha</h1><p>text</p><h2>Beta</h2>'
@@ -244,6 +246,28 @@ describe('createDocumentOutline', () => {
     expect(heading).toBe(editor.domNode.querySelectorAll('h1, h2')[1])
     expect(documentOutline.outlineOpen.value).toBe(false)
     expect(documentOutline.outlineItems.value).toEqual([])
+  })
+
+  it('materializes the heading through a pending progressive mount before resolving', async () => {
+    // Only the first block is mounted; the TOC (collected from the JSON
+    // state) still lists the tail heading. selectHeading must mount through
+    // the target's state index before querying the DOM.
+    const { scrollToHeading, documentOutline, editor } = createOutlineHarness({
+      toc: TOC_FIXTURE,
+      headingsHtml: '<h1>Alpha</h1>',
+    })
+    editor.ensureMountedThrough.mockImplementation((index: number) => {
+      if (index >= 2) {
+        editor.domNode.querySelector('.mu-container')!.innerHTML = HEADINGS_FIXTURE
+      }
+    })
+
+    await documentOutline.openOutline()
+    documentOutline.selectHeading('beta')
+
+    expect(editor.ensureMountedThrough).toHaveBeenCalledWith(2)
+    expect(scrollToHeading).toHaveBeenCalledTimes(1)
+    expect((scrollToHeading.mock.calls[0][0] as Element).tagName).toBe('H2')
   })
 
   it('fails safe when the target heading is stale: closes without scrolling', async () => {
