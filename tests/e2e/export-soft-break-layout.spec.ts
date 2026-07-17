@@ -46,18 +46,21 @@ test("marked's canonical serializer newlines create no phantom rows", async ({ p
 })
 
 test('raw HTML keeps normal whitespace semantics everywhere', async ({ page }) => {
-  const cases = [
-    '<p>\n<strong>left</strong>\n<strong>right</strong>\n</p>',
-    '<ul><li><div>\n<strong>left</strong>\n<strong>right</strong>\n</div></li></ul>',
-    '<ul><li><section>\n<strong>left</strong>\n<strong>right</strong>\n</section></li></ul>',
-    '<ul><li><menu>\n<strong>left</strong>\n<strong>right</strong>\n</menu></li></ul>',
+  // Measure the CONTAINER (review round 7: the first <strong> stays one
+  // line tall even when the second wraps onto another row — only the
+  // container height catches the regression).
+  const cases: Array<[string, string]> = [
+    ['<p>\n<strong>left</strong>\n<strong>right</strong>\n</p>', 'p'],
+    ['<ul><li><div>\n<strong>left</strong>\n<strong>right</strong>\n</div></li></ul>', 'div'],
+    ['<ul><li><section>\n<strong>left</strong>\n<strong>right</strong>\n</section></li></ul>', 'section'],
+    ['<ul><li><menu>\n<strong>left</strong>\n<strong>right</strong>\n</menu></li></ul>', 'menu'],
   ]
   const reference = await measure(page, '<p><strong>left</strong> <strong>right</strong></p>', 'p')
 
-  for (const html of cases) {
-    const height = await measure(page, html, 'strong')
-    // The two strongs sit on ONE line: each strong's line box equals the
-    // single-line reference, which only holds when the newlines collapse.
+  for (const [html, selector] of cases) {
+    const height = await measure(page, html, selector)
+    // Both strongs sit on ONE line: the container is single-line tall,
+    // which only holds when the newlines collapse.
     expect(height, html).toBeLessThan(reference * 1.4)
   }
 })
