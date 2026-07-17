@@ -7,9 +7,10 @@ import {
   computeResumeScrollTop,
   createResumePosition,
 } from './resumePosition'
-import type {
-  CreateResumePositionRecordOptions,
-  ResumePositionRecord,
+import {
+  createResumePositionRecord,
+  type CreateResumePositionRecordOptions,
+  type ResumePositionRecord,
 } from '../../lib/resumePositions'
 import type { MuyaEditor } from './editorRuntime'
 
@@ -158,17 +159,29 @@ function buildEditorDom() {
 interface ControllerHarnessOptions {
   createRecord: (options: CreateResumePositionRecordOptions) => Promise<ResumePositionRecord | null>
   readPosition?: (docKey: string) => ResumePositionRecord | null
+  /** Logical top-level block count (jsonState), independent of mounted DOM. */
+  logicalBlockCount?: number
 }
 
-function createControllerHarness({ createRecord, readPosition }: ControllerHarnessOptions) {
+function createControllerHarness({
+  createRecord,
+  readPosition,
+  logicalBlockCount = 1,
+}: ControllerHarnessOptions) {
   // No ResizeObserver: the open-settle phase and stabilization resolve
   // immediately, keeping these tests synchronous and deterministic.
   vi.stubGlobal('ResizeObserver', undefined)
   const { shell, editorRoot } = buildEditorDom()
   const store = new Map<string, ResumePositionRecord>()
+  const ensureMountedThrough = vi.fn()
 
   const controller = createResumePosition({
-    getEditor: () => ({ domNode: editorRoot }) as unknown as MuyaEditor,
+    getEditor: () =>
+      ({
+        domNode: editorRoot,
+        ensureMountedThrough,
+        editor: { jsonState: { rawState: new Array(logicalBlockCount) } },
+      }) as unknown as MuyaEditor,
     isEditorReady: () => true,
     getDocumentKey: () => 'doc',
     getMarkdown: () => 'markdown',
@@ -178,7 +191,7 @@ function createControllerHarness({ createRecord, readPosition }: ControllerHarne
     createRecord,
   })
 
-  return { controller, shell, store }
+  return { controller, shell, editorRoot, store, ensureMountedThrough }
 }
 
 afterEach(() => {
@@ -327,5 +340,79 @@ describe('persistNow live capture', () => {
 
     expect(captured).toHaveLength(1)
     expect(captured[0].displayText).toBe('Block zero')
+  })
+})
+
+describe('restore offer during a progressive mount', () => {
+  // A real record whose hash matches the harness markdown, pointing past the
+  // single mounted block — i.e. into the pending tail of a larger document.
+  async function makeMatchingRecord(topBlockIndex: number) {
+    const record = await createResumePositionRecord({
+      markdown: 'markdown',
+      topBlockIndex,
+      topBlockRatio: 0,
+      displayText: 'Resume deep in the document',
+    })
+    expect(record).not.toBeNull()
+    return record!
+  }
+
+  it('offers a pending-tail target without materializing anything', async () => {
+    const record = await makeMatchingRecord(5)
+    const { controller, ensureMountedThrough } = createControllerHarness({
+      createRecord: () => Promise.resolve(null),
+      readPosition: () => record,
+      logicalBlockCount: 10,
+    })
+
+    await controller.startForOpenedDocument()
+
+    // The probe runs on every open without user action: it must never
+    // deep-mount (a near-end index would synchronously rebuild the whole
+    // document). The offer stands on the hash match plus logical bounds.
+    expect(controller.resumeCardVisible.value).toBe(true)
+    expect(ensureMountedThrough).not.toHaveBeenCalled()
+    controller.resetForNewDocument()
+  })
+
+  it('discards an index beyond the logical document without mounting', async () => {
+    const record = await makeMatchingRecord(25)
+    const { controller, ensureMountedThrough } = createControllerHarness({
+      createRecord: () => Promise.resolve(null),
+      readPosition: () => record,
+      logicalBlockCount: 10,
+    })
+
+    await controller.startForOpenedDocument()
+
+    expect(controller.resumeCardVisible.value).toBe(false)
+    expect(ensureMountedThrough).not.toHaveBeenCalled()
+    controller.resetForNewDocument()
+  })
+
+  it('materializes through the target only when the user activates the card', async () => {
+    const record = await makeMatchingRecord(5)
+    const { controller, editorRoot, ensureMountedThrough } = createControllerHarness({
+      createRecord: () => Promise.resolve(null),
+      readPosition: () => record,
+      logicalBlockCount: 10,
+    })
+    ensureMountedThrough.mockImplementation((index: number) => {
+      const container = editorRoot.querySelector('.mu-container')!
+      while (container.children.length <= index) {
+        const paragraph = document.createElement('p')
+        paragraph.textContent = `Block ${container.children.length}`
+        container.append(paragraph)
+      }
+    })
+
+    await controller.startForOpenedDocument()
+    expect(controller.resumeCardVisible.value).toBe(true)
+
+    controller.activateResume()
+
+    expect(ensureMountedThrough).toHaveBeenCalledWith(5)
+    expect(controller.resumeCardVisible.value).toBe(false)
+    controller.resetForNewDocument()
   })
 })
