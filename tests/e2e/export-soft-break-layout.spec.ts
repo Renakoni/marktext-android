@@ -89,6 +89,22 @@ test('a heading as the sole item child adds no phantom blank rows', async ({ pag
   expect(withPreWrap).toBe(control)
 })
 
+test('raw-HTML newlines inside a tight item follow normal HTML semantics', async ({ page }) => {
+  // Raw HTML passes through the pipeline verbatim; the container reset in
+  // the export stylesheet must stop the item's pre-wrap from inheriting
+  // into it, or these formatting newlines render as three lines instead of
+  // normal HTML's single collapsed line (review round 4).
+  const raw = '<li><div>\n<strong>left</strong>\n<strong>right</strong>\n</div></li>'
+  const withPreWrap = await measureListItemHeight(page, raw)
+  const control = await measureListItemHeight(
+    page,
+    raw,
+    '.markdown-body li { white-space: normal !important; }',
+  )
+
+  expect(withPreWrap).toBe(control)
+})
+
 test('the cleaned nested-blockquote shape adds no phantom blank rows', async ({ page }) => {
   const cleaned = '<li>line A<blockquote><p>quoted</p></blockquote></li>'
   const withPreWrap = await measureListItemHeight(page, cleaned)
