@@ -74,6 +74,21 @@ test("marked's uncleaned serializer newlines DO create blank rows (premise)", as
   expect(withPreWrap).toBeGreaterThan(control)
 })
 
+test('a heading as the sole item child adds no phantom blank rows', async ({ page }) => {
+  // `- # heading` emits `<li><h1>…</h1>\n</li>`; H1 must count as a block
+  // child in the cleanup or the trailing newline renders as a phantom row
+  // (review round 3 measured 85px instead of 43px).
+  const cleaned = '<li><h1>heading</h1></li>'
+  const withPreWrap = await measureListItemHeight(page, cleaned)
+  const control = await measureListItemHeight(
+    page,
+    cleaned,
+    '.markdown-body li { white-space: normal !important; }',
+  )
+
+  expect(withPreWrap).toBe(control)
+})
+
 test('the cleaned nested-blockquote shape adds no phantom blank rows', async ({ page }) => {
   const cleaned = '<li>line A<blockquote><p>quoted</p></blockquote></li>'
   const withPreWrap = await measureListItemHeight(page, cleaned)
