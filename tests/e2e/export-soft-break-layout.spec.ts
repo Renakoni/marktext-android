@@ -33,6 +33,19 @@ test('an authored soft break in a tight item renders as a real second line', asy
   expect(soft).toBeLessThan(single * 2.6)
 })
 
+test('a soft break between inline-wrapped lines renders as a real second line', async ({ page }) => {
+  // The authored newline lives in a whitespace-only text node BETWEEN two
+  // inline elements — the strip must not eat it (review round 2).
+  const single = await measureListItemHeight(page, '<li><strong>left</strong></li>')
+  const soft = await measureListItemHeight(
+    page,
+    '<li><strong>left</strong>\n<strong>right</strong></li>',
+  )
+
+  expect(soft).toBeGreaterThan(single * 1.8)
+  expect(soft).toBeLessThan(single * 2.6)
+})
+
 test('the cleaned nested-list shape adds no phantom blank rows', async ({ page }) => {
   // Exactly what the export pipeline emits for `- line A\n  - child`.
   const cleaned = '<li>line A<ul><li>child</li></ul></li>'
