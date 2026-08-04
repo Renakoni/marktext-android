@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for tokyo-night-storm.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever the theme is active. Rule grouping follows
+ * the desktop prismjs palette (Tokyo Night and Storm share one token set);
+ * the [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='tokyo-night-storm'] .token.comment,
+[data-theme='tokyo-night-storm'] .token.prolog,
+[data-theme='tokyo-night-storm'] .token.doctype,
+[data-theme='tokyo-night-storm'] .token.cdata {
+  color: #565f89;
+}
+
+[data-theme='tokyo-night-storm'] .token.punctuation {
+  color: #9aa5ce;
+}
+
+[data-theme='tokyo-night-storm'] .token.property,
+[data-theme='tokyo-night-storm'] .token.tag,
+[data-theme='tokyo-night-storm'] .token.constant,
+[data-theme='tokyo-night-storm'] .token.symbol {
+  color: #f7768e;
+}
+
+[data-theme='tokyo-night-storm'] .token.boolean,
+[data-theme='tokyo-night-storm'] .token.number {
+  color: #ff9e64;
+}
+
+[data-theme='tokyo-night-storm'] .token.selector,
+[data-theme='tokyo-night-storm'] .token.attr-name,
+[data-theme='tokyo-night-storm'] .token.string,
+[data-theme='tokyo-night-storm'] .token.char,
+[data-theme='tokyo-night-storm'] .token.builtin {
+  color: #9ece6a;
+}
+
+[data-theme='tokyo-night-storm'] .token.inserted {
+  color: #9ece6a;
+  background: rgba(158, 206, 106, 0.12);
+}
+
+[data-theme='tokyo-night-storm'] .token.deleted {
+  color: #f7768e;
+  background: rgba(247, 118, 142, 0.12);
+}
+
+[data-theme='tokyo-night-storm'] .token.operator,
+[data-theme='tokyo-night-storm'] .token.entity,
+[data-theme='tokyo-night-storm'] .token.url,
+[data-theme='tokyo-night-storm'] .language-css .token.string,
+[data-theme='tokyo-night-storm'] .style .token.string {
+  color: #89ddff;
+}
+
+[data-theme='tokyo-night-storm'] .token.atrule,
+[data-theme='tokyo-night-storm'] .token.attr-value,
+[data-theme='tokyo-night-storm'] .token.function,
+[data-theme='tokyo-night-storm'] .token.class-name {
+  color: #7aa2f7;
+}
+
+[data-theme='tokyo-night-storm'] .token.keyword {
+  color: #bb9af7;
+}
+
+[data-theme='tokyo-night-storm'] .token.regex,
+[data-theme='tokyo-night-storm'] .token.important,
+[data-theme='tokyo-night-storm'] .token.variable {
+  color: #e0af68;
+}
