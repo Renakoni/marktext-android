@@ -67,6 +67,7 @@ export const en = {
   'app.notice.renameTemporaryAccess':
     'Renamed, but Android only kept temporary access. Reopen it from Android to add it back to Recents.',
   'app.notice.sharedTextImported': 'Imported shared text as a local draft.',
+  'app.notice.incomingFileImported': 'Imported this file as a local draft.',
   'app.notice.androidSaveRecovery': 'Save failed. A local recovery draft was kept.',
   'app.notice.androidExitRecovery': 'Unsaved changes were kept as a recovery draft.',
   'app.notice.androidExitDiscard': 'Unsaved changes were discarded.',

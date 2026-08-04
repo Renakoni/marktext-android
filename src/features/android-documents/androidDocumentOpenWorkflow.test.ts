@@ -4,6 +4,7 @@ import {
   createAndroidDocumentOpenResult,
   createAndroidOpenWithDocumentEventAction,
   createAndroidShareDocumentEventAction,
+  createImportedIncomingDocumentOpenResult,
   createSharedTextDocumentOpenResult,
   getIncomingDocumentPreservationAction,
   openAndroidMarkdownDocumentWorkflow,
@@ -39,8 +40,6 @@ describe('androidDocumentOpenWorkflow', () => {
   it('creates an opened Android document session result for durable documents', () => {
     const result = createAndroidDocumentOpenResult(openedDocument, {
       source: 'picker',
-      openWithTemporaryAccessMessage: 'open-with temporary',
-      shareTemporaryAccessMessage: 'share temporary',
     })
 
     expect(result).toMatchObject({
@@ -59,24 +58,126 @@ describe('androidDocumentOpenWorkflow', () => {
     })
   })
 
-  it('marks temporary open-with documents as non-recent and opened temporarily', () => {
-    const temporaryDocument = {
-      ...openedDocument,
-      persisted: false,
-      canWrite: false,
+  it('imports a non-persistable incoming document as a named local draft', () => {
+    const result = createImportedIncomingDocumentOpenResult(
+      {
+        sourceUri: 'content://provider/incoming.md',
+        displayName: 'Incoming.md',
+        markdown: '# Incoming\r\n\r\nfrom another app',
+      },
+      {
+        existingDrafts: [],
+        canPersistLocalDrafts: true,
+        incomingFileImportedMessage: 'Imported this file as a local draft.',
+        temporaryAccessMessage: 'open-with temporary',
+        now: () => '2026-07-02T00:00:00.000Z',
+      },
+    )
+
+    expect(result).toMatchObject({
+      markdown: '# Incoming\n\nfrom another app',
+      homeNotice: null,
+      promptLocalDraftSaveOnExit: true,
+      currentAndroidDocumentCanWrite: false,
+      statusAfterOpen: 'Imported this file as a local draft.',
+      documentState: {
+        autosaveTarget: 'local-draft',
+        displayName: 'Incoming.md',
+        sourceUri: null,
+        updatedAt: '2026-07-02T00:00:00.000Z',
+      },
+    })
+    expect(result.localDraft).toEqual({
+      id: result.documentState.id,
+      markdown: '# Incoming\n\nfrom another app',
+      createdAt: '2026-07-02T00:00:00.000Z',
+      updatedAt: '2026-07-02T00:00:00.000Z',
+      lastSavedAt: '2026-07-02T00:00:00.000Z',
+      displayName: 'Incoming.md',
+    })
+  })
+
+  it('reuses the existing draft when the same unchanged file is opened again', () => {
+    const existingDraft = {
+      id: 'draft-incoming',
+      markdown: '# Incoming\n\nfrom another app',
+      createdAt: '2026-07-01T00:00:00.000Z',
+      updatedAt: '2026-07-01T00:00:00.000Z',
+      lastSavedAt: '2026-07-01T00:00:00.000Z',
+      displayName: 'Incoming.md',
     }
 
-    const result = createAndroidDocumentOpenResult(temporaryDocument, {
-      source: 'open-with',
-      remember: false,
-      openWithTemporaryAccessMessage: 'Opened temporarily from Android',
-      shareTemporaryAccessMessage: 'share temporary',
+    const result = createImportedIncomingDocumentOpenResult(
+      {
+        sourceUri: 'content://provider/incoming.md',
+        displayName: 'Incoming.md',
+        markdown: '# Incoming\r\n\r\nfrom another app',
+      },
+      {
+        existingDrafts: [existingDraft],
+        canPersistLocalDrafts: true,
+        incomingFileImportedMessage: 'Imported this file as a local draft.',
+        temporaryAccessMessage: 'open-with temporary',
+        now: () => '2026-07-02T00:00:00.000Z',
+      },
+    )
+
+    expect(result.documentState.id).toBe('draft-incoming')
+    expect(result.localDraft).toMatchObject({
+      id: 'draft-incoming',
+      createdAt: '2026-07-01T00:00:00.000Z',
+      updatedAt: '2026-07-02T00:00:00.000Z',
+      displayName: 'Incoming.md',
     })
+  })
+
+  it('imports a changed file with the same name as a new draft', () => {
+    const existingDraft = {
+      id: 'draft-incoming',
+      markdown: '# Incoming\n\nedited inside the app',
+      createdAt: '2026-07-01T00:00:00.000Z',
+      updatedAt: '2026-07-01T00:00:00.000Z',
+      lastSavedAt: '2026-07-01T00:00:00.000Z',
+      displayName: 'Incoming.md',
+    }
+
+    const result = createImportedIncomingDocumentOpenResult(
+      {
+        sourceUri: 'content://provider/incoming.md',
+        displayName: 'Incoming.md',
+        markdown: '# Incoming\n\nfrom another app',
+      },
+      {
+        existingDrafts: [existingDraft],
+        canPersistLocalDrafts: true,
+        incomingFileImportedMessage: 'Imported this file as a local draft.',
+        temporaryAccessMessage: 'open-with temporary',
+        now: () => '2026-07-02T00:00:00.000Z',
+      },
+    )
+
+    expect(result.documentState.id).not.toBe('draft-incoming')
+    expect(result.localDraft.markdown).toBe('# Incoming\n\nfrom another app')
+  })
+
+  it('keeps the temporary-access messaging when local drafts are disabled', () => {
+    const result = createImportedIncomingDocumentOpenResult(
+      {
+        sourceUri: 'content://provider/incoming.md',
+        displayName: 'Incoming.md',
+        markdown: '# Incoming\n\nfrom another app',
+      },
+      {
+        existingDrafts: [],
+        canPersistLocalDrafts: false,
+        incomingFileImportedMessage: 'Imported this file as a local draft.',
+        temporaryAccessMessage: 'Opened temporarily from Android',
+      },
+    )
 
     expect(result).toMatchObject({
       homeNotice: 'Opened temporarily from Android',
-      rememberDocument: null,
-      currentAndroidDocumentCanWrite: false,
+      promptLocalDraftSaveOnExit: true,
       statusAfterOpen: 'Opened temporarily',
     })
   })

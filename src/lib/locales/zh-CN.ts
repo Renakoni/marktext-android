@@ -68,6 +68,7 @@ export const zhCN = {
   'app.notice.renameTemporaryAccess':
     '已重命名，但 Android 只授予了临时访问权限。请从 Android 重新打开，才能重新加入最近文档。',
   'app.notice.sharedTextImported': '已将分享文本导入为本地草稿。',
+  'app.notice.incomingFileImported': '已将此文件导入为本地草稿。',
   'app.notice.androidSaveRecovery': '保存失败。已保留本地恢复草稿。',
   'app.notice.androidExitRecovery': '未保存的更改已保留为恢复草稿。',
   'app.notice.androidExitDiscard': '已丢弃未保存的更改。',

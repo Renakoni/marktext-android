@@ -203,6 +203,7 @@ const SHARE_TEMPORARY_ACCESS_MESSAGE =
 const RENAME_TEMPORARY_ACCESS_MESSAGE =
   'Renamed, but Android only kept temporary access. Reopen it from Android to add it back to Recents.'
 const SHARED_TEXT_IMPORTED_MESSAGE = 'Imported shared text as a local draft.'
+const INCOMING_FILE_IMPORTED_MESSAGE = 'Imported this file as a local draft.'
 const ANDROID_SAVE_RECOVERY_MESSAGE = 'Save failed. A local recovery draft was kept.'
 const ANDROID_EXIT_RECOVERY_MESSAGE = 'Unsaved changes were kept as a recovery draft.'
 const ANDROID_EXIT_DISCARD_MESSAGE = 'Unsaved changes were discarded.'
@@ -1270,22 +1271,15 @@ function rememberAndroidDocument(document: OpenedAndroidDocument) {
 
 async function openAndroidDocumentResult(
   document: OpenedAndroidDocument,
-  options: { source?: AndroidDocumentOpenSource; remember?: boolean } = {},
+  options: { source?: AndroidDocumentOpenSource } = {},
 ) {
   const openResult = createAndroidDocumentOpenResult(document, {
     source: options.source,
-    remember: options.remember,
-    openWithTemporaryAccessMessage: OPEN_WITH_TEMPORARY_ACCESS_MESSAGE,
-    shareTemporaryAccessMessage: SHARE_TEMPORARY_ACCESS_MESSAGE,
     logger: androidDocumentLog,
   })
 
   homeNotice.value = openResult.homeNotice
-  if (openResult.rememberDocument) {
-    rememberAndroidDocument(openResult.rememberDocument)
-  } else {
-    protectAndroidDocumentImportedImages(document)
-  }
+  rememberAndroidDocument(openResult.rememberDocument)
   promptLocalDraftSaveOnExit.value = openResult.promptLocalDraftSaveOnExit
   currentAndroidDocumentCanWrite.value = openResult.currentAndroidDocumentCanWrite
   documentState.value = openResult.documentState
@@ -1751,6 +1745,9 @@ const incomingDocuments = createIncomingDocumentOrchestration({
   promptLocalDraftSaveOnExit,
   currentAndroidDocumentCanWrite,
   sharedTextImportedMessage: SHARED_TEXT_IMPORTED_MESSAGE,
+  incomingFileImportedMessage: INCOMING_FILE_IMPORTED_MESSAGE,
+  openWithTemporaryAccessMessage: OPEN_WITH_TEMPORARY_ACCESS_MESSAGE,
+  shareTemporaryAccessMessage: SHARE_TEMPORARY_ACCESS_MESSAGE,
   hasEditor,
   openEditor,
   releaseEditorFocusAfterOpen,

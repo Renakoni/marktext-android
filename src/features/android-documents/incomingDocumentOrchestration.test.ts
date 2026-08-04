@@ -61,6 +61,9 @@ function createOrchestration(overrides: {
     promptLocalDraftSaveOnExit: ref(false),
     currentAndroidDocumentCanWrite: ref(true),
     sharedTextImportedMessage: 'Imported shared text as a local draft.',
+    incomingFileImportedMessage: 'Imported this file as a local draft.',
+    openWithTemporaryAccessMessage: 'open-with temporary access',
+    shareTemporaryAccessMessage: 'share temporary access',
     hasEditor: () => overrides.hasEditor ?? false,
     openEditor: vi.fn().mockResolvedValue(undefined),
     releaseEditorFocusAfterOpen: vi.fn(),
@@ -111,7 +114,6 @@ describe('incomingDocumentOrchestration', () => {
     expect(options.closeEditorToolbar).toHaveBeenCalled()
     expect(options.openAndroidDocumentResult).toHaveBeenCalledWith(incomingDocument, {
       source: 'open-with',
-      remember: true,
     })
   })
 
@@ -259,7 +261,6 @@ describe('incomingDocumentOrchestration', () => {
     expect(options.closeEditorMenu).toHaveBeenCalled()
     expect(options.openAndroidDocumentResult).toHaveBeenCalledWith(incomingDocument, {
       source: 'open-with',
-      remember: true,
     })
   })
 
@@ -369,22 +370,84 @@ describe('incomingDocumentOrchestration', () => {
     expect(options.openAndroidDocumentResult).toHaveBeenCalledTimes(2)
     expect(options.openAndroidDocumentResult).toHaveBeenLastCalledWith(secondDocument, {
       source: 'open-with',
-      remember: true,
     })
   })
 
-  it('routes a shared Markdown file through the shared open path', async () => {
+  it('opens a persisted shared Markdown file through the durable open path', async () => {
     const { orchestration, options } = createOrchestration()
 
     await orchestration.handleShareDocumentEvent({
-      document: { ...sharedTextDocument, sourceUri: 'content://test/shared.md', shareKind: 'stream' },
+      document: {
+        ...sharedTextDocument,
+        sourceUri: 'content://test/shared.md',
+        shareKind: 'stream',
+        persisted: true,
+      },
       error: null,
     })
 
     expect(options.openAndroidDocumentResult).toHaveBeenCalledWith(
       expect.objectContaining({ sourceUri: 'content://test/shared.md' }),
-      { source: 'share', remember: false },
+      { source: 'share' },
     )
+    expect(options.persistLocalDrafts).not.toHaveBeenCalled()
+  })
+
+  it('imports a non-persistable shared Markdown file as a named local draft', async () => {
+    const { orchestration, options } = createOrchestration()
+
+    await orchestration.handleShareDocumentEvent({
+      document: {
+        ...sharedTextDocument,
+        sourceUri: 'content://test/shared.md',
+        displayName: 'Shared Stream.md',
+        shareKind: 'stream',
+      },
+      error: null,
+    })
+
+    expect(options.openAndroidDocumentResult).not.toHaveBeenCalled()
+    expect(options.persistLocalDrafts).toHaveBeenCalledTimes(1)
+    const [drafts] = options.persistLocalDrafts.mock.calls[0]
+    expect(drafts[0]).toMatchObject({
+      markdown: '# Shared note',
+      displayName: 'Shared Stream.md',
+    })
+    expect(options.documentState.value.autosaveTarget).toBe('local-draft')
+    expect(options.promptLocalDraftSaveOnExit.value).toBe(true)
+    expect(options.openEditor).toHaveBeenCalledWith('# Shared note')
+    expect(options.status.value).toBe('Imported this file as a local draft.')
+  })
+
+  it('imports a non-persistable open-with document as a named local draft', async () => {
+    const { orchestration, options } = createOrchestration({ currentScreen: 'home' })
+    const temporaryDocument = { ...incomingDocument, persisted: false, canWrite: false }
+
+    await orchestration.handleOpenWithDocumentEvent({ document: temporaryDocument, error: null })
+
+    expect(options.openAndroidDocumentResult).not.toHaveBeenCalled()
+    expect(options.persistLocalDrafts).toHaveBeenCalledTimes(1)
+    const [drafts] = options.persistLocalDrafts.mock.calls[0]
+    expect(drafts[0]).toMatchObject({
+      markdown: '# Incoming',
+      displayName: 'incoming.md',
+    })
+    expect(options.currentAndroidDocumentCanWrite.value).toBe(false)
+    expect(options.openEditor).toHaveBeenCalledWith('# Incoming')
+    expect(options.status.value).toBe('Imported this file as a local draft.')
+    expect(options.releaseEditorFocusAfterOpen).toHaveBeenCalled()
+  })
+
+  it('keeps the temporary-access notice for open-with when local drafts are disabled', async () => {
+    const { orchestration, options } = createOrchestration({ canPersistDrafts: false })
+    const temporaryDocument = { ...incomingDocument, persisted: false, canWrite: false }
+
+    await orchestration.handleOpenWithDocumentEvent({ document: temporaryDocument, error: null })
+
+    expect(options.persistLocalDrafts).not.toHaveBeenCalled()
+    expect(options.openEditor).toHaveBeenCalledWith('# Incoming')
+    expect(options.homeNotice.value).toBe('open-with temporary access')
+    expect(options.status.value).toBe('Opened temporarily')
   })
 
   it('imports shared text as a local draft and opens it', async () => {

@@ -177,13 +177,17 @@ test('opens a warm Android open-with document after preserving the current draft
   })
 
   await expect(page.getByTestId('editor-host')).toContainText('Open With Warm')
-  await expect(page.getByText('Opened temporarily')).toBeVisible()
+  await expect(page.getByText('Imported this file as a local draft.')).toBeVisible()
 
   const storage = await page.evaluate(() => ({
     drafts: localStorage.getItem('marktext-for-android:drafts') ?? '',
     recentDocuments: localStorage.getItem('marktext-for-android:recent-documents') ?? '',
   }))
   expect(storage.drafts).toContain('Draft Before Open With')
+  // The one-shot grant cannot be remembered, so the file itself is imported
+  // as a named local draft — that is its durable history entry.
+  expect(storage.drafts).toContain('Open With Warm.md')
+  expect(storage.drafts).toContain('opened while app was alive')
   expect(storage.recentDocuments).not.toContain('content://test/open-with-warm-transient')
 })
 
@@ -336,7 +340,7 @@ test('offers save-copy when leaving a dirty read-only Android document', async (
   expect(storage.recentDocuments).toContain('Read Only Exit copy.md')
 })
 
-test('keeps temporary open-with edits as a recovery draft when leaving', async ({ page }) => {
+test('keeps temporary open-with edits in the imported draft when leaving', async ({ page }) => {
   await installAndroidAppMock(page, undefined, {
     pendingOpenWithEvent: {
       document: {
@@ -355,24 +359,27 @@ test('keeps temporary open-with edits as a recovery draft when leaving', async (
   await page.goto('/')
 
   await expectEditorReady(page)
-  await expect(page.getByText('Opened temporarily')).toBeVisible()
+  await expect(page.getByText('Imported this file as a local draft.')).toBeVisible()
   await page.getByTestId('editor-host').click()
   await page.keyboard.press('End')
   await page.keyboard.press('Enter')
   await page.keyboard.type('temporary open-with edit')
 
+  // The session IS the imported draft, so edits are already durable; leaving
+  // offers to save a device copy instead of the Android recovery prompt.
   await page.getByTestId('back-button').click()
-  await expect(page.getByTestId('android-exit-prompt')).toBeVisible()
-  await page.getByTestId('prompt-keep-recovery-button').click()
+  await expect(page.getByTestId('prompt-keep-draft-button')).toBeVisible()
+  await page.getByTestId('prompt-keep-draft-button').click()
 
   await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
-  await expect(page.getByText('Unsaved changes were kept as a recovery draft.')).toBeVisible()
+  await expect(page.getByText('Temporary Exit').first()).toBeVisible()
 
   const storage = await page.evaluate(() => ({
     drafts: localStorage.getItem('marktext-for-android:drafts') ?? '',
     recentDocuments: localStorage.getItem('marktext-for-android:recent-documents') ?? '',
   }))
-  expect(storage.drafts).toContain('android-recovery:content://test/open-with-temporary-exit')
+  expect(storage.drafts).toContain('Temporary Exit.md')
   expect(storage.drafts).toContain('temporary open-with edit')
+  expect(storage.drafts).not.toContain('android-recovery:')
   expect(storage.recentDocuments).not.toContain('content://test/open-with-temporary-exit')
 })

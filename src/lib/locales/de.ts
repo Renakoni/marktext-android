@@ -70,6 +70,7 @@ export const de = {
   'app.notice.renameTemporaryAccess':
     'Umbenannt, aber Android hat nur temporären Zugriff behalten. Öffne es erneut über Android, um es wieder zu „Zuletzt verwendet“ hinzuzufügen.',
   'app.notice.sharedTextImported': 'Geteilten Text als lokalen Entwurf importiert.',
+  'app.notice.incomingFileImported': 'Diese Datei als lokalen Entwurf importiert.',
   'app.notice.androidSaveRecovery': 'Speichern fehlgeschlagen. Ein lokaler Wiederherstellungsentwurf wurde behalten.',
   'app.notice.androidExitRecovery': 'Ungespeicherte Änderungen wurden als Wiederherstellungsentwurf behalten.',
   'app.notice.androidExitDiscard': 'Ungespeicherte Änderungen wurden verworfen.',

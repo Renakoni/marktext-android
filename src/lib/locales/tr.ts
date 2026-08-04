@@ -70,6 +70,7 @@ export const tr = {
   'app.notice.renameTemporaryAccess':
     'Yeniden adlandırıldı, ancak Android yalnızca geçici erişim verdi. Son kullanılanlara geri eklemek için Android’den yeniden açın.',
   'app.notice.sharedTextImported': 'Paylaşılan metin yerel taslak olarak içe aktarıldı.',
+  'app.notice.incomingFileImported': 'Bu dosya yerel taslak olarak içe aktarıldı.',
   'app.notice.androidSaveRecovery': 'Kaydetme başarısız. Yerel bir kurtarma taslağı korundu.',
   'app.notice.androidExitRecovery': 'Kaydedilmemiş değişiklikler kurtarma taslağı olarak korundu.',
   'app.notice.androidExitDiscard': 'Kaydedilmemiş değişiklikler atıldı.',

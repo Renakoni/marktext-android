@@ -70,6 +70,7 @@ export const fr = {
   'app.notice.renameTemporaryAccess':
     'Renommé, mais Android n’a conservé qu’un accès temporaire. Rouvrez-le depuis Android pour le rajouter aux Documents récents.',
   'app.notice.sharedTextImported': 'Texte partagé importé comme brouillon local.',
+  'app.notice.incomingFileImported': 'Fichier importé comme brouillon local.',
   'app.notice.androidSaveRecovery': 'Échec de l’enregistrement. Un brouillon de récupération local a été conservé.',
   'app.notice.androidExitRecovery': 'Les modifications non enregistrées ont été conservées comme brouillon de récupération.',
   'app.notice.androidExitDiscard': 'Les modifications non enregistrées ont été abandonnées.',

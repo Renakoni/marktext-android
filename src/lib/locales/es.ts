@@ -70,6 +70,7 @@ export const es = {
   'app.notice.renameTemporaryAccess':
     'Renombrado, pero Android solo mantuvo acceso temporal. Vuelve a abrirlo desde Android para añadirlo de nuevo a Recientes.',
   'app.notice.sharedTextImported': 'Se importó el texto compartido como borrador local.',
+  'app.notice.incomingFileImported': 'Se importó este archivo como borrador local.',
   'app.notice.androidSaveRecovery': 'Falló el guardado. Se conservó un borrador de recuperación local.',
   'app.notice.androidExitRecovery': 'Los cambios sin guardar se conservaron como borrador de recuperación.',
   'app.notice.androidExitDiscard': 'Se descartaron los cambios sin guardar.',
