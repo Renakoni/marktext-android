@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Ulysses.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Ulysses is active. Rule grouping follows the
+ * desktop prismjs/ulysses.theme.css palette; the [data-theme] scope wins on
+ * specificity without !important.
+ */
+
+[data-theme='ulysses'] .token.comment,
+[data-theme='ulysses'] .token.prolog,
+[data-theme='ulysses'] .token.doctype,
+[data-theme='ulysses'] .token.cdata {
+  color: #999999;
+}
+
+[data-theme='ulysses'] .token.punctuation {
+  color: #656565;
+}
+
+[data-theme='ulysses'] .token.property,
+[data-theme='ulysses'] .token.tag,
+[data-theme='ulysses'] .token.constant,
+[data-theme='ulysses'] .token.symbol {
+  color: #c75991;
+}
+
+[data-theme='ulysses'] .token.boolean,
+[data-theme='ulysses'] .token.number {
+  color: #7a70ba;
+}
+
+[data-theme='ulysses'] .token.selector,
+[data-theme='ulysses'] .token.attr-name,
+[data-theme='ulysses'] .token.string,
+[data-theme='ulysses'] .token.char,
+[data-theme='ulysses'] .token.builtin {
+  color: #1a9f7f;
+}
+
+[data-theme='ulysses'] .token.inserted {
+  color: #1a9f7f;
+  background: rgba(26, 159, 127, 0.12);
+}
+
+[data-theme='ulysses'] .token.deleted {
+  color: #c75991;
+  background: rgba(199, 89, 145, 0.12);
+}
+
+[data-theme='ulysses'] .token.operator,
+[data-theme='ulysses'] .token.entity,
+[data-theme='ulysses'] .token.url,
+[data-theme='ulysses'] .language-css .token.string,
+[data-theme='ulysses'] .style .token.string {
+  color: #708090;
+}
+
+[data-theme='ulysses'] .token.atrule,
+[data-theme='ulysses'] .token.attr-value,
+[data-theme='ulysses'] .token.function,
+[data-theme='ulysses'] .token.class-name {
+  color: #d16a3d;
+}
+
+[data-theme='ulysses'] .token.keyword {
+  color: #0c8bba;
+}
+
+[data-theme='ulysses'] .token.regex,
+[data-theme='ulysses'] .token.important,
+[data-theme='ulysses'] .token.variable {
+  color: #c75991;
+}

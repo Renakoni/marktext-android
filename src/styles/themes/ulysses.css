@@ -1,0 +1,135 @@
+/*
+ * Ulysses — curated custom theme.
+ *
+ * Heritage: desktop MarkText ulysses theme — soft gray paper (#f3f3f3),
+ * Ulysses blue #0c8bba, gentle single-hue ink, centered blue headings, a
+ * filled gray blockquote panel, and a centered half-width dashed divider.
+ * The structural signatures ride along below the palette; values are plain
+ * hex/rgba so every WebView the app can meet renders them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Desktop fades body ink to rgba(101,101,101,0.7), which fails WCAG AA on
+ *   this paper; the mobile ink keeps the heritage gray at full opacity.
+ * - `--accent` deepens the Ulysses blue for AA on interactive text;
+ *   `--theme-color` keeps the heritage hue.
+ * - Desktop's rotated-checkbox animation is not ported: the mobile task
+ *   checkbox keeps its own touch-target styling.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints italics teal).
+ */
+
+:root[data-theme='ulysses'] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --app-bg: #ededed;
+  --surface: #f3f3f3;
+  --surface-muted: #e9e9e9;
+  --surface-sunken: #e1e1e1;
+  --surface-raised: #ffffff;
+
+  /* Content */
+  --text: #565656;
+  --text-muted: #6f6f6f;
+  --text-faint: #949494;
+  --task-completed-color: #6a6a6a;
+  --on-accent: #ffffff;
+
+  /* Lines */
+  --border: #dcdcdc;
+  --border-strong: #cccccc;
+  --separator: rgba(101, 101, 101, 0.18);
+
+  /* Accent — Ulysses blue; --accent holds AA on this paper. */
+  --accent: #0a769d;
+  --accent-strong: #085e7e;
+  --accent-hover: #096d91;
+  --accent-soft: #d7e9f1;
+  --accent-tint-10: rgba(12, 139, 186, 0.12);
+  --accent-tint-11: rgba(12, 139, 186, 0.14);
+
+  /* State */
+  --danger: #c24a4a;
+  --focus-ring: rgba(12, 139, 186, 0.38);
+  --press: rgba(101, 101, 101, 0.1);
+  --scrim: rgba(30, 35, 40, 0.42);
+
+  /* Shadows — reserved for genuinely floating surfaces. */
+  --shadow-sm: 0 1px 2px rgba(60, 64, 68, 0.06);
+  --shadow-float:
+    0 12px 32px rgba(60, 64, 68, 0.16),
+    0 2px 8px rgba(60, 64, 68, 0.08);
+  --shadow-thumb: 0 2px 6px rgba(60, 64, 68, 0.22);
+  --shadow-accent: 0 2px 10px rgba(12, 139, 186, 0.35);
+
+  /* Muya bridge — the desktop ulysses palette on the writing surface. */
+  --theme-color: #0c8bba;
+  --highlight-color: rgba(12, 139, 186, 0.3);
+  --selection-color: rgba(0, 0, 0, 0.1);
+  --editor-color: #656565;
+  --editor-color-80: rgba(101, 101, 101, 0.8);
+  --editor-color-50: rgba(101, 101, 101, 0.5);
+  --editor-color-30: rgba(101, 101, 101, 0.3);
+  --editor-color-10: rgba(101, 101, 101, 0.1);
+  --editor-color-04: rgba(101, 101, 101, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #ff6969;
+  --icon-color: rgba(101, 101, 101, 0.8);
+  --code-block-bg-color: #e7eef1;
+  --table-border-color: #e0e0e0;
+  --input-bg-color: #e9e9e9;
+  --button-font-color: rgba(101, 101, 101, 0.85);
+  --button-bg-color: #ffffff;
+  --button-border: 1px solid #dcdfe6;
+  --button-bg-color-hover: #f7f7f7;
+  --button-border-hover: 1px solid #cccccc;
+  --button-bg-color-active: #f0f0f0;
+  --button-border-active: 1px solid #dcdfe6;
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(101, 101, 101, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.03);
+  --float-shadow: var(--shadow-float);
+  --link-color: var(--accent);
+  /* Structural rule below centers headings in the theme blue; these keep
+     outline/list projections on the same hue. */
+  --h1-color: #0c8bba;
+  --h2-color: #0c8bba;
+  --h3-color: #0c8bba;
+  --h4-color: #0c8bba;
+  --h5-color: #0c8bba;
+  --h6-color: #0c8bba;
+  --blockquote-text-color: rgba(101, 101, 101, 0.65);
+  --blockquote-border-color: #0c8bba;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #0c8bba;
+  --hr-color: rgba(101, 101, 101, 0.1);
+}
+
+/* Ulysses structural signatures (mobile-safe subset of the desktop theme). */
+
+/* Every heading sits centered in the theme blue. */
+[data-theme='ulysses'] .mu-container h1,
+[data-theme='ulysses'] .mu-container h2,
+[data-theme='ulysses'] .mu-container h3,
+[data-theme='ulysses'] .mu-container h4,
+[data-theme='ulysses'] .mu-container h5,
+[data-theme='ulysses'] .mu-container h6 {
+  color: var(--theme-color);
+  text-align: center;
+}
+
+/* Blockquotes render as a filled panel instead of a bare bar. */
+[data-theme='ulysses'] .mu-container blockquote {
+  background: #e9e9e9;
+}
+
+/* The divider is a centered half-width dashed rule. */
+[data-theme='ulysses'] .mu-thematic-break:not(.mu-active)::before {
+  width: 50%;
+  left: 50%;
+  border-top: 2px dashed var(--editor-color-50);
+  transform: translateX(-50%) translateY(-50%);
+}
