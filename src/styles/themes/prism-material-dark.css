@@ -1,0 +1,76 @@
+/*
+ * Prism syntax palette for Material Dark.
+ *
+ * Muya bundles a light Prism theme unconditionally; these rules re-color the
+ * tokens whenever Material Dark is active. Selectors mirror
+ * third_party/muya/src/assets/styles/prismjs/light.theme.css with a
+ * [data-theme] scope, so they win on specificity without !important.
+ * Desktop ships no material prism palette, so this mirrors the classic
+ * dark set (prism-cadmium), which is what desktop falls back to.
+ */
+
+[data-theme='material-dark'] .token.comment,
+[data-theme='material-dark'] .token.prolog,
+[data-theme='material-dark'] .token.doctype,
+[data-theme='material-dark'] .token.cdata {
+  color: #7f848e;
+}
+
+[data-theme='material-dark'] .token.punctuation {
+  color: #d4d8de;
+}
+
+[data-theme='material-dark'] .token.property,
+[data-theme='material-dark'] .token.tag,
+[data-theme='material-dark'] .token.constant,
+[data-theme='material-dark'] .token.symbol {
+  color: #f92672;
+}
+
+[data-theme='material-dark'] .token.boolean,
+[data-theme='material-dark'] .token.number {
+  color: #ae81ff;
+}
+
+[data-theme='material-dark'] .token.selector,
+[data-theme='material-dark'] .token.attr-name,
+[data-theme='material-dark'] .token.string,
+[data-theme='material-dark'] .token.char,
+[data-theme='material-dark'] .token.builtin {
+  color: #a6e22e;
+}
+
+[data-theme='material-dark'] .token.inserted {
+  color: #7ee787;
+  background: rgba(46, 160, 67, 0.18);
+}
+
+[data-theme='material-dark'] .token.deleted {
+  color: #ffa198;
+  background: rgba(248, 81, 73, 0.18);
+}
+
+[data-theme='material-dark'] .token.operator,
+[data-theme='material-dark'] .token.entity,
+[data-theme='material-dark'] .token.url,
+[data-theme='material-dark'] .language-css .token.string,
+[data-theme='material-dark'] .style .token.string {
+  color: #e67e65;
+}
+
+[data-theme='material-dark'] .token.atrule,
+[data-theme='material-dark'] .token.attr-value,
+[data-theme='material-dark'] .token.function,
+[data-theme='material-dark'] .token.class-name {
+  color: #e6db74;
+}
+
+[data-theme='material-dark'] .token.keyword {
+  color: #66d9ef;
+}
+
+[data-theme='material-dark'] .token.regex,
+[data-theme='material-dark'] .token.important,
+[data-theme='material-dark'] .token.variable {
+  color: #fd971f;
+}

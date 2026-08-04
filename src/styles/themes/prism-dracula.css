@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Dracula.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Dracula is active. Rule grouping follows the
+ * desktop prismjs/dracula.theme.css palette; the [data-theme] scope wins on
+ * specificity without !important.
+ */
+
+[data-theme='dracula'] .token.comment,
+[data-theme='dracula'] .token.prolog,
+[data-theme='dracula'] .token.doctype,
+[data-theme='dracula'] .token.cdata {
+  color: #6272a4;
+}
+
+[data-theme='dracula'] .token.punctuation {
+  color: #f8f8f2;
+}
+
+[data-theme='dracula'] .token.property,
+[data-theme='dracula'] .token.tag,
+[data-theme='dracula'] .token.constant,
+[data-theme='dracula'] .token.symbol {
+  color: #ff79c6;
+}
+
+[data-theme='dracula'] .token.boolean,
+[data-theme='dracula'] .token.number {
+  color: #bd93f9;
+}
+
+[data-theme='dracula'] .token.selector,
+[data-theme='dracula'] .token.attr-name,
+[data-theme='dracula'] .token.string,
+[data-theme='dracula'] .token.char,
+[data-theme='dracula'] .token.builtin {
+  color: #50fa7b;
+}
+
+[data-theme='dracula'] .token.inserted {
+  color: #50fa7b;
+  background: rgba(80, 250, 123, 0.12);
+}
+
+[data-theme='dracula'] .token.deleted {
+  color: #ff79c6;
+  background: rgba(255, 121, 198, 0.12);
+}
+
+[data-theme='dracula'] .token.operator,
+[data-theme='dracula'] .token.entity,
+[data-theme='dracula'] .token.url,
+[data-theme='dracula'] .language-css .token.string,
+[data-theme='dracula'] .style .token.string {
+  color: #f8f8f2;
+}
+
+[data-theme='dracula'] .token.atrule,
+[data-theme='dracula'] .token.attr-value,
+[data-theme='dracula'] .token.function,
+[data-theme='dracula'] .token.class-name {
+  color: #f1fa8c;
+}
+
+[data-theme='dracula'] .token.keyword {
+  color: #ff79c6;
+}
+
+[data-theme='dracula'] .token.regex,
+[data-theme='dracula'] .token.important,
+[data-theme='dracula'] .token.variable {
+  color: #ffb86c;
+}
