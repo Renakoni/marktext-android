@@ -78,13 +78,12 @@ desktop, in an interface built for one hand.
   front matter, diagrams, and syntax-highlighted code.
 - A document outline and in-editor search that stay smooth even in long files.
 - Export to **PDF** with math, code highlighting, and fonts all baked in.
-- **Never loses your work.** Autosave and recovery drafts keep every change, and
-  atomic, all-or-nothing writes mean an interrupted save never leaves a
-  half-written or corrupted file.
+- **Never loses your work.** Autosave, recovery drafts, and atomic writes keep
+  every change.
 - **Private by default.** No account, no cloud, no telemetry; everything stays on
   the device.
-- **Lightweight.** A focused Vue + Capacitor shell rather than a heavy native stack
-  keeps the whole app around 7.8 MB — small and light, yet fully featured.
+- **Lightweight.** A Vue + Capacitor shell keeps the whole app around 7.8 MB —
+  small and light, yet fully featured.
 
 </td>
 <td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="200"></td>
@@ -98,14 +97,15 @@ desktop, in an interface built for one hand.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="The docked format toolbar and a customized selection (paste) bar shown while editing" width="200"></td>
 <td valign="middle">
 
-Make it what you want, right down to the bars you touch while writing:
-
 - **Build your own toolbars.** Compose the bottom quick bar from a pool of commands
   and drag to reorder it. Even the selection toolbar can hold your own commands.
+
 - **Themes and appearance.** Light, dark, and custom themes; adjustable type and
   layout.
+
 - **Markdown to your taste.** Fine-tune how your Markdown is written and rendered,
   from list markers to front matter.
+
 - **File-level control.** Per-document encoding, line endings, and trailing
   newline handling.
 
@@ -123,10 +123,13 @@ Make it what you want, right down to the bars you touch while writing:
 - **Your files stay put.** Edit `.md` straight from any storage provider through
   the system picker, and pass documents to and from other apps with the share
   sheet.
+
 - **Made for the thumb.** Comfortable one-handed reach and a calm, editor-first
   layout.
+
 - **Accessible and restrained.** A quiet graphite design that meets WCAG 2.2 AA,
   with a clear focus order and calm, minimal motion.
+
 - **Ten languages,** chosen automatically from your system: English, German,
   Spanish, French, Japanese, Korean, Portuguese, Turkish, and Simplified and
   Traditional Chinese.

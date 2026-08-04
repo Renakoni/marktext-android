@@ -83,14 +83,12 @@ escritorio, en una interfaz pensada para usarla con una mano.
   fluidos incluso en archivos largos.
 - Exportación a **PDF** con matemáticas, resaltado de código y fuentes ya
   incorporados.
-- **Nunca pierde tu trabajo.** El autoguardado y los borradores de recuperación
-  conservan cada cambio, y las escrituras atómicas de todo o nada garantizan que un
-  guardado interrumpido nunca deje un archivo a medio escribir ni dañado.
+- **Nunca pierde tu trabajo.** El autoguardado, los borradores de recuperación y
+  las escrituras atómicas conservan cada cambio.
 - **Privado por defecto.** Sin cuenta, sin nube, sin telemetría; todo se queda en
   el dispositivo.
-- **Ligero.** Una carcasa Vue + Capacitor concentrada, en lugar de una pesada pila
-  nativa, mantiene toda la app en torno a 7,8 MB: pequeña y ligera, pero con todas
-  sus funciones.
+- **Ligero.** Una carcasa Vue + Capacitor mantiene toda la app en torno a 7,8 MB:
+  pequeña y ligera, pero con todas sus funciones.
 
 </td>
 <td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tablas, código y matemáticas renderizados en vivo mientras escribes" width="200"></td>
@@ -104,15 +102,16 @@ escritorio, en una interfaz pensada para usarla con una mano.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="La barra de formato anclada y una barra de selección (pegar) personalizada mostradas durante la edición" width="200"></td>
 <td valign="middle">
 
-Hazlo a tu manera, hasta las mismas barras que tocas mientras escribes:
-
 - **Crea tus propias barras de herramientas.** Compón la barra rápida inferior a
   partir de un repertorio de comandos y arrástralos para reordenarla. Incluso la
   barra de selección puede alojar tus propios comandos.
+
 - **Temas y apariencia.** Temas claro, oscuro y personalizados; tipografía y
   disposición ajustables.
+
 - **Markdown a tu gusto.** Afina cómo se escribe y se renderiza tu Markdown, de
   los marcadores de lista a los metadatos (front matter).
+
 - **Control a nivel de archivo.** Codificación, finales de línea y tratamiento de
   la nueva línea final por documento.
 
@@ -130,10 +129,13 @@ Hazlo a tu manera, hasta las mismas barras que tocas mientras escribes:
 - **Tus archivos no se mueven de su sitio.** Edita `.md` directamente desde
   cualquier proveedor de almacenamiento a través del selector del sistema, y pasa
   documentos a otras apps y desde ellas con el panel de compartir.
+
 - **Hecho para el pulgar.** Un alcance cómodo con una mano y una disposición
   serena centrada en el editor.
+
 - **Accesible y sobrio.** Un diseño grafito silencioso que cumple WCAG 2.2 AA, con
   un orden de foco claro y un movimiento sereno y mínimo.
+
 - **Diez idiomas,** elegidos automáticamente según tu sistema: inglés, alemán,
   español, francés, japonés, coreano, portugués, turco, y chino simplificado y
   tradicional.

@@ -82,15 +82,13 @@ Oberfläche, die für eine Hand gebaut ist.
   flüssig bleiben.
 - Export als **PDF** – mit Mathematik, Code-Hervorhebung und fest eingebetteten
   Schriften.
-- **Verliert nie deine Arbeit.** Automatisches Speichern und
-  Wiederherstellungsentwürfe bewahren jede Änderung, und atomare
-  Alles-oder-nichts-Schreibvorgänge sorgen dafür, dass ein unterbrochenes
-  Speichern nie eine halb geschriebene oder beschädigte Datei hinterlässt.
+- **Verliert nie deine Arbeit.** Automatisches Speichern,
+  Wiederherstellungsentwürfe und atomare Schreibvorgänge bewahren jede
+  Änderung.
 - **Standardmäßig privat.** Kein Konto, keine Cloud, keine Telemetrie – alles
   bleibt auf dem Gerät.
-- **Leichtgewichtig.** Eine fokussierte Shell aus Vue + Capacitor statt eines
-  schweren nativen Stacks hält die ganze App bei rund 7,8 MB – klein und
-  leicht, aber voll ausgestattet.
+- **Leichtgewichtig.** Eine Shell aus Vue + Capacitor hält die ganze App bei
+  rund 7,8 MB – klein und leicht, aber voll ausgestattet.
 
 </td>
 <td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tabellen, Code und Mathematik werden beim Tippen live gerendert" width="200"></td>
@@ -104,16 +102,16 @@ Oberfläche, die für eine Hand gebaut ist.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="Die angedockte Format-Symbolleiste und eine angepasste Auswahl-Leiste (Einfügen) während der Bearbeitung" width="200"></td>
 <td valign="middle">
 
-Mach ihn zu dem, was du willst – bis hin zu den Leisten, die du beim Schreiben
-berührst:
-
 - **Baue deine eigenen Symbolleisten.** Stelle die untere Schnellleiste aus
   einem Pool von Befehlen zusammen und ordne sie per Ziehen neu. Selbst die
   Auswahl-Symbolleiste kann deine eigenen Befehle aufnehmen.
+
 - **Designs und Erscheinungsbild.** Helle, dunkle und benutzerdefinierte
   Designs; Schrift und Layout einstellbar.
+
 - **Markdown nach deinem Geschmack.** Stimme fein ab, wie dein Markdown
   geschrieben und gerendert wird – von Aufzählungszeichen bis Front Matter.
+
 - **Kontrolle auf Dateiebene.** Kodierung, Zeilenenden und der Umgang mit dem
   abschließenden Zeilenumbruch – pro Dokument einstellbar.
 
@@ -131,11 +129,14 @@ berührst:
 - **Deine Dateien bleiben, wo sie sind.** Bearbeite `.md` direkt aus jedem
   Speicheranbieter über die Systemauswahl und reiche Dokumente per
   Teilen-Dialog an andere Apps weiter und zurück.
+
 - **Für den Daumen gemacht.** Bequem mit einer Hand erreichbar, dazu ein
   ruhiges, editorzentriertes Layout.
+
 - **Barrierefrei und zurückhaltend.** Ein ruhiges Graphit-Design, das
   WCAG 2.2 AA erfüllt, mit klarer Fokusreihenfolge und dezenten, sparsamen
   Animationen.
+
 - **Zehn Sprachen,** automatisch nach deinem System gewählt: Englisch, Deutsch,
   Spanisch, Französisch, Japanisch, Koreanisch, Portugiesisch, Türkisch sowie
   vereinfachtes und traditionelles Chinesisch.

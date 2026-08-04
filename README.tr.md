@@ -80,13 +80,12 @@ aynı sadakatle işlenir.
   tablolar, dipnotlar, ön bilgi, diyagramlar ve söz dizimi vurgulamalı kod.
 - Uzun dosyalarda bile akıcı kalan bir belge ana hattı ve düzenleyici içi arama.
 - Matematik, kod vurgulama ve yazı tipleri gömülü olarak **PDF**'ye dışa aktarma.
-- **Emeğinizi asla kaybetmez.** Otomatik kaydetme ve kurtarma taslakları her
-  değişikliği korur; atomik, ya hep ya hiç yazma işlemleri sayesinde yarıda
-  kesilen bir kaydetme asla yarım yazılmış veya bozuk bir dosya bırakmaz.
+- **Emeğinizi asla kaybetmez.** Otomatik kaydetme, kurtarma taslakları ve
+  atomik yazma işlemleri her değişikliği korur.
 - **Varsayılan olarak gizli.** Hesap yok, bulut yok, telemetri yok; her şey
   cihazda kalır.
-- **Hafif.** Ağır bir yerel yığın yerine odaklanmış bir Vue + Capacitor kabuğu,
-  tüm uygulamayı yaklaşık 7,8 MB'ta tutar — küçük ve hafif, yine de tam donanımlı.
+- **Hafif.** Bir Vue + Capacitor kabuğu, tüm uygulamayı yaklaşık 7,8 MB'ta
+  tutar — küçük ve hafif, yine de tam donanımlı.
 
 </td>
 <td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Yazarken canlı işlenen tablolar, kod ve matematik" width="200"></td>
@@ -100,15 +99,16 @@ aynı sadakatle işlenir.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="Düzenleme sırasında görünen sabit biçim araç çubuğu ve özelleştirilmiş bir seçim (yapıştırma) çubuğu" width="200"></td>
 <td valign="middle">
 
-Uygulamayı istediğiniz hâle getirin, yazarken dokunduğunuz çubuklara kadar:
-
 - **Kendi araç çubuklarınızı oluşturun.** Alttaki hızlı çubuğu bir komut
   havuzundan derleyin ve sürükleyerek yeniden sıralayın. Seçim araç çubuğu bile
   kendi komutlarınızı taşıyabilir.
+
 - **Temalar ve görünüm.** Açık, koyu ve özel temalar; ayarlanabilir yazı ve
   yerleşim.
+
 - **Zevkinize göre Markdown.** Markdown'ınızın nasıl yazılıp işleneceğine, liste
   işaretlerinden ön bilgiye kadar ince ayar yapın.
+
 - **Dosya düzeyinde denetim.** Belge başına kodlama, satır sonları ve sondaki
   yeni satır davranışı.
 
@@ -126,10 +126,13 @@ Uygulamayı istediğiniz hâle getirin, yazarken dokunduğunuz çubuklara kadar:
 - **Dosyalarınız yerinde kalır.** Sistem seçicisi üzerinden herhangi bir
   depolama sağlayıcısındaki `.md` dosyalarını doğrudan düzenleyin, belgeleri
   paylaşım paneliyle diğer uygulamalara gönderip onlardan alın.
+
 - **Başparmak için yapıldı.** Rahat tek elle erişim ve sakin, düzenleyici
   öncelikli bir yerleşim.
+
 - **Erişilebilir ve ölçülü.** WCAG 2.2 AA'yı karşılayan sessiz bir grafit
   tasarım; net bir odak sırası ve sakin, yalın hareketler.
+
 - **On dil,** sisteminize göre otomatik seçilir: İngilizce, Almanca, İspanyolca,
   Fransızca, Japonca, Korece, Portekizce, Türkçe ile Basitleştirilmiş ve
   Geleneksel Çince.

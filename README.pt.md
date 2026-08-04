@@ -82,15 +82,12 @@ a mesma fidelidade do desktop, em uma interface feita para uma mão só.
   em arquivos longos.
 - Exportação para **PDF** com matemática, realce de código e fontes já
   incorporados.
-- **Nunca perde o seu trabalho.** O salvamento automático e os rascunhos de
-  recuperação preservam cada alteração, e gravações atômicas, de tudo ou nada,
-  garantem que um salvamento interrompido nunca deixe um arquivo pela metade ou
-  corrompido.
+- **Nunca perde o seu trabalho.** Salvamento automático, rascunhos de
+  recuperação e gravações atômicas preservam cada alteração.
 - **Privado por padrão.** Sem conta, sem nuvem, sem telemetria; tudo fica no
   dispositivo.
-- **Leve.** Um shell enxuto de Vue + Capacitor, em vez de uma pilha nativa pesada,
-  mantém o aplicativo inteiro em cerca de 7,8 MB — pequeno e leve, porém completo
-  em recursos.
+- **Leve.** Um shell de Vue + Capacitor mantém o aplicativo inteiro em cerca de
+  7,8 MB — pequeno e leve, porém completo em recursos.
 
 </td>
 <td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tabelas, código e matemática renderizados ao vivo enquanto você digita" width="200"></td>
@@ -104,15 +101,16 @@ a mesma fidelidade do desktop, em uma interface feita para uma mão só.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="A barra de formatação fixada e uma barra de seleção (colar) personalizada exibidas durante a edição" width="200"></td>
 <td valign="middle">
 
-Deixe tudo do jeito que você quiser, até as barras que você toca enquanto escreve:
-
 - **Monte suas próprias barras de ferramentas.** Componha a barra rápida inferior
   a partir de um conjunto de comandos e arraste para reordená-la. Até a barra de
   seleção pode receber seus próprios comandos.
+
 - **Temas e aparência.** Temas claro, escuro e personalizados; tipografia e
   layout ajustáveis.
+
 - **Markdown ao seu gosto.** Ajuste fino de como o seu Markdown é escrito e
   renderizado, dos marcadores de lista ao front matter.
+
 - **Controle no nível do arquivo.** Codificação, terminações de linha e
   tratamento da nova linha final por documento.
 
@@ -130,10 +128,13 @@ Deixe tudo do jeito que você quiser, até as barras que você toca enquanto esc
 - **Seus arquivos ficam onde estão.** Edite `.md` diretamente de qualquer
   provedor de armazenamento pelo seletor do sistema e troque documentos com
   outros aplicativos pelo menu de compartilhamento.
+
 - **Feito para o polegar.** Alcance confortável com uma mão e um layout calmo,
   com o editor em primeiro lugar.
+
 - **Acessível e contido.** Um design grafite discreto que atende à WCAG 2.2 AA,
   com ordem de foco clara e animações calmas e mínimas.
+
 - **Dez idiomas,** escolhidos automaticamente a partir do seu sistema: inglês,
   alemão, espanhol, francês, japonês, coreano, português, turco e chinês
   simplificado e tradicional.

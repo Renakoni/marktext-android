@@ -83,15 +83,13 @@ bureau, dans une interface pensée pour une seule main.
   même dans les longs fichiers.
 - Export en **PDF** avec les maths, la coloration du code et les polices
   directement incorporées.
-- **Ne perd jamais votre travail.** L’enregistrement automatique et les
-  brouillons de récupération conservent chaque modification, et des écritures
-  atomiques, tout ou rien, garantissent qu’un enregistrement interrompu ne
-  laisse jamais un fichier corrompu ou écrit à moitié.
+- **Ne perd jamais votre travail.** L’enregistrement automatique, les
+  brouillons de récupération et les écritures atomiques conservent chaque
+  modification.
 - **Privé par défaut.** Pas de compte, pas de cloud, pas de télémétrie ; tout
   reste sur l’appareil.
-- **Léger.** Une coque Vue + Capacitor épurée plutôt qu’une lourde pile native
-  maintient l’application entière autour de 7,8 Mo — petite et légère, mais
-  complète.
+- **Léger.** Une coque Vue + Capacitor maintient l’application entière autour
+  de 7,8 Mo — petite et légère, mais complète.
 
 </td>
 <td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tableaux, code et maths rendus en direct pendant la frappe" width="200"></td>
@@ -105,16 +103,16 @@ bureau, dans une interface pensée pour une seule main.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="La barre d’outils de format ancrée et une barre de sélection (coller) personnalisée affichées pendant l’édition" width="200"></td>
 <td valign="middle">
 
-Faites-en ce que vous voulez, jusqu’aux barres que vous touchez en
-écrivant :
-
 - **Composez vos propres barres d’outils.** Assemblez la barre rapide du bas à
   partir d’un ensemble de commandes et faites-les glisser pour les réorganiser.
   Même la barre d’outils de sélection peut accueillir vos propres commandes.
+
 - **Thèmes et apparence.** Thèmes clair, sombre et personnalisés ; typographie
   et mise en page ajustables.
+
 - **Le Markdown à votre goût.** Ajustez finement l’écriture et le rendu de
   votre Markdown, des puces de liste au front matter.
+
 - **Un contrôle au niveau du fichier.** Encodage, fins de ligne et gestion de
   la nouvelle ligne finale par document.
 
@@ -132,10 +130,13 @@ Faites-en ce que vous voulez, jusqu’aux barres que vous touchez en
 - **Vos fichiers restent à leur place.** Modifiez vos `.md` directement depuis
   n’importe quel fournisseur de stockage via le sélecteur du système, et
   échangez des documents avec d’autres applications par le menu de partage.
+
 - **Fait pour le pouce.** Une portée confortable à une main et une mise en page
   calme, centrée sur l’éditeur.
+
 - **Accessible et sobre.** Un design graphite discret conforme à WCAG 2.2 AA,
   avec un ordre de focus clair et des animations douces, réduites au minimum.
+
 - **Dix langues,** choisies automatiquement selon votre système : anglais,
   allemand, espagnol, français, japonais, coréen, portugais, turc, ainsi que
   chinois simplifié et traditionnel.
