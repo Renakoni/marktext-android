@@ -2,9 +2,24 @@
 @import './styles/themes/graphite-light.css';
 @import './styles/themes/cadmium-dark.css';
 @import './styles/themes/ayu-light.css';
+@import './styles/themes/catppuccin-latte.css';
+@import './styles/themes/classic-light.css';
+@import './styles/themes/everforest-light.css';
+@import './styles/themes/gruvbox-light.css';
+@import './styles/themes/rose-pine-dawn.css';
+@import './styles/themes/solarized-light.css';
+@import './styles/themes/tokyo-night-light.css';
+@import './styles/themes/ulysses.css';
 @import './styles/themes/one-dark.css';
 @import './styles/themes/prism-cadmium.css';
 @import './styles/themes/prism-ayu-light.css';
+@import './styles/themes/prism-catppuccin-latte.css';
+@import './styles/themes/prism-everforest-light.css';
+@import './styles/themes/prism-gruvbox-light.css';
+@import './styles/themes/prism-rose-pine-dawn.css';
+@import './styles/themes/prism-solarized-light.css';
+@import './styles/themes/prism-tokyo-night-light.css';
+@import './styles/themes/prism-ulysses.css';
 @import './styles/themes/prism-one-dark.css';
 
 /*

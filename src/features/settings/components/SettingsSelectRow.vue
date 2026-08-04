@@ -4,6 +4,10 @@ import { computed, ref } from 'vue'
 interface SettingsSelectOption {
   id: string
   label: string
+  /** Palette preview dots rendered before the label (theme options). */
+  swatches?: readonly string[]
+  /** Group heading rendered above this option inside the sheet. */
+  heading?: string
 }
 
 const props = defineProps<{
@@ -48,7 +52,17 @@ function selectOption(value: string) {
       :data-testid="testId ? `${testId}-trigger` : undefined"
       @click="openPicker"
     >
-      <span>{{ selectedOption?.label }}</span>
+      <span class="settings-select-trigger-content">
+        <span v-if="selectedOption?.swatches" class="settings-select-swatches" aria-hidden="true">
+          <span
+            v-for="(swatch, swatchIndex) in selectedOption.swatches"
+            :key="swatchIndex"
+            class="settings-select-swatch"
+            :style="{ background: swatch }"
+          />
+        </span>
+        <span class="settings-select-trigger-label">{{ selectedOption?.label }}</span>
+      </span>
     </button>
 
     <Transition name="select-sheet">
@@ -65,20 +79,33 @@ function selectOption(value: string) {
           @keydown.esc="closePicker"
         >
           <div class="settings-select-grabber" aria-hidden="true" />
-          <button
-            v-for="option in options"
-            :key="option.id"
-            class="settings-select-option"
-            :class="{ 'is-selected': modelValue === option.id }"
-            type="button"
-            role="option"
-            :aria-selected="modelValue === option.id"
-            :data-testid="testId ? `${testId}-option-${option.id.replace(/[^a-z0-9]+/gi, '-')}` : undefined"
-            @click="selectOption(option.id)"
-          >
-            <span class="settings-select-option-label">{{ option.label }}</span>
-            <span class="settings-select-option-mark" aria-hidden="true" />
-          </button>
+          <template v-for="option in options" :key="option.id">
+            <div v-if="option.heading" class="settings-select-group-heading" aria-hidden="true">
+              {{ option.heading }}
+            </div>
+            <button
+              class="settings-select-option"
+              :class="{ 'is-selected': modelValue === option.id }"
+              type="button"
+              role="option"
+              :aria-selected="modelValue === option.id"
+              :data-testid="testId ? `${testId}-option-${option.id.replace(/[^a-z0-9]+/gi, '-')}` : undefined"
+              @click="selectOption(option.id)"
+            >
+              <span class="settings-select-option-content">
+                <span v-if="option.swatches" class="settings-select-swatches" aria-hidden="true">
+                  <span
+                    v-for="(swatch, swatchIndex) in option.swatches"
+                    :key="swatchIndex"
+                    class="settings-select-swatch"
+                    :style="{ background: swatch }"
+                  />
+                </span>
+                <span class="settings-select-option-label">{{ option.label }}</span>
+              </span>
+              <span class="settings-select-option-mark" aria-hidden="true" />
+            </button>
+          </template>
         </div>
       </div>
     </Transition>
@@ -140,11 +167,53 @@ function selectOption(value: string) {
   transform: rotate(45deg) translateY(-2px);
 }
 
-.settings-select-trigger span {
+.settings-select-trigger-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-select-trigger-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Palette preview dots: slightly overlapped, ringed so pale swatches stay
+   visible on any surface. */
+.settings-select-swatches {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.settings-select-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+
+.settings-select-swatch + .settings-select-swatch {
+  margin-left: -5px;
+}
+
+.settings-select-group-heading {
+  padding: 14px 14px 6px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings-select-option-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .settings-select-trigger:active {

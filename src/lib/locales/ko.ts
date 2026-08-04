@@ -596,8 +596,8 @@ export const ko = {
   'settings.option.trailing.trim': '제거',
   'settings.option.trailing.ensureOne': '하나 확보',
   'settings.option.trailing.preserve': '보존',
-  'settings.option.theme.ayuLight': 'Ayu Light',
-  'settings.option.theme.oneDark': 'One Dark',
+  'settings.option.themeGroup.light': '라이트 테마',
+  'settings.option.themeGroup.dark': '다크 테마',
 
   'about.version': '버전',
   'about.github': 'GitHub',

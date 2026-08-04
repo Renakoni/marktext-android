@@ -596,8 +596,8 @@ export const fr = {
   'settings.option.trailing.trim': 'Supprimer',
   'settings.option.trailing.ensureOne': 'En assurer une',
   'settings.option.trailing.preserve': 'Préserver',
-  'settings.option.theme.ayuLight': 'Ayu Light',
-  'settings.option.theme.oneDark': 'One Dark',
+  'settings.option.themeGroup.light': 'Thèmes clairs',
+  'settings.option.themeGroup.dark': 'Thèmes sombres',
 
   'about.version': 'Version',
   'about.github': 'GitHub',

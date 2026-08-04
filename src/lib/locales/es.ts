@@ -596,8 +596,8 @@ export const es = {
   'settings.option.trailing.trim': 'Recortar',
   'settings.option.trailing.ensureOne': 'Asegurar una',
   'settings.option.trailing.preserve': 'Preservar',
-  'settings.option.theme.ayuLight': 'Ayu Light',
-  'settings.option.theme.oneDark': 'One Dark',
+  'settings.option.themeGroup.light': 'Temas claros',
+  'settings.option.themeGroup.dark': 'Temas oscuros',
 
   'about.version': 'Versión',
   'about.github': 'GitHub',

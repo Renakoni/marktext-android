@@ -596,8 +596,8 @@ export const de = {
   'settings.option.trailing.trim': 'Entfernen',
   'settings.option.trailing.ensureOne': 'Eine sicherstellen',
   'settings.option.trailing.preserve': 'Beibehalten',
-  'settings.option.theme.ayuLight': 'Ayu Light',
-  'settings.option.theme.oneDark': 'One Dark',
+  'settings.option.themeGroup.light': 'Helle Designs',
+  'settings.option.themeGroup.dark': 'Dunkle Designs',
 
   'about.version': 'Version',
   'about.github': 'GitHub',

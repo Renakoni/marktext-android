@@ -149,7 +149,10 @@ function getTextValue(row: SettingsTextDescriptor) {
 function optionLabels(row: SettingsChoiceDescriptor) {
   return row.options.map(option => ({
     id: option.id,
-    label: t(option.labelKey),
+    // Product names (theme labels) render verbatim; everything else is copy.
+    label: option.label ?? (option.labelKey ? t(option.labelKey) : option.id),
+    swatches: option.swatches,
+    heading: option.headingKey ? t(option.headingKey) : undefined,
     testId: `${row.testId}-option-${option.id.replace(/[^a-z0-9]+/gi, '-')}`,
   }))
 }

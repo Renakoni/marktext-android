@@ -596,8 +596,8 @@ export const zhTW = {
   'settings.option.trailing.trim': '清除',
   'settings.option.trailing.ensureOne': '保留一個',
   'settings.option.trailing.preserve': '保留',
-  'settings.option.theme.ayuLight': 'Ayu Light',
-  'settings.option.theme.oneDark': 'One Dark',
+  'settings.option.themeGroup.light': '淺色主題',
+  'settings.option.themeGroup.dark': '深色主題',
 
   'about.version': '版本',
   'about.github': 'GitHub',

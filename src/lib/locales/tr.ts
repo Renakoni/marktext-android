@@ -596,8 +596,8 @@ export const tr = {
   'settings.option.trailing.trim': 'Kırp',
   'settings.option.trailing.ensureOne': 'Bir tane garanti et',
   'settings.option.trailing.preserve': 'Koru',
-  'settings.option.theme.ayuLight': 'Ayu Light',
-  'settings.option.theme.oneDark': 'One Dark',
+  'settings.option.themeGroup.light': 'Açık temalar',
+  'settings.option.themeGroup.dark': 'Koyu temalar',
 
   'about.version': 'Sürüm',
   'about.github': 'GitHub',
