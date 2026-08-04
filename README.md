@@ -5,6 +5,22 @@
 <h1 align="center">MarkText for Android</h1>
 
 <p align="center">
+  <sub>
+    🌐&nbsp;
+    <b>English</b>
+    &nbsp;·&nbsp; <a href="README.zh-CN.md">简体中文</a>
+    &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a>
+    &nbsp;·&nbsp; <a href="README.de.md">Deutsch</a>
+    &nbsp;·&nbsp; <a href="README.es.md">Español</a>
+    &nbsp;·&nbsp; <a href="README.fr.md">Français</a>
+    &nbsp;·&nbsp; <a href="README.ja.md">日本語</a>
+    &nbsp;·&nbsp; <a href="README.ko.md">한국어</a>
+    &nbsp;·&nbsp; <a href="README.pt.md">Português</a>
+    &nbsp;·&nbsp; <a href="README.tr.md">Türkçe</a>
+  </sub>
+</p>
+
+<p align="center">
   <em>Markdown, quietly.</em>
 </p>
 
