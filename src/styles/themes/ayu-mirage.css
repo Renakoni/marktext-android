@@ -1,0 +1,105 @@
+/*
+ * Ayu Mirage — curated custom theme.
+ *
+ * Heritage: desktop MarkText ayu-mirage theme — the slate #1f2430 ground,
+ * ayu gold accent #ffcc66, soft sage ink #cbccc6, and the mirage heading
+ * run (gold, sky, sage-lime, teal, cream, coral). Values are plain
+ * hex/rgba so every WebView the app can meet renders them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - The desktop 0.6-alpha gold search highlight softens to 0.28 so
+ *   highlighted text stays readable on a phone.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints bold cream and italics gold).
+ */
+
+:root[data-theme='ayu-mirage'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #1b1f2a;
+  --surface: #1f2430;
+  --surface-muted: #272d38;
+  --surface-sunken: #171b24;
+  --surface-raised: #323a48;
+
+  /* Content */
+  --text: #cbccc6;
+  --text-muted: #a9aaa5;
+  --text-faint: #7d8494;
+  --task-completed-color: #8f95a3;
+  --on-accent: #1f2430;
+
+  /* Lines */
+  --border: #323a48;
+  --border-strong: #434c5e;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — ayu gold; "strong" lightens for contrast on the slate
+     ground. */
+  --accent: #ffcc66;
+  --accent-strong: #ffdd99;
+  --accent-hover: #ffd47d;
+  --accent-soft: rgba(255, 204, 102, 0.18);
+  --accent-tint-10: rgba(255, 204, 102, 0.12);
+  --accent-tint-11: rgba(255, 204, 102, 0.14);
+
+  /* State */
+  --danger: #f28779;
+  --focus-ring: rgba(255, 204, 102, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(255, 204, 102, 0.3);
+
+  /* Muya bridge — the desktop ayu-mirage palette on the writing surface. */
+  --theme-color: #ffcc66;
+  --highlight-color: rgba(255, 204, 102, 0.28);
+  --selection-color: rgba(52, 68, 88, 0.8);
+  --editor-color: #cbccc6;
+  --editor-color-80: rgba(203, 204, 198, 0.8);
+  --editor-color-50: rgba(203, 204, 198, 0.5);
+  --editor-color-30: rgba(203, 204, 198, 0.3);
+  --editor-color-10: rgba(203, 204, 198, 0.1);
+  --editor-color-04: rgba(203, 204, 198, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #f28779;
+  --icon-color: rgba(203, 204, 198, 0.56);
+  --code-block-bg-color: #272d38;
+  --table-border-color: #272d38;
+  --input-bg-color: #171b24;
+  --button-font-color: rgba(203, 204, 198, 0.7);
+  --button-bg-color: #272d38;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #323a48;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #1f262f;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(203, 204, 198, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #73d0ff;
+  --h1-color: #ffcc66;
+  --h2-color: #73d0ff;
+  --h3-color: #bae67e;
+  --h4-color: #5ccfe6;
+  --h5-color: #ffd580;
+  --h6-color: #f28779;
+  --blockquote-text-color: rgba(203, 204, 198, 0.6);
+  --blockquote-border-color: #5c6773;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #ffcc66;
+  --hr-color: #323a48;
+}
