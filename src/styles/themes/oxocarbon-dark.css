@@ -1,0 +1,106 @@
+/*
+ * Oxocarbon Dark — curated custom theme.
+ *
+ * Heritage: desktop MarkText oxocarbon-dark theme — the IBM carbon
+ * #161616 ground, blue-60 accent #78a9ff, near-white ink #f2f4f8, and
+ * the oxocarbon heading run (magenta, blue, green, cyan, purple, pink).
+ * Values are plain hex/rgba so every WebView the app can meet renders
+ * them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - The desktop 0.6-alpha blue search highlight softens to 0.3 so
+ *   highlighted text stays readable on a phone.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints italics purple).
+ */
+
+:root[data-theme='oxocarbon-dark'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #111111;
+  --surface: #161616;
+  --surface-muted: #262626;
+  --surface-sunken: #0d0d0d;
+  --surface-raised: #393939;
+
+  /* Content */
+  --text: #f2f4f8;
+  --text-muted: #c1c7cd;
+  --text-faint: #8d8d8d;
+  --task-completed-color: #a2a6ad;
+  --on-accent: #161616;
+
+  /* Lines */
+  --border: #262626;
+  --border-strong: #393939;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — carbon blue-60; "strong" lightens for contrast on the
+     carbon ground. */
+  --accent: #78a9ff;
+  --accent-strong: #a0c2ff;
+  --accent-hover: #89b4ff;
+  --accent-soft: rgba(120, 169, 255, 0.2);
+  --accent-tint-10: rgba(120, 169, 255, 0.14);
+  --accent-tint-11: rgba(120, 169, 255, 0.16);
+
+  /* State */
+  --danger: #ee5396;
+  --focus-ring: rgba(120, 169, 255, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-accent: 0 2px 10px rgba(120, 169, 255, 0.35);
+
+  /* Muya bridge — the desktop oxocarbon palette on the writing surface. */
+  --theme-color: #78a9ff;
+  --highlight-color: rgba(120, 169, 255, 0.3);
+  --selection-color: rgba(57, 57, 57, 0.8);
+  --editor-color: #f2f4f8;
+  --editor-color-80: rgba(242, 244, 248, 0.8);
+  --editor-color-50: rgba(242, 244, 248, 0.5);
+  --editor-color-30: rgba(242, 244, 248, 0.3);
+  --editor-color-10: rgba(242, 244, 248, 0.1);
+  --editor-color-04: rgba(242, 244, 248, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #ee5396;
+  --icon-color: rgba(242, 244, 248, 0.56);
+  --code-block-bg-color: #262626;
+  --table-border-color: #262626;
+  --input-bg-color: #0d0d0d;
+  --button-font-color: rgba(242, 244, 248, 0.7);
+  --button-bg-color: #262626;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #393939;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #1e1e1e;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(242, 244, 248, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #78a9ff;
+  --h1-color: #ee5396;
+  --h2-color: #78a9ff;
+  --h3-color: #42be65;
+  --h4-color: #33b1ff;
+  --h5-color: #be95ff;
+  --h6-color: #ff7eb6;
+  --blockquote-text-color: rgba(242, 244, 248, 0.6);
+  --blockquote-border-color: #525252;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #33b1ff;
+  --hr-color: #393939;
+}

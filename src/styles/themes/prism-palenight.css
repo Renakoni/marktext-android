@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Palenight.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Palenight is active. Rule grouping follows
+ * the desktop prismjs/palenight.theme.css palette; the [data-theme] scope
+ * wins on specificity without !important.
+ */
+
+[data-theme='palenight'] .token.comment,
+[data-theme='palenight'] .token.prolog,
+[data-theme='palenight'] .token.doctype,
+[data-theme='palenight'] .token.cdata {
+  color: #676e95;
+}
+
+[data-theme='palenight'] .token.punctuation {
+  color: #89ddff;
+}
+
+[data-theme='palenight'] .token.property,
+[data-theme='palenight'] .token.tag,
+[data-theme='palenight'] .token.constant,
+[data-theme='palenight'] .token.symbol {
+  color: #f07178;
+}
+
+[data-theme='palenight'] .token.boolean,
+[data-theme='palenight'] .token.number {
+  color: #f78c6c;
+}
+
+[data-theme='palenight'] .token.selector,
+[data-theme='palenight'] .token.attr-name,
+[data-theme='palenight'] .token.string,
+[data-theme='palenight'] .token.char,
+[data-theme='palenight'] .token.builtin {
+  color: #c3e88d;
+}
+
+[data-theme='palenight'] .token.inserted {
+  color: #c3e88d;
+  background: rgba(195, 232, 141, 0.12);
+}
+
+[data-theme='palenight'] .token.deleted {
+  color: #f07178;
+  background: rgba(240, 113, 120, 0.12);
+}
+
+[data-theme='palenight'] .token.operator,
+[data-theme='palenight'] .token.entity,
+[data-theme='palenight'] .token.url,
+[data-theme='palenight'] .language-css .token.string,
+[data-theme='palenight'] .style .token.string {
+  color: #89ddff;
+}
+
+[data-theme='palenight'] .token.atrule,
+[data-theme='palenight'] .token.attr-value,
+[data-theme='palenight'] .token.function,
+[data-theme='palenight'] .token.class-name {
+  color: #82aaff;
+}
+
+[data-theme='palenight'] .token.keyword {
+  color: #c792ea;
+}
+
+[data-theme='palenight'] .token.regex,
+[data-theme='palenight'] .token.important,
+[data-theme='palenight'] .token.variable {
+  color: #ffcb6b;
+}

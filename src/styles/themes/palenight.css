@@ -1,0 +1,108 @@
+/*
+ * Palenight — curated custom theme.
+ *
+ * Heritage: desktop MarkText palenight theme — the indigo #292d3e ground,
+ * periwinkle accent #82aaff, lavender-gray ink #a6accd, and the material
+ * palenight heading run (purple, blue, green, cyan, orange, red). Values
+ * are plain hex/rgba so every WebView the app can meet renders them
+ * identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - `--danger` lightens the palenight red just past WCAG AA (heritage
+ *   #ff5370 sits at 4.37:1 and stays on the Muya bridge and headings).
+ * - The desktop 0.6-alpha periwinkle search highlight softens to 0.3 for
+ *   phone readability.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints italics purple).
+ */
+
+:root[data-theme='palenight'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #252939;
+  --surface: #292d3e;
+  --surface-muted: #32374d;
+  --surface-sunken: #222534;
+  --surface-raised: #3e4460;
+
+  /* Content */
+  --text: #a6accd;
+  --text-muted: #969cbd;
+  --text-faint: #676e95;
+  --task-completed-color: #969cbd;
+  --on-accent: #292d3e;
+
+  /* Lines */
+  --border: #32374d;
+  --border-strong: #4e5579;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — periwinkle; "strong" lightens for contrast on the indigo
+     ground. */
+  --accent: #82aaff;
+  --accent-strong: #a8c3ff;
+  --accent-hover: #93b5ff;
+  --accent-soft: rgba(130, 170, 255, 0.2);
+  --accent-tint-10: rgba(130, 170, 255, 0.14);
+  --accent-tint-11: rgba(130, 170, 255, 0.16);
+
+  /* State */
+  --danger: #ff6a83;
+  --focus-ring: rgba(130, 170, 255, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(130, 170, 255, 0.35);
+
+  /* Muya bridge — the desktop palenight palette on the writing surface. */
+  --theme-color: #82aaff;
+  --highlight-color: rgba(130, 170, 255, 0.3);
+  --selection-color: rgba(113, 124, 180, 0.4);
+  --editor-color: #a6accd;
+  --editor-color-80: rgba(166, 172, 205, 0.8);
+  --editor-color-50: rgba(166, 172, 205, 0.5);
+  --editor-color-30: rgba(166, 172, 205, 0.3);
+  --editor-color-10: rgba(166, 172, 205, 0.1);
+  --editor-color-04: rgba(166, 172, 205, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #ff5370;
+  --icon-color: rgba(166, 172, 205, 0.56);
+  --code-block-bg-color: #32374d;
+  --table-border-color: #32374d;
+  --input-bg-color: #222534;
+  --button-font-color: rgba(166, 172, 205, 0.7);
+  --button-bg-color: #32374d;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #3e4460;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #2a2f41;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(166, 172, 205, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #82aaff;
+  --h1-color: #c792ea;
+  --h2-color: #82aaff;
+  --h3-color: #c3e88d;
+  --h4-color: #89ddff;
+  --h5-color: #f78c6c;
+  --h6-color: #ff5370;
+  --blockquote-text-color: rgba(166, 172, 205, 0.6);
+  --blockquote-border-color: #4e5579;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #f78c6c;
+  --hr-color: #3e4460;
+}
