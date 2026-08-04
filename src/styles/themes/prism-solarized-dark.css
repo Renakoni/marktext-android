@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Solarized Dark.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Solarized Dark is active. Rule grouping
+ * follows the desktop prismjs/solarized-dark.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='solarized-dark'] .token.comment,
+[data-theme='solarized-dark'] .token.prolog,
+[data-theme='solarized-dark'] .token.doctype,
+[data-theme='solarized-dark'] .token.cdata {
+  color: #586e75;
+}
+
+[data-theme='solarized-dark'] .token.punctuation {
+  color: #93a1a1;
+}
+
+[data-theme='solarized-dark'] .token.property,
+[data-theme='solarized-dark'] .token.tag,
+[data-theme='solarized-dark'] .token.constant,
+[data-theme='solarized-dark'] .token.symbol {
+  color: #268bd2;
+}
+
+[data-theme='solarized-dark'] .token.boolean,
+[data-theme='solarized-dark'] .token.number {
+  color: #d33682;
+}
+
+[data-theme='solarized-dark'] .token.selector,
+[data-theme='solarized-dark'] .token.attr-name,
+[data-theme='solarized-dark'] .token.string,
+[data-theme='solarized-dark'] .token.char,
+[data-theme='solarized-dark'] .token.builtin {
+  color: #2aa198;
+}
+
+[data-theme='solarized-dark'] .token.inserted {
+  color: #2aa198;
+  background: rgba(42, 161, 152, 0.12);
+}
+
+[data-theme='solarized-dark'] .token.deleted {
+  color: #268bd2;
+  background: rgba(38, 139, 210, 0.12);
+}
+
+[data-theme='solarized-dark'] .token.operator,
+[data-theme='solarized-dark'] .token.entity,
+[data-theme='solarized-dark'] .token.url,
+[data-theme='solarized-dark'] .language-css .token.string,
+[data-theme='solarized-dark'] .style .token.string {
+  color: #cb4b16;
+}
+
+[data-theme='solarized-dark'] .token.atrule,
+[data-theme='solarized-dark'] .token.attr-value,
+[data-theme='solarized-dark'] .token.function,
+[data-theme='solarized-dark'] .token.class-name {
+  color: #b58900;
+}
+
+[data-theme='solarized-dark'] .token.keyword {
+  color: #859900;
+}
+
+[data-theme='solarized-dark'] .token.regex,
+[data-theme='solarized-dark'] .token.important,
+[data-theme='solarized-dark'] .token.variable {
+  color: #cb4b16;
+}
