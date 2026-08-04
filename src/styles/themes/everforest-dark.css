@@ -1,0 +1,106 @@
+/*
+ * Everforest Dark — curated custom theme.
+ *
+ * Heritage: desktop MarkText everforest-dark theme — the deep forest
+ * #2d353b ground, soft green accent #a7c080, warm parchment ink #d3c6aa,
+ * and the everforest heading run (red, yellow, green, aqua, pink, teal).
+ * Values are plain hex/rgba so every WebView the app can meet renders
+ * them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - The desktop 0.6-alpha green search highlight softens to 0.28 so
+ *   highlighted text stays readable on a phone.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints emphasis yellow).
+ */
+
+:root[data-theme='everforest-dark'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #2a3137;
+  --surface: #2d353b;
+  --surface-muted: #343f44;
+  --surface-sunken: #272e33;
+  --surface-raised: #3d4a50;
+
+  /* Content */
+  --text: #d3c6aa;
+  --text-muted: #b0a68e;
+  --text-faint: #859289;
+  --task-completed-color: #a3a08a;
+  --on-accent: #2d353b;
+
+  /* Lines */
+  --border: #3d4a50;
+  --border-strong: #4f5e66;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — everforest green; "strong" lightens for contrast on the
+     forest ground. */
+  --accent: #a7c080;
+  --accent-strong: #c1d4a4;
+  --accent-hover: #b3c990;
+  --accent-soft: rgba(167, 192, 128, 0.2);
+  --accent-tint-10: rgba(167, 192, 128, 0.14);
+  --accent-tint-11: rgba(167, 192, 128, 0.16);
+
+  /* State */
+  --danger: #e67e80;
+  --focus-ring: rgba(167, 192, 128, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(167, 192, 128, 0.3);
+
+  /* Muya bridge — the desktop everforest-dark palette on the writing surface. */
+  --theme-color: #a7c080;
+  --highlight-color: rgba(167, 192, 128, 0.28);
+  --selection-color: rgba(67, 76, 64, 0.8);
+  --editor-color: #d3c6aa;
+  --editor-color-80: rgba(211, 198, 170, 0.8);
+  --editor-color-50: rgba(211, 198, 170, 0.5);
+  --editor-color-30: rgba(211, 198, 170, 0.3);
+  --editor-color-10: rgba(211, 198, 170, 0.1);
+  --editor-color-04: rgba(211, 198, 170, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #e67e80;
+  --icon-color: rgba(211, 198, 170, 0.56);
+  --code-block-bg-color: #343f44;
+  --table-border-color: #343f44;
+  --input-bg-color: #272e33;
+  --button-font-color: rgba(211, 198, 170, 0.7);
+  --button-bg-color: #343f44;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #3d4a50;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #2c363b;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(211, 198, 170, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #7fbbb3;
+  --h1-color: #e67e80;
+  --h2-color: #dbbc7f;
+  --h3-color: #a7c080;
+  --h4-color: #7fbbb3;
+  --h5-color: #d699b6;
+  --h6-color: #83c092;
+  --blockquote-text-color: rgba(211, 198, 170, 0.6);
+  --blockquote-border-color: #475258;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #a7c080;
+  --hr-color: #3d4a50;
+}
