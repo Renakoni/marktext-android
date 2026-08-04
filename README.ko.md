@@ -198,14 +198,14 @@ MarkText for Android는 [MIT 라이선스](LICENSE)로 배포됩니다.
 프로젝트와 관련이 없으며 승인을 받지 않았습니다:
 
 - **MarkText** — 이 포트가 따르는 데스크톱 편집기이자 디자인. Copyright © Luo
-  Ran and the MarkText contributors, MIT 라이선스.
+  Ran 및 MarkText 기여자, MIT 라이선스.
 - **Muya** (`@muyajs/core`) — 편집기 코어. `third_party/muya` 아래에 벤더링해
   수정했으며, 원본 MIT 라이선스를 유지합니다
   ([`third_party/muya/LICENSE`](third_party/muya/LICENSE)).
 
 ## 감사의 말
 
-MarkText for Android는 수많은 오픈 소스 작업 위에 서 있습니다.
+MarkText for Android는 수많은 오픈 소스 작업 위에 서 있습니다:
 [MarkText](https://github.com/marktext/marktext) 편집기와 그
 [기여자들](https://github.com/marktext/marktext/graphs/contributors),
 [Muya](https://github.com/marktext/muya) 편집 엔진, 그리고

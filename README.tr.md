@@ -65,7 +65,7 @@ telefona taşır. Düzenleyicisi, MarkText'in açık kaynaklı çekirdeği Muya'
 mobil için kapsamlı biçimde uyarlanmıştır: büyük belgelerde daha hızlıdır,
 telefon genişliğine göre yeniden yerleştirilmiştir ve dokunmatik seçim ile araç
 çubuklarına kavuşmuştur. Yazdıklarınız, tek el için tasarlanmış bir arayüzde masaüstündekiyle
-aynı sadakatle işlenir.
+aynı doğrulukla işlenir.
 
 ## Öne çıkanlar
 
@@ -203,7 +203,7 @@ bağlantısı olmayan ve proje tarafından onaylanmamış **resmî olmayan** bir
 porttur:
 
 - **MarkText** — bu portun izlediği masaüstü düzenleyici ve tasarım. Telif hakkı
-  © Luo Ran ve MarkText katkıda bulunanları, MIT lisanslıdır.
+  © Luo Ran ve MarkText'e katkıda bulunanlar, MIT lisanslıdır.
 - **Muya** (`@muyajs/core`) — düzenleyici çekirdeği; özgün MIT lisansı korunarak
   ([`third_party/muya/LICENSE`](third_party/muya/LICENSE)) `third_party/muya`
   altında tutulur ve değiştirilmiştir.

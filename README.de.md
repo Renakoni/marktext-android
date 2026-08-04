@@ -213,7 +213,7 @@ und weder mit dem MarkText-Projekt verbunden ist noch von ihm unterstützt wird:
 
 ## Danksagungen
 
-MarkText for Android steht auf den Schultern vieler Open-Source-Projekte: dem
+MarkText for Android baut auf viel Open-Source-Arbeit auf: dem
 [MarkText](https://github.com/marktext/marktext)-Editor und seinen
 [Mitwirkenden](https://github.com/marktext/marktext/graphs/contributors), der
 [Muya](https://github.com/marktext/muya)-Engine sowie

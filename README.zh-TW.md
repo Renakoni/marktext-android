@@ -49,7 +49,7 @@
 </p>
 
 <p align="center">
-  <sub>☀&nbsp; 淺色 &nbsp;·&nbsp; 深色 &nbsp;☾&nbsp; ——跟隨您系統的偏好</sub>
+  <sub>☀&nbsp; 淺色 &nbsp;·&nbsp; 深色 &nbsp;☾&nbsp; —— 跟隨您的系統偏好</sub>
 </p>
 
 > [!NOTE]
@@ -180,7 +180,7 @@ pnpm android:open     # 在 Android Studio 中開啟，然後在裝置或模擬�
 
 ## 參與貢獻
 
-歡迎回報問題與提交 Pull Request。每次變更聚焦一件事，並在合適的地方
+歡迎回報問題與提交 Pull Request。每次變更只做一件事，並在合適的地方
 補上測試。
 
 ## 授權與出處
