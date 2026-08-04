@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Rosé Pine.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Rosé Pine is active. Rule grouping follows
+ * the desktop prismjs/rose-pine.theme.css palette; the [data-theme] scope
+ * wins on specificity without !important.
+ */
+
+[data-theme='rose-pine'] .token.comment,
+[data-theme='rose-pine'] .token.prolog,
+[data-theme='rose-pine'] .token.doctype,
+[data-theme='rose-pine'] .token.cdata {
+  color: #6e6a86;
+}
+
+[data-theme='rose-pine'] .token.punctuation {
+  color: #908caa;
+}
+
+[data-theme='rose-pine'] .token.property,
+[data-theme='rose-pine'] .token.tag,
+[data-theme='rose-pine'] .token.constant,
+[data-theme='rose-pine'] .token.symbol {
+  color: #eb6f92;
+}
+
+[data-theme='rose-pine'] .token.boolean,
+[data-theme='rose-pine'] .token.number {
+  color: #f6c177;
+}
+
+[data-theme='rose-pine'] .token.selector,
+[data-theme='rose-pine'] .token.attr-name,
+[data-theme='rose-pine'] .token.string,
+[data-theme='rose-pine'] .token.char,
+[data-theme='rose-pine'] .token.builtin {
+  color: #31748f;
+}
+
+[data-theme='rose-pine'] .token.inserted {
+  color: #9ccfd8;
+  background: rgba(156, 207, 216, 0.12);
+}
+
+[data-theme='rose-pine'] .token.deleted {
+  color: #eb6f92;
+  background: rgba(235, 111, 146, 0.12);
+}
+
+[data-theme='rose-pine'] .token.operator,
+[data-theme='rose-pine'] .token.entity,
+[data-theme='rose-pine'] .token.url,
+[data-theme='rose-pine'] .language-css .token.string,
+[data-theme='rose-pine'] .style .token.string {
+  color: #9ccfd8;
+}
+
+[data-theme='rose-pine'] .token.atrule,
+[data-theme='rose-pine'] .token.attr-value,
+[data-theme='rose-pine'] .token.function,
+[data-theme='rose-pine'] .token.class-name {
+  color: #ebbcba;
+}
+
+[data-theme='rose-pine'] .token.keyword {
+  color: #c4a7e7;
+}
+
+[data-theme='rose-pine'] .token.regex,
+[data-theme='rose-pine'] .token.important,
+[data-theme='rose-pine'] .token.variable {
+  color: #f6c177;
+}

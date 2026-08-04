@@ -1,0 +1,105 @@
+/*
+ * Rosé Pine Moon — curated custom theme.
+ *
+ * Heritage: desktop MarkText rose-pine-moon theme — the moon #232136
+ * ground, iris accent #c4a7e7, moonlit ink #e0def4, and the moon heading
+ * run (iris, rose, gold, foam, pine, love). Values are plain hex/rgba so
+ * every WebView the app can meet renders them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - The desktop 0.6-alpha iris search highlight softens to 0.3 so
+ *   highlighted text stays readable on a phone.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints italics rose).
+ */
+
+:root[data-theme='rose-pine-moon'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #1f1d2f;
+  --surface: #232136;
+  --surface-muted: #2a273f;
+  --surface-sunken: #1b1929;
+  --surface-raised: #393552;
+
+  /* Content */
+  --text: #e0def4;
+  --text-muted: #bcb9d8;
+  --text-faint: #6e6a86;
+  --task-completed-color: #a29fc0;
+  --on-accent: #232136;
+
+  /* Lines */
+  --border: #2a273f;
+  --border-strong: #44415a;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — rose-pine iris; "strong" lightens for contrast on the moon
+     ground. */
+  --accent: #c4a7e7;
+  --accent-strong: #d7c2f0;
+  --accent-hover: #ccb3eb;
+  --accent-soft: rgba(196, 167, 231, 0.2);
+  --accent-tint-10: rgba(196, 167, 231, 0.14);
+  --accent-tint-11: rgba(196, 167, 231, 0.16);
+
+  /* State */
+  --danger: #eb6f92;
+  --focus-ring: rgba(196, 167, 231, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(196, 167, 231, 0.35);
+
+  /* Muya bridge — the desktop rose-pine-moon palette on the writing surface. */
+  --theme-color: #c4a7e7;
+  --highlight-color: rgba(196, 167, 231, 0.3);
+  --selection-color: rgba(57, 53, 82, 0.8);
+  --editor-color: #e0def4;
+  --editor-color-80: rgba(224, 222, 244, 0.8);
+  --editor-color-50: rgba(224, 222, 244, 0.5);
+  --editor-color-30: rgba(224, 222, 244, 0.3);
+  --editor-color-10: rgba(224, 222, 244, 0.1);
+  --editor-color-04: rgba(224, 222, 244, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #eb6f92;
+  --icon-color: rgba(224, 222, 244, 0.56);
+  --code-block-bg-color: #2a273f;
+  --table-border-color: #2a273f;
+  --input-bg-color: #1b1929;
+  --button-font-color: rgba(224, 222, 244, 0.7);
+  --button-bg-color: #2a273f;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #393552;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #242137;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(224, 222, 244, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #9ccfd8;
+  --h1-color: #c4a7e7;
+  --h2-color: #ea9a97;
+  --h3-color: #f6c177;
+  --h4-color: #9ccfd8;
+  --h5-color: #3e8fb0;
+  --h6-color: #eb6f92;
+  --blockquote-text-color: rgba(224, 222, 244, 0.6);
+  --blockquote-border-color: #44415a;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #c4a7e7;
+  --hr-color: #393552;
+}
