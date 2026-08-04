@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Tokyo Night Light.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Tokyo Night Light is active. Rule grouping
+ * follows the desktop prismjs/tokyo-night-light.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='tokyo-night-light'] .token.comment,
+[data-theme='tokyo-night-light'] .token.prolog,
+[data-theme='tokyo-night-light'] .token.doctype,
+[data-theme='tokyo-night-light'] .token.cdata {
+  color: #9699a3;
+}
+
+[data-theme='tokyo-night-light'] .token.punctuation {
+  color: #343b58;
+}
+
+[data-theme='tokyo-night-light'] .token.property,
+[data-theme='tokyo-night-light'] .token.tag,
+[data-theme='tokyo-night-light'] .token.constant,
+[data-theme='tokyo-night-light'] .token.symbol {
+  color: #8c4351;
+}
+
+[data-theme='tokyo-night-light'] .token.boolean,
+[data-theme='tokyo-night-light'] .token.number {
+  color: #965027;
+}
+
+[data-theme='tokyo-night-light'] .token.selector,
+[data-theme='tokyo-night-light'] .token.attr-name,
+[data-theme='tokyo-night-light'] .token.string,
+[data-theme='tokyo-night-light'] .token.char,
+[data-theme='tokyo-night-light'] .token.builtin {
+  color: #485e30;
+}
+
+[data-theme='tokyo-night-light'] .token.inserted {
+  color: #485e30;
+  background: rgba(72, 94, 48, 0.12);
+}
+
+[data-theme='tokyo-night-light'] .token.deleted {
+  color: #8c4351;
+  background: rgba(140, 67, 81, 0.1);
+}
+
+[data-theme='tokyo-night-light'] .token.operator,
+[data-theme='tokyo-night-light'] .token.entity,
+[data-theme='tokyo-night-light'] .token.url,
+[data-theme='tokyo-night-light'] .language-css .token.string,
+[data-theme='tokyo-night-light'] .style .token.string {
+  color: #166775;
+}
+
+[data-theme='tokyo-night-light'] .token.atrule,
+[data-theme='tokyo-night-light'] .token.attr-value,
+[data-theme='tokyo-night-light'] .token.function,
+[data-theme='tokyo-night-light'] .token.class-name {
+  color: #34548a;
+}
+
+[data-theme='tokyo-night-light'] .token.keyword {
+  color: #5a4a78;
+}
+
+[data-theme='tokyo-night-light'] .token.regex,
+[data-theme='tokyo-night-light'] .token.important,
+[data-theme='tokyo-night-light'] .token.variable {
+  color: #8f5e15;
+}
