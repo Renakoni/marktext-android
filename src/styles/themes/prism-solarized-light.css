@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Solarized Light.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Solarized Light is active. Rule grouping
+ * follows the desktop prismjs/solarized-light.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='solarized-light'] .token.comment,
+[data-theme='solarized-light'] .token.prolog,
+[data-theme='solarized-light'] .token.doctype,
+[data-theme='solarized-light'] .token.cdata {
+  color: #93a1a1;
+}
+
+[data-theme='solarized-light'] .token.punctuation {
+  color: #586e75;
+}
+
+[data-theme='solarized-light'] .token.property,
+[data-theme='solarized-light'] .token.tag,
+[data-theme='solarized-light'] .token.constant,
+[data-theme='solarized-light'] .token.symbol {
+  color: #268bd2;
+}
+
+[data-theme='solarized-light'] .token.boolean,
+[data-theme='solarized-light'] .token.number {
+  color: #d33682;
+}
+
+[data-theme='solarized-light'] .token.selector,
+[data-theme='solarized-light'] .token.attr-name,
+[data-theme='solarized-light'] .token.string,
+[data-theme='solarized-light'] .token.char,
+[data-theme='solarized-light'] .token.builtin {
+  color: #2aa198;
+}
+
+[data-theme='solarized-light'] .token.inserted {
+  color: #2aa198;
+  background: rgba(42, 161, 152, 0.12);
+}
+
+[data-theme='solarized-light'] .token.deleted {
+  color: #268bd2;
+  background: rgba(38, 139, 210, 0.1);
+}
+
+[data-theme='solarized-light'] .token.operator,
+[data-theme='solarized-light'] .token.entity,
+[data-theme='solarized-light'] .token.url,
+[data-theme='solarized-light'] .language-css .token.string,
+[data-theme='solarized-light'] .style .token.string {
+  color: #cb4b16;
+}
+
+[data-theme='solarized-light'] .token.atrule,
+[data-theme='solarized-light'] .token.attr-value,
+[data-theme='solarized-light'] .token.function,
+[data-theme='solarized-light'] .token.class-name {
+  color: #b58900;
+}
+
+[data-theme='solarized-light'] .token.keyword {
+  color: #859900;
+}
+
+[data-theme='solarized-light'] .token.regex,
+[data-theme='solarized-light'] .token.important,
+[data-theme='solarized-light'] .token.variable {
+  color: #cb4b16;
+}

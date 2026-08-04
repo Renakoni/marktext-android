@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Gruvbox Light.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Gruvbox Light is active. Rule grouping
+ * follows the desktop prismjs/gruvbox-light.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='gruvbox-light'] .token.comment,
+[data-theme='gruvbox-light'] .token.prolog,
+[data-theme='gruvbox-light'] .token.doctype,
+[data-theme='gruvbox-light'] .token.cdata {
+  color: #928374;
+}
+
+[data-theme='gruvbox-light'] .token.punctuation {
+  color: #3c3836;
+}
+
+[data-theme='gruvbox-light'] .token.property,
+[data-theme='gruvbox-light'] .token.tag,
+[data-theme='gruvbox-light'] .token.constant,
+[data-theme='gruvbox-light'] .token.symbol {
+  color: #9d0006;
+}
+
+[data-theme='gruvbox-light'] .token.boolean,
+[data-theme='gruvbox-light'] .token.number {
+  color: #8f3f71;
+}
+
+[data-theme='gruvbox-light'] .token.selector,
+[data-theme='gruvbox-light'] .token.attr-name,
+[data-theme='gruvbox-light'] .token.string,
+[data-theme='gruvbox-light'] .token.char,
+[data-theme='gruvbox-light'] .token.builtin {
+  color: #79740e;
+}
+
+[data-theme='gruvbox-light'] .token.inserted {
+  color: #79740e;
+  background: rgba(121, 116, 14, 0.12);
+}
+
+[data-theme='gruvbox-light'] .token.deleted {
+  color: #9d0006;
+  background: rgba(157, 0, 6, 0.1);
+}
+
+[data-theme='gruvbox-light'] .token.operator,
+[data-theme='gruvbox-light'] .token.entity,
+[data-theme='gruvbox-light'] .token.url,
+[data-theme='gruvbox-light'] .language-css .token.string,
+[data-theme='gruvbox-light'] .style .token.string {
+  color: #427b58;
+}
+
+[data-theme='gruvbox-light'] .token.atrule,
+[data-theme='gruvbox-light'] .token.attr-value,
+[data-theme='gruvbox-light'] .token.function,
+[data-theme='gruvbox-light'] .token.class-name {
+  color: #b57614;
+}
+
+[data-theme='gruvbox-light'] .token.keyword {
+  color: #9d0006;
+}
+
+[data-theme='gruvbox-light'] .token.regex,
+[data-theme='gruvbox-light'] .token.important,
+[data-theme='gruvbox-light'] .token.variable {
+  color: #af3a03;
+}

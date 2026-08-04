@@ -1,0 +1,106 @@
+/*
+ * Solarized Light — curated custom theme.
+ *
+ * Heritage: desktop MarkText solarized-light theme — Ethan Schoonover's
+ * warm base3 paper (#fdf6e3), base2 panels (#eee8d5), blue accent #268bd2,
+ * and the canonical solarized heading rainbow. Values are plain hex/rgba so
+ * every WebView the app can meet renders them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Body ink uses base01 (#586e75): the desktop base00 (#657b83) sits at
+ *   4.13:1 on this paper and misses WCAG AA.
+ * - `--accent` deepens the solarized blue for AA on interactive text;
+ *   `--theme-color` keeps the heritage hue.
+ * - Floating surfaces raise toward warm white instead of dropping to base2:
+ *   on a phone, elevation reads lighter.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints emphasis yellow).
+ */
+
+:root[data-theme='solarized-light'] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --app-bg: #f5efdc;
+  --surface: #fdf6e3;
+  --surface-muted: #eee8d5;
+  --surface-sunken: #e5dfcc;
+  --surface-raised: #fffcf2;
+
+  /* Content */
+  --text: #586e75;
+  --text-muted: #728789;
+  --text-faint: #93a1a1;
+  --task-completed-color: #647279;
+  --on-accent: #fdf6e3;
+
+  /* Lines */
+  --border: #ded8c3;
+  --border-strong: #cfc9b4;
+  --separator: rgba(88, 110, 117, 0.18);
+
+  /* Accent — solarized blue; --accent holds AA on this paper. */
+  --accent: #2074af;
+  --accent-strong: #1a5e91;
+  --accent-hover: #1e6ca3;
+  --accent-soft: #d8e9f5;
+  --accent-tint-10: rgba(38, 139, 210, 0.12);
+  --accent-tint-11: rgba(38, 139, 210, 0.14);
+
+  /* State */
+  --danger: #d72724;
+  --focus-ring: rgba(38, 139, 210, 0.38);
+  --press: rgba(88, 110, 117, 0.1);
+  --scrim: rgba(30, 35, 40, 0.42);
+
+  /* Shadows — reserved for genuinely floating surfaces. */
+  --shadow-sm: 0 1px 2px rgba(70, 66, 50, 0.06);
+  --shadow-float:
+    0 12px 32px rgba(70, 66, 50, 0.16),
+    0 2px 8px rgba(70, 66, 50, 0.08);
+  --shadow-thumb: 0 2px 6px rgba(70, 66, 50, 0.22);
+  --shadow-accent: 0 2px 10px rgba(38, 139, 210, 0.35);
+
+  /* Muya bridge — the desktop solarized-light palette on the writing surface. */
+  --theme-color: #268bd2;
+  --highlight-color: rgba(38, 139, 210, 0.3);
+  --selection-color: rgba(238, 232, 213, 0.8);
+  --editor-color: #586e75;
+  --editor-color-80: rgba(88, 110, 117, 0.8);
+  --editor-color-50: rgba(88, 110, 117, 0.5);
+  --editor-color-30: rgba(88, 110, 117, 0.3);
+  --editor-color-10: rgba(88, 110, 117, 0.1);
+  --editor-color-04: rgba(88, 110, 117, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #dc322f;
+  --icon-color: rgba(101, 123, 131, 0.56);
+  --code-block-bg-color: #eee8d5;
+  --table-border-color: #dcd6c3;
+  --input-bg-color: #f5efdc;
+  --button-font-color: rgba(88, 110, 117, 0.85);
+  --button-bg-color: #eee8d5;
+  --button-border: 1px solid rgba(0, 0, 0, 0.08);
+  --button-bg-color-hover: #e5dfcc;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.12);
+  --button-bg-color-active: #dcd6c3;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.08);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(101, 123, 131, 0.06);
+  --float-border-color: rgba(0, 0, 0, 0.08);
+  --float-shadow: var(--shadow-float);
+  --link-color: var(--accent);
+  --h1-color: #dc322f;
+  --h2-color: #cb4b16;
+  --h3-color: #b58900;
+  --h4-color: #859900;
+  --h5-color: #2aa198;
+  --h6-color: #268bd2;
+  --blockquote-text-color: rgba(101, 123, 131, 0.6);
+  --blockquote-border-color: #93a1a1;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #cb4b16;
+  --hr-color: #dcd6c3;
+}
