@@ -5,11 +5,27 @@
 <h1 align="center">MarkText for Android</h1>
 
 <p align="center">
-  <em>Markdown, quietly.</em>
+  <sub>
+    🌐&nbsp;
+    <b>English</b>
+    &nbsp;·&nbsp; <a href="README.zh-CN.md">简体中文</a>
+    &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a>
+    &nbsp;·&nbsp; <a href="README.de.md">Deutsch</a>
+    &nbsp;·&nbsp; <a href="README.es.md">Español</a>
+    &nbsp;·&nbsp; <a href="README.fr.md">Français</a>
+    &nbsp;·&nbsp; <a href="README.ja.md">日本語</a>
+    &nbsp;·&nbsp; <a href="README.ko.md">한국어</a>
+    &nbsp;·&nbsp; <a href="README.pt.md">Português</a>
+    &nbsp;·&nbsp; <a href="README.tr.md">Türkçe</a>
+  </sub>
 </p>
 
 <p align="center">
-  <sub>A focused editor for Android — the desktop <a href="https://github.com/marktext/marktext">MarkText</a> experience, shaped for the phone.</sub>
+  <em>Markdown, quietly yours.</em>
+</p>
+
+<p align="center">
+  <sub>A lean Markdown editor for Android.</sub>
 </p>
 
 <p align="center">
@@ -43,12 +59,11 @@
 
 ## What it is
 
-MarkText for Android brings MarkText's live-preview Markdown editing to the phone,
-without rewriting it as a native app. Its editor is Muya, MarkText's open-source
-core, heavily adapted for mobile: faster on large documents, re-laid-out for a
-phone's width, and given the touch selection and toolbars a desktop never needed.
-What you write renders with the same fidelity as on desktop, in an interface built
-for one hand.
+MarkText for Android brings MarkText's live-preview Markdown editing to the phone.
+Its editor is Muya, MarkText's open-source core, heavily adapted for mobile:
+faster on large documents, re-laid-out for a phone's width, and given touch
+selection and toolbars. What you write renders with the same fidelity as on
+desktop, in an interface built for one hand.
 
 ## Highlights
 
@@ -58,19 +73,17 @@ for one hand.
 <tr>
 <td valign="middle">
 
-- True live-preview (WYSIWYG) editing — the desktop MarkText writing experience,
-  not a plain text box.
+- True live-preview (WYSIWYG) editing.
 - Full CommonMark and GitHub Flavored Markdown: math (KaTeX), tables, footnotes,
   front matter, diagrams, and syntax-highlighted code.
 - A document outline and in-editor search that stay smooth even in long files.
 - Export to **PDF** with math, code highlighting, and fonts all baked in.
-- **Never loses your work.** Autosave and recovery drafts keep every change, and
-  atomic, all-or-nothing writes mean an interrupted save never leaves a
-  half-written or corrupted file.
+- **Never loses your work.** Autosave, recovery drafts, and atomic writes keep
+  every change.
 - **Private by default.** No account, no cloud, no telemetry; everything stays on
   the device.
-- **Lightweight.** A focused Vue + Capacitor shell rather than a heavy native stack
-  keeps the whole app around 7.8 MB — small and light, yet fully featured.
+- **Lightweight.** A Vue + Capacitor shell keeps the whole app around 7.8 MB —
+  small and light, yet fully featured.
 
 </td>
 <td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="200"></td>
@@ -84,17 +97,21 @@ for one hand.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="The docked format toolbar and a customized selection (paste) bar shown while editing" width="200"></td>
 <td valign="middle">
 
-Customization runs deep here, right down to the bars you touch while writing:
-
 - **Build your own toolbars.** Compose the bottom quick bar from a pool of commands
-  and drag to reorder it. Even the selection toolbar — the clipboard bar that
-  appears over highlighted text — can hold your own commands, in one row or two.
-- **Themes and type.** Light, dark, and custom themes (`ayu-light`, `one-dark`);
-  adjustable font family, size, line height, line width, and text direction (LTR
-  or RTL).
-- **Markdown to your taste.** List markers and indentation, heading style, front
-  matter format (YAML/TOML/JSON), footnotes, super/subscript, HTML rendering, and
-  GitLab compatibility.
+  and drag to reorder it. Even the selection toolbar can hold your own commands.
+
+<br>
+
+- **Themes and appearance.** Light, dark, and custom themes; adjustable type and
+  layout.
+
+<br>
+
+- **Markdown to your taste.** Fine-tune how your Markdown is written and rendered,
+  from list markers to front matter.
+
+<br>
+
 - **File-level control.** Per-document encoding, line endings, and trailing
   newline handling.
 
@@ -111,11 +128,20 @@ Customization runs deep here, right down to the bars you touch while writing:
 
 - **Your files stay put.** Edit `.md` straight from any storage provider through
   the system picker, and pass documents to and from other apps with the share
-  sheet — no import/export shuffle, no second copy in a sandbox.
+  sheet.
+
+<br>
+
 - **Made for the thumb.** Comfortable one-handed reach and a calm, editor-first
-  layout, with wide tables that scroll on their own instead of shifting the page.
+  layout.
+
+<br>
+
 - **Accessible and restrained.** A quiet graphite design that meets WCAG 2.2 AA,
-  with visible focus order and respect for reduced-motion.
+  with a clear focus order and calm, minimal motion.
+
+<br>
+
 - **Ten languages,** chosen automatically from your system: English, German,
   Spanish, French, Japanese, Korean, Portuguese, Turkish, and Simplified and
   Traditional Chinese.
@@ -139,8 +165,8 @@ Download signed builds from the
 ## Build from source
 
 You'll need [Node.js](https://nodejs.org/) with [pnpm](https://pnpm.io/) and
-[Android Studio](https://developer.android.com/studio) (Android SDK — min API 24,
-target 36 — and a JDK).
+[Android Studio](https://developer.android.com/studio) (the Android SDK and a
+JDK; the app runs on API 24 and newer and is built against API 36).
 
 ```sh
 pnpm install          # install dependencies
@@ -186,4 +212,4 @@ MarkText for Android stands on a lot of open-source work: the
 
 ---
 
-<p align="center"><sub><em>Markdown, quietly.</em></sub></p>
+<p align="center"><sub><em>Markdown, quietly yours.</em></sub></p>
