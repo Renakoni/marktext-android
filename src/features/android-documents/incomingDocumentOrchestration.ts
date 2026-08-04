@@ -6,6 +6,7 @@ import {
 import {
   createAndroidOpenWithDocumentEventAction,
   createAndroidShareDocumentEventAction,
+  createImportedIncomingDocumentOpenResult,
   createSharedTextDocumentOpenResult,
   getIncomingDocumentPreservationAction,
   shouldKeepAndroidRecoveryAfterPreserveFailure,
@@ -54,6 +55,9 @@ export interface IncomingDocumentOrchestrationOptions {
   promptLocalDraftSaveOnExit: Ref<boolean>
   currentAndroidDocumentCanWrite: Ref<boolean>
   sharedTextImportedMessage: string
+  incomingFileImportedMessage: string
+  openWithTemporaryAccessMessage: string
+  shareTemporaryAccessMessage: string
   // Collaborators that stay in App: shared open/save paths and editor chrome.
   hasEditor: () => boolean
   openEditor: (markdown: string) => Promise<void>
@@ -62,8 +66,13 @@ export interface IncomingDocumentOrchestrationOptions {
   closeEditorToolbar: () => void
   openAndroidDocumentResult: (
     document: OpenedAndroidDocument,
-    options?: { source?: AndroidDocumentOpenSource, remember?: boolean },
+    options?: { source?: AndroidDocumentOpenSource },
   ) => Promise<void>
+  // Marks imported images referenced by the incoming Markdown as protected
+  // from cleanup: the external file keeps referencing them even after the
+  // imported draft is deleted, so the protection registry — not the draft —
+  // is what keeps them alive.
+  protectIncomingDocumentImages: (document: OpenedAndroidDocument) => void
   saveAndroidDocument: (options?: SaveAndroidDocumentOptions) => Promise<boolean>
   saveDraft: () => boolean
   syncDocumentFromEditor: (markDirty: boolean, flushPending: boolean) => void
@@ -104,6 +113,37 @@ export function createIncomingDocumentOrchestration(
     })
 
     if (options.canPersistLocalDrafts()) {
+      options.persistLocalDrafts(upsertLocalDraft(options.localDrafts.value, openResult.localDraft))
+    }
+    options.homeNotice.value = openResult.homeNotice
+    options.promptLocalDraftSaveOnExit.value = openResult.promptLocalDraftSaveOnExit
+    options.currentAndroidDocumentCanWrite.value = openResult.currentAndroidDocumentCanWrite
+    options.documentState.value = openResult.documentState
+    await options.openEditor(openResult.markdown)
+    options.status.value = openResult.statusAfterOpen
+    options.releaseEditorFocusAfterOpen()
+  }
+
+  // Non-persistable incoming files land here: the one-shot grant cannot be
+  // remembered, so the content is imported as a named local draft — that is
+  // the durable history entry the URI can never be.
+  async function openImportedIncomingDocument(
+    document: OpenedAndroidDocument,
+    source: Extract<AndroidDocumentOpenSource, 'open-with' | 'share'>,
+  ) {
+    const openResult = createImportedIncomingDocumentOpenResult(document, {
+      existingDrafts: options.localDrafts.value,
+      canPersistLocalDrafts: options.canPersistLocalDrafts(),
+      incomingFileImportedMessage: options.incomingFileImportedMessage,
+      temporaryAccessMessage:
+        source === 'open-with'
+          ? options.openWithTemporaryAccessMessage
+          : options.shareTemporaryAccessMessage,
+      logger: options.documentLogger,
+    })
+
+    options.protectIncomingDocumentImages(document)
+    if (openResult.localDraft && options.canPersistLocalDrafts()) {
       options.persistLocalDrafts(upsertLocalDraft(options.localDrafts.value, openResult.localDraft))
     }
     options.homeNotice.value = openResult.homeNotice
@@ -261,10 +301,11 @@ export function createIncomingDocumentOrchestration(
     await scheduleIncomingTransaction(() =>
       runIncomingTransaction(action.document.displayName, async () => {
         closeEditorChromeForIncomingOpen()
-        await options.openAndroidDocumentResult(action.document, {
-          source: action.source,
-          remember: action.remember,
-        })
+        if (action.remember) {
+          await options.openAndroidDocumentResult(action.document, { source: action.source })
+        } else {
+          await openImportedIncomingDocument(action.document, action.source)
+        }
       }),
     )
   }
@@ -285,10 +326,11 @@ export function createIncomingDocumentOrchestration(
       await scheduleIncomingTransaction(() =>
         runIncomingTransaction(action.document.displayName, async () => {
           closeEditorChromeForIncomingOpen()
-          await options.openAndroidDocumentResult(action.document, {
-            source: action.source,
-            remember: action.remember,
-          })
+          if (action.remember) {
+            await options.openAndroidDocumentResult(action.document, { source: action.source })
+          } else {
+            await openImportedIncomingDocument(action.document, action.source)
+          }
         }),
       )
       return

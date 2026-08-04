@@ -72,6 +72,7 @@ const KNOWN_TEXT_MESSAGE_KEYS = {
   'Opened from Android share with temporary access. Save a copy to keep editing later.':
     'app.notice.shareTemporaryAccess',
   'Imported shared text as a local draft.': 'app.notice.sharedTextImported',
+  'Imported this file as a local draft.': 'app.notice.incomingFileImported',
   'Save failed. A local recovery draft was kept.': 'app.notice.androidSaveRecovery',
   'Unsaved changes were kept as a recovery draft.': 'app.notice.androidExitRecovery',
   'Unsaved changes were discarded.': 'app.notice.androidExitDiscard',

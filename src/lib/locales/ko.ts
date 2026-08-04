@@ -70,6 +70,7 @@ export const ko = {
   'app.notice.renameTemporaryAccess':
     '이름을 바꿨지만 Android가 임시 접근만 유지했습니다. 최근 문서에 다시 추가하려면 Android에서 다시 여세요.',
   'app.notice.sharedTextImported': '공유된 텍스트를 로컬 초안으로 가져왔습니다.',
+  'app.notice.incomingFileImported': '이 파일을 로컬 초안으로 가져왔습니다.',
   'app.notice.androidSaveRecovery': '저장에 실패했습니다. 로컬 복구 초안을 유지했습니다.',
   'app.notice.androidExitRecovery': '저장하지 않은 변경 사항을 복구 초안으로 유지했습니다.',
   'app.notice.androidExitDiscard': '저장하지 않은 변경 사항을 폐기했습니다.',

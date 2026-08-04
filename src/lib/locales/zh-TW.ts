@@ -70,6 +70,7 @@ export const zhTW = {
   'app.notice.renameTemporaryAccess':
     '已重新命名，但 Android 僅保留暫時存取權。請從 Android 重新開啟，以將其重新加入最近文件。',
   'app.notice.sharedTextImported': '已將分享的文字匯入為本機草稿。',
+  'app.notice.incomingFileImported': '已將此檔案匯入為本機草稿。',
   'app.notice.androidSaveRecovery': '儲存失敗。已保留本機修復草稿。',
   'app.notice.androidExitRecovery': '未儲存的變更已保留為修復草稿。',
   'app.notice.androidExitDiscard': '未儲存的變更已捨棄。',

@@ -70,6 +70,7 @@ export const pt = {
   'app.notice.renameTemporaryAccess':
     'Renomeado, mas o Android manteve apenas acesso temporário. Reabra pelo Android para adicioná-lo de volta aos Recentes.',
   'app.notice.sharedTextImported': 'Texto compartilhado importado como rascunho local.',
+  'app.notice.incomingFileImported': 'Este arquivo foi importado como rascunho local.',
   'app.notice.androidSaveRecovery': 'Falha ao salvar. Um rascunho de recuperação local foi mantido.',
   'app.notice.androidExitRecovery': 'As alterações não salvas foram mantidas como rascunho de recuperação.',
   'app.notice.androidExitDiscard': 'As alterações não salvas foram descartadas.',

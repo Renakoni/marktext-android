@@ -193,7 +193,7 @@ test('imports shared Android text as a local draft on app launch', async ({ page
   expect(storage.recentDocuments).not.toContain('Shared From QQ')
 })
 
-test('opens a shared Markdown file with temporary Android access', async ({ page }) => {
+test('imports a shared Markdown file without durable access as a local draft', async ({ page }) => {
   await installAndroidShareAppMock(page, {
     pendingShareEvent: {
       document: {
@@ -214,12 +214,15 @@ test('opens a shared Markdown file with temporary Android access', async ({ page
 
   await expectEditorReady(page)
   await expect(page.getByTestId('editor-host')).toContainText('Shared Stream')
-  await expect(page.getByText('Opened temporarily')).toBeVisible()
+  await expect(page.getByText('Imported this file as a local draft.')).toBeVisible()
 
-  const recentDocuments = await page.evaluate(
-    () => localStorage.getItem('marktext-for-android:recent-documents') ?? '',
-  )
-  expect(recentDocuments).not.toContain('content://test/share-stream')
+  const storage = await page.evaluate(() => ({
+    drafts: localStorage.getItem('marktext-for-android:drafts') ?? '',
+    recentDocuments: localStorage.getItem('marktext-for-android:recent-documents') ?? '',
+  }))
+  expect(storage.drafts).toContain('Shared Stream.md')
+  expect(storage.drafts).toContain('received as a content URI')
+  expect(storage.recentDocuments).not.toContain('content://test/share-stream')
 })
 
 test('shares the current draft as a Markdown file through Android', async ({ page }) => {

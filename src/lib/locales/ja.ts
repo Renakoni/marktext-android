@@ -70,6 +70,7 @@ export const ja = {
   'app.notice.renameTemporaryAccess':
     '名前を変更しましたが、Android は一時アクセスのみを許可しました。最近の項目に戻すには Android から開き直してください。',
   'app.notice.sharedTextImported': '共有されたテキストをローカル下書きとして取り込みました。',
+  'app.notice.incomingFileImported': 'このファイルをローカル下書きとして取り込みました。',
   'app.notice.androidSaveRecovery': '保存に失敗しました。復元用下書きをローカルに残しました。',
   'app.notice.androidExitRecovery': '未保存の変更を復元用下書きとして残しました。',
   'app.notice.androidExitDiscard': '未保存の変更を破棄しました。',
