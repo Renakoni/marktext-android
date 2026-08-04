@@ -21,11 +21,11 @@
 </p>
 
 <p align="center">
-  <em>安静地写 Markdown。</em>
+  <em>安静、随心的 Markdown。</em>
 </p>
 
 <p align="center">
-  <sub>一款专注的 Android 编辑器 —— 把桌面版 <a href="https://github.com/marktext/marktext">MarkText</a> 的体验，重塑为手机的形态。</sub>
+  <sub>一款精简的 Android Markdown 编辑器。</sub>
 </p>
 
 <p align="center">
@@ -59,11 +59,10 @@
 
 ## 它是什么
 
-MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机上，
-而不是将其重写为一个原生应用。它的编辑器是 Muya —— MarkText 的开源核心，
-并为移动端做了深度适配：大文档更快、按手机宽度重新排版，还补上了桌面端从不
-需要的触摸选择与工具栏。你写下的内容以与桌面端相同的保真度渲染，呈现在一个
-为单手打造的界面里。
+MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机上。
+它的编辑器是 Muya —— MarkText 的开源核心，并为移动端做了深度适配：
+大文档更快、按手机宽度重新排版，还补上了触摸选择与工具栏。你写下的内容
+以与桌面端相同的保真度渲染，呈现在一个为单手打造的界面里。
 
 ## 亮点
 
@@ -73,8 +72,7 @@ MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机
 <tr>
 <td valign="middle">
 
-- 真正的实时预览（所见即所得）编辑 —— 是桌面版 MarkText 的书写体验，
-  而不是一个纯文本框。
+- 真正的实时预览（所见即所得）编辑。
 - 完整支持 CommonMark 与 GitHub Flavored Markdown：公式（KaTeX）、表格、
   脚注、前置元数据、图表，以及带语法高亮的代码。
 - 文档大纲与编辑器内搜索，在长文件中依然流畅。
@@ -97,15 +95,12 @@ MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="编辑时显示的底部停靠格式工具栏与自定义的选择（粘贴）栏" width="200"></td>
 <td valign="middle">
 
-这里的自定义足够深入，一直延伸到你写作时指尖触碰的每一条工具栏：
+把它调成你想要的样子，连写作时指尖触碰的每一条工具栏也不例外：
 
 - **打造你自己的工具栏。**从命令池中自由组合底部快捷栏，并拖动排序。
-  就连选择工具栏 —— 选中文本上方弹出的剪贴板栏 —— 也能装入你自己的命令，
-  单行或双行均可。
-- **主题与文字。**浅色、深色与自定义主题（`ayu-light`、`one-dark`）；
-  字体、字号、行高、行宽与文字方向（LTR 或 RTL）均可调节。
-- **合你口味的 Markdown。**列表标记与缩进、标题样式、前置元数据格式
-  （YAML/TOML/JSON）、脚注、上标/下标、HTML 渲染，以及 GitLab 兼容性。
+  就连选择工具栏也能装入你自己的命令。
+- **主题与外观。**浅色、深色与自定义主题，外观细节随你调整。
+- **合你口味的 Markdown。**从列表标记到前置元数据，书写与渲染方式都可细调。
 - **文件级控制。**逐文档设置编码、换行符与末尾换行处理。
 
 </td>
@@ -120,12 +115,10 @@ MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机
 <td valign="middle">
 
 - **你的文件留在原地。**通过系统选择器直接编辑任意存储提供方中的 `.md`
-  文件，并借助分享面板与其他应用互传文档 —— 没有导入导出的来回折腾，
-  也不会在沙盒里多出一份副本。
-- **为拇指而设计。**舒适的单手可及范围，沉静、以编辑器为先的布局；
-  宽表格自行滚动，而不是推动整个页面。
-- **无障碍且克制。**安静的石墨色设计符合 WCAG 2.2 AA，焦点顺序清晰可见，
-  并尊重减少动态效果的偏好。
+  文件，并借助分享面板与其他应用互传文档。
+- **为拇指而设计。**舒适的单手可及范围，沉静、以编辑器为先的布局。
+- **无障碍且克制。**安静的石墨色设计符合 WCAG 2.2 AA，焦点顺序清晰，
+  动效轻而不扰。
 - **十种语言，**根据你的系统自动选择：英语、德语、西班牙语、法语、日语、
   韩语、葡萄牙语、土耳其语，以及简体中文与繁体中文。
 
@@ -148,8 +141,8 @@ MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机
 ## 从源码构建
 
 你需要 [Node.js](https://nodejs.org/) 与 [pnpm](https://pnpm.io/)，以及
-[Android Studio](https://developer.android.com/studio)（Android SDK ——
-最低 API 24，目标 API 36 —— 和一个 JDK）。
+[Android Studio](https://developer.android.com/studio)（Android SDK 与 JDK；
+应用最低支持 API 24，面向 API 36 构建）。
 
 ```sh
 pnpm install          # 安装依赖
@@ -168,7 +161,7 @@ pnpm android:open     # 在 Android Studio 中打开，然后在设备或模拟�
 
 ## 参与贡献
 
-欢迎提交 issue 与 pull request。请保持每次改动聚焦，并在合适的地方补充测试。
+欢迎提交 issue 与 pull request。每次改动只做一件事，并在合适的地方补充测试。
 
 ## 许可证与署名
 
@@ -194,4 +187,4 @@ MarkText for Android 站在大量开源工作的肩膀上：
 
 ---
 
-<p align="center"><sub><em>安静地写 Markdown。</em></sub></p>
+<p align="center"><sub><em>安静、随心的 Markdown。</em></sub></p>

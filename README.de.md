@@ -21,11 +21,11 @@
 </p>
 
 <p align="center">
-  <em>Markdown, ganz leise.</em>
+  <em>Markdown, ganz leise, ganz deins.</em>
 </p>
 
 <p align="center">
-  <sub>Ein fokussierter Editor für Android – das Desktop-Erlebnis von <a href="https://github.com/marktext/marktext">MarkText</a>, zugeschnitten aufs Handy.</sub>
+  <sub>Ein schlanker Markdown-Editor für Android.</sub>
 </p>
 
 <p align="center">
@@ -61,10 +61,9 @@
 ## Was es ist
 
 MarkText for Android bringt MarkTexts Markdown-Bearbeitung mit Live-Vorschau
-aufs Handy, ohne sie als native App neu zu schreiben. Der Editor ist Muya,
-MarkTexts quelloffener Kern, tiefgreifend für Mobilgeräte angepasst: schneller
-bei großen Dokumenten, neu umbrochen für die Breite eines Handys und ergänzt um
-die Touch-Auswahl und Symbolleisten, die ein Desktop nie brauchte. Was du
+aufs Handy. Der Editor ist Muya, MarkTexts quelloffener Kern, tiefgreifend für
+Mobilgeräte angepasst: schneller bei großen Dokumenten, neu umbrochen für die
+Breite eines Handys und ergänzt um Touch-Auswahl und Symbolleisten. Was du
 schreibst, wird mit derselben Treue gerendert wie auf dem Desktop – in einer
 Oberfläche, die für eine Hand gebaut ist.
 
@@ -76,8 +75,7 @@ Oberfläche, die für eine Hand gebaut ist.
 <tr>
 <td valign="middle">
 
-- Echte Live-Vorschau (WYSIWYG) beim Schreiben – das Schreibgefühl des
-  Desktop-MarkText, kein schlichtes Textfeld.
+- Echte Live-Vorschau (WYSIWYG) beim Schreiben.
 - Vollständiges CommonMark und GitHub Flavored Markdown: Mathematik (KaTeX),
   Tabellen, Fußnoten, Front Matter, Diagramme und Code mit Syntaxhervorhebung.
 - Eine Dokumentgliederung und eine Suche im Editor, die selbst in langen Dateien
@@ -106,19 +104,16 @@ Oberfläche, die für eine Hand gebaut ist.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="Die angedockte Format-Symbolleiste und eine angepasste Auswahl-Leiste (Einfügen) während der Bearbeitung" width="200"></td>
 <td valign="middle">
 
-Die Anpassung reicht hier tief – bis hinunter zu den Leisten, die du beim
-Schreiben berührst:
+Mach ihn zu dem, was du willst – bis hin zu den Leisten, die du beim Schreiben
+berührst:
 
 - **Baue deine eigenen Symbolleisten.** Stelle die untere Schnellleiste aus
   einem Pool von Befehlen zusammen und ordne sie per Ziehen neu. Selbst die
-  Auswahl-Symbolleiste – die Zwischenablage-Leiste, die über markiertem Text
-  erscheint – kann deine eigenen Befehle aufnehmen, in einer Zeile oder zwei.
-- **Designs und Typografie.** Helle, dunkle und benutzerdefinierte Designs
-  (`ayu-light`, `one-dark`); einstellbare Schriftart, Schriftgröße, Zeilenhöhe,
-  Zeilenbreite und Textrichtung (LTR oder RTL).
-- **Markdown nach deinem Geschmack.** Aufzählungszeichen und Einrückung,
-  Überschriften-Stil, Front-Matter-Format (YAML/TOML/JSON), Fußnoten,
-  Hoch-/Tiefstellung, HTML-Darstellung und GitLab-Kompatibilität.
+  Auswahl-Symbolleiste kann deine eigenen Befehle aufnehmen.
+- **Designs und Erscheinungsbild.** Helle, dunkle und benutzerdefinierte
+  Designs; Schrift und Layout einstellbar.
+- **Markdown nach deinem Geschmack.** Stimme fein ab, wie dein Markdown
+  geschrieben und gerendert wird – von Aufzählungszeichen bis Front Matter.
 - **Kontrolle auf Dateiebene.** Kodierung, Zeilenenden und der Umgang mit dem
   abschließenden Zeilenumbruch – pro Dokument einstellbar.
 
@@ -135,14 +130,12 @@ Schreiben berührst:
 
 - **Deine Dateien bleiben, wo sie sind.** Bearbeite `.md` direkt aus jedem
   Speicheranbieter über die Systemauswahl und reiche Dokumente per
-  Teilen-Dialog an andere Apps weiter und zurück – kein
-  Import-Export-Hin-und-Her, keine zweite Kopie in einer Sandbox.
+  Teilen-Dialog an andere Apps weiter und zurück.
 - **Für den Daumen gemacht.** Bequem mit einer Hand erreichbar, dazu ein
-  ruhiges, editorzentriertes Layout – breite Tabellen scrollen für sich, statt
-  die Seite zu verschieben.
+  ruhiges, editorzentriertes Layout.
 - **Barrierefrei und zurückhaltend.** Ein ruhiges Graphit-Design, das
-  WCAG 2.2 AA erfüllt, mit sichtbarer Fokusreihenfolge und Rücksicht auf
-  reduzierte Bewegung.
+  WCAG 2.2 AA erfüllt, mit klarer Fokusreihenfolge und dezenten, sparsamen
+  Animationen.
 - **Zehn Sprachen,** automatisch nach deinem System gewählt: Englisch, Deutsch,
   Spanisch, Französisch, Japanisch, Koreanisch, Portugiesisch, Türkisch sowie
   vereinfachtes und traditionelles Chinesisch.
@@ -167,8 +160,8 @@ Signierte Builds findest du auf der
 ## Aus dem Quellcode bauen
 
 Du brauchst [Node.js](https://nodejs.org/) mit [pnpm](https://pnpm.io/) und
-[Android Studio](https://developer.android.com/studio) (Android SDK – min.
-API 24, Target 36 – und ein JDK).
+[Android Studio](https://developer.android.com/studio) (das Android SDK und
+ein JDK; die App läuft ab API 24 und wird gegen API 36 gebaut).
 
 ```sh
 pnpm install          # Abhängigkeiten installieren
@@ -190,7 +183,7 @@ Weitere Skripte (`test`, `lint`, `typecheck`, `build`) stehen in der
 ## Mitwirken
 
 Issues und Pull Requests sind willkommen. Halte jede Änderung fokussiert und
-ergänze Tests, wo sie sinnvoll sind.
+schreib Tests, wo es sinnvoll ist.
 
 ## Lizenz & Namensnennung
 
@@ -216,4 +209,4 @@ MarkText for Android steht auf den Schultern vieler Open-Source-Projekte: dem
 
 ---
 
-<p align="center"><sub><em>Markdown, ganz leise.</em></sub></p>
+<p align="center"><sub><em>Markdown, ganz leise, ganz deins.</em></sub></p>

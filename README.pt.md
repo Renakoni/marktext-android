@@ -21,11 +21,11 @@
 </p>
 
 <p align="center">
-  <em>Markdown, em silêncio.</em>
+  <em>Markdown, silenciosamente seu.</em>
 </p>
 
 <p align="center">
-  <sub>Um editor focado para Android — a experiência do <a href="https://github.com/marktext/marktext">MarkText</a> de desktop, moldada para o celular.</sub>
+  <sub>Um editor de Markdown enxuto para Android.</sub>
 </p>
 
 <p align="center">
@@ -61,12 +61,11 @@
 ## O que é
 
 O MarkText for Android traz a edição de Markdown com visualização ao vivo do
-MarkText para o celular, sem reescrevê-lo como aplicativo nativo. Seu editor é o
-Muya, o núcleo de código aberto do MarkText, profundamente adaptado para o
-celular: mais rápido em documentos grandes, com layout reorganizado para a
-largura de um telefone e equipado com a seleção por toque e as barras de
-ferramentas de que um desktop nunca precisou. O que você escreve é renderizado
-com a mesma fidelidade do desktop, em uma interface feita para uma mão só.
+MarkText para o celular. Seu editor é o Muya, o núcleo de código aberto do
+MarkText, profundamente adaptado para o celular: mais rápido em documentos
+grandes, com layout reorganizado para a largura de um telefone e equipado com
+seleção por toque e barras de ferramentas. O que você escreve é renderizado com
+a mesma fidelidade do desktop, em uma interface feita para uma mão só.
 
 ## Destaques
 
@@ -76,8 +75,7 @@ com a mesma fidelidade do desktop, em uma interface feita para uma mão só.
 <tr>
 <td valign="middle">
 
-- Edição com visualização ao vivo de verdade (WYSIWYG) — a experiência de escrita
-  do MarkText de desktop, não uma simples caixa de texto.
+- Edição com visualização ao vivo de verdade (WYSIWYG).
 - CommonMark e GitHub Flavored Markdown completos: matemática (KaTeX), tabelas,
   notas de rodapé, front matter, diagramas e código com realce de sintaxe.
 - Uma estrutura do documento e uma pesquisa no editor que continuam fluidas mesmo
@@ -106,18 +104,15 @@ com a mesma fidelidade do desktop, em uma interface feita para uma mão só.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="A barra de formatação fixada e uma barra de seleção (colar) personalizada exibidas durante a edição" width="200"></td>
 <td valign="middle">
 
-Aqui a personalização vai fundo, até as barras que você toca enquanto escreve:
+Deixe tudo do jeito que você quiser, até as barras que você toca enquanto escreve:
 
 - **Monte suas próprias barras de ferramentas.** Componha a barra rápida inferior
   a partir de um conjunto de comandos e arraste para reordená-la. Até a barra de
-  seleção — a barra da área de transferência que aparece sobre o texto
-  destacado — pode receber seus próprios comandos, em uma ou duas linhas.
-- **Temas e tipografia.** Temas claro, escuro e personalizados (`ayu-light`,
-  `one-dark`); família de fonte, tamanho, altura da linha, largura da linha e
-  direção do texto (LTR ou RTL) ajustáveis.
-- **Markdown ao seu gosto.** Marcadores e indentação de listas, estilo de
-  cabeçalho, formato de front matter (YAML/TOML/JSON), notas de rodapé,
-  sobrescrito/subscrito, renderização de HTML e compatibilidade com GitLab.
+  seleção pode receber seus próprios comandos.
+- **Temas e aparência.** Temas claro, escuro e personalizados; tipografia e
+  layout ajustáveis.
+- **Markdown ao seu gosto.** Ajuste fino de como o seu Markdown é escrito e
+  renderizado, dos marcadores de lista ao front matter.
 - **Controle no nível do arquivo.** Codificação, terminações de linha e
   tratamento da nova linha final por documento.
 
@@ -134,13 +129,11 @@ Aqui a personalização vai fundo, até as barras que você toca enquanto escrev
 
 - **Seus arquivos ficam onde estão.** Edite `.md` diretamente de qualquer
   provedor de armazenamento pelo seletor do sistema e troque documentos com
-  outros aplicativos pelo menu de compartilhamento — sem o vaivém de
-  importar/exportar, sem uma segunda cópia em um sandbox.
+  outros aplicativos pelo menu de compartilhamento.
 - **Feito para o polegar.** Alcance confortável com uma mão e um layout calmo,
-  com o editor em primeiro lugar, além de tabelas largas que rolam sozinhas em
-  vez de deslocar a página.
+  com o editor em primeiro lugar.
 - **Acessível e contido.** Um design grafite discreto que atende à WCAG 2.2 AA,
-  com ordem de foco visível e respeito à preferência por movimento reduzido.
+  com ordem de foco clara e animações calmas e mínimas.
 - **Dez idiomas,** escolhidos automaticamente a partir do seu sistema: inglês,
   alemão, espanhol, francês, japonês, coreano, português, turco e chinês
   simplificado e tradicional.
@@ -165,8 +158,8 @@ Baixe as compilações assinadas na página de
 ## Compile a partir do código-fonte
 
 Você vai precisar do [Node.js](https://nodejs.org/) com [pnpm](https://pnpm.io/) e
-do [Android Studio](https://developer.android.com/studio) (Android SDK — API
-mínima 24, alvo 36 — e um JDK).
+do [Android Studio](https://developer.android.com/studio) (o Android SDK e um
+JDK; o app roda na API 24 ou superior e é compilado com base na API 36).
 
 ```sh
 pnpm install          # instala as dependências
@@ -187,7 +180,7 @@ Mantenedores de release devem seguir o [`docs/RELEASING.md`](docs/RELEASING.md).
 ## Como contribuir
 
 Issues e pull requests são bem-vindos. Mantenha cada mudança focada e adicione
-testes onde fizerem sentido.
+testes quando fizer sentido.
 
 ## Licença e atribuição
 
@@ -213,4 +206,4 @@ mecanismo de edição [Muya](https://github.com/marktext/muya) e o
 
 ---
 
-<p align="center"><sub><em>Markdown, em silêncio.</em></sub></p>
+<p align="center"><sub><em>Markdown, silenciosamente seu.</em></sub></p>

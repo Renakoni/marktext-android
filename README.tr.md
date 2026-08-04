@@ -21,11 +21,11 @@
 </p>
 
 <p align="center">
-  <em>Markdown, sessizce.</em>
+  <em>Markdown, sessizce sizin.</em>
 </p>
 
 <p align="center">
-  <sub>Android için odaklanmış bir düzenleyici — telefona göre biçimlendirilmiş masaüstü <a href="https://github.com/marktext/marktext">MarkText</a> deneyimi.</sub>
+  <sub>Android için yalın bir Markdown düzenleyici.</sub>
 </p>
 
 <p align="center">
@@ -60,12 +60,11 @@
 
 ## Nedir
 
-MarkText for Android, MarkText'in canlı önizlemeli Markdown düzenlemesini yerel
-bir uygulama olarak baştan yazmadan telefona taşır. Düzenleyicisi, MarkText'in
-açık kaynaklı çekirdeği Muya'dır ve mobil için kapsamlı biçimde uyarlanmıştır:
-büyük belgelerde daha hızlıdır, telefon genişliğine göre yeniden yerleştirilmiştir
-ve masaüstünün hiç gerek duymadığı dokunmatik seçim ile araç çubuklarına
-kavuşmuştur. Yazdıklarınız, tek el için tasarlanmış bir arayüzde masaüstündekiyle
+MarkText for Android, MarkText'in canlı önizlemeli Markdown düzenlemesini
+telefona taşır. Düzenleyicisi, MarkText'in açık kaynaklı çekirdeği Muya'dır ve
+mobil için kapsamlı biçimde uyarlanmıştır: büyük belgelerde daha hızlıdır,
+telefon genişliğine göre yeniden yerleştirilmiştir ve dokunmatik seçim ile araç
+çubuklarına kavuşmuştur. Yazdıklarınız, tek el için tasarlanmış bir arayüzde masaüstündekiyle
 aynı sadakatle işlenir.
 
 ## Öne çıkanlar
@@ -76,8 +75,7 @@ aynı sadakatle işlenir.
 <tr>
 <td valign="middle">
 
-- Gerçek canlı önizlemeli (WYSIWYG) düzenleme — düz bir metin kutusu değil,
-  masaüstü MarkText yazma deneyimi.
+- Gerçek canlı önizlemeli (WYSIWYG) düzenleme.
 - Eksiksiz CommonMark ve GitHub Flavored Markdown desteği: matematik (KaTeX),
   tablolar, dipnotlar, ön bilgi, diyagramlar ve söz dizimi vurgulamalı kod.
 - Uzun dosyalarda bile akıcı kalan bir belge ana hattı ve düzenleyici içi arama.
@@ -102,18 +100,15 @@ aynı sadakatle işlenir.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="Düzenleme sırasında görünen sabit biçim araç çubuğu ve özelleştirilmiş bir seçim (yapıştırma) çubuğu" width="200"></td>
 <td valign="middle">
 
-Burada özelleştirme derinlere iner; yazarken dokunduğunuz çubuklara kadar:
+Uygulamayı istediğiniz hâle getirin, yazarken dokunduğunuz çubuklara kadar:
 
 - **Kendi araç çubuklarınızı oluşturun.** Alttaki hızlı çubuğu bir komut
-  havuzundan derleyin ve sürükleyerek yeniden sıralayın. Seçim araç çubuğu bile —
-  vurgulanan metnin üzerinde beliren pano çubuğu — tek veya iki satır halinde
+  havuzundan derleyin ve sürükleyerek yeniden sıralayın. Seçim araç çubuğu bile
   kendi komutlarınızı taşıyabilir.
-- **Temalar ve yazı.** Açık, koyu ve özel temalar (`ayu-light`, `one-dark`);
-  ayarlanabilir yazı tipi ailesi, boyutu, satır yüksekliği, satır genişliği ve
-  metin yönü (LTR veya RTL).
-- **Zevkinize göre Markdown.** Liste işaretleri ve girinti, başlık stili, ön
-  bilgi biçimi (YAML/TOML/JSON), dipnotlar, üst/alt simge, HTML işleme ve GitLab
-  uyumluluğu.
+- **Temalar ve görünüm.** Açık, koyu ve özel temalar; ayarlanabilir yazı ve
+  yerleşim.
+- **Zevkinize göre Markdown.** Markdown'ınızın nasıl yazılıp işleneceğine, liste
+  işaretlerinden ön bilgiye kadar ince ayar yapın.
 - **Dosya düzeyinde denetim.** Belge başına kodlama, satır sonları ve sondaki
   yeni satır davranışı.
 
@@ -130,13 +125,11 @@ Burada özelleştirme derinlere iner; yazarken dokunduğunuz çubuklara kadar:
 
 - **Dosyalarınız yerinde kalır.** Sistem seçicisi üzerinden herhangi bir
   depolama sağlayıcısındaki `.md` dosyalarını doğrudan düzenleyin, belgeleri
-  paylaşım paneliyle diğer uygulamalara gönderip onlardan alın — içe/dışa
-  aktarma koşuşturması yok, korumalı alanda ikinci bir kopya yok.
+  paylaşım paneliyle diğer uygulamalara gönderip onlardan alın.
 - **Başparmak için yapıldı.** Rahat tek elle erişim ve sakin, düzenleyici
-  öncelikli bir yerleşim; geniş tablolar sayfayı kaydırmak yerine kendi içinde
-  kayar.
+  öncelikli bir yerleşim.
 - **Erişilebilir ve ölçülü.** WCAG 2.2 AA'yı karşılayan sessiz bir grafit
-  tasarım; görünür odak sırası ve azaltılmış hareket tercihine saygı.
+  tasarım; net bir odak sırası ve sakin, yalın hareketler.
 - **On dil,** sisteminize göre otomatik seçilir: İngilizce, Almanca, İspanyolca,
   Fransızca, Japonca, Korece, Portekizce, Türkçe ile Basitleştirilmiş ve
   Geleneksel Çince.
@@ -161,8 +154,9 @@ sayfasından indirin.
 ## Kaynaktan derleyin
 
 [pnpm](https://pnpm.io/) ile birlikte [Node.js](https://nodejs.org/) ve
-[Android Studio](https://developer.android.com/studio) (Android SDK — en düşük
-API 24, hedef 36 — ve bir JDK) gerekir.
+[Android Studio](https://developer.android.com/studio) (Android SDK ve bir JDK;
+uygulama API 24 ve daha yeni sürümlerde çalışır ve API 36'ya göre derlenir)
+gerekir.
 
 ```sh
 pnpm install          # bağımlılıkları yükleyin
@@ -183,7 +177,7 @@ Sürüm sorumluları [`docs/RELEASING.md`](docs/RELEASING.md) belgesini izlemeli
 ## Katkıda bulunun
 
 Issue'lar ve pull request'ler memnuniyetle karşılanır. Her değişikliği odaklı
-tutun ve anlamlı olduğu yerlere test ekleyin.
+tutun ve mantıklı olan yerlerde test ekleyin.
 
 ## Lisans ve atıf
 
@@ -210,4 +204,4 @@ MarkText for Android pek çok açık kaynak çalışmasının üzerinde yükseli
 
 ---
 
-<p align="center"><sub><em>Markdown, sessizce.</em></sub></p>
+<p align="center"><sub><em>Markdown, sessizce sizin.</em></sub></p>

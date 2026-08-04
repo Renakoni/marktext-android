@@ -21,11 +21,11 @@
 </p>
 
 <p align="center">
-  <em>Markdown, sin ruido.</em>
+  <em>Markdown, discretamente tuyo.</em>
 </p>
 
 <p align="center">
-  <sub>Un editor concentrado para Android — la experiencia del <a href="https://github.com/marktext/marktext">MarkText</a> de escritorio, adaptada al teléfono.</sub>
+  <sub>Un editor de Markdown ligero para Android.</sub>
 </p>
 
 <p align="center">
@@ -61,12 +61,11 @@
 ## Qué es
 
 MarkText for Android lleva al teléfono la edición de Markdown con vista previa en
-vivo de MarkText, sin reescribirla como app nativa. Su editor es Muya, el núcleo de
-código abierto de MarkText, adaptado a fondo para el móvil: más rápido con
-documentos grandes, remaquetado para el ancho de un teléfono y dotado de la
-selección táctil y las barras de herramientas que un escritorio nunca necesitó. Lo
-que escribes se renderiza con la misma fidelidad que en el escritorio, en una
-interfaz pensada para usarla con una mano.
+vivo de MarkText. Su editor es Muya, el núcleo de código abierto de MarkText,
+adaptado a fondo para el móvil: más rápido con documentos grandes, remaquetado
+para el ancho de un teléfono y dotado de selección táctil y barras de
+herramientas. Lo que escribes se renderiza con la misma fidelidad que en el
+escritorio, en una interfaz pensada para usarla con una mano.
 
 ## Lo más destacado
 
@@ -76,8 +75,7 @@ interfaz pensada para usarla con una mano.
 <tr>
 <td valign="middle">
 
-- Edición con vista previa en vivo real (WYSIWYG): la experiencia de escritura del
-  MarkText de escritorio, no un simple cuadro de texto.
+- Edición con vista previa en vivo real (WYSIWYG).
 - CommonMark y GitHub Flavored Markdown completos: matemáticas (KaTeX), tablas,
   notas al pie, metadatos (front matter), diagramas y código con resaltado de
   sintaxis.
@@ -106,19 +104,15 @@ interfaz pensada para usarla con una mano.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="La barra de formato anclada y una barra de selección (pegar) personalizada mostradas durante la edición" width="200"></td>
 <td valign="middle">
 
-Aquí la personalización llega muy hondo, hasta las mismas barras que tocas mientras
-escribes:
+Hazlo a tu manera, hasta las mismas barras que tocas mientras escribes:
 
 - **Crea tus propias barras de herramientas.** Compón la barra rápida inferior a
   partir de un repertorio de comandos y arrástralos para reordenarla. Incluso la
-  barra de selección —la barra del portapapeles que aparece sobre el texto
-  resaltado— puede alojar tus propios comandos, en una fila o en dos.
-- **Temas y tipografía.** Temas claro, oscuro y personalizados (`ayu-light`,
-  `one-dark`); familia de fuente, tamaño, altura de línea, ancho de línea y
-  dirección del texto (LTR o RTL) ajustables.
-- **Markdown a tu gusto.** Marcadores de lista y sangría, estilo de encabezados,
-  formato de metadatos (YAML/TOML/JSON), notas al pie, superíndice y subíndice,
-  renderizado de HTML y compatibilidad con GitLab.
+  barra de selección puede alojar tus propios comandos.
+- **Temas y apariencia.** Temas claro, oscuro y personalizados; tipografía y
+  disposición ajustables.
+- **Markdown a tu gusto.** Afina cómo se escribe y se renderiza tu Markdown, de
+  los marcadores de lista a los metadatos (front matter).
 - **Control a nivel de archivo.** Codificación, finales de línea y tratamiento de
   la nueva línea final por documento.
 
@@ -135,13 +129,11 @@ escribes:
 
 - **Tus archivos no se mueven de su sitio.** Edita `.md` directamente desde
   cualquier proveedor de almacenamiento a través del selector del sistema, y pasa
-  documentos a otras apps y desde ellas con el panel de compartir: sin bailes de
-  importar y exportar, sin una segunda copia en un sandbox.
+  documentos a otras apps y desde ellas con el panel de compartir.
 - **Hecho para el pulgar.** Un alcance cómodo con una mano y una disposición
-  serena centrada en el editor, con tablas anchas que se desplazan por sí solas en
-  lugar de mover la página.
+  serena centrada en el editor.
 - **Accesible y sobrio.** Un diseño grafito silencioso que cumple WCAG 2.2 AA, con
-  un orden de foco visible y respeto por la preferencia de movimiento reducido.
+  un orden de foco claro y un movimiento sereno y mínimo.
 - **Diez idiomas,** elegidos automáticamente según tu sistema: inglés, alemán,
   español, francés, japonés, coreano, portugués, turco, y chino simplificado y
   tradicional.
@@ -166,8 +158,8 @@ Descarga las compilaciones firmadas desde la página de
 ## Compílalo desde el código fuente
 
 Necesitarás [Node.js](https://nodejs.org/) con [pnpm](https://pnpm.io/) y
-[Android Studio](https://developer.android.com/studio) (el SDK de Android —API
-mínima 24, objetivo 36— y un JDK).
+[Android Studio](https://developer.android.com/studio) (el SDK de Android y un
+JDK; la app funciona a partir de la API 24 y se compila contra la API 36).
 
 ```sh
 pnpm install          # instala las dependencias
@@ -188,8 +180,8 @@ Quienes mantienen las publicaciones deben seguir
 
 ## Contribuir
 
-Los issues y las pull requests son bienvenidos. Mantén cada cambio acotado y añade
-tests donde tengan sentido.
+Los issues y las pull requests son bienvenidos. Mantén cada cambio enfocado y
+añade tests donde tengan sentido.
 
 ## Licencia y atribución
 
@@ -216,4 +208,4 @@ crearon.
 
 ---
 
-<p align="center"><sub><em>Markdown, sin ruido.</em></sub></p>
+<p align="center"><sub><em>Markdown, discretamente tuyo.</em></sub></p>

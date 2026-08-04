@@ -21,11 +21,11 @@
 </p>
 
 <p align="center">
-  <em>Markdown, quietly.</em>
+  <em>Markdown, quietly yours.</em>
 </p>
 
 <p align="center">
-  <sub>A focused editor for Android — the desktop <a href="https://github.com/marktext/marktext">MarkText</a> experience, shaped for the phone.</sub>
+  <sub>A lean Markdown editor for Android.</sub>
 </p>
 
 <p align="center">
@@ -59,12 +59,11 @@
 
 ## What it is
 
-MarkText for Android brings MarkText's live-preview Markdown editing to the phone,
-without rewriting it as a native app. Its editor is Muya, MarkText's open-source
-core, heavily adapted for mobile: faster on large documents, re-laid-out for a
-phone's width, and given the touch selection and toolbars a desktop never needed.
-What you write renders with the same fidelity as on desktop, in an interface built
-for one hand.
+MarkText for Android brings MarkText's live-preview Markdown editing to the phone.
+Its editor is Muya, MarkText's open-source core, heavily adapted for mobile:
+faster on large documents, re-laid-out for a phone's width, and given touch
+selection and toolbars. What you write renders with the same fidelity as on
+desktop, in an interface built for one hand.
 
 ## Highlights
 
@@ -74,8 +73,7 @@ for one hand.
 <tr>
 <td valign="middle">
 
-- True live-preview (WYSIWYG) editing — the desktop MarkText writing experience,
-  not a plain text box.
+- True live-preview (WYSIWYG) editing.
 - Full CommonMark and GitHub Flavored Markdown: math (KaTeX), tables, footnotes,
   front matter, diagrams, and syntax-highlighted code.
 - A document outline and in-editor search that stay smooth even in long files.
@@ -100,17 +98,14 @@ for one hand.
 <td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="The docked format toolbar and a customized selection (paste) bar shown while editing" width="200"></td>
 <td valign="middle">
 
-Customization runs deep here, right down to the bars you touch while writing:
+Make it what you want, right down to the bars you touch while writing:
 
 - **Build your own toolbars.** Compose the bottom quick bar from a pool of commands
-  and drag to reorder it. Even the selection toolbar — the clipboard bar that
-  appears over highlighted text — can hold your own commands, in one row or two.
-- **Themes and type.** Light, dark, and custom themes (`ayu-light`, `one-dark`);
-  adjustable font family, size, line height, line width, and text direction (LTR
-  or RTL).
-- **Markdown to your taste.** List markers and indentation, heading style, front
-  matter format (YAML/TOML/JSON), footnotes, super/subscript, HTML rendering, and
-  GitLab compatibility.
+  and drag to reorder it. Even the selection toolbar can hold your own commands.
+- **Themes and appearance.** Light, dark, and custom themes; adjustable type and
+  layout.
+- **Markdown to your taste.** Fine-tune how your Markdown is written and rendered,
+  from list markers to front matter.
 - **File-level control.** Per-document encoding, line endings, and trailing
   newline handling.
 
@@ -127,11 +122,11 @@ Customization runs deep here, right down to the bars you touch while writing:
 
 - **Your files stay put.** Edit `.md` straight from any storage provider through
   the system picker, and pass documents to and from other apps with the share
-  sheet — no import/export shuffle, no second copy in a sandbox.
+  sheet.
 - **Made for the thumb.** Comfortable one-handed reach and a calm, editor-first
-  layout, with wide tables that scroll on their own instead of shifting the page.
+  layout.
 - **Accessible and restrained.** A quiet graphite design that meets WCAG 2.2 AA,
-  with visible focus order and respect for reduced-motion.
+  with a clear focus order and calm, minimal motion.
 - **Ten languages,** chosen automatically from your system: English, German,
   Spanish, French, Japanese, Korean, Portuguese, Turkish, and Simplified and
   Traditional Chinese.
@@ -155,8 +150,8 @@ Download signed builds from the
 ## Build from source
 
 You'll need [Node.js](https://nodejs.org/) with [pnpm](https://pnpm.io/) and
-[Android Studio](https://developer.android.com/studio) (Android SDK — min API 24,
-target 36 — and a JDK).
+[Android Studio](https://developer.android.com/studio) (the Android SDK and a
+JDK; the app runs on API 24 and newer and is built against API 36).
 
 ```sh
 pnpm install          # install dependencies
@@ -202,4 +197,4 @@ MarkText for Android stands on a lot of open-source work: the
 
 ---
 
-<p align="center"><sub><em>Markdown, quietly.</em></sub></p>
+<p align="center"><sub><em>Markdown, quietly yours.</em></sub></p>
