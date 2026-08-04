@@ -1,0 +1,106 @@
+/*
+ * Monokai Pro — curated custom theme.
+ *
+ * Heritage: desktop MarkText monokai-pro theme — the warm charcoal
+ * #2d2a2e ground, monokai yellow accent #ffd866, near-white ink #fcfcfa,
+ * and the monokai heading run (pink, yellow, green, cyan, purple,
+ * orange). Values are plain hex/rgba so every WebView the app can meet
+ * renders them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - The desktop 0.6-alpha yellow search highlight softens to 0.26 so
+ *   highlighted text stays readable on a phone.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints emphasis yellow).
+ */
+
+:root[data-theme='monokai-pro'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #272428;
+  --surface: #2d2a2e;
+  --surface-muted: #403e41;
+  --surface-sunken: #221f22;
+  --surface-raised: #4a484b;
+
+  /* Content */
+  --text: #fcfcfa;
+  --text-muted: #c9c7c5;
+  --text-faint: #939293;
+  --task-completed-color: #b4b2ac;
+  --on-accent: #2d2a2e;
+
+  /* Lines */
+  --border: #403e41;
+  --border-strong: #5b595c;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — monokai yellow; "strong" lightens for contrast on the
+     charcoal ground. */
+  --accent: #ffd866;
+  --accent-strong: #ffe699;
+  --accent-hover: #ffde7d;
+  --accent-soft: rgba(255, 216, 102, 0.18);
+  --accent-tint-10: rgba(255, 216, 102, 0.12);
+  --accent-tint-11: rgba(255, 216, 102, 0.14);
+
+  /* State */
+  --danger: #ff6188;
+  --focus-ring: rgba(255, 216, 102, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(255, 216, 102, 0.3);
+
+  /* Muya bridge — the desktop monokai-pro palette on the writing surface. */
+  --theme-color: #ffd866;
+  --highlight-color: rgba(255, 216, 102, 0.26);
+  --selection-color: rgba(73, 72, 62, 0.8);
+  --editor-color: #fcfcfa;
+  --editor-color-80: rgba(252, 252, 250, 0.8);
+  --editor-color-50: rgba(252, 252, 250, 0.5);
+  --editor-color-30: rgba(252, 252, 250, 0.3);
+  --editor-color-10: rgba(252, 252, 250, 0.1);
+  --editor-color-04: rgba(252, 252, 250, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #ff6188;
+  --icon-color: rgba(252, 252, 250, 0.56);
+  --code-block-bg-color: #403e41;
+  --table-border-color: #403e41;
+  --input-bg-color: #221f22;
+  --button-font-color: rgba(252, 252, 250, 0.7);
+  --button-bg-color: #403e41;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #5b595c;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #363337;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(252, 252, 250, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #78dce8;
+  --h1-color: #ff6188;
+  --h2-color: #ffd866;
+  --h3-color: #a9dc76;
+  --h4-color: #78dce8;
+  --h5-color: #ab9df2;
+  --h6-color: #fc9867;
+  --blockquote-text-color: rgba(252, 252, 250, 0.6);
+  --blockquote-border-color: #727072;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #ff6188;
+  --hr-color: #5b595c;
+}

@@ -1,0 +1,105 @@
+/*
+ * Cyberdream — curated custom theme.
+ *
+ * Heritage: desktop MarkText cyberdream theme — the near-black #16181a
+ * ground, electric blue accent #5ea1ff, pure white ink, and the neon
+ * heading run (coral, blue, green, cyan, purple, amber). Values are plain
+ * hex/rgba so every WebView the app can meet renders them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - The desktop 0.6-alpha blue search highlight softens to 0.3 so
+ *   highlighted text stays readable on a phone.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints italics purple).
+ */
+
+:root[data-theme='cyberdream'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #121416;
+  --surface: #16181a;
+  --surface-muted: #1e2124;
+  --surface-sunken: #0e1012;
+  --surface-raised: #2a2e32;
+
+  /* Content */
+  --text: #ffffff;
+  --text-muted: #c3c7cc;
+  --text-faint: #7b8496;
+  --task-completed-color: #a8adb3;
+  --on-accent: #16181a;
+
+  /* Lines */
+  --border: #2a2e32;
+  --border-strong: #3c4048;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — cyberdream blue; "strong" lightens for contrast on the
+     near-black ground. */
+  --accent: #5ea1ff;
+  --accent-strong: #8dbcff;
+  --accent-hover: #72aeff;
+  --accent-soft: rgba(94, 161, 255, 0.2);
+  --accent-tint-10: rgba(94, 161, 255, 0.14);
+  --accent-tint-11: rgba(94, 161, 255, 0.16);
+
+  /* State */
+  --danger: #ff6e5e;
+  --focus-ring: rgba(94, 161, 255, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-accent: 0 2px 10px rgba(94, 161, 255, 0.35);
+
+  /* Muya bridge — the desktop cyberdream palette on the writing surface. */
+  --theme-color: #5ea1ff;
+  --highlight-color: rgba(94, 161, 255, 0.3);
+  --selection-color: rgba(45, 48, 53, 0.8);
+  --editor-color: #ffffff;
+  --editor-color-80: rgba(255, 255, 255, 0.8);
+  --editor-color-50: rgba(255, 255, 255, 0.5);
+  --editor-color-30: rgba(255, 255, 255, 0.3);
+  --editor-color-10: rgba(255, 255, 255, 0.1);
+  --editor-color-04: rgba(255, 255, 255, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #ff6e5e;
+  --icon-color: rgba(255, 255, 255, 0.56);
+  --code-block-bg-color: #1e2124;
+  --table-border-color: #1e2124;
+  --input-bg-color: #0e1012;
+  --button-font-color: rgba(255, 255, 255, 0.7);
+  --button-bg-color: #1e2124;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #2a2e32;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #181b1d;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(255, 255, 255, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #5ea1ff;
+  --h1-color: #ff6e5e;
+  --h2-color: #5ea1ff;
+  --h3-color: #5eff6c;
+  --h4-color: #5ef1ff;
+  --h5-color: #bd5eff;
+  --h6-color: #ffbd5e;
+  --blockquote-text-color: rgba(255, 255, 255, 0.6);
+  --blockquote-border-color: #3c4048;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #5eff6c;
+  --hr-color: #2a2e32;
+}

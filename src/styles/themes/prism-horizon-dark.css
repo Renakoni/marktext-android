@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Horizon Dark.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Horizon Dark is active. Rule grouping
+ * follows the desktop prismjs/horizon-dark.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='horizon-dark'] .token.comment,
+[data-theme='horizon-dark'] .token.prolog,
+[data-theme='horizon-dark'] .token.doctype,
+[data-theme='horizon-dark'] .token.cdata {
+  color: #6c6f93;
+}
+
+[data-theme='horizon-dark'] .token.punctuation {
+  color: #d5d8da;
+}
+
+[data-theme='horizon-dark'] .token.property,
+[data-theme='horizon-dark'] .token.tag,
+[data-theme='horizon-dark'] .token.constant,
+[data-theme='horizon-dark'] .token.symbol {
+  color: #e95678;
+}
+
+[data-theme='horizon-dark'] .token.boolean,
+[data-theme='horizon-dark'] .token.number {
+  color: #f09483;
+}
+
+[data-theme='horizon-dark'] .token.selector,
+[data-theme='horizon-dark'] .token.attr-name,
+[data-theme='horizon-dark'] .token.string,
+[data-theme='horizon-dark'] .token.char,
+[data-theme='horizon-dark'] .token.builtin {
+  color: #29d398;
+}
+
+[data-theme='horizon-dark'] .token.inserted {
+  color: #29d398;
+  background: rgba(41, 211, 152, 0.12);
+}
+
+[data-theme='horizon-dark'] .token.deleted {
+  color: #e95678;
+  background: rgba(233, 86, 120, 0.12);
+}
+
+[data-theme='horizon-dark'] .token.operator,
+[data-theme='horizon-dark'] .token.entity,
+[data-theme='horizon-dark'] .token.url,
+[data-theme='horizon-dark'] .language-css .token.string,
+[data-theme='horizon-dark'] .style .token.string {
+  color: #59e3e3;
+}
+
+[data-theme='horizon-dark'] .token.atrule,
+[data-theme='horizon-dark'] .token.attr-value,
+[data-theme='horizon-dark'] .token.function,
+[data-theme='horizon-dark'] .token.class-name {
+  color: #fab795;
+}
+
+[data-theme='horizon-dark'] .token.keyword {
+  color: #b877db;
+}
+
+[data-theme='horizon-dark'] .token.regex,
+[data-theme='horizon-dark'] .token.important,
+[data-theme='horizon-dark'] .token.variable {
+  color: #fab795;
+}

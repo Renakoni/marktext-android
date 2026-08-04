@@ -1,0 +1,106 @@
+/*
+ * Horizon Dark — curated custom theme.
+ *
+ * Heritage: desktop MarkText horizon-dark theme — the dusk #1c1e26
+ * ground, sunset rose accent #e95678, cool gray ink #d5d8da, and the
+ * horizon heading run (rose, apricot, peach, mint, cyan, magenta).
+ * Values are plain hex/rgba so every WebView the app can meet renders
+ * them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - The desktop 0.6-alpha rose search highlight softens to 0.28 so
+ *   highlighted text stays readable on a phone.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints italics apricot).
+ */
+
+:root[data-theme='horizon-dark'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #191b22;
+  --surface: #1c1e26;
+  --surface-muted: #232530;
+  --surface-sunken: #16181f;
+  --surface-raised: #2e303d;
+
+  /* Content */
+  --text: #d5d8da;
+  --text-muted: #b0b4b8;
+  --text-faint: #6c6f93;
+  --task-completed-color: #9fa4ad;
+  --on-accent: #1c1e26;
+
+  /* Lines */
+  --border: #2e303d;
+  --border-strong: #3b3e4a;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — horizon rose; "strong" lightens for contrast on the dusk
+     ground. */
+  --accent: #e95678;
+  --accent-strong: #f089a1;
+  --accent-hover: #ec6d8a;
+  --accent-soft: rgba(233, 86, 120, 0.2);
+  --accent-tint-10: rgba(233, 86, 120, 0.14);
+  --accent-tint-11: rgba(233, 86, 120, 0.16);
+
+  /* State */
+  --danger: #e95678;
+  --focus-ring: rgba(233, 86, 120, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(233, 86, 120, 0.35);
+
+  /* Muya bridge — the desktop horizon-dark palette on the writing surface. */
+  --theme-color: #e95678;
+  --highlight-color: rgba(233, 86, 120, 0.28);
+  --selection-color: rgba(45, 48, 59, 0.8);
+  --editor-color: #d5d8da;
+  --editor-color-80: rgba(213, 216, 218, 0.8);
+  --editor-color-50: rgba(213, 216, 218, 0.5);
+  --editor-color-30: rgba(213, 216, 218, 0.3);
+  --editor-color-10: rgba(213, 216, 218, 0.1);
+  --editor-color-04: rgba(213, 216, 218, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #e95678;
+  --icon-color: rgba(213, 216, 218, 0.56);
+  --code-block-bg-color: #232530;
+  --table-border-color: #232530;
+  --input-bg-color: #16181f;
+  --button-font-color: rgba(213, 216, 218, 0.7);
+  --button-bg-color: #232530;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #2e303d;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #1d1f27;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(213, 216, 218, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #26bbd9;
+  --h1-color: #e95678;
+  --h2-color: #fab795;
+  --h3-color: #fac29a;
+  --h4-color: #29d398;
+  --h5-color: #26bbd9;
+  --h6-color: #ee64ae;
+  --blockquote-text-color: rgba(213, 216, 218, 0.6);
+  --blockquote-border-color: #3b3e4a;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #e95678;
+  --hr-color: #2e303d;
+}
