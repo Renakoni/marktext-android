@@ -106,11 +106,17 @@ escritorio, en una interfaz pensada para usarla con una mano.
   partir de un repertorio de comandos y arrástralos para reordenarla. Incluso la
   barra de selección puede alojar tus propios comandos.
 
+<br>
+
 - **Temas y apariencia.** Temas claro, oscuro y personalizados; tipografía y
   disposición ajustables.
 
+<br>
+
 - **Markdown a tu gusto.** Afina cómo se escribe y se renderiza tu Markdown, de
   los marcadores de lista a los metadatos (front matter).
+
+<br>
 
 - **Control a nivel de archivo.** Codificación, finales de línea y tratamiento de
   la nueva línea final por documento.
@@ -130,11 +136,17 @@ escritorio, en una interfaz pensada para usarla con una mano.
   cualquier proveedor de almacenamiento a través del selector del sistema, y pasa
   documentos a otras apps y desde ellas con el panel de compartir.
 
+<br>
+
 - **Hecho para el pulgar.** Un alcance cómodo con una mano y una disposición
   serena centrada en el editor.
 
+<br>
+
 - **Accesible y sobrio.** Un diseño grafito silencioso que cumple WCAG 2.2 AA, con
   un orden de foco claro y un movimiento sereno y mínimo.
+
+<br>
 
 - **Diez idiomas,** elegidos automáticamente según tu sistema: inglés, alemán,
   español, francés, japonés, coreano, portugués, turco, y chino simplificado y

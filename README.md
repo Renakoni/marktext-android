@@ -100,11 +100,17 @@ desktop, in an interface built for one hand.
 - **Build your own toolbars.** Compose the bottom quick bar from a pool of commands
   and drag to reorder it. Even the selection toolbar can hold your own commands.
 
+<br>
+
 - **Themes and appearance.** Light, dark, and custom themes; adjustable type and
   layout.
 
+<br>
+
 - **Markdown to your taste.** Fine-tune how your Markdown is written and rendered,
   from list markers to front matter.
+
+<br>
 
 - **File-level control.** Per-document encoding, line endings, and trailing
   newline handling.
@@ -124,11 +130,17 @@ desktop, in an interface built for one hand.
   the system picker, and pass documents to and from other apps with the share
   sheet.
 
+<br>
+
 - **Made for the thumb.** Comfortable one-handed reach and a calm, editor-first
   layout.
 
+<br>
+
 - **Accessible and restrained.** A quiet graphite design that meets WCAG 2.2 AA,
   with a clear focus order and calm, minimal motion.
+
+<br>
 
 - **Ten languages,** chosen automatically from your system: English, German,
   Spanish, French, Japanese, Korean, Portuguese, Turkish, and Simplified and

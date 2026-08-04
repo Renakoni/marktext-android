@@ -106,11 +106,17 @@ Oberfläche, die für eine Hand gebaut ist.
   einem Pool von Befehlen zusammen und ordne sie per Ziehen neu. Selbst die
   Auswahl-Symbolleiste kann deine eigenen Befehle aufnehmen.
 
+<br>
+
 - **Designs und Erscheinungsbild.** Helle, dunkle und benutzerdefinierte
   Designs; Schrift und Layout einstellbar.
 
+<br>
+
 - **Markdown nach deinem Geschmack.** Stimme fein ab, wie dein Markdown
   geschrieben und gerendert wird – von Aufzählungszeichen bis Front Matter.
+
+<br>
 
 - **Kontrolle auf Dateiebene.** Kodierung, Zeilenenden und der Umgang mit dem
   abschließenden Zeilenumbruch – pro Dokument einstellbar.
@@ -130,12 +136,18 @@ Oberfläche, die für eine Hand gebaut ist.
   Speicheranbieter über die Systemauswahl und reiche Dokumente per
   Teilen-Dialog an andere Apps weiter und zurück.
 
+<br>
+
 - **Für den Daumen gemacht.** Bequem mit einer Hand erreichbar, dazu ein
   ruhiges, editorzentriertes Layout.
+
+<br>
 
 - **Barrierefrei und zurückhaltend.** Ein ruhiges Graphit-Design, das
   WCAG 2.2 AA erfüllt, mit klarer Fokusreihenfolge und dezenten, sparsamen
   Animationen.
+
+<br>
 
 - **Zehn Sprachen,** automatisch nach deinem System gewählt: Englisch, Deutsch,
   Spanisch, Französisch, Japanisch, Koreanisch, Portugiesisch, Türkisch sowie

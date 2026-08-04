@@ -107,11 +107,17 @@ bureau, dans une interface pensée pour une seule main.
   partir d’un ensemble de commandes et faites-les glisser pour les réorganiser.
   Même la barre d’outils de sélection peut accueillir vos propres commandes.
 
+<br>
+
 - **Thèmes et apparence.** Thèmes clair, sombre et personnalisés ; typographie
   et mise en page ajustables.
 
+<br>
+
 - **Le Markdown à votre goût.** Ajustez finement l’écriture et le rendu de
   votre Markdown, des puces de liste au front matter.
+
+<br>
 
 - **Un contrôle au niveau du fichier.** Encodage, fins de ligne et gestion de
   la nouvelle ligne finale par document.
@@ -131,11 +137,17 @@ bureau, dans une interface pensée pour une seule main.
   n’importe quel fournisseur de stockage via le sélecteur du système, et
   échangez des documents avec d’autres applications par le menu de partage.
 
+<br>
+
 - **Fait pour le pouce.** Une portée confortable à une main et une mise en page
   calme, centrée sur l’éditeur.
 
+<br>
+
 - **Accessible et sobre.** Un design graphite discret conforme à WCAG 2.2 AA,
   avec un ordre de focus clair et des animations douces, réduites au minimum.
+
+<br>
 
 - **Dix langues,** choisies automatiquement selon votre système : anglais,
   allemand, espagnol, français, japonais, coréen, portugais, turc, ainsi que

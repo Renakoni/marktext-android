@@ -103,11 +103,17 @@ aynı sadakatle işlenir.
   havuzundan derleyin ve sürükleyerek yeniden sıralayın. Seçim araç çubuğu bile
   kendi komutlarınızı taşıyabilir.
 
+<br>
+
 - **Temalar ve görünüm.** Açık, koyu ve özel temalar; ayarlanabilir yazı ve
   yerleşim.
 
+<br>
+
 - **Zevkinize göre Markdown.** Markdown'ınızın nasıl yazılıp işleneceğine, liste
   işaretlerinden ön bilgiye kadar ince ayar yapın.
+
+<br>
 
 - **Dosya düzeyinde denetim.** Belge başına kodlama, satır sonları ve sondaki
   yeni satır davranışı.
@@ -127,11 +133,17 @@ aynı sadakatle işlenir.
   depolama sağlayıcısındaki `.md` dosyalarını doğrudan düzenleyin, belgeleri
   paylaşım paneliyle diğer uygulamalara gönderip onlardan alın.
 
+<br>
+
 - **Başparmak için yapıldı.** Rahat tek elle erişim ve sakin, düzenleyici
   öncelikli bir yerleşim.
 
+<br>
+
 - **Erişilebilir ve ölçülü.** WCAG 2.2 AA'yı karşılayan sessiz bir grafit
   tasarım; net bir odak sırası ve sakin, yalın hareketler.
+
+<br>
 
 - **On dil,** sisteminize göre otomatik seçilir: İngilizce, Almanca, İspanyolca,
   Fransızca, Japonca, Korece, Portekizce, Türkçe ile Basitleştirilmiş ve

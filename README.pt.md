@@ -105,11 +105,17 @@ a mesma fidelidade do desktop, em uma interface feita para uma mão só.
   a partir de um conjunto de comandos e arraste para reordená-la. Até a barra de
   seleção pode receber seus próprios comandos.
 
+<br>
+
 - **Temas e aparência.** Temas claro, escuro e personalizados; tipografia e
   layout ajustáveis.
 
+<br>
+
 - **Markdown ao seu gosto.** Ajuste fino de como o seu Markdown é escrito e
   renderizado, dos marcadores de lista ao front matter.
+
+<br>
 
 - **Controle no nível do arquivo.** Codificação, terminações de linha e
   tratamento da nova linha final por documento.
@@ -129,11 +135,17 @@ a mesma fidelidade do desktop, em uma interface feita para uma mão só.
   provedor de armazenamento pelo seletor do sistema e troque documentos com
   outros aplicativos pelo menu de compartilhamento.
 
+<br>
+
 - **Feito para o polegar.** Alcance confortável com uma mão e um layout calmo,
   com o editor em primeiro lugar.
 
+<br>
+
 - **Acessível e contido.** Um design grafite discreto que atende à WCAG 2.2 AA,
   com ordem de foco clara e animações calmas e mínimas.
+
+<br>
 
 - **Dez idiomas,** escolhidos automaticamente a partir do seu sistema: inglês,
   alemão, espanhol, francês, japonês, coreano, português, turco e chinês
