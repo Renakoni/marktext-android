@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="Logotipo do MarkText for Android" width="96" height="96">
+  <img src="docs/assets/logo.webp" alt="Logotipo do MarkText for Android" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="Editando um documento Markdown — tema claro" width="240">
+  <img src="docs/screenshots/editor-light.webp" alt="Editando um documento Markdown — tema claro" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.png" alt="O mesmo documento em um tema escuro" width="240">
+  <img src="docs/screenshots/editor-dark.webp" alt="O mesmo documento em um tema escuro" width="240">
 </p>
 
 <p align="center">
@@ -90,7 +90,7 @@ a mesma fidelidade do desktop, em uma interface feita para uma mão só.
   7,8 MB — pequeno e leve, porém completo em recursos.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tabelas, código e matemática renderizados ao vivo enquanto você digita" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="Tabelas, código e matemática renderizados ao vivo enquanto você digita" width="200"></td>
 </tr>
 </table>
 
@@ -98,7 +98,7 @@ a mesma fidelidade do desktop, em uma interface feita para uma mão só.
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="A barra de formatação fixada e uma barra de seleção (colar) personalizada exibidas durante a edição" width="200"></td>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="A barra de formatação fixada e uma barra de seleção (colar) personalizada exibidas durante a edição" width="200"></td>
 <td valign="middle">
 
 - **Monte suas próprias barras de ferramentas.** Componha a barra rápida inferior
@@ -128,7 +128,7 @@ a mesma fidelidade do desktop, em uma interface feita para uma mão só.
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="O editor exibindo um documento em chinês com a interface em chinês" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="O editor exibindo um documento em chinês com a interface em chinês" width="200"></td>
 <td valign="middle">
 
 - **Seus arquivos ficam onde estão.** Edite `.md` diretamente de qualquer

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="MarkText for Android 徽标" width="96" height="96">
+  <img src="docs/assets/logo.webp" alt="MarkText for Android 徽标" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="浅色主题下编辑 Markdown 文档" width="240">
+  <img src="docs/screenshots/editor-light.webp" alt="浅色主题下编辑 Markdown 文档" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.png" alt="同一文档的深色主题效果" width="240">
+  <img src="docs/screenshots/editor-dark.webp" alt="同一文档的深色主题效果" width="240">
 </p>
 
 <p align="center">
@@ -83,7 +83,7 @@ MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机
   功能却一应俱全。
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="输入时实时渲染表格、代码与公式" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="输入时实时渲染表格、代码与公式" width="200"></td>
 </tr>
 </table>
 
@@ -91,7 +91,7 @@ MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="编辑时显示的底部停靠格式工具栏与自定义的选择（粘贴）栏" width="200"></td>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="编辑时显示的底部停靠格式工具栏与自定义的选择（粘贴）栏" width="200"></td>
 <td valign="middle">
 
 - **打造你自己的工具栏。**从命令池中自由组合底部快捷栏，并拖动排序。
@@ -117,7 +117,7 @@ MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="中文界面下显示中文文档的编辑器" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="中文界面下显示中文文档的编辑器" width="200"></td>
 <td valign="middle">
 
 - **你的文件留在原地。**通过系统选择器直接编辑任意存储提供方中的 `.md`

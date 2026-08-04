@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="MarkText for Android 標誌" width="96" height="96">
+  <img src="docs/assets/logo.webp" alt="MarkText for Android 標誌" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="以淺色主題編輯 Markdown 文件" width="240">
+  <img src="docs/screenshots/editor-light.webp" alt="以淺色主題編輯 Markdown 文件" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.png" alt="同一份文件的深色主題" width="240">
+  <img src="docs/screenshots/editor-dark.webp" alt="同一份文件的深色主題" width="240">
 </p>
 
 <p align="center">
@@ -84,7 +84,7 @@ MarkText for Android 將 MarkText 的即時預覽 Markdown 編輯體驗帶到手
   功能卻一應俱全。
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="輸入的同時即時算繪表格、程式碼與數學" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="輸入的同時即時算繪表格、程式碼與數學" width="200"></td>
 </tr>
 </table>
 
@@ -92,7 +92,7 @@ MarkText for Android 將 MarkText 的即時預覽 Markdown 編輯體驗帶到手
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="編輯時顯示的停靠格式工具列與自訂的選取（貼上）列" width="200"></td>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="編輯時顯示的停靠格式工具列與自訂的選取（貼上）列" width="200"></td>
 <td valign="middle">
 
 - **打造您自己的工具列。** 從指令池中組合底部快速列，並以拖曳重新
@@ -120,7 +120,7 @@ MarkText for Android 將 MarkText 的即時預覽 Markdown 編輯體驗帶到手
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="以中文介面顯示中文文件的編輯器" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="以中文介面顯示中文文件的編輯器" width="200"></td>
 <td valign="middle">
 
 - **您的檔案留在原地。** 透過系統選擇器直接編輯任何儲存空間提供者中的

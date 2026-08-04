@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="MarkText for Android 로고" width="96" height="96">
+  <img src="docs/assets/logo.webp" alt="MarkText for Android 로고" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="Markdown 문서 편집 — 라이트 테마" width="240">
+  <img src="docs/screenshots/editor-light.webp" alt="Markdown 문서 편집 — 라이트 테마" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.png" alt="다크 테마로 본 같은 문서" width="240">
+  <img src="docs/screenshots/editor-dark.webp" alt="다크 테마로 본 같은 문서" width="240">
 </p>
 
 <p align="center">
@@ -88,7 +88,7 @@ MarkText for Android는 MarkText의 실시간 미리 보기 Markdown 편집을 �
   가볍지만 기능은 온전합니다.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="입력하는 동안 실시간으로 렌더링되는 표, 코드, 수식" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="입력하는 동안 실시간으로 렌더링되는 표, 코드, 수식" width="200"></td>
 </tr>
 </table>
 
@@ -96,7 +96,7 @@ MarkText for Android는 MarkText의 실시간 미리 보기 Markdown 편집을 �
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="편집 중 표시되는 하단 고정 서식 도구 모음과 사용자 정의 선택(붙여넣기) 막대" width="200"></td>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="편집 중 표시되는 하단 고정 서식 도구 모음과 사용자 정의 선택(붙여넣기) 막대" width="200"></td>
 <td valign="middle">
 
 - **나만의 도구 모음 만들기.** 명령 풀에서 하단 빠른 도구 막대를 구성하고
@@ -124,7 +124,7 @@ MarkText for Android는 MarkText의 실시간 미리 보기 Markdown 편집을 �
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="중국어 인터페이스로 중국어 문서를 표시한 편집기" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="중국어 인터페이스로 중국어 문서를 표시한 편집기" width="200"></td>
 <td valign="middle">
 
 - **파일은 제자리에 그대로.** 시스템 선택기를 통해 어떤 저장소 제공자에서든

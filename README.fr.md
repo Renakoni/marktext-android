@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="Logo de MarkText for Android" width="96" height="96">
+  <img src="docs/assets/logo.webp" alt="Logo de MarkText for Android" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="Édition d’un document Markdown — thème clair" width="240">
+  <img src="docs/screenshots/editor-light.webp" alt="Édition d’un document Markdown — thème clair" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.png" alt="Le même document en thème sombre" width="240">
+  <img src="docs/screenshots/editor-dark.webp" alt="Le même document en thème sombre" width="240">
 </p>
 
 <p align="center">
@@ -92,7 +92,7 @@ bureau, dans une interface pensée pour une seule main.
   de 7,8 Mo — petite et légère, mais complète.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tableaux, code et maths rendus en direct pendant la frappe" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="Tableaux, code et maths rendus en direct pendant la frappe" width="200"></td>
 </tr>
 </table>
 
@@ -100,7 +100,7 @@ bureau, dans une interface pensée pour une seule main.
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="La barre d’outils de format ancrée et une barre de sélection (coller) personnalisée affichées pendant l’édition" width="200"></td>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="La barre d’outils de format ancrée et une barre de sélection (coller) personnalisée affichées pendant l’édition" width="200"></td>
 <td valign="middle">
 
 - **Composez vos propres barres d’outils.** Assemblez la barre rapide du bas à
@@ -130,7 +130,7 @@ bureau, dans une interface pensée pour une seule main.
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="L’éditeur affichant un document chinois avec une interface en chinois" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="L’éditeur affichant un document chinois avec une interface en chinois" width="200"></td>
 <td valign="middle">
 
 - **Vos fichiers restent à leur place.** Modifiez vos `.md` directement depuis
