@@ -157,7 +157,7 @@ describe('androidDocumentOpenWorkflow', () => {
     )
 
     expect(result.documentState.id).not.toBe('draft-incoming')
-    expect(result.localDraft.markdown).toBe('# Incoming\n\nfrom another app')
+    expect(result.localDraft?.markdown).toBe('# Incoming\n\nfrom another app')
   })
 
   it('keeps the temporary-access messaging when local drafts are disabled', () => {
