@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Catppuccin Latte.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Catppuccin Latte is active. Rule grouping
+ * follows the desktop prismjs/catppuccin-latte.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='catppuccin-latte'] .token.comment,
+[data-theme='catppuccin-latte'] .token.prolog,
+[data-theme='catppuccin-latte'] .token.doctype,
+[data-theme='catppuccin-latte'] .token.cdata {
+  color: #9ca0b0;
+}
+
+[data-theme='catppuccin-latte'] .token.punctuation {
+  color: #5c5f77;
+}
+
+[data-theme='catppuccin-latte'] .token.property,
+[data-theme='catppuccin-latte'] .token.tag,
+[data-theme='catppuccin-latte'] .token.constant,
+[data-theme='catppuccin-latte'] .token.symbol {
+  color: #d20f39;
+}
+
+[data-theme='catppuccin-latte'] .token.boolean,
+[data-theme='catppuccin-latte'] .token.number {
+  color: #fe640b;
+}
+
+[data-theme='catppuccin-latte'] .token.selector,
+[data-theme='catppuccin-latte'] .token.attr-name,
+[data-theme='catppuccin-latte'] .token.string,
+[data-theme='catppuccin-latte'] .token.char,
+[data-theme='catppuccin-latte'] .token.builtin {
+  color: #40a02b;
+}
+
+[data-theme='catppuccin-latte'] .token.inserted {
+  color: #40a02b;
+  background: rgba(64, 160, 43, 0.12);
+}
+
+[data-theme='catppuccin-latte'] .token.deleted {
+  color: #d20f39;
+  background: rgba(210, 15, 57, 0.1);
+}
+
+[data-theme='catppuccin-latte'] .token.operator,
+[data-theme='catppuccin-latte'] .token.entity,
+[data-theme='catppuccin-latte'] .token.url,
+[data-theme='catppuccin-latte'] .language-css .token.string,
+[data-theme='catppuccin-latte'] .style .token.string {
+  color: #179299;
+}
+
+[data-theme='catppuccin-latte'] .token.atrule,
+[data-theme='catppuccin-latte'] .token.attr-value,
+[data-theme='catppuccin-latte'] .token.function,
+[data-theme='catppuccin-latte'] .token.class-name {
+  color: #1e66f5;
+}
+
+[data-theme='catppuccin-latte'] .token.keyword {
+  color: #8839ef;
+}
+
+[data-theme='catppuccin-latte'] .token.regex,
+[data-theme='catppuccin-latte'] .token.important,
+[data-theme='catppuccin-latte'] .token.variable {
+  color: #df8e1d;
+}
