@@ -46,6 +46,7 @@ function createOrchestration(overrides: {
   draftSaved?: boolean
   recoveryKept?: boolean
   canPersistDrafts?: boolean
+  localDrafts?: LocalDraftRecord[]
 } = {}) {
   const options = {
     currentScreen: ref<AppScreen>(overrides.currentScreen ?? 'home'),
@@ -53,7 +54,7 @@ function createOrchestration(overrides: {
       overrides.documentState
       ?? createUntitledDocument({ markdown: '', autosaveTarget: 'local-draft' }),
     ),
-    localDrafts: ref<LocalDraftRecord[]>([]),
+    localDrafts: ref<LocalDraftRecord[]>(overrides.localDrafts ?? []),
     homeNotice: ref<string | null>(null),
     status: ref('Ready'),
     draftExitPromptOpen: ref(true),
@@ -70,6 +71,7 @@ function createOrchestration(overrides: {
     closeEditorMenu: vi.fn(),
     closeEditorToolbar: vi.fn(),
     openAndroidDocumentResult: vi.fn().mockResolvedValue(undefined),
+    protectIncomingDocumentImages: vi.fn(),
     saveAndroidDocument: vi.fn().mockResolvedValue(overrides.saveResult ?? true),
     saveDraft: vi.fn(() => overrides.draftSaved ?? true),
     syncDocumentFromEditor: vi.fn(),
@@ -448,6 +450,65 @@ describe('incomingDocumentOrchestration', () => {
     expect(options.openEditor).toHaveBeenCalledWith('# Incoming')
     expect(options.homeNotice.value).toBe('open-with temporary access')
     expect(options.status.value).toBe('Opened temporarily')
+  })
+
+  it('never adopts a stored draft id while local drafts are disabled', async () => {
+    // Stored drafts stay loaded in memory when persistence is off; adopting
+    // one's id would let this session's Discard delete it from storage.
+    const storedDraft = {
+      id: 'stored-draft',
+      markdown: '# Incoming',
+      createdAt: '2026-07-01T00:00:00.000Z',
+      updatedAt: '2026-07-01T00:00:00.000Z',
+      lastSavedAt: '2026-07-01T00:00:00.000Z',
+      displayName: 'incoming.md',
+    }
+    const { orchestration, options } = createOrchestration({
+      canPersistDrafts: false,
+      localDrafts: [storedDraft],
+    })
+    const temporaryDocument = { ...incomingDocument, persisted: false, canWrite: false }
+
+    await orchestration.handleOpenWithDocumentEvent({ document: temporaryDocument, error: null })
+
+    expect(options.documentState.value.id).not.toBe('stored-draft')
+    expect(options.persistLocalDrafts).not.toHaveBeenCalled()
+  })
+
+  it('protects imported images referenced by non-persistable incoming documents', async () => {
+    const { orchestration, options } = createOrchestration()
+    const temporaryDocument = { ...incomingDocument, persisted: false, canWrite: false }
+
+    await orchestration.handleOpenWithDocumentEvent({ document: temporaryDocument, error: null })
+    expect(options.protectIncomingDocumentImages).toHaveBeenCalledWith(temporaryDocument)
+
+    await orchestration.handleShareDocumentEvent({
+      document: {
+        ...sharedTextDocument,
+        sourceUri: 'content://test/shared.md',
+        displayName: 'Shared Stream.md',
+        shareKind: 'stream',
+      },
+      error: null,
+    })
+    expect(options.protectIncomingDocumentImages).toHaveBeenCalledTimes(2)
+  })
+
+  it('opens an empty incoming file without persisting or claiming an import', async () => {
+    const { orchestration, options } = createOrchestration()
+    const emptyDocument = {
+      ...incomingDocument,
+      persisted: false,
+      canWrite: false,
+      markdown: '   \n\n',
+    }
+
+    await orchestration.handleOpenWithDocumentEvent({ document: emptyDocument, error: null })
+
+    expect(options.persistLocalDrafts).not.toHaveBeenCalled()
+    expect(options.status.value).toBe('Ready')
+    expect(options.documentState.value.displayName).toBe('incoming.md')
+    expect(options.openEditor).toHaveBeenCalled()
   })
 
   it('imports shared text as a local draft and opens it', async () => {

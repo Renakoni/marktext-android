@@ -58,7 +58,8 @@ export interface CreatedAndroidDocumentOpenResult {
 export interface CreatedImportedIncomingDocumentOpenResult {
   markdown: string
   documentState: ReturnType<typeof createUntitledDocument>
-  localDraft: LocalDraftRecord
+  /** Null when the file has no content: empty drafts are never persisted. */
+  localDraft: LocalDraftRecord | null
   homeNotice: string | null
   promptLocalDraftSaveOnExit: true
   currentAndroidDocumentCanWrite: false
@@ -173,6 +174,13 @@ export function createAndroidDocumentOpenResult(
  * reuses the existing draft (matched by name plus normalized content) instead
  * of multiplying copies; a changed file becomes a new draft so neither
  * version is silently lost.
+ *
+ * Two cases never claim an import: with local drafts disabled the session
+ * gets a fresh id (stored drafts stay loaded in memory, and reusing one
+ * would let this session's Discard delete it) and keeps the temporary-access
+ * messaging; an empty file has nothing the draft store would retain (empty
+ * drafts are dropped by design), so it opens as a plain named session that
+ * only becomes durable once content exists.
  */
 export function createImportedIncomingDocumentOpenResult(
   document: Pick<OpenedAndroidDocument, 'sourceUri' | 'displayName' | 'markdown'>,
@@ -192,17 +200,26 @@ export function createImportedIncomingDocumentOpenResult(
     autosaveTarget: 'local-draft',
     now: openedAt,
   })
+  const hasContent = importedDocument.markdown.trim().length > 0
+  const willPersistDraft = canPersistLocalDrafts && hasContent
 
-  const existingDraft = existingDrafts.find(
-    draft =>
-      draft.displayName === document.displayName &&
-      draft.markdown === importedDocument.markdown,
-  )
+  const existingDraft = willPersistDraft
+    ? existingDrafts.find(
+        draft =>
+          draft.displayName === document.displayName &&
+          draft.markdown === importedDocument.markdown,
+      )
+    : undefined
   const documentState = existingDraft
     ? createDocumentStateFromLocalDraft({ ...existingDraft, updatedAt: openedAt })
     : importedDocument
 
-  if (canPersistLocalDrafts) {
+  if (!canPersistLocalDrafts) {
+    logger?.warn('opened incoming Android document without durable retention', {
+      displayName: document.displayName,
+      sourceUri: document.sourceUri,
+    })
+  } else if (hasContent) {
     logger?.info('imported incoming Android document as a local draft', {
       displayName: document.displayName,
       sourceUri: document.sourceUri,
@@ -210,7 +227,7 @@ export function createImportedIncomingDocumentOpenResult(
       characters: document.markdown.length,
     })
   } else {
-    logger?.warn('opened incoming Android document without durable retention', {
+    logger?.info('opened empty incoming Android document without a draft entry', {
       displayName: document.displayName,
       sourceUri: document.sourceUri,
     })
@@ -219,18 +236,24 @@ export function createImportedIncomingDocumentOpenResult(
   return {
     markdown: documentState.markdown,
     documentState,
-    localDraft: {
-      id: documentState.id,
-      markdown: documentState.markdown,
-      createdAt: documentState.createdAt,
-      updatedAt: openedAt,
-      lastSavedAt: documentState.lastSavedAt,
-      displayName: document.displayName,
-    },
+    localDraft: willPersistDraft
+      ? {
+          id: documentState.id,
+          markdown: documentState.markdown,
+          createdAt: documentState.createdAt,
+          updatedAt: openedAt,
+          lastSavedAt: documentState.lastSavedAt,
+          displayName: document.displayName,
+        }
+      : null,
     homeNotice: canPersistLocalDrafts ? null : temporaryAccessMessage,
     promptLocalDraftSaveOnExit: true,
     currentAndroidDocumentCanWrite: false,
-    statusAfterOpen: canPersistLocalDrafts ? incomingFileImportedMessage : 'Opened temporarily',
+    statusAfterOpen: !canPersistLocalDrafts
+      ? 'Opened temporarily'
+      : hasContent
+        ? incomingFileImportedMessage
+        : 'Ready',
   }
 }
 

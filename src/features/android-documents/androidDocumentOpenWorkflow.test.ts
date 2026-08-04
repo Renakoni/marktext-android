@@ -176,10 +176,65 @@ describe('androidDocumentOpenWorkflow', () => {
     )
 
     expect(result).toMatchObject({
+      localDraft: null,
       homeNotice: 'Opened temporarily from Android',
       promptLocalDraftSaveOnExit: true,
       statusAfterOpen: 'Opened temporarily',
     })
+  })
+
+  it('never reuses a stored draft while local drafts are disabled', () => {
+    // Stored drafts stay loaded when persistence is off; reusing one's id
+    // would let this session's Discard delete it from storage.
+    const existingDraft = {
+      id: 'draft-incoming',
+      markdown: '# Incoming\n\nfrom another app',
+      createdAt: '2026-07-01T00:00:00.000Z',
+      updatedAt: '2026-07-01T00:00:00.000Z',
+      lastSavedAt: '2026-07-01T00:00:00.000Z',
+      displayName: 'Incoming.md',
+    }
+
+    const result = createImportedIncomingDocumentOpenResult(
+      {
+        sourceUri: 'content://provider/incoming.md',
+        displayName: 'Incoming.md',
+        markdown: '# Incoming\n\nfrom another app',
+      },
+      {
+        existingDrafts: [existingDraft],
+        canPersistLocalDrafts: false,
+        incomingFileImportedMessage: 'Imported this file as a local draft.',
+        temporaryAccessMessage: 'Opened temporarily from Android',
+      },
+    )
+
+    expect(result.documentState.id).not.toBe('draft-incoming')
+    expect(result.localDraft).toBeNull()
+  })
+
+  it('opens an empty incoming file as a named session without claiming an import', () => {
+    const result = createImportedIncomingDocumentOpenResult(
+      {
+        sourceUri: 'content://provider/empty.md',
+        displayName: 'Empty.md',
+        markdown: '   \n\n  ',
+      },
+      {
+        existingDrafts: [],
+        canPersistLocalDrafts: true,
+        incomingFileImportedMessage: 'Imported this file as a local draft.',
+        temporaryAccessMessage: 'open-with temporary',
+      },
+    )
+
+    // Empty drafts are dropped by the store, so nothing durable exists yet;
+    // the session keeps the name and becomes durable once content is typed.
+    expect(result.localDraft).toBeNull()
+    expect(result.statusAfterOpen).toBe('Ready')
+    expect(result.homeNotice).toBeNull()
+    expect(result.documentState.displayName).toBe('Empty.md')
+    expect(result.documentState.autosaveTarget).toBe('local-draft')
   })
 
   it('creates a local draft session result for shared text', () => {

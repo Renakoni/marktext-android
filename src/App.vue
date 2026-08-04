@@ -1754,6 +1754,7 @@ const incomingDocuments = createIncomingDocumentOrchestration({
   closeEditorMenu,
   closeEditorToolbar,
   openAndroidDocumentResult,
+  protectIncomingDocumentImages: protectAndroidDocumentImportedImages,
   saveAndroidDocument,
   saveDraft,
   syncDocumentFromEditor,

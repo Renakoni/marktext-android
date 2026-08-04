@@ -68,6 +68,11 @@ export interface IncomingDocumentOrchestrationOptions {
     document: OpenedAndroidDocument,
     options?: { source?: AndroidDocumentOpenSource },
   ) => Promise<void>
+  // Marks imported images referenced by the incoming Markdown as protected
+  // from cleanup: the external file keeps referencing them even after the
+  // imported draft is deleted, so the protection registry — not the draft —
+  // is what keeps them alive.
+  protectIncomingDocumentImages: (document: OpenedAndroidDocument) => void
   saveAndroidDocument: (options?: SaveAndroidDocumentOptions) => Promise<boolean>
   saveDraft: () => boolean
   syncDocumentFromEditor: (markDirty: boolean, flushPending: boolean) => void
@@ -137,7 +142,8 @@ export function createIncomingDocumentOrchestration(
       logger: options.documentLogger,
     })
 
-    if (options.canPersistLocalDrafts()) {
+    options.protectIncomingDocumentImages(document)
+    if (openResult.localDraft && options.canPersistLocalDrafts()) {
       options.persistLocalDrafts(upsertLocalDraft(options.localDrafts.value, openResult.localDraft))
     }
     options.homeNotice.value = openResult.homeNotice
