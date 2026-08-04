@@ -143,10 +143,70 @@ export const THEME_CATALOG = [
     swatches: ['#2d2a2e', '#ffd866', '#ff6188', '#fcfcfa'],
   },
   {
+    id: 'nightfox',
+    label: 'Nightfox',
+    appearance: 'dark',
+    swatches: ['#192330', '#719cd6', '#dbc074', '#cdcecf'],
+  },
+  {
+    id: 'nord',
+    label: 'Nord',
+    appearance: 'dark',
+    swatches: ['#2e3440', '#81a1c1', '#a3be8c', '#d8dee9'],
+  },
+  {
     id: 'one-dark',
     label: 'One Dark',
     appearance: 'dark',
     swatches: ['#282c34', '#4d78cc', '#e06c75', '#b9c1cc'],
+  },
+  {
+    id: 'oxocarbon-dark',
+    label: 'Oxocarbon Dark',
+    appearance: 'dark',
+    swatches: ['#161616', '#78a9ff', '#ee5396', '#f2f4f8'],
+  },
+  {
+    id: 'palenight',
+    label: 'Palenight',
+    appearance: 'dark',
+    swatches: ['#292d3e', '#82aaff', '#c792ea', '#a6accd'],
+  },
+  {
+    id: 'rose-pine',
+    label: 'Rosé Pine',
+    appearance: 'dark',
+    swatches: ['#191724', '#c4a7e7', '#ebbcba', '#e0def4'],
+  },
+  {
+    id: 'rose-pine-moon',
+    label: 'Rosé Pine Moon',
+    appearance: 'dark',
+    swatches: ['#232136', '#c4a7e7', '#ea9a97', '#e0def4'],
+  },
+  {
+    id: 'solarized-dark',
+    label: 'Solarized Dark',
+    appearance: 'dark',
+    swatches: ['#002b36', '#268bd2', '#b58900', '#839496'],
+  },
+  {
+    id: 'synthwave-84',
+    label: "Synthwave '84",
+    appearance: 'dark',
+    swatches: ['#262335', '#ff7edb', '#36f9f6', '#ffffff'],
+  },
+  {
+    id: 'tokyo-night',
+    label: 'Tokyo Night',
+    appearance: 'dark',
+    swatches: ['#1a1b26', '#7aa2f7', '#bb9af7', '#c0caf5'],
+  },
+  {
+    id: 'tokyo-night-storm',
+    label: 'Tokyo Night Storm',
+    appearance: 'dark',
+    swatches: ['#24283b', '#7aa2f7', '#e0af68', '#c0caf5'],
   },
 ] as const satisfies readonly ThemeCatalogEntry[]
 

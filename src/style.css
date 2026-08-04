@@ -21,7 +21,17 @@
 @import './styles/themes/kanagawa.css';
 @import './styles/themes/material-dark.css';
 @import './styles/themes/monokai-pro.css';
+@import './styles/themes/nightfox.css';
+@import './styles/themes/nord.css';
 @import './styles/themes/one-dark.css';
+@import './styles/themes/oxocarbon-dark.css';
+@import './styles/themes/palenight.css';
+@import './styles/themes/rose-pine.css';
+@import './styles/themes/rose-pine-moon.css';
+@import './styles/themes/solarized-dark.css';
+@import './styles/themes/synthwave-84.css';
+@import './styles/themes/tokyo-night.css';
+@import './styles/themes/tokyo-night-storm.css';
 @import './styles/themes/prism-cadmium.css';
 @import './styles/themes/prism-ayu-light.css';
 @import './styles/themes/prism-catppuccin-latte.css';
@@ -42,7 +52,17 @@
 @import './styles/themes/prism-kanagawa.css';
 @import './styles/themes/prism-material-dark.css';
 @import './styles/themes/prism-monokai-pro.css';
+@import './styles/themes/prism-nightfox.css';
+@import './styles/themes/prism-nord.css';
 @import './styles/themes/prism-one-dark.css';
+@import './styles/themes/prism-oxocarbon-dark.css';
+@import './styles/themes/prism-palenight.css';
+@import './styles/themes/prism-rose-pine.css';
+@import './styles/themes/prism-rose-pine-moon.css';
+@import './styles/themes/prism-solarized-dark.css';
+@import './styles/themes/prism-synthwave-84.css';
+@import './styles/themes/prism-tokyo-night.css';
+@import './styles/themes/prism-tokyo-night-storm.css';
 
 /*
  * Graphite Ink layout + shared chrome.
