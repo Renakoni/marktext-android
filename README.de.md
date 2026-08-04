@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="Logo von MarkText for Android" width="96" height="96">
+  <img src="docs/assets/logo.webp" alt="Logo von MarkText for Android" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="Bearbeitung eines Markdown-Dokuments – helles Design" width="240">
+  <img src="docs/screenshots/editor-light.webp" alt="Bearbeitung eines Markdown-Dokuments – helles Design" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.png" alt="Dasselbe Dokument in einem dunklen Design" width="240">
+  <img src="docs/screenshots/editor-dark.webp" alt="Dasselbe Dokument in einem dunklen Design" width="240">
 </p>
 
 <p align="center">
@@ -91,7 +91,7 @@ Oberfläche, die für eine Hand gebaut ist.
   rund 7,8 MB – klein und leicht, aber voll ausgestattet.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tabellen, Code und Mathematik werden beim Tippen live gerendert" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="Tabellen, Code und Mathematik werden beim Tippen live gerendert" width="200"></td>
 </tr>
 </table>
 
@@ -99,7 +99,7 @@ Oberfläche, die für eine Hand gebaut ist.
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="Die angedockte Format-Symbolleiste und eine angepasste Auswahl-Leiste (Einfügen) während der Bearbeitung" width="200"></td>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="Die angedockte Format-Symbolleiste und eine angepasste Auswahl-Leiste (Einfügen) während der Bearbeitung" width="200"></td>
 <td valign="middle">
 
 - **Baue deine eigenen Symbolleisten.** Stelle die untere Schnellleiste aus
@@ -129,7 +129,7 @@ Oberfläche, die für eine Hand gebaut ist.
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="Der Editor mit einem chinesischen Dokument und chinesischer Oberfläche" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="Der Editor mit einem chinesischen Dokument und chinesischer Oberfläche" width="200"></td>
 <td valign="middle">
 
 - **Deine Dateien bleiben, wo sie sind.** Bearbeite `.md` direkt aus jedem

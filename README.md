@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="MarkText for Android logo" width="96" height="96">
+  <img src="docs/assets/logo.webp" alt="MarkText for Android logo" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="Editing a Markdown document — light theme" width="240">
+  <img src="docs/screenshots/editor-light.webp" alt="Editing a Markdown document — light theme" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.png" alt="The same document in a dark theme" width="240">
+  <img src="docs/screenshots/editor-dark.webp" alt="The same document in a dark theme" width="240">
 </p>
 
 <p align="center">
@@ -86,7 +86,7 @@ desktop, in an interface built for one hand.
   small and light, yet fully featured.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tables, code, and math rendered live while typing" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="Tables, code, and math rendered live while typing" width="200"></td>
 </tr>
 </table>
 
@@ -94,7 +94,7 @@ desktop, in an interface built for one hand.
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="The docked format toolbar and a customized selection (paste) bar shown while editing" width="200"></td>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="The docked format toolbar and a customized selection (paste) bar shown while editing" width="200"></td>
 <td valign="middle">
 
 - **Build your own toolbars.** Compose the bottom quick bar from a pool of commands
@@ -123,7 +123,7 @@ desktop, in an interface built for one hand.
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="The editor showing a Chinese document with a Chinese interface" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="The editor showing a Chinese document with a Chinese interface" width="200"></td>
 <td valign="middle">
 
 - **Your files stay put.** Edit `.md` straight from any storage provider through

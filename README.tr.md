@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="MarkText for Android logosu" width="96" height="96">
+  <img src="docs/assets/logo.webp" alt="MarkText for Android logosu" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="Bir Markdown belgesini düzenleme — açık tema" width="240">
+  <img src="docs/screenshots/editor-light.webp" alt="Bir Markdown belgesini düzenleme — açık tema" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.png" alt="Aynı belge koyu temada" width="240">
+  <img src="docs/screenshots/editor-dark.webp" alt="Aynı belge koyu temada" width="240">
 </p>
 
 <p align="center">
@@ -88,7 +88,7 @@ aynı doğrulukla işlenir.
   tutar — küçük ve hafif, yine de tam donanımlı.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Yazarken canlı işlenen tablolar, kod ve matematik" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="Yazarken canlı işlenen tablolar, kod ve matematik" width="200"></td>
 </tr>
 </table>
 
@@ -96,7 +96,7 @@ aynı doğrulukla işlenir.
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="Düzenleme sırasında görünen sabit biçim araç çubuğu ve özelleştirilmiş bir seçim (yapıştırma) çubuğu" width="200"></td>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="Düzenleme sırasında görünen sabit biçim araç çubuğu ve özelleştirilmiş bir seçim (yapıştırma) çubuğu" width="200"></td>
 <td valign="middle">
 
 - **Kendi araç çubuklarınızı oluşturun.** Alttaki hızlı çubuğu bir komut
@@ -126,7 +126,7 @@ aynı doğrulukla işlenir.
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="Çince arayüzle Çince bir belgeyi gösteren düzenleyici" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="Çince arayüzle Çince bir belgeyi gösteren düzenleyici" width="200"></td>
 <td valign="middle">
 
 - **Dosyalarınız yerinde kalır.** Sistem seçicisi üzerinden herhangi bir

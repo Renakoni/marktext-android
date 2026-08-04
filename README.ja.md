@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="MarkText for Android のロゴ" width="96" height="96">
+  <img src="docs/assets/logo.webp" alt="MarkText for Android のロゴ" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="Markdown ドキュメントを編集中 — ライトテーマ" width="240">
+  <img src="docs/screenshots/editor-light.webp" alt="Markdown ドキュメントを編集中 — ライトテーマ" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.png" alt="同じドキュメントをダークテーマで表示" width="240">
+  <img src="docs/screenshots/editor-dark.webp" alt="同じドキュメントをダークテーマで表示" width="240">
 </p>
 
 <p align="center">
@@ -88,7 +88,7 @@ MarkText のオープンソースコアである Muya で、モバイル向け�
   それでいてフル機能です。
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="入力しながら表・コード・数式がライブでレンダリングされる様子" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="入力しながら表・コード・数式がライブでレンダリングされる様子" width="200"></td>
 </tr>
 </table>
 
@@ -96,7 +96,7 @@ MarkText のオープンソースコアである Muya で、モバイル向け�
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="編集中に表示された下部固定の書式ツールバーと、カスタマイズした選択（貼り付け）バー" width="200"></td>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="編集中に表示された下部固定の書式ツールバーと、カスタマイズした選択（貼り付け）バー" width="200"></td>
 <td valign="middle">
 
 - **ツールバーを自作できます。** 下部のクイックバーはコマンド一覧から組み立て、
@@ -125,7 +125,7 @@ MarkText のオープンソースコアである Muya で、モバイル向け�
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="中国語インターフェイスで中国語ドキュメントを表示するエディター" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="中国語インターフェイスで中国語ドキュメントを表示するエディター" width="200"></td>
 <td valign="middle">
 
 - **ファイルは元の場所のまま。** システムピッカーを通じて任意のストレージ

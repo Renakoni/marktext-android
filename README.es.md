@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="Logotipo de MarkText for Android" width="96" height="96">
+  <img src="docs/assets/logo.webp" alt="Logotipo de MarkText for Android" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.png" alt="Edición de un documento Markdown — tema claro" width="240">
+  <img src="docs/screenshots/editor-light.webp" alt="Edición de un documento Markdown — tema claro" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.png" alt="El mismo documento con un tema oscuro" width="240">
+  <img src="docs/screenshots/editor-dark.webp" alt="El mismo documento con un tema oscuro" width="240">
 </p>
 
 <p align="center">
@@ -91,7 +91,7 @@ escritorio, en una interfaz pensada para usarla con una mano.
   pequeña y ligera, pero con todas sus funciones.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.png" alt="Tablas, código y matemáticas renderizados en vivo mientras escribes" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="Tablas, código y matemáticas renderizados en vivo mientras escribes" width="200"></td>
 </tr>
 </table>
 
@@ -99,7 +99,7 @@ escritorio, en una interfaz pensada para usarla con una mano.
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.png" alt="La barra de formato anclada y una barra de selección (pegar) personalizada mostradas durante la edición" width="200"></td>
+<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="La barra de formato anclada y una barra de selección (pegar) personalizada mostradas durante la edición" width="200"></td>
 <td valign="middle">
 
 - **Crea tus propias barras de herramientas.** Compón la barra rápida inferior a
@@ -129,7 +129,7 @@ escritorio, en una interfaz pensada para usarla con una mano.
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.png" alt="El editor mostrando un documento en chino con la interfaz en chino" width="200"></td>
+<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="El editor mostrando un documento en chino con la interfaz en chino" width="200"></td>
 <td valign="middle">
 
 - **Tus archivos no se mueven de su sitio.** Edita `.md` directamente desde
