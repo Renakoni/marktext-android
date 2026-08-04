@@ -1,0 +1,107 @@
+/*
+ * Nord — curated custom theme.
+ *
+ * Heritage: desktop MarkText nord theme — polar night #2e3440, frost blue
+ * accent #81a1c1, snow-storm ink #d8dee9, and the nord heading run
+ * (frost cyan, frost blues, aurora purple, green, yellow). Values are
+ * plain hex/rgba so every WebView the app can meet renders them
+ * identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - `--danger` lightens the aurora red past WCAG AA (the heritage
+ *   #bf616a sits at 3.05:1 and stays on the Muya bridge).
+ * - The desktop 0.6-alpha frost search highlight softens to 0.3 for
+ *   phone readability.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints emphasis yellow).
+ */
+
+:root[data-theme='nord'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #2b313c;
+  --surface: #2e3440;
+  --surface-muted: #3b4252;
+  --surface-sunken: #292e39;
+  --surface-raised: #434c5e;
+
+  /* Content */
+  --text: #d8dee9;
+  --text-muted: #b4bccc;
+  --text-faint: #7d8698;
+  --task-completed-color: #a8aebb;
+  --on-accent: #2e3440;
+
+  /* Lines */
+  --border: #3b4252;
+  --border-strong: #4c566a;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — frost blue; "strong" lightens for contrast on polar night. */
+  --accent: #81a1c1;
+  --accent-strong: #a5bdd6;
+  --accent-hover: #90adca;
+  --accent-soft: rgba(129, 161, 193, 0.2);
+  --accent-tint-10: rgba(129, 161, 193, 0.14);
+  --accent-tint-11: rgba(129, 161, 193, 0.16);
+
+  /* State */
+  --danger: #cf8990;
+  --focus-ring: rgba(129, 161, 193, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(129, 161, 193, 0.35);
+
+  /* Muya bridge — the desktop nord palette on the writing surface. */
+  --theme-color: #81a1c1;
+  --highlight-color: rgba(129, 161, 193, 0.3);
+  --selection-color: rgba(76, 86, 106, 0.6);
+  --editor-color: #d8dee9;
+  --editor-color-80: rgba(216, 222, 233, 0.8);
+  --editor-color-50: rgba(216, 222, 233, 0.5);
+  --editor-color-30: rgba(216, 222, 233, 0.3);
+  --editor-color-10: rgba(216, 222, 233, 0.1);
+  --editor-color-04: rgba(216, 222, 233, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #bf616a;
+  --icon-color: rgba(216, 222, 233, 0.56);
+  --code-block-bg-color: #3b4252;
+  --table-border-color: #3b4252;
+  --input-bg-color: #292e39;
+  --button-font-color: rgba(216, 222, 233, 0.7);
+  --button-bg-color: #3b4252;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #434c5e;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #353b47;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(216, 222, 233, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #88c0d0;
+  --h1-color: #88c0d0;
+  --h2-color: #81a1c1;
+  --h3-color: #5e81ac;
+  --h4-color: #b48ead;
+  --h5-color: #a3be8c;
+  --h6-color: #ebcb8b;
+  --blockquote-text-color: rgba(216, 222, 233, 0.6);
+  --blockquote-border-color: #5e81ac;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #81a1c1;
+  --hr-color: #4c566a;
+}

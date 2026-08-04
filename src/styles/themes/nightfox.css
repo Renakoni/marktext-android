@@ -1,0 +1,108 @@
+/*
+ * Nightfox — curated custom theme.
+ *
+ * Heritage: desktop MarkText nightfox theme — the midnight navy #192330
+ * ground, fox blue accent #719cd6, cool gray ink #cdcecf, and the
+ * nightfox heading run (rose, gold, sage, cyan, purple, blue). Values are
+ * plain hex/rgba so every WebView the app can meet renders them
+ * identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - `--danger` lightens the nightfox rose past WCAG AA (the heritage
+ *   #c94f6d sits at 3.64:1 and stays on the Muya bridge and headings).
+ * - The desktop 0.6-alpha blue search highlight softens to 0.3 for phone
+ *   readability.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints italics gold).
+ */
+
+:root[data-theme='nightfox'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #161e2a;
+  --surface: #192330;
+  --surface-muted: #212e3f;
+  --surface-sunken: #131a24;
+  --surface-raised: #29394d;
+
+  /* Content */
+  --text: #cdcecf;
+  --text-muted: #aaabad;
+  --text-faint: #738091;
+  --task-completed-color: #9fa3a8;
+  --on-accent: #192330;
+
+  /* Lines */
+  --border: #29394d;
+  --border-strong: #39506d;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — fox blue; "strong" lightens for contrast on the midnight
+     ground. */
+  --accent: #719cd6;
+  --accent-strong: #9ab9e4;
+  --accent-hover: #82a9dc;
+  --accent-soft: rgba(113, 156, 214, 0.2);
+  --accent-tint-10: rgba(113, 156, 214, 0.14);
+  --accent-tint-11: rgba(113, 156, 214, 0.16);
+
+  /* State */
+  --danger: #d16a84;
+  --focus-ring: rgba(113, 156, 214, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(113, 156, 214, 0.35);
+
+  /* Muya bridge — the desktop nightfox palette on the writing surface. */
+  --theme-color: #719cd6;
+  --highlight-color: rgba(113, 156, 214, 0.3);
+  --selection-color: rgba(42, 55, 72, 0.8);
+  --editor-color: #cdcecf;
+  --editor-color-80: rgba(205, 206, 207, 0.8);
+  --editor-color-50: rgba(205, 206, 207, 0.5);
+  --editor-color-30: rgba(205, 206, 207, 0.3);
+  --editor-color-10: rgba(205, 206, 207, 0.1);
+  --editor-color-04: rgba(205, 206, 207, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #c94f6d;
+  --icon-color: rgba(205, 206, 207, 0.56);
+  --code-block-bg-color: #212e3f;
+  --table-border-color: #212e3f;
+  --input-bg-color: #131a24;
+  --button-font-color: rgba(205, 206, 207, 0.7);
+  --button-bg-color: #212e3f;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #29394d;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #1a2736;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(205, 206, 207, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #719cd6;
+  --h1-color: #c94f6d;
+  --h2-color: #dbc074;
+  --h3-color: #81b29a;
+  --h4-color: #63cdcf;
+  --h5-color: #9d79d6;
+  --h6-color: #719cd6;
+  --blockquote-text-color: rgba(205, 206, 207, 0.6);
+  --blockquote-border-color: #39506d;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #c94f6d;
+  --hr-color: #29394d;
+}
