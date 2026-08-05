@@ -80,9 +80,16 @@ declare module '@muyajs/core' {
       /**
        * The complete logical document. `rawState` is the live state root
        * (no clone) — read-only consumers only, e.g. bounds checks against
-       * the top-level block count during a progressive mount.
+       * the top-level block count during a progressive mount. `flush()`
+       * drains the rAF-deferred op batch synchronously so the history can
+       * be boundary-cut deterministically around a replace.
        */
-      jsonState: { readonly rawState: readonly unknown[] }
+      jsonState: { readonly rawState: readonly unknown[]; flush(): void }
+      /**
+       * `cutoff()` breaks the history's time-window undo coalescing so the
+       * next recorded operation starts its own undo entry.
+       */
+      history: { cutoff(): void }
     }
     constructor(element: HTMLElement, options?: Record<string, unknown>)
     init(): void
