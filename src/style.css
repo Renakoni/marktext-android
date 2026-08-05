@@ -83,6 +83,24 @@ body {
   min-height: 100vh;
   margin: 0;
   overflow: hidden;
+  /* App chrome is never text-selectable, matching native Android apps:
+     long presses drive gestures (home card selection, editor context),
+     and titles, dates, tab labels, or settings rows have no copy value.
+     User content opts back in below. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The two places text selection IS the product: the Muya writing surface
+   (whole surface, not just the contenteditable blocks — dragging across
+   paragraphs passes through non-editable wrappers; Muya's own styles
+   re-disable its decorations) and editable fields, which must keep native
+   selection under a non-selectable ancestor. */
+.mu-container,
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 #app {
