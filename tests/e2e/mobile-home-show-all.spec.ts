@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { DRAFTS_STORAGE_KEY } from './helpers/drafts'
 
+const SETTINGS_STORAGE_KEY = 'marktext-for-android:settings-ui'
+
 test.describe.configure({ timeout: 60000 })
 
 // #151 — drafts beyond the home's recency cap existed with no UI path to
@@ -88,6 +90,56 @@ test('expansion hands focus to the first revealed row and announces the growth',
 
   // The polite live region tells assistive tech how many rows appeared.
   await expect(page.getByTestId('home-reveal-status')).toHaveText(/5/)
+})
+
+test('focus reaches the Continue masthead when the only revealed record sorts first', async ({ page }) => {
+  // Under title-ascending sort, the single record hidden by the recency
+  // cap can become the CONTINUE masthead after expansion rather than a
+  // regular row — the focus scan must cover that button too, or the
+  // expander's self-removal drops focus to <body>.
+  const base = Date.parse('2026-06-01T00:00:00.000Z')
+  const hiddenOldest = {
+    id: 'draft-hidden',
+    markdown: '# AAA hidden\n\npayload-hidden\n',
+    createdAt: new Date(base).toISOString(),
+    updatedAt: new Date(base).toISOString(),
+    lastSavedAt: new Date(base).toISOString(),
+  }
+  const newerDrafts = Array.from({ length: 100 }, (_, i) => ({
+    id: `draft-${String(i + 1).padStart(3, '0')}`,
+    markdown: `# ZZZ Probe ${i + 1}\n\npayload-${i + 1}\n`,
+    createdAt: new Date(base).toISOString(),
+    updatedAt: new Date(base + (i + 1) * 60_000).toISOString(),
+    lastSavedAt: new Date(base + (i + 1) * 60_000).toISOString(),
+  }))
+
+  await page.goto('/')
+  await page.evaluate(
+    ({ draftsStorageKey, settingsStorageKey, drafts }) => {
+      localStorage.clear()
+      localStorage.setItem(draftsStorageKey, JSON.stringify(drafts))
+      localStorage.setItem(
+        settingsStorageKey,
+        JSON.stringify({ fileSortBy: 'title', fileSortOrder: 'asc' }),
+      )
+    },
+    {
+      draftsStorageKey: DRAFTS_STORAGE_KEY,
+      settingsStorageKey: SETTINGS_STORAGE_KEY,
+      drafts: [hiddenOldest, ...newerDrafts],
+    },
+  )
+  await page.reload()
+
+  await page.getByTestId('home-show-all-button').focus()
+  await page.keyboard.press('Enter')
+
+  await expect
+    .poll(async () =>
+      page.evaluate(() => document.activeElement?.getAttribute('data-doc-id') ?? ''),
+    )
+    .toBe('draft-hidden')
+  await expect(page.getByTestId('home-reveal-status')).toHaveText(/1/)
 })
 
 test('pinning a beyond-cap draft keeps it visible in the resting view', async ({ page }) => {

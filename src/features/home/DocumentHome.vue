@@ -238,6 +238,7 @@ watch(
             'is-selected': selectionActive && isSelected(continueDocument.id),
           }"
           type="button"
+          :data-doc-id="continueDocument.id"
           :aria-pressed="selectionActive ? isSelected(continueDocument.id) : undefined"
           @click="onDocumentClick(continueDocument.id)"
           @pointerdown="longPress.onPointerDown($event, continueDocument.id)"

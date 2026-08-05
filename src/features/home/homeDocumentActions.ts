@@ -202,6 +202,25 @@ export function createHomeDocumentActions(options: HomeDocumentActionsOptions): 
       return
     }
 
+    // Renaming can change the SAF URI, and the record ID embeds it —
+    // migrate the pin BEFORE the recents write: the recents storage cap
+    // uses the pin set for eviction protection, so persisting the renamed
+    // record while the pin still carries the OLD id would treat a
+    // cap-exempt pinned record as unpinned, evict it on that first write,
+    // and leave the subsequently migrated pin pointing at a record that
+    // startup pruning then deletes.
+    if (
+      result.updatedRecord.id !== result.previousId
+      && result.accessRetained
+      && options.pinnedDocuments.value.some(pin => pin.id === result.previousId)
+    ) {
+      options.persistPinnedDocuments(
+        options.pinnedDocuments.value.map(pin =>
+          pin.id === result.previousId ? { ...pin, id: result.updatedRecord.id } : pin,
+        ),
+      )
+    }
+
     const remainingRecentDocuments = options.androidRecentDocuments.value.filter(
       item => item.id !== result.previousId,
     )
@@ -211,19 +230,9 @@ export function createHomeDocumentActions(options: HomeDocumentActionsOptions): 
         : remainingRecentDocuments,
     )
 
-    // Renaming can change the SAF URI; migrate everything keyed by it.
+    // Everything else keyed by the SAF URI migrates after the stores are
+    // consistent.
     if (result.updatedRecord.id !== result.previousId) {
-      if (
-        result.accessRetained
-        && options.pinnedDocuments.value.some(pin => pin.id === result.previousId)
-      ) {
-        options.persistPinnedDocuments(
-          options.pinnedDocuments.value.map(pin =>
-            pin.id === result.previousId ? { ...pin, id: result.updatedRecord.id } : pin,
-          ),
-        )
-      }
-
       const previousUri = record.sourceUri
       const nextUri = result.updatedRecord.sourceUri
       if (previousUri && nextUri && previousUri !== nextUri) {

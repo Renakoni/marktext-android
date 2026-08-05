@@ -142,11 +142,13 @@ describe('documentStorage', () => {
     writeStoredAndroidRecentDocuments(records, new Set([pinnedOldest.id]), storage)
 
     const reloaded = readStoredAndroidRecentDocuments(storage)
-    // 100 newest unpinned survive, plus the pinned oldest; the oldest
-    // UNPINNED record (index 1) is the one evicted.
-    expect(reloaded).toHaveLength(101)
+    // The total cap holds: the pinned oldest claims a slot with priority
+    // and the 99 newest unpinned fill the rest; the oldest UNPINNED
+    // records are the ones evicted.
+    expect(reloaded).toHaveLength(100)
     expect(reloaded.some(record => record.id === pinnedOldest.id)).toBe(true)
     expect(reloaded.some(record => record.id === records[1].id)).toBe(false)
+    expect(reloaded.some(record => record.id === records[2].id)).toBe(false)
   })
 
   it('round-trips pinned documents through their own storage key', () => {

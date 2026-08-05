@@ -4,7 +4,11 @@ import { createHomeDocumentActions } from './homeDocumentActions'
 import { useDocumentSelection } from './useDocumentSelection'
 import { getAndroidDocumentUserMessage, AndroidDocumentError } from '../../lib/androidDocuments'
 import { createUntitledDocument } from '../../lib/documentState'
-import { getRecentDocumentListItems } from '../../lib/recentDocuments'
+import {
+  getRecentDocumentListItems,
+  parseRecentDocuments,
+  serializeRecentDocuments,
+} from '../../lib/recentDocuments'
 import type { LocalDraftRecord } from '../../lib/localDrafts'
 import type { PinnedDocumentRecord } from '../../lib/pinnedDocuments'
 import type { RecentDocumentRecord } from '../../lib/recentDocuments'
@@ -253,6 +257,52 @@ describe('homeDocumentActions', () => {
       ),
     ).toBe(true)
     expect(options.homeNotice.value).toBeNull()
+  })
+
+  it('migrates the pin before the recents write so a cap-exempt pinned record survives a rename', async () => {
+    // 100 newer unpinned records + the pinned OLDEST record being renamed:
+    // it only survives the recents storage cap through pin protection.
+    // The rename changes the URI (and therefore the record id), and the
+    // renamed record keeps its old timestamps — persisting it while the
+    // pin still carried the OLD id would evict it as an ordinary oldest
+    // unpinned record on that very write.
+    const base = Date.parse('2026-07-01T00:00:00.000Z')
+    const newerRecords = Array.from({ length: 100 }, (_, index) => ({
+      ...androidRecord,
+      id: `android-document:content://test/doc-${index}.md`,
+      sourceUri: `content://test/doc-${index}.md`,
+      updatedAt: new Date(base + (index + 1) * 60_000).toISOString(),
+      lastOpenedAt: new Date(base + (index + 1) * 60_000).toISOString(),
+    }))
+    const { actions, options } = createActions({
+      selectedIds: [androidRecord.id],
+      androidDocuments: [androidRecord, ...newerRecords],
+      pins: [{ id: androidRecord.id, pinnedAt: '2026-07-09T00:00:00.000Z' }],
+    })
+    options.documentItems.value = getRecentDocumentListItems(
+      options.androidRecentDocuments.value,
+      Number.POSITIVE_INFINITY,
+    )
+    // Mirror the App wiring: the persist callback applies the pin-aware
+    // storage cap with the pin set AS IT IS at call time.
+    options.persistAndroidRecentDocuments.mockImplementation(
+      (records: RecentDocumentRecord[]) => {
+        options.androidRecentDocuments.value = parseRecentDocuments(
+          serializeRecentDocuments(
+            records.filter(record => record.kind === 'android-document'),
+            new Set(options.pinnedDocuments.value.map(pin => pin.id)),
+          ),
+        )
+      },
+    )
+
+    await actions.renameSelectedDocument(androidRecord.id, 'renamed')
+
+    const renamedId = 'android-document:content://test/renamed.md'
+    const storedIds = options.androidRecentDocuments.value.map(record => record.id)
+    expect(storedIds).toContain(renamedId)
+    expect(storedIds).not.toContain(androidRecord.id)
+    expect(options.pinnedDocuments.value.map(pin => pin.id)).toEqual([renamedId])
   })
 
   it('drops the entry and its pins when a rename keeps only temporary access', async () => {

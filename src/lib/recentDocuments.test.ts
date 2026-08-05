@@ -256,7 +256,7 @@ describe('recentDocuments', () => {
       }))
     }
 
-    it('evicts the oldest UNPINNED record when an upsert crosses the cap', () => {
+    it('evicts the oldest UNPINNED records when an upsert crosses the cap', () => {
       // The concrete data-loss sequence: 100 unpinned Android records +
       // 1 pinned oldest, then the user opens one more document. Pin-blind
       // recency eviction would drop the pinned record — whose only
@@ -279,14 +279,17 @@ describe('recentDocuments', () => {
         new Set([pinnedOldest.id]),
       )
 
-      expect(records).toHaveLength(101)
+      // The limit is a TOTAL cap: the pinned record claims a slot with
+      // priority, the newest unprotected records fill the remainder.
+      expect(records).toHaveLength(100)
       expect(records.some(record => record.id === pinnedOldest.id)).toBe(true)
       expect(records.some(record => record.id === incoming.id)).toBe(true)
-      // The oldest unpinned record is the one that leaves.
+      // The oldest unpinned records are the ones that leave.
       expect(records.some(record => record.id === existing[1].id)).toBe(false)
+      expect(records.some(record => record.id === existing[2].id)).toBe(false)
     })
 
-    it('serializes pinned records past the cap and parses them back uncapped', () => {
+    it('serializes a pinned beyond-cap record and parses it back uncapped', () => {
       const records = androidRecords(102)
       const pinnedOldest = records[0]
 
@@ -294,10 +297,30 @@ describe('recentDocuments', () => {
         serializeRecentDocuments(records, new Set([pinnedOldest.id])),
       )
 
-      // 100 newest unpinned + the pinned oldest survive serialization;
-      // the read side must not re-cap them (it has no pin knowledge).
-      expect(roundTripped).toHaveLength(101)
+      // The pinned oldest plus the 99 newest unpinned survive within the
+      // total cap; the read side must not re-cap them (it has no pin
+      // knowledge).
+      expect(roundTripped).toHaveLength(100)
       expect(roundTripped.some(record => record.id === pinnedOldest.id)).toBe(true)
+    })
+
+    it('never exceeds the total cap even at the pin ceiling', () => {
+      // Worst case: 50 pinned (the pin store's own ceiling) + 100
+      // unpinned. The advertised cap is a TOTAL — the store must hold
+      // 100 records (50 pinned + the 50 newest unpinned), not 150,
+      // preserving the headroom argument under Android <= 10's
+      // 128-persisted-grant limit.
+      const records = androidRecords(150)
+      const pinnedIds = new Set(records.slice(0, 50).map(record => record.id))
+
+      const roundTripped = parseRecentDocuments(
+        serializeRecentDocuments(records, pinnedIds),
+      )
+
+      expect(roundTripped).toHaveLength(100)
+      for (const id of pinnedIds) {
+        expect(roundTripped.some(record => record.id === id)).toBe(true)
+      }
     })
   })
 })

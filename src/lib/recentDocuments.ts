@@ -62,9 +62,13 @@ type StoredRecentDocumentRecord = Omit<RecentDocumentRecord, 'createdAt'> & {
 // stored Android recents (their records carry SAF URI references, which
 // must not grow unboundedly — the fine-grained grant lifecycle is #153).
 // 100 is double Word's own recent-list ceiling and leaves headroom under
-// Android 10-and-below's 128-grant system limit. Local drafts are NEVER
-// bounded by this: their storage is complete, and the home's "show all"
-// expansion reads past the cap (#151).
+// Android 10-and-below's 128-grant system limit. The limit is a TOTAL:
+// protected (pinned) records occupy slots inside it with priority and the
+// newest unprotected records fill the remainder, so the store never
+// exceeds 100 records (pins are separately capped at 50, so protection
+// alone can never overflow the total). Local drafts are NEVER bounded by
+// this: their storage is complete, and the home's "show all" expansion
+// reads past the cap (#151).
 const DEFAULT_RECENT_LIMIT = 100
 
 function isRecentDocumentKind(value: unknown): value is RecentDocumentKind {
@@ -181,7 +185,6 @@ export function normalizeRecentDocuments(
 ) {
   const seen = new Set<string>()
   const normalized: RecentDocumentRecord[] = []
-  let unprotectedCount = 0
 
   for (const rawRecord of [...records].sort(compareRecentDocuments)) {
     const record = normalizeRecentDocumentRecord(rawRecord)
@@ -194,25 +197,40 @@ export function normalizeRecentDocuments(
       continue
     }
 
-    // The cap evicts the oldest UNPROTECTED records; a protected record
-    // (a pinned document, whose only durable home may be this store) is
-    // kept regardless of age — pinning is explicit intent, and recency
-    // eviction silently deleting it would also orphan-prune its pin on
-    // the next startup. Growth stays bounded: at most `limit` unprotected
-    // records plus the (separately capped) pinned set.
-    const isProtected = protectedIds?.has(record.id) ?? false
-    if (!isProtected) {
-      if (unprotectedCount >= limit) {
-        continue
-      }
-      unprotectedCount++
-    }
-
     seen.add(key)
     normalized.push(record)
   }
 
-  return normalized
+  if (normalized.length <= limit) {
+    return normalized
+  }
+
+  // The limit is a TOTAL cap. Protected records (pinned documents, whose
+  // only durable home may be this store) claim their slots first and are
+  // kept regardless of age — pinning is explicit intent, and recency
+  // eviction silently deleting one would also orphan-prune its pin on
+  // the next startup. The NEWEST unprotected records fill the remaining
+  // slots, so the oldest unprotected record is the one evicted and the
+  // store never exceeds `limit`.
+  const protectedCount = protectedIds
+    ? normalized.filter(record => protectedIds.has(record.id)).length
+    : 0
+  let unprotectedAllowance = Math.max(0, limit - protectedCount)
+
+  const capped: RecentDocumentRecord[] = []
+  for (const record of normalized) {
+    const isProtected = protectedIds?.has(record.id) ?? false
+    if (!isProtected) {
+      if (unprotectedAllowance <= 0) {
+        continue
+      }
+      unprotectedAllowance--
+    }
+
+    capped.push(record)
+  }
+
+  return capped
 }
 
 export function parseRecentDocuments(value: string | null) {
