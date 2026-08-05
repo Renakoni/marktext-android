@@ -152,6 +152,10 @@ export class ScrollPage extends Parent {
      * handler and leaves no valid caret target. Callers that remove the
      * last block (the whole-table cut path, the mobile table commands)
      * restore the invariant through here.
+     *
+     * Precondition: the LOGICAL document is contentless. A pending
+     * progressive-mount tail counts as content — resolve the boundary with
+     * the mount-aware traversal first (Table.outsideContentInContext does).
      */
     resetToSingleEmptyParagraph(): Nullable<Content> {
         this.forEach((child) => {

@@ -188,12 +188,20 @@ class Table extends Parent {
      * starts at the table's parent's siblings (the traversal is designed
      * for content blocks), so the table's own neighbours are never seen —
      * resolve from the boundary content descendants instead, whose upward
-     * recursion crosses the table edge correctly. Must be called BEFORE the
-     * table is detached.
+     * recursion crosses the table edge correctly.
+     *
+     * The forward walk is progressive-mount aware (#4887): a table at the
+     * mount frontier has a pending logical successor that plain traversal
+     * misreads as the document end, which would steer the caret backward —
+     * or, with no mounted predecessor, let callers mistake a document that
+     * still has a pending tail for a contentless one. The backward walk
+     * needs no resolution: everything before a mounted table is mounted.
+     * Must be called BEFORE the table is detached; returning null therefore
+     * proves the LOGICAL document holds no content outside the table.
      */
     outsideContentInContext(): Nullable<Content> {
         return (
-            this.lastContentInDescendant()?.nextContentInContext()
+            this.lastContentInDescendant()?.resolveNextContentInContext()
             ?? this.firstContentInDescendant()?.previousContentInContext()
             ?? null
         );

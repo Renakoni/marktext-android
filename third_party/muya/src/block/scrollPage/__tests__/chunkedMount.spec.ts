@@ -618,6 +618,70 @@ describe('scrollPage chunked mount', () => {
         muya.destroy();
     });
 
+    it('outside-neighbour resolution at the frontier crosses into the pending tail (review: table delete)', () => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const parts = Array.from({ length: SECTIONS }, (_, i) => `Paragraph ${i}`);
+        parts[550] = '| a | b |\n| - | - |\n| c | d |';
+        const muya = new Muya(host, {
+            markdown: `${parts.join('\n\n')}\n`,
+        } as ConstructorParameters<typeof Muya>[1]);
+        muya.init();
+        bootedHosts.push(muya.domNode);
+
+        // Put the mount frontier exactly at the table: its logical
+        // successor exists only in the pending tail.
+        muya.editor.scrollPage!.ensureMountedThrough(550);
+        const table = muya.editor.scrollPage!.find(550) as unknown as {
+            outsideContentInContext: () => { text: string } | null;
+            removeRow: (offset: number) => { text: string } | null | undefined;
+        };
+
+        // The forward resolution must materialize the pending successor —
+        // not fall back to the mounted predecessor, and never let callers
+        // misread the pending tail as a contentless document.
+        expect(table.outsideContentInContext()?.text).toBe('Paragraph 551');
+
+        // The whole-table removal fallback inherits it: killing the table
+        // through its rows seats the caret on the resolved next paragraph.
+        table.removeRow(1);
+        const caret = table.removeRow(0);
+        expect(caret?.text).toBe('Paragraph 551');
+        muya.editor.jsonState.flush();
+        expect(muya.editor.jsonState.rawState).toHaveLength(SECTIONS - 1);
+        vi.runAllTimers();
+        expectDomMatchesState(muya);
+        muya.destroy();
+    });
+
+    it('outside-neighbour resolution at the frontier survives a last-column removal (review: table delete)', () => {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        const parts = Array.from({ length: SECTIONS }, (_, i) => `Paragraph ${i}`);
+        parts[550] = '| a |\n| - |\n| c |';
+        const muya = new Muya(host, {
+            markdown: `${parts.join('\n\n')}\n`,
+        } as ConstructorParameters<typeof Muya>[1]);
+        muya.init();
+        bootedHosts.push(muya.domNode);
+
+        muya.editor.scrollPage!.ensureMountedThrough(550);
+        const table = muya.editor.scrollPage!.find(550) as unknown as {
+            removeColumn: (offset: number) => { text: string } | null | undefined;
+        };
+
+        // A single-column table: removing the only column takes the
+        // whole-table path and must seat the caret on the pending
+        // successor, not read end-of-document.
+        const caret = table.removeColumn(0);
+        expect(caret?.text).toBe('Paragraph 551');
+        muya.editor.jsonState.flush();
+        expect(muya.editor.jsonState.rawState).toHaveLength(SECTIONS - 1);
+        vi.runAllTimers();
+        expectDomMatchesState(muya);
+        muya.destroy();
+    });
+
     it('shift-enter out of a code block at the frontier navigates into the pending tail (review: code exit)', () => {
         const host = document.createElement('div');
         document.body.appendChild(host);
