@@ -633,20 +633,26 @@ describe('scrollPage chunked mount', () => {
         // successor exists only in the pending tail.
         muya.editor.scrollPage!.ensureMountedThrough(550);
         const table = muya.editor.scrollPage!.find(550) as unknown as {
-            outsideContentInContext: () => { text: string } | null;
             removeRow: (offset: number) => { text: string } | null | undefined;
         };
 
-        // The forward resolution must materialize the pending successor —
-        // not fall back to the mounted predecessor, and never let callers
-        // misread the pending tail as a contentless document.
-        expect(table.outsideContentInContext()?.text).toBe('Paragraph 551');
+        // An ORDINARY row delete keeps the caret inside the table, so it
+        // must not pay for the outside resolution — the mount frontier
+        // stays where it is (mount-aware resolution can synchronously
+        // materialize heavy blocks, the stall progressive mounting exists
+        // to avoid).
+        const mountedBefore = mountedParagraphs(muya);
+        const survivor = table.removeRow(1);
+        expect(survivor?.text).toBe('a');
+        expect(mountedParagraphs(muya)).toBe(mountedBefore);
 
-        // The whole-table removal fallback inherits it: killing the table
-        // through its rows seats the caret on the resolved next paragraph.
-        table.removeRow(1);
+        // Removing the LAST row takes the whole-table path: the forward
+        // resolution must materialize the pending successor — not fall
+        // back to the mounted predecessor, and never let callers misread
+        // the pending tail as a contentless document.
         const caret = table.removeRow(0);
         expect(caret?.text).toBe('Paragraph 551');
+        expect(mountedParagraphs(muya)).toBe(mountedBefore + 1);
         muya.editor.jsonState.flush();
         expect(muya.editor.jsonState.rawState).toHaveLength(SECTIONS - 1);
         vi.runAllTimers();

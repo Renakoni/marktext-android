@@ -220,9 +220,13 @@ class Table extends Parent {
         // block OUTSIDE the table so the caret never lands inside the
         // about-to-be-detached table itself.
         const survivor = (row.next as TableRow | null) ?? (row.prev as TableRow | null);
-        // Always grab the outside-of-table fallback as well, in case the
-        // whole table is going away.
-        const outsideContent = this.outsideContentInContext();
+        // The outside-of-table fallback is only needed when the whole table
+        // is going away — and since the forward resolution became
+        // mount-aware it is no longer cheap (it can synchronously extend
+        // the mount frontier), so an ordinary row delete must not pay for
+        // it. Still resolved BEFORE the detach: the boundary cells must be
+        // attached for the walk to cross the table edge.
+        const outsideContent = survivor == null ? this.outsideContentInContext() : null;
 
         row.remove();
 
