@@ -145,6 +145,35 @@ export class ScrollPage extends Parent {
         this._mountBlocks(state);
     }
 
+    /**
+     * Replace the whole document with a single empty paragraph and seat the
+     * caret in it. The only supported empty-document state is exactly one
+     * empty paragraph — a zero-child page breaks the blank-area click
+     * handler and leaves no valid caret target. Callers that remove the
+     * last block (the whole-table cut path, the mobile table commands)
+     * restore the invariant through here.
+     *
+     * Precondition: the LOGICAL document is contentless. A pending
+     * progressive-mount tail counts as content — resolve the boundary with
+     * the mount-aware traversal first (Table.outsideContentInContext does).
+     */
+    resetToSingleEmptyParagraph(): Nullable<Content> {
+        this.forEach((child) => {
+            (child as Parent).remove();
+        });
+
+        const paragraphBlock = ScrollPage.loadBlock('paragraph').create(this.muya, {
+            name: 'paragraph',
+            text: '',
+        });
+        this.append(paragraphBlock, 'user');
+
+        const cursorBlock = paragraphBlock.firstContentInDescendant();
+        cursorBlock?.setCursor(0, 0, true);
+
+        return cursorBlock ?? null;
+    }
+
     // Building every block's DOM subtree up front is the dominant open cost on
     // large documents (#4887): parse and state are linear, but a 300k-word file
     // still means ~100k block nodes constructed in one synchronous task. Mount

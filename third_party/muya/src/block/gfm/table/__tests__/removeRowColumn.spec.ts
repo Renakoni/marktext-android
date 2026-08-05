@@ -102,11 +102,11 @@ function makeTableInner(rowCount: number, cellCount: number): IFakeTableInner {
     };
 }
 
-// Stubbed return type for the contextual neighbour lookups; matches the
-// production `Table.nextContentInContext` signature (`Nullable<Content>`)
+// Stubbed return type for the contextual neighbour lookup; matches the
+// production `Table.outsideContentInContext` signature (`Nullable<Content>`)
 // so per-test overrides can return a structurally-typed fake without an
 // `as unknown as null` lie.
-type TNeighbourReturn = ReturnType<Table['nextContentInContext']>;
+type TNeighbourReturn = ReturnType<Table['outsideContentInContext']>;
 
 function makeFakeTable(rowCount: number, cellCount: number) {
     const inner = makeTableInner(rowCount, cellCount);
@@ -115,12 +115,12 @@ function makeFakeTable(rowCount: number, cellCount: number) {
         columnCount: cellCount,
         remove: vi.fn(),
         // The whole-table-removed branch (marktext 6293d408 cover-the-edge
-        // case) calls `nextContentInContext()` / `previousContentInContext()`
-        // on `this` before `this.remove()`. Stub both to return null in the
-        // base fixture; specific tests override to assert the outside-
-        // content fallback.
-        nextContentInContext: vi.fn((): TNeighbourReturn => null),
-        previousContentInContext: vi.fn((): TNeighbourReturn => null),
+        // case) calls `outsideContentInContext()` on `this` before
+        // `this.remove()`. Stub it to return null in the base fixture;
+        // specific tests override to assert the outside-content fallback.
+        // The next-else-previous preference lives INSIDE the production
+        // method and is covered on a real tree in outsideContent.spec.ts.
+        outsideContentInContext: vi.fn((): TNeighbourReturn => null),
         inner,
     };
 }
@@ -167,14 +167,14 @@ describe('table.removeRow — returns surviving cell content for cursor placemen
         expect(fake.remove).toHaveBeenCalledTimes(1);
     });
 
-    it('returns the next outside-of-table content when the only row is removed (Copilot PR-7b review follow-up)', () => {
+    it('returns the outside-of-table content when the only row is removed (Copilot PR-7b review follow-up)', () => {
         const fake = makeFakeTable(1, 3);
         const outsideContent = { setCursor: vi.fn() };
         // The outsideContent only implements `setCursor` — enough for the
         // production code, which only calls setCursor on the returned
         // value. Cast to the real production return type rather than `null`
         // so the stub stays honest about what it's pretending to be.
-        fake.nextContentInContext = vi.fn(() => outsideContent as unknown as TNeighbourReturn);
+        fake.outsideContentInContext = vi.fn(() => outsideContent as unknown as TNeighbourReturn);
 
         const result = Table.prototype.removeRow.call(
             fake as unknown as Table,
@@ -183,20 +183,11 @@ describe('table.removeRow — returns surviving cell content for cursor placemen
 
         expect(result).toBe(outsideContent);
         expect(fake.remove).toHaveBeenCalledTimes(1);
-        expect(fake.nextContentInContext).toHaveBeenCalled();
-    });
-
-    it('falls back to previousContentInContext when there is no next content outside the table', () => {
-        const fake = makeFakeTable(1, 3);
-        const prevOutside = { setCursor: vi.fn() };
-        fake.previousContentInContext = vi.fn(() => prevOutside as unknown as TNeighbourReturn);
-
-        const result = Table.prototype.removeRow.call(
-            fake as unknown as Table,
-            0,
-        );
-
-        expect(result).toBe(prevOutside);
+        // Captured BEFORE the detach — afterwards the boundary contents are
+        // gone from the tree.
+        const captureOrder = fake.outsideContentInContext.mock.invocationCallOrder[0];
+        const removeOrder = fake.remove.mock.invocationCallOrder[0];
+        expect(captureOrder).toBeLessThan(removeOrder);
     });
 
     it('returns undefined and does nothing when the offset is out of range', () => {
@@ -259,14 +250,14 @@ describe('table.removeColumn — returns surviving cell content for cursor place
         expect(result).toBeNull();
     });
 
-    it('returns the next outside-of-table content when the only column is removed (Copilot PR-7b review follow-up)', () => {
+    it('returns the outside-of-table content when the only column is removed (Copilot PR-7b review follow-up)', () => {
         const fake = makeFakeTable(2, 1);
         const outsideContent = { setCursor: vi.fn() };
         // The outsideContent only implements `setCursor` — enough for the
         // production code, which only calls setCursor on the returned
         // value. Cast to the real production return type rather than `null`
         // so the stub stays honest about what it's pretending to be.
-        fake.nextContentInContext = vi.fn(() => outsideContent as unknown as TNeighbourReturn);
+        fake.outsideContentInContext = vi.fn(() => outsideContent as unknown as TNeighbourReturn);
 
         const result = Table.prototype.removeColumn.call(
             fake as unknown as Table,

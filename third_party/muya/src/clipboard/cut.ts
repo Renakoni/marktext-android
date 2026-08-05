@@ -38,22 +38,7 @@ function isSelectAll(
  * caret in it.
  */
 function resetToEmptyParagraph(clipboard: Clipboard): void {
-    const { scrollPage } = clipboard;
-    if (scrollPage == null)
-        return;
-
-    scrollPage.forEach((child) => {
-        (child as Parent).remove();
-    });
-
-    const newParagraphBlock = ScrollPage.loadBlock('paragraph').create(
-        clipboard.muya,
-        { name: 'paragraph', text: '' },
-    );
-    scrollPage.append(newParagraphBlock, 'user');
-
-    const cursorBlock = newParagraphBlock.firstContentInDescendant();
-    cursorBlock?.setCursor(0, 0, true);
+    clipboard.scrollPage?.resetToSingleEmptyParagraph();
 }
 
 // Seat the caret and re-evaluate the block's type from its new text — a cut can
@@ -264,10 +249,15 @@ function selectedTableCells(
 // a single empty paragraph when the table was the only block).
 function removeWholeTable(clipboard: Clipboard, table: Table): void {
     clipboard.selection.table.clear();
-    const outsideContent
-        = table.nextContentInContext() ?? table.previousContentInContext();
+    // Resolved through the boundary content descendants: the plain
+    // `nextContentInContext` on the table itself starts at the table's
+    // PARENT's siblings and never sees the table's own neighbours.
+    const outsideContent = table.outsideContentInContext();
     table.remove();
-    if (clipboard.scrollPage?.length() === 0)
+    // Contentless is the empty-document case even when empty container
+    // skeletons survive at the top level (a table can be a list item's
+    // only child); counting top-level children misses that shape.
+    if (clipboard.scrollPage != null && clipboard.scrollPage.firstContentInDescendant() == null)
         resetToEmptyParagraph(clipboard);
     else
         outsideContent?.setCursor(0, 0, true);

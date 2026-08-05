@@ -90,6 +90,11 @@ declare module '@muyajs/core' {
        * next recorded operation starts its own undo entry.
        */
       history: { cutoff(): void }
+      /**
+       * The live block-tree root. Kept opaque here — callers narrow it to
+       * the members they use (e.g. the table commands' empty-page recovery).
+       */
+      scrollPage: unknown
     }
     constructor(element: HTMLElement, options?: Record<string, unknown>)
     init(): void

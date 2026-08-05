@@ -50,6 +50,66 @@ describe('useEditorToolbar', () => {
     expect(toolbar.editorToolbarPanel.value).toBe('markdown')
   })
 
+  it('switches to the table panel on caret entry and restores the previous panel on exit', () => {
+    const toolbar = useEditorToolbar()
+
+    toolbar.setEditorToolbarPanel('insert')
+    toolbar.setCaretInTable(true)
+
+    expect(toolbar.caretInTable.value).toBe(true)
+    expect(toolbar.editorToolbarPanel.value).toBe('table')
+
+    toolbar.setCaretInTable(false)
+
+    expect(toolbar.caretInTable.value).toBe(false)
+    expect(toolbar.editorToolbarPanel.value).toBe('insert')
+  })
+
+  it('keeps a manual panel choice made inside the table on exit', () => {
+    const toolbar = useEditorToolbar()
+
+    toolbar.setCaretInTable(true)
+    toolbar.setEditorToolbarPanel('markdown')
+    toolbar.setCaretInTable(false)
+
+    expect(toolbar.editorToolbarPanel.value).toBe('markdown')
+  })
+
+  it('ignores repeated caret state reports without disturbing the snapshot', () => {
+    const toolbar = useEditorToolbar()
+
+    toolbar.setEditorToolbarPanel('paragraph')
+    toolbar.setCaretInTable(true)
+    toolbar.setCaretInTable(true)
+    toolbar.setCaretInTable(false)
+    toolbar.setCaretInTable(false)
+
+    expect(toolbar.editorToolbarPanel.value).toBe('paragraph')
+  })
+
+  it('lets the table panel survive a forget-panels expand while the caret is in a table', () => {
+    const toolbar = useEditorToolbar()
+
+    toolbar.applyEditorToolbarSettings({ defaultPanel: 'format', rememberPanel: false })
+    toolbar.setCaretInTable(true)
+    toolbar.toggleEditorToolbar()
+
+    expect(toolbar.editorToolbarPanel.value).toBe('table')
+  })
+
+  it('applies a settings change made mid-table underneath the table panel', () => {
+    const toolbar = useEditorToolbar()
+
+    toolbar.setCaretInTable(true)
+    toolbar.applyEditorToolbarSettings({ defaultPanel: 'markdown', rememberPanel: false })
+
+    expect(toolbar.editorToolbarPanel.value).toBe('table')
+
+    toolbar.setCaretInTable(false)
+
+    expect(toolbar.editorToolbarPanel.value).toBe('markdown')
+  })
+
   it('opens and clears link sheet state without leaking stale values', () => {
     const toolbar = useEditorToolbar()
 

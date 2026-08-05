@@ -182,6 +182,31 @@ class Table extends Parent {
         return firstCellInNewColumn!.firstChild as TableCellContent;
     }
 
+    /**
+     * The nearest content block OUTSIDE the table: the one right after it,
+     * else the one right before. `nextContentInContext` on the table ITSELF
+     * starts at the table's parent's siblings (the traversal is designed
+     * for content blocks), so the table's own neighbours are never seen —
+     * resolve from the boundary content descendants instead, whose upward
+     * recursion crosses the table edge correctly.
+     *
+     * The forward walk is progressive-mount aware (#4887): a table at the
+     * mount frontier has a pending logical successor that plain traversal
+     * misreads as the document end, which would steer the caret backward —
+     * or, with no mounted predecessor, let callers mistake a document that
+     * still has a pending tail for a contentless one. The backward walk
+     * needs no resolution: everything before a mounted table is mounted.
+     * Must be called BEFORE the table is detached; returning null therefore
+     * proves the LOGICAL document holds no content outside the table.
+     */
+    outsideContentInContext(): Nullable<Content> {
+        return (
+            this.lastContentInDescendant()?.resolveNextContentInContext()
+            ?? this.firstContentInDescendant()?.previousContentInContext()
+            ?? null
+        );
+    }
+
     removeRow(offset: number): Nullable<Content> {
         const inner = this.firstChild as TableInner;
         const row = inner.find(offset);
@@ -195,11 +220,13 @@ class Table extends Parent {
         // block OUTSIDE the table so the caret never lands inside the
         // about-to-be-detached table itself.
         const survivor = (row.next as TableRow | null) ?? (row.prev as TableRow | null);
-        // Always grab the outside-of-table fallback as well, in case the
-        // whole table is going away. `nextContentInContext` / `prev` walk
-        // out of the table by design.
-        const outsideContent
-            = this.nextContentInContext() ?? this.previousContentInContext();
+        // The outside-of-table fallback is only needed when the whole table
+        // is going away — and since the forward resolution became
+        // mount-aware it is no longer cheap (it can synchronously extend
+        // the mount frontier), so an ordinary row delete must not pay for
+        // it. Still resolved BEFORE the detach: the boundary cells must be
+        // attached for the walk to cross the table edge.
+        const outsideContent = survivor == null ? this.outsideContentInContext() : null;
 
         row.remove();
 
@@ -223,8 +250,7 @@ class Table extends Parent {
             // Same outside-of-table fallback as removeRow when the whole
             // table is removed — never leave the caret inside a detached
             // subtree.
-            const outsideContent
-                = this.nextContentInContext() ?? this.previousContentInContext();
+            const outsideContent = this.outsideContentInContext();
             this.remove();
             return outsideContent ?? null;
         }

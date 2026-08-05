@@ -40,6 +40,11 @@ import {
 import { openExternalUrl } from './lib/externalLinks'
 import { createDocumentOutline, waitForViewportSettle } from './features/editor/documentOutline'
 import { createDocumentSearch } from './features/editor/documentSearch'
+import {
+  resolveTableContext,
+  runTableCommand,
+  type TableCommandId,
+} from './features/editor/tableCommands'
 import { createSelectionToolbarLongPress } from './features/editor/selectionToolbarLongPress'
 import type { SelectionToolbarCommandId } from './features/editor/selectionToolbar'
 import { createCaretFollow } from './features/editor/caretFollow'
@@ -236,6 +241,8 @@ const {
   editorMenuOpen,
   editorToolbarExpanded,
   editorToolbarPanel,
+  caretInTable: editorCaretInTable,
+  setCaretInTable: setEditorCaretInTable,
   linkSheetOpen,
   linkText,
   linkUrl,
@@ -522,7 +529,10 @@ const {
   createMuyaEditor,
   destroyMuyaEditor,
   syncMarkdown: nextStatus => syncMarkdown(nextStatus),
-  onEditorSelectionChange: caretFollow.onEditorSelectionChange,
+  onEditorSelectionChange: (...args: unknown[]) => {
+    caretFollow.onEditorSelectionChange(...args)
+    refreshEditorTableCaretState()
+  },
   onEditorFocus: () => {
     status.value =
       documentState.value.autosaveTarget === 'android-document' &&
@@ -1128,6 +1138,33 @@ function syncAfterToolbarCommand(beforeMarkdown: string) {
     onEdited: () => syncMarkdown('Edited'),
     onUnchanged: () => syncDocumentFromEditor(documentState.value.isDirty),
   })
+}
+
+// The contextual table panel follows the caret (issue #144): Muya's
+// selection-change drives entry/exit, and the editor going away always
+// counts as an exit so the panel snapshot is restored for the next session.
+function refreshEditorTableCaretState() {
+  setEditorCaretInTable(
+    editorReady.value && resolveTableContext(getEditor()) !== null,
+  )
+}
+
+watch(editorReady, ready => {
+  if (!ready) {
+    setEditorCaretInTable(false)
+  }
+})
+
+function runEditorTableCommand(commandId: TableCommandId) {
+  if (!editorReady.value) {
+    return
+  }
+
+  runTableCommand(getEditor(), commandId)
+  // Deleting the row/column/table that held the caret can move it out of
+  // any table; recompute synchronously instead of waiting for the next
+  // selection-change tick.
+  refreshEditorTableCaretState()
 }
 
 function runEditorToolbarCommand(commandId: MobileCommandId, restoreRange: Range | null = null) {
@@ -2052,6 +2089,7 @@ onBeforeUnmount(() => {
     :toolbar-expanded="editorToolbarExpanded"
     :toolbar-panel="editorToolbarPanel"
     :toolbar-compact="toolbarSettings.compact"
+    :toolbar-caret-in-table="editorCaretInTable"
     :quick-toolbar-commands="toolbarSettings.quickCommands"
     :word-count="wordCount"
     :character-count="characterCount"
@@ -2120,6 +2158,7 @@ onBeforeUnmount(() => {
     @save-to-device="saveLocalDraftToAndroidDocument"
     @save-copy="saveAndroidDocumentCopy"
     @run-toolbar-command="runEditorToolbarCommand"
+    @run-table-command="runEditorTableCommand"
     @run-selection-command="runEditorSelectionCommand"
     @dismiss-selection="finishSelectionToolbarOutsideTap"
     @open-link="openEditorLink"
