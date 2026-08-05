@@ -139,6 +139,54 @@ test('a table command works again right after undoing the previous one', async (
   await expect(tableRows(page)).toHaveCount(3)
 })
 
+test('a tail insert undo keeps the table context (insert below the last row)', async ({
+  page,
+}) => {
+  // Review gap on #175: inserting BELOW the last row parks the caret at a
+  // tail index the undo removes, so the recorded post-op path stopped
+  // resolving and the context fell to the document head. Priming records
+  // the before-command cell instead.
+  await openTableDraft(page)
+
+  await page.getByTestId('toolbar-expand-button').click()
+  await tapCell(page, 'two')
+  await page.getByTestId('toolbar-table-table-insert-row-below').click()
+  await expect(tableRows(page)).toHaveCount(3)
+
+  await page.getByTestId('toolbar-command-edit.undo').click()
+  await expect(tableRows(page)).toHaveCount(2)
+
+  // Context intact: the panel still shows the table strip and the repeat
+  // inserts again.
+  await expect(page.getByTestId('toolbar-table-table-insert-row-below')).toBeVisible()
+  await page.getByTestId('toolbar-table-table-insert-row-below').click()
+  await expect(tableRows(page)).toHaveCount(3)
+})
+
+test('undoing a table delete puts the caret back into the restored table', async ({ page }) => {
+  // Device-reported: delete the table (caret lands on the following
+  // prose), undo — the table came back but the caret teleported to the
+  // DOCUMENT HEAD. The command primes the entry with the true
+  // before-command selection, so the undo restores the caret into the
+  // cell it came from.
+  await openTableDraft(page)
+
+  await page.getByTestId('toolbar-expand-button').click()
+  await tapCell(page, 'one')
+  // Pin the caret to the cell start so the restored offset is exact.
+  await page.keyboard.press('Home')
+  await page.getByTestId('toolbar-table-table-delete-table').click()
+  await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(0)
+
+  await page.getByTestId('toolbar-command-edit.undo').click()
+  await expect(tableRows(page)).toHaveCount(2)
+
+  await page.keyboard.type('X')
+  await expect(tableRows(page).nth(1)).toContainText('Xone')
+  // Nowhere near the document head.
+  await expect(page.getByTestId('editor-host')).not.toContainText('X# Table probe')
+})
+
 test('removing the last row or the whole table drops the caret outside and restores the panel', async ({
   page,
 }) => {

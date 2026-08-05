@@ -461,11 +461,29 @@ export class Editor {
         // so query against a copy and leave the caller's selection untouched.
         const cursorBlock = this.scrollPage?.queryBlock([...anchor.path]);
 
+        // A recorded path can stop resolving after an op shifted the
+        // top-level indices — undoing a whole-table delete re-inserts the
+        // table exactly where the recorded paragraph path points, and the
+        // paragraph-shaped remainder misses inside it. Fall back to the
+        // LONGEST RESOLVABLE PREFIX of the path and land on its nearest
+        // content with a collapsed caret: local to the edit, instead of the
+        // old `focus()` fallback teleporting the caret to the document head.
+        const toContent = (block: ReturnType<NonNullable<typeof this.scrollPage>['queryBlock']>) =>
+            block == null ? null : block.isContent() ? block : block.firstContentInDescendant();
+
+        let cursorContent = toContent(cursorBlock);
+        for (let length = anchor.path.length - 1; length > 0 && cursorContent == null; length--)
+            cursorContent = toContent(this.scrollPage?.queryBlock(anchor.path.slice(0, length)));
+
         const begin = Math.min(anchor.offset, focus.offset);
         const end = Math.max(anchor.offset, focus.offset);
 
-        if (isSelectionInSameBlock && cursorBlock && cursorBlock.isContent()) {
-            cursorBlock.setCursor(begin, end, true);
+        if (isSelectionInSameBlock && cursorContent) {
+            if (cursorContent === cursorBlock)
+                cursorContent.setCursor(begin, end, true);
+            else
+                cursorContent.setCursor(0, 0, true);
+
             return;
         }
 
@@ -474,11 +492,13 @@ export class Editor {
         // nodes from the previous tree — resolving them would set the native DOM
         // range onto a detached node and crash the next `getSelection()` read.
         // Re-resolve the caret from the (cloned) path against the fresh tree;
-        // fall back to focusing the first content block when the saved path no
-        // longer points at a content leaf (e.g. a paragraph became a table).
+        // fall back to the nearest content at that path, then to focusing the
+        // first content block of the document.
         if (treeRebuilt) {
-            if (cursorBlock && cursorBlock.isContent())
-                cursorBlock.setCursor(begin, end, true);
+            if (cursorContent === cursorBlock && cursorContent)
+                cursorContent.setCursor(begin, end, true);
+            else if (cursorContent)
+                cursorContent.setCursor(0, 0, true);
             else
                 this.focus();
 
@@ -491,7 +511,10 @@ export class Editor {
         const anchorBlock = this.scrollPage?.queryBlock([...anchor.path]);
         const focusBlock = this.scrollPage?.queryBlock([...focus.path]);
         if (!anchorBlock || !anchorBlock.isContent() || !focusBlock || !focusBlock.isContent()) {
-            this.focus();
+            if (cursorContent)
+                cursorContent.setCursor(0, 0, true);
+            else
+                this.focus();
             return;
         }
 

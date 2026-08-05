@@ -91,7 +91,7 @@ function createFakeEditor({
     offset: vi.fn(),
   }
 
-  const history = { cutoff: vi.fn() }
+  const history = { cutoff: vi.fn(), primeRecordSelection: vi.fn() }
   const jsonState = { flush: vi.fn() }
   const editor = {
     editor: { activeContentBlock: content, history, jsonState, scrollPage },
@@ -184,6 +184,11 @@ describe('runTableCommand', () => {
     runTableCommand(harness.editor, 'table-insert-row-below')
 
     expect(harness.insertedCaret.setCursor).toHaveBeenCalledWith(0, 0, true)
+    // The before-command selection is primed BEFORE the mutation, so the
+    // entry's undo restores the caret where the user actually was.
+    const primeOrder = harness.history.primeRecordSelection.mock.invocationCallOrder[0]
+    const mutateOrder = harness.table.insertRow.mock.invocationCallOrder[0]
+    expect(primeOrder).toBeLessThan(mutateOrder)
     // cutoff -> mutate -> flush -> cutoff: one undo step per tap, pinned
     // engine-side in Muya's search.spec undo-boundary contract.
     expect(harness.history.cutoff).toHaveBeenCalledTimes(2)

@@ -108,6 +108,7 @@ class History {
     private _lastRecorded: number = 0;
     private _lastInputKind: Nullable<TInputKind> = null;
     private _ignoreChange: boolean = false;
+    private _primedSelection: Nullable<IHistorySelection> = null;
     private _selectionStack: (Nullable<IHistorySelection>)[] = [];
     private _stack: IStack = {
         undo: [],
@@ -196,6 +197,7 @@ class History {
         this._selectionStack = [];
         this._lastRecorded = 0;
         this._ignoreChange = false;
+        this._primedSelection = null;
     }
 
     getHistory(): ISerializedHistory {
@@ -283,6 +285,18 @@ class History {
         this._lastRecorded = 0;
     }
 
+    /**
+     * Stamp the NEXT recorded operation with the CURRENT selection instead
+     * of the selection-stack approximation (which lags one record behind).
+     * Boundary-cut commands — the mobile table panel — call this right
+     * before mutating, so undoing e.g. a whole-table delete puts the caret
+     * back INTO the restored table where the user actually was, rather
+     * than restoring a shifted path that lands on a non-content block.
+     */
+    primeRecordSelection() {
+        this._primedSelection = this._selection.getSelection();
+    }
+
     markInputBoundary(inputType: string, data: Nullable<string>): void {
         const kind = classifyInputKind(inputType);
         if (kind == null)
@@ -314,7 +328,11 @@ class History {
         if (op.length === 0)
             return;
 
-        let selection = this._getLastSelection();
+        // The stack bookkeeping must advance regardless, so later records
+        // keep their previous-selection semantics.
+        const stackSelection = this._getLastSelection();
+        let selection = this._primedSelection ?? stackSelection;
+        this._primedSelection = null;
         this._stack.redo = [];
         let undoOperation = json1.type.invertWithDoc(op, asDoc(doc));
 
