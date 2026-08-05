@@ -37,23 +37,30 @@ function highlight(code: string, lang: string) {
 
 export interface IHighlightHtmlOptions {
     /**
-     * Replace `\n` INSIDE raw HTML tokens with this sentinel string
+     * Replace `\n` INSIDE markdown TEXT tokens with this sentinel string
      * (#3676, #4951). The DOM-stage export pass converts authored soft
      * breaks to `<br>` but must leave raw-HTML formatting whitespace
      * alone — and after parsing, the two are indistinguishable in the
      * DOM. The token layer contributes the one bit only it knows ("this
-     * text came from a raw HTML token") with NO tag tracking of any
-     * kind; the exporter swaps the sentinel back to `\n` string-wide
-     * after the DOM pass. Export-only: the editor and the conformance
-     * renderer never pass it, so their output stays spec-canonical.
+     * newline is markdown text, not raw HTML"), and it marks the SAFE
+     * side of that line: text-token content is escaped text by
+     * construction, so the sentinel can never land in tag syntax, an
+     * attribute, or a comment — raw HTML flows through marked, DOMPurify
+     * and the HTML parser byte-identical to a sentinel-free render.
+     * (The inverse marking — sentinels INSIDE raw HTML tokens — rewrote
+     * markup text and died three ways at once: it corrupted multiline
+     * tags, leaked into comment data, and let sanitized-inert URI values
+     * re-materialize as dangerous ones after DOMPurify.) Export-only:
+     * the editor and the conformance renderer never pass it, so their
+     * output stays spec-canonical.
      */
-    rawNewlineSentinel?: string;
+    softBreakSentinel?: string;
 }
 
 export function getHighlightHtml(
     src: string,
     options: ILexOption = {},
-    { rawNewlineSentinel }: IHighlightHtmlOptions = {},
+    { softBreakSentinel }: IHighlightHtmlOptions = {},
 ) {
     options = Object.assign({}, DEFAULT_OPTIONS, options);
     const { footnote, frontMatter, math, isGitlabCompatibilityEnabled, superSubScript }
@@ -85,14 +92,18 @@ export function getHighlightHtml(
         );
     }
 
-    if (rawNewlineSentinel) {
+    if (softBreakSentinel) {
         marked.use({
-            renderer: {
-                // marked v18's base html renderer is `({ text }) => text` for
-                // block and inline raw-HTML tokens alike.
-                html(token) {
-                    return token.text.replace(/\n/g, rawNewlineSentinel);
-                },
+            // Mark soft breaks where they live: leaf `text` tokens. Raw
+            // `html` tokens, code, codespans, and every extension token
+            // keep their own types, so nothing but escaped markdown text
+            // is ever touched. (The renderer escapes token.text — the
+            // sentinel is alphanumeric-plus-hyphen, so escaping preserves
+            // it.) This instance is per-call, so the closure over this
+            // render's sentinel cannot chain into the next render.
+            walkTokens(token) {
+                if (token.type === 'text' && token.text.includes('\n'))
+                    token.text = token.text.replace(/\n/g, softBreakSentinel);
             },
         });
     }

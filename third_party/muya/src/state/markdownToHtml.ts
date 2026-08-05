@@ -27,15 +27,20 @@ const CDN_STYLESHEET_LINKS = `  <!-- https://cdnjs.com/libraries/github-markdown
   <!-- https://cdnjs.com/libraries/prism -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/themes/prism.min.css" integrity="sha512-/mZ1FHPkg6EKcxo0fKXF51ak6Cr2ocgDi5ytaTBjsQZIH/RNs6GF6+oId/vPe3eJB836T36nXwVh/WBl/cWT4w==" crossorigin="anonymous" referrerpolicy="no-referrer" />`;
 
-// Sentinel standing in for `\n` INSIDE raw HTML tokens through the
+// Sentinel standing in for `\n` INSIDE markdown text tokens through the
 // sanitize + DOM stage (#3676): raw-HTML formatting whitespace and
-// authored soft breaks are indistinguishable once parsed, so the marked
-// renderer marks raw newlines before parsing and `renderHtml` swaps them
-// back ON THE DOM, before serialization (see _restoreRawNewlines for the
-// security contract). The marker is freshly RANDOM per render, so
-// authored content cannot collide with it — not even through numeric
-// character references, which no input-scan check could enumerate.
-function pickRawNewlineSentinel(): string {
+// authored soft breaks are indistinguishable once parsed, so the token
+// layer marks the newlines that are provably markdown text — and ONLY
+// those. Raw HTML is never rewritten in any way: DOMPurify judges its
+// real attribute values (its URI policy sees `\njavascript:` as
+// authored), the HTML parser sees its real tag-syntax whitespace, and
+// comments keep their real data. The sentinel lives exclusively inside
+// escaped text content, where the DOM pass resolves every occurrence to
+// either `<br>` or `\n` — a total function, so none can leak into the
+// output. The marker is freshly RANDOM per render, so authored content
+// cannot collide with it — not even through numeric character
+// references, which no input-scan check could enumerate.
+function pickSoftBreakSentinel(): string {
     const bytes = new Uint8Array(16);
     if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
         crypto.getRandomValues(bytes);
@@ -45,7 +50,7 @@ function pickRawNewlineSentinel(): string {
             bytes[i] = Math.floor(Math.random() * 256);
     }
 
-    let token = 'mu-raw-nl-';
+    let token = 'mu-soft-br-';
     for (const byte of bytes)
         token += byte.toString(16).padStart(2, '0');
 
@@ -83,31 +88,43 @@ export class MarkdownToHtml {
      * explicitly permits a renderer to emit soft breaks as hard line
      * breaks; the editor already SHOWS them as line breaks
      * (`.mu-content` is pre-wrap), so exports must match. Runs on the
-     * sanitized export DOM: only text nodes in phrasing context under a
-     * paragraph-like host (`p`, `li`) convert, protected containers and
-     * block-structural newlines stay verbatim, and marked's canonical
-     * string output is never modified.
+     * sanitized export DOM, driven by the soft-break sentinel: only
+     * sentinel-carrying text nodes (markdown text by construction) are
+     * ever touched, and every sentinel resolves to either `<br>`
+     * (authored soft break in phrasing context) or `\n` (protected
+     * containers, structural positions) — newlines that arrived as real
+     * `\n` (raw HTML, marked's own block separators) are never visited
+     * at all.
      */
-    private _renderSoftBreaks(container: HTMLElement) {
+    private _renderSoftBreaks(container: HTMLElement, sentinel: string) {
         const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
         const texts: Text[] = [];
         for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-            if ((node as Text).data.includes('\n'))
+            if ((node as Text).data.includes(sentinel))
                 texts.push(node as Text);
         }
 
         for (const text of texts)
-            this._convertSoftBreaks(text);
+            this._convertSoftBreaks(text, sentinel);
     }
 
-    private _convertSoftBreaks(text: Text) {
+    private _convertSoftBreaks(text: Text, sentinel: string) {
+        const parts = text.data.split(sentinel);
         const parent = text.parentElement;
-        if (!parent || parent.closest(SOFT_BREAK_PROTECTED))
+
+        // Contexts that never convert restore the plain newline: a text
+        // token's newline that parsed into a protected or structural
+        // position (an inline raw `<pre>` interior, a multiline setext
+        // heading) is content, not a soft break.
+        if (
+            !parent
+            || parent.closest(SOFT_BREAK_PROTECTED)
+            || STRUCTURAL_PARENT_TAG.test(parent.tagName)
+            || !parent.closest('p, li')
+        ) {
+            text.data = parts.join('\n');
             return;
-        if (STRUCTURAL_PARENT_TAG.test(parent.tagName))
-            return;
-        if (!parent.closest('p, li'))
-            return;
+        }
 
         // A newline at the node's EDGE next to a block-level sibling (a
         // nested list inside a tight item, a paragraph boundary inside a
@@ -121,14 +138,31 @@ export class MarkdownToHtml {
                 || (isHTMLElement(text.nextSibling)
                     && BLOCKISH_TAG.test(text.nextSibling.tagName));
 
-        const parts = text.data.split('\n');
+        // Precomputed emptiness frontiers make each boundary check O(1);
+        // per-boundary prefix/suffix scans made a long single paragraph
+        // quadratic in its line count.
+        let firstNonEmpty = parts.length;
+        for (let i = 0; i < parts.length; i++) {
+            if (parts[i] !== '') {
+                firstNonEmpty = i;
+                break;
+            }
+        }
+        let lastNonEmpty = -1;
+        for (let i = parts.length - 1; i >= 0; i--) {
+            if (parts[i] !== '') {
+                lastNonEmpty = i;
+                break;
+            }
+        }
+
         const fragment = document.createDocumentFragment();
         let converted = false;
         for (let i = 0; i < parts.length; i++) {
             if (i > 0) {
                 // The boundary between parts[i-1] and parts[i].
-                const leadingEmpty = parts.slice(0, i).every(part => part === '');
-                const trailingEmpty = parts.slice(i).every(part => part === '');
+                const leadingEmpty = firstNonEmpty >= i;
+                const trailingEmpty = lastNonEmpty < i;
                 const structural
                     = (leadingEmpty && structuralBefore)
                         || (trailingEmpty && structuralAfter);
@@ -146,42 +180,8 @@ export class MarkdownToHtml {
 
         if (converted)
             text.parentNode!.replaceChild(fragment, text);
-    }
-
-    /**
-     * Swap the raw-newline sentinels back, ON THE DOM and BEFORE
-     * serialization — nothing textual is ever modified after the
-     * sanitized document is serialized (the string-level restore this
-     * replaces let `href="java<sentinel>script:alert(1)"` pass DOMPurify
-     * and re-materialize as a newline that URL normalization strips).
-     *
-     * - TEXT nodes restore the real `\n`: text-node mutation cannot cross
-     *   into markup by construction.
-     * - ATTRIBUTE values restore a SPACE instead. Attribute newlines are
-     *   collapsible whitespace semantically, and space is the provably
-     *   safe direction: URL parsing strips tab/newline/CR but preserves
-     *   interior spaces, so a scheme can never reassemble. (Deleting the
-     *   sentinel would be the DANGEROUS direction — `java` + `script:`
-     *   joins.) Sentinels that landed in attribute NAMES (a newline
-     *   between attributes) are junk attributes DOMPurify already
-     *   stripped before this pass.
-     */
-    private _restoreRawNewlines(container: HTMLElement, sentinel: string) {
-        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-        const texts: Text[] = [];
-        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-            if ((node as Text).data.includes(sentinel))
-                texts.push(node as Text);
-        }
-        for (const text of texts)
-            text.data = text.data.split(sentinel).join('\n');
-
-        for (const element of container.querySelectorAll('*')) {
-            for (const attribute of element.attributes) {
-                if (attribute.value.includes(sentinel))
-                    attribute.value = attribute.value.split(sentinel).join(' ');
-            }
-        }
+        else
+            text.data = parts.join('\n');
     }
 
     private async _renderMermaid() {
@@ -334,14 +334,14 @@ export class MarkdownToHtml {
     // render pure html by marked
     async renderHtml() {
         const footnote = this._muya?.options?.footnote ?? false;
-        const rawNewlineSentinel = pickRawNewlineSentinel();
+        const softBreakSentinel = pickSoftBreakSentinel();
         let html = getHighlightHtml(this.markdown, {
             superSubScript: this._muya?.options?.superSubScript ?? true,
             footnote,
             isGitlabCompatibilityEnabled:
         this._muya?.options?.isGitlabCompatibilityEnabled ?? true,
             math: this._muya?.options?.math ?? true,
-        }, { rawNewlineSentinel });
+        }, { softBreakSentinel });
 
         // Post-process footnotes into the standard GFM / pandoc shape (inline
         // numbered <sup> refs + bottom <section class="footnotes"> with
@@ -358,6 +358,14 @@ export class MarkdownToHtml {
         exportContainer.innerHTML = html;
         document.body.appendChild(exportContainer);
 
+        // Authored soft breaks -> <br> (#3676), on the parsed DOM where
+        // the browser has already resolved everything the token stream
+        // cannot express. Runs FIRST so no later pass (mermaid, heading
+        // slugs) ever observes a sentinel, and resolves every sentinel
+        // in place — nothing textual changes after this point except
+        // subtree replacement by the diagram renderers.
+        this._renderSoftBreaks(exportContainer, softBreakSentinel);
+
         // render only render the light theme of mermaid and diagram...
         await this._renderMermaid();
         await this._renderDiagram();
@@ -367,14 +375,6 @@ export class MarkdownToHtml {
         // resolve. Scoped to this export DOM path — the conformance
         // renderer (`renderToStaticHTML`) is deliberately left untouched.
         this._injectHeadingIds(exportContainer);
-
-        // Authored soft breaks -> <br> (#3676), on the parsed DOM where
-        // the browser has already resolved everything the token stream
-        // cannot express — then restore raw-token newlines, still on the
-        // DOM: serialization is the last step and nothing rewrites the
-        // serialized string afterwards.
-        this._renderSoftBreaks(exportContainer);
-        this._restoreRawNewlines(exportContainer, rawNewlineSentinel);
 
         let result = exportContainer.innerHTML;
         exportContainer.remove();
