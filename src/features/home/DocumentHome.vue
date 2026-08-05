@@ -12,6 +12,8 @@ interface Props {
   continueDocument: HomeDocumentItem | null
   pinnedDocuments: HomeDocumentItem[]
   earlierDocuments: HomeDocumentItem[]
+  /** Documents beyond the resting recency cap; 0 hides the expander (#151). */
+  hiddenDocumentCount: number
   notice: string | null
   selectionActive: boolean
   selectionCount: number
@@ -29,6 +31,7 @@ const emit = defineEmits<{
   openDocument: [id: string]
   openFile: []
   newDocument: []
+  showAllDocuments: []
   selectDocument: [id: string]
   toggleDocument: [id: string]
   exitSelection: []
@@ -280,6 +283,16 @@ watch(
           </button>
         </div>
       </section>
+
+      <button
+        v-if="hiddenDocumentCount > 0"
+        class="home-show-all"
+        type="button"
+        data-testid="home-show-all-button"
+        @click="emit('showAllDocuments')"
+      >
+        {{ t('home.showAllDocuments', { count: hiddenDocumentCount }) }}
+      </button>
 
       <section
         v-if="!continueDocument && pinnedDocuments.length === 0 && earlierDocuments.length === 0"

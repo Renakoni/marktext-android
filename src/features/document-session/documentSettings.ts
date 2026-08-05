@@ -176,8 +176,9 @@ export function compareRecentDocumentsForSettings(
 export function getSortedRecentDocumentListItems(
   records: RecentDocumentRecord[],
   settings: Pick<DocumentSettings, 'fileSortBy' | 'fileSortOrder'>,
+  limit?: number,
 ) {
-  return getRecentDocumentListItems(records).sort((left, right) =>
+  return getRecentDocumentListItems(records, limit).sort((left, right) =>
     compareRecentDocumentsForSettings(left, right, settings),
   )
 }

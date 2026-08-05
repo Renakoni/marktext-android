@@ -12,6 +12,7 @@ export const es = {
   'home.earlier': 'Anteriores',
   'home.emptyTitle': 'No hay archivos Markdown recientes',
   'home.emptyBody': 'Empieza un borrador local o abre un archivo Markdown de este dispositivo.',
+  'home.showAllDocuments': 'Mostrar {count} más',
   'home.source.localDraft': 'Borrador local',
   'home.source.markdownDocument': 'Documento Markdown',
   'home.wordCount.one': '{count} palabra',

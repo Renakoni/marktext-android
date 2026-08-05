@@ -194,6 +194,7 @@ import { AUTO_APP_LOCALE, translateKnownText, useI18n } from './lib/i18n'
 import {
   createRecentDocumentFromLocalDraft,
   getRecentDocumentListItems,
+  normalizeRecentDocuments,
   type RecentDocumentRecord,
 } from './lib/recentDocuments'
 
@@ -398,10 +399,36 @@ const recentDocumentRecords = computed(() =>
   ],
 )
 const recentActivityDocumentItems = computed(() => getRecentDocumentListItems(recentDocumentRecords.value))
-const documentItems = computed(() =>
-  getSortedRecentDocumentListItems(recentDocumentRecords.value, documentSettings.value),
-)
+// The home's "show all" expansion (#151): the resting view keeps the quiet
+// recency cap, the expanded view reads the COMPLETE collection. Ephemeral —
+// never persisted, so paging can never modify the durable stores.
 const pinnedDocumentIds = computed(() => getPinnedDocumentIds(pinnedDocuments.value))
+const homeListExpanded = ref(false)
+const allDocumentItems = computed(() =>
+  getSortedRecentDocumentListItems(
+    recentDocumentRecords.value,
+    documentSettings.value,
+    Number.POSITIVE_INFINITY,
+  ),
+)
+const documentItems = computed(() => {
+  if (homeListExpanded.value) {
+    return allDocumentItems.value
+  }
+
+  // The resting view = the recency-capped set, plus any PINNED document
+  // beyond the cap — pinning is explicit intent and must keep an item
+  // visible without expanding.
+  const cappedIds = new Set(
+    normalizeRecentDocuments(recentDocumentRecords.value).map(record => record.id),
+  )
+  return allDocumentItems.value.filter(
+    item => cappedIds.has(item.id) || pinnedDocumentIds.value.has(item.id),
+  )
+})
+const hiddenHomeDocumentCount = computed(
+  () => allDocumentItems.value.length - documentItems.value.length,
+)
 const homeDocumentSections = computed(() =>
   partitionHomeDocumentItems(documentItems.value, pinnedDocumentIds.value),
 )
@@ -2053,6 +2080,7 @@ onBeforeUnmount(() => {
     :continue-document="continueDocument"
     :pinned-documents="pinnedHomeDocuments"
     :earlier-documents="earlierDocuments"
+    :hidden-document-count="hiddenHomeDocumentCount"
     :notice="displayHomeNotice"
     :selection-active="homeSelection.isActive.value"
     :selection-count="homeSelection.count.value"
@@ -2064,6 +2092,7 @@ onBeforeUnmount(() => {
     @new-document="newDocument"
     @open-document="openDocument"
     @open-file="openFileFromAndroid"
+    @show-all-documents="homeListExpanded = true"
     @set-tab="setHomeTab"
     @set-settings-page="setSettingsPage"
     @select-document="homeSelection.beginWith"

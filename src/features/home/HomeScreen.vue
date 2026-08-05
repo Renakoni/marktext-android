@@ -14,6 +14,7 @@ interface Props {
   continueDocument: HomeDocumentItem | null
   pinnedDocuments: HomeDocumentItem[]
   earlierDocuments: HomeDocumentItem[]
+  hiddenDocumentCount: number
   notice: string | null
   selectionActive: boolean
   selectionCount: number
@@ -31,6 +32,7 @@ const emit = defineEmits<{
   openDocument: [id: string]
   openFile: []
   newDocument: []
+  showAllDocuments: []
   setSettingsPage: [page: SettingsPage]
   selectDocument: [id: string]
   toggleDocument: [id: string]
@@ -68,6 +70,7 @@ watch(
         :continue-document="continueDocument"
         :pinned-documents="pinnedDocuments"
         :earlier-documents="earlierDocuments"
+        :hidden-document-count="hiddenDocumentCount"
         :notice="notice"
         :selection-active="selectionActive"
         :selection-count="selectionCount"
@@ -78,6 +81,7 @@ watch(
         @new-document="emit('newDocument')"
         @open-document="id => emit('openDocument', id)"
         @open-file="emit('openFile')"
+        @show-all-documents="emit('showAllDocuments')"
         @select-document="id => emit('selectDocument', id)"
         @toggle-document="id => emit('toggleDocument', id)"
         @exit-selection="emit('exitSelection')"

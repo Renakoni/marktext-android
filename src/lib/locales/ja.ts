@@ -12,6 +12,7 @@ export const ja = {
   'home.earlier': 'それ以前',
   'home.emptyTitle': '最近の Markdown ファイルはありません',
   'home.emptyBody': 'ローカル下書きを新規作成するか、この端末の Markdown ファイルを開いてください。',
+  'home.showAllDocuments': 'さらに {count} 件を表示',
   'home.source.localDraft': 'ローカル下書き',
   'home.source.markdownDocument': 'Markdown ドキュメント',
   'home.wordCount.one': '{count} 語',

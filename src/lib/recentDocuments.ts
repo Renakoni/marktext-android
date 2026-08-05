@@ -58,7 +58,14 @@ type StoredRecentDocumentRecord = Omit<RecentDocumentRecord, 'createdAt'> & {
   createdAt?: string
 }
 
-const DEFAULT_RECENT_LIMIT = 50
+// Presentation cap for the home's resting view AND the write cap for the
+// stored Android recents (their records carry SAF URI references, which
+// must not grow unboundedly — the fine-grained grant lifecycle is #153).
+// 100 is double Word's own recent-list ceiling and leaves headroom under
+// Android 10-and-below's 128-grant system limit. Local drafts are NEVER
+// bounded by this: their storage is complete, and the home's "show all"
+// expansion reads past the cap (#151).
+const DEFAULT_RECENT_LIMIT = 100
 
 function isRecentDocumentKind(value: unknown): value is RecentDocumentKind {
   return value === 'local-draft' || value === 'android-document' || value === 'incoming-document'
@@ -252,8 +259,9 @@ export function markRecentDocumentSaved(
 
 export function getRecentDocumentListItems(
   records: RecentDocumentRecord[],
+  limit = DEFAULT_RECENT_LIMIT,
 ): RecentDocumentListItem[] {
-  return normalizeRecentDocuments(records).map(record => ({
+  return normalizeRecentDocuments(records, limit).map(record => ({
     ...record,
     stats: record.markdownPreview ? getDocumentStats(record.markdownPreview) : null,
   }))

@@ -211,4 +211,21 @@ describe('recentDocuments', () => {
 
     expect(items[0].stats).toBeNull()
   })
+
+  it('caps the resting list at 100 and lets an explicit limit read past it (#151)', () => {
+    const base = Date.parse('2026-06-01T00:00:00.000Z')
+    const drafts = Array.from({ length: 105 }, (_, i) =>
+      createRecentDocumentFromLocalDraft({
+        id: `draft-${i + 1}`,
+        markdown: `# Draft ${i + 1}\n\ncontent`,
+        createdAt: new Date(base).toISOString(),
+        updatedAt: new Date(base + (i + 1) * 1000).toISOString(),
+        lastSavedAt: null,
+      }),
+    )
+
+    expect(getRecentDocumentListItems(drafts)).toHaveLength(100)
+    // The "show all" expansion reads the COMPLETE collection.
+    expect(getRecentDocumentListItems(drafts, Number.POSITIVE_INFINITY)).toHaveLength(105)
+  })
 })

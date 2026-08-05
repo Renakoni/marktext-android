@@ -12,6 +12,7 @@ export const de = {
   'home.earlier': 'Früher',
   'home.emptyTitle': 'Keine zuletzt verwendeten Markdown-Dateien',
   'home.emptyBody': 'Beginne einen lokalen Entwurf oder öffne eine Markdown-Datei von diesem Gerät.',
+  'home.showAllDocuments': '{count} weitere anzeigen',
   'home.source.localDraft': 'Lokaler Entwurf',
   'home.source.markdownDocument': 'Markdown-Dokument',
   'home.wordCount.one': '{count} Wort',
