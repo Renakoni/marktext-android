@@ -83,6 +83,12 @@ export const tr = {
   'editor.searchNext': 'Sonraki eşleşme',
   'editor.searchMatchCount': '{current}/{total}',
   'editor.searchNoMatches': 'Eşleşme yok',
+  'editor.searchReplaceToggle': 'Bul ve değiştir',
+  'editor.searchMatchCase': 'Büyük/küçük harf duyarlı',
+  'editor.searchReplacePlaceholder': 'Şununla değiştir',
+  'editor.searchReplaceOne': 'Değiştir',
+  'editor.searchReplaceAll': 'Tümü',
+  'editor.searchReplacedCount': '{count} değiştirildi',
   'editor.outline.title': 'Ana hat',
   'editor.outline.close': 'Ana hattı kapat',
   'editor.outline.empty':

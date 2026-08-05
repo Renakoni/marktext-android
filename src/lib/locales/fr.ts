@@ -83,6 +83,12 @@ export const fr = {
   'editor.searchNext': 'Résultat suivant',
   'editor.searchMatchCount': '{current}/{total}',
   'editor.searchNoMatches': 'Aucun résultat',
+  'editor.searchReplaceToggle': 'Rechercher et remplacer',
+  'editor.searchMatchCase': 'Respecter la casse',
+  'editor.searchReplacePlaceholder': 'Remplacer par',
+  'editor.searchReplaceOne': 'Remplacer',
+  'editor.searchReplaceAll': 'Tout',
+  'editor.searchReplacedCount': 'Remplacements : {count}',
   'editor.outline.title': 'Plan',
   'editor.outline.close': 'Fermer le plan',
   'editor.outline.empty':

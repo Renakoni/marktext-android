@@ -235,3 +235,115 @@ describe('search.replace() — replace all across multiple blocks', () => {
         expect(search.matches.length).toBe(0);
     });
 });
+
+describe('search.replace() — single replace advances past the insertion', () => {
+    it('keeps the classic next-match behavior when the replacement is inert', () => {
+        const muya = bootMuya('cat dog cat dog cat\n');
+        placeCursorOnFirstBlock(muya);
+
+        const search = muya.editor.searchModule;
+        search.search('cat');
+        expect(search.matches.length).toBe(3);
+        expect(search.index).toBe(0);
+
+        // Replacing the first match slides the former second match into
+        // index 0, which stays active.
+        search.replace('bird', { isSingle: true, isRegexp: false });
+        expect(search.matches.length).toBe(2);
+        expect(search.index).toBe(0);
+
+        // Consuming the LAST match steps back to the one before it.
+        search.find('next');
+        expect(search.index).toBe(1);
+        search.replace('bird', { isSingle: true, isRegexp: false });
+        expect(search.matches.length).toBe(1);
+        expect(search.index).toBe(0);
+    });
+
+    it('skips matches the replacement itself contains instead of compounding them', () => {
+        const muya = bootMuya('cat dog cat\n');
+        placeCursorOnFirstBlock(muya);
+
+        const search = muya.editor.searchModule;
+        search.search('cat');
+        expect(search.matches.length).toBe(2);
+        expect(search.index).toBe(0);
+
+        // "wildcat" still contains "cat": the re-search finds it inside the
+        // fresh insertion, and the active match must move PAST it to the
+        // next original occurrence — not sit inside the text just inserted.
+        search.replace('wildcat', { isSingle: true, isRegexp: false });
+        expect(search.matches.length).toBe(2);
+        expect(search.index).toBe(1);
+        expect(search.matches[1].start).toBe('wildcat dog '.length);
+
+        // The second replace consumes the LAST original occurrence. Every
+        // surviving match now sits inside an insertion, so nothing may stay
+        // auto-selected — the earlier clamp left the active match on the cat
+        // inside the second wildcat, where a habitual third tap compounded
+        // it to wildwildcat.
+        search.replace('wildcat', { isSingle: true, isRegexp: false });
+        expect(search.matches.length).toBe(2);
+        expect(search.index).toBe(-1);
+
+        // With no active match a further single replace is a no-op…
+        search.replace('wildcat', { isSingle: true, isRegexp: false });
+
+        // block.text writes land in the json state on flush.
+        muya.editor.jsonState.flush();
+        expect(muya.getMarkdown()).toContain('wildcat dog wildcat');
+        expect(muya.getMarkdown()).not.toContain('wildwildcat');
+
+        // …and the arrows deliberately navigate back into the survivors.
+        search.find('next');
+        expect(search.index).toBe(0);
+    });
+});
+
+describe('search.replace() — undo boundaries under the cutoff/flush sequence', () => {
+    // The mobile find bar wraps every replace in history.cutoff() +
+    // jsonState.flush() + history.cutoff() so each user-visible replace
+    // action is exactly one undo step, never coalesced with neighbours by
+    // the history's time window.
+    function replaceAsBoundary(muya: Muya, value: string, isSingle: boolean) {
+        muya.editor.history.cutoff();
+        muya.editor.searchModule.replace(value, { isSingle, isRegexp: false });
+        muya.editor.jsonState.flush();
+        muya.editor.history.cutoff();
+    }
+
+    it('reverts a whole replace-all in a single undo step', () => {
+        const muya = bootMuya('foo a\n\n# foo b\n\n- foo c\n');
+        placeCursorOnFirstBlock(muya);
+
+        muya.editor.searchModule.search('foo');
+        expect(muya.editor.searchModule.matches.length).toBe(3);
+
+        replaceAsBoundary(muya, 'BAR', false);
+        expect(muya.getMarkdown()).not.toContain('foo');
+
+        muya.undo();
+        const restored = muya.getMarkdown();
+        expect(restored).toContain('foo a');
+        expect(restored).toContain('# foo b');
+        expect(restored).toContain('- foo c');
+    });
+
+    it('keeps two quick single replaces as two separate undo steps', () => {
+        const muya = bootMuya('foo one foo two\n');
+        placeCursorOnFirstBlock(muya);
+
+        muya.editor.searchModule.search('foo');
+        replaceAsBoundary(muya, 'BAR', true);
+        replaceAsBoundary(muya, 'BAR', true);
+        expect(muya.getMarkdown()).toContain('BAR one BAR two');
+
+        // Both replaces ran inside the history's 1s coalescing window; the
+        // explicit cutoffs must still keep them apart.
+        muya.undo();
+        expect(muya.getMarkdown()).toContain('BAR one foo two');
+
+        muya.undo();
+        expect(muya.getMarkdown()).toContain('foo one foo two');
+    });
+});

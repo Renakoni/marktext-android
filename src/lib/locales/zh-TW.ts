@@ -83,6 +83,12 @@ export const zhTW = {
   'editor.searchNext': '下一個符合項',
   'editor.searchMatchCount': '{current}/{total}',
   'editor.searchNoMatches': '沒有符合項',
+  'editor.searchReplaceToggle': '尋找與取代',
+  'editor.searchMatchCase': '區分大小寫',
+  'editor.searchReplacePlaceholder': '取代為',
+  'editor.searchReplaceOne': '取代',
+  'editor.searchReplaceAll': '全部',
+  'editor.searchReplacedCount': '已取代 {count} 處',
   'editor.outline.title': '大綱',
   'editor.outline.close': '關閉大綱',
   'editor.outline.empty':

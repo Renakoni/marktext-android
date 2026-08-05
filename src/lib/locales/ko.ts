@@ -83,6 +83,12 @@ export const ko = {
   'editor.searchNext': '다음 일치',
   'editor.searchMatchCount': '{current}/{total}',
   'editor.searchNoMatches': '일치 항목 없음',
+  'editor.searchReplaceToggle': '찾기 및 바꾸기',
+  'editor.searchMatchCase': '대소문자 구분',
+  'editor.searchReplacePlaceholder': '바꿀 내용',
+  'editor.searchReplaceOne': '바꾸기',
+  'editor.searchReplaceAll': '모두',
+  'editor.searchReplacedCount': '{count}개 바꿈',
   'editor.outline.title': '개요',
   'editor.outline.close': '개요 닫기',
   'editor.outline.empty':

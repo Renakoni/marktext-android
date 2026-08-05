@@ -118,6 +118,10 @@ declare module '@muyajs/core' {
     selectAll(): void
     search(value: string, opts?: IMuyaSearchOptions): IMuyaSearchState
     find(action: 'previous' | 'next'): IMuyaSearchState
+    replace(
+      replaceValue: string,
+      opt?: IMuyaSearchOptions & { isSingle?: boolean },
+    ): IMuyaSearchState
     /**
      * Materialize blocks through the given top-level state index (progressive
      * mount, marktext#4887). No-op when the index is already mounted.

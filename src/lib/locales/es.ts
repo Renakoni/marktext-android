@@ -83,6 +83,12 @@ export const es = {
   'editor.searchNext': 'Coincidencia siguiente',
   'editor.searchMatchCount': '{current}/{total}',
   'editor.searchNoMatches': 'Sin coincidencias',
+  'editor.searchReplaceToggle': 'Buscar y reemplazar',
+  'editor.searchMatchCase': 'Coincidir mayúsculas y minúsculas',
+  'editor.searchReplacePlaceholder': 'Reemplazar con',
+  'editor.searchReplaceOne': 'Reemplazar',
+  'editor.searchReplaceAll': 'Todo',
+  'editor.searchReplacedCount': 'Reemplazos: {count}',
   'editor.outline.title': 'Esquema',
   'editor.outline.close': 'Cerrar esquema',
   'editor.outline.empty':
