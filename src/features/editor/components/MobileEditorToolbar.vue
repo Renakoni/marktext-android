@@ -84,39 +84,34 @@ watch(
 )
 
 // The Android WebView draws the native caret handle in a compositor layer
-// ABOVE all DOM content — no popup can cover it, so while the panel menu
-// is open the editor's DOM selection is stashed away (which hides the
-// handle) and restored when the menu closes. Muya's own cached selection
-// is untouched, so the editing context survives; the keyboard stays
-// because focus never moves.
-let stashedEditorRanges: Range[] = []
-
+// ABOVE all DOM content — no popup can cover it. Chromium only shows the
+// touch handles for GESTURE-made selections, so re-applying the current
+// selection programmatically hides the handle while the selection, the
+// focus, and therefore the soft keyboard all stay exactly as they were.
+// (Clearing the selection instead would hide the keyboard: with no
+// editable selection the IME dismisses.) The remove+add pair runs in one
+// synchronous task, so no observable empty-selection state exists.
 watch(groupMenuOpen, open => {
+  if (!open) {
+    return
+  }
+
   const selection = document.getSelection()
-  if (!selection) {
+  if (!selection || selection.rangeCount === 0) {
     return
   }
 
-  if (open) {
-    const ranges = Array.from({ length: selection.rangeCount }, (_, i) =>
-      selection.getRangeAt(i),
-    )
-    const editorRanges = ranges.filter(
-      range => props.host?.contains(range.commonAncestorContainer) ?? false,
-    )
-    if (editorRanges.length > 0) {
-      stashedEditorRanges = editorRanges.map(range => range.cloneRange())
-      selection.removeAllRanges()
-    }
+  const ranges = Array.from({ length: selection.rangeCount }, (_, i) =>
+    selection.getRangeAt(i),
+  )
+  if (!ranges.some(range => props.host?.contains(range.commonAncestorContainer))) {
     return
   }
 
-  if (stashedEditorRanges.length > 0) {
-    selection.removeAllRanges()
-    for (const range of stashedEditorRanges) {
-      selection.addRange(range)
-    }
-    stashedEditorRanges = []
+  const clones = ranges.map(range => range.cloneRange())
+  selection.removeAllRanges()
+  for (const range of clones) {
+    selection.addRange(range)
   }
 })
 
