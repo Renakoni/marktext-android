@@ -414,7 +414,7 @@ onBeforeUnmount(() => {
         <button
           class="search-replace-action"
           type="button"
-          :disabled="searchMatchCount === 0"
+          :disabled="searchMatchCount === 0 || searchActiveIndex < 0"
           data-testid="search-replace-one-button"
           @click="emit('search-replace-current')"
         >

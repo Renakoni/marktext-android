@@ -139,6 +139,12 @@ export class Search {
         const { matches, index } = this;
         const value = this._value;
 
+        // A single replace needs an active match to consume; index is -1
+        // after a previous replace exhausted every match outside its own
+        // insertion (see below). find() navigates out of that state.
+        if (isSingle && index < 0)
+            return this;
+
         if (matches.length) {
             if (isRegexp)
                 replaceValue = buildRegexValue(matches[index], replaceValue);
@@ -147,20 +153,27 @@ export class Search {
                 // replace one
                 this._innerReplace([matches[index]], replaceValue);
 
-                // Matches before the replaced one keep their array positions, so
-                // the re-search would make `index` land on the first match at or
-                // after the insertion point — which sits INSIDE the inserted text
-                // whenever the replacement still contains the query (cat ->
-                // wildcat). Repeated "replace" would then compound the same spot
-                // forever. Skip the matches the replacement itself contributes;
-                // the exact total is only known after the re-search, so clamp and
-                // re-render in a second step (same tick, no visible flash).
+                // After the re-search the match array is [before (index
+                // entries), inserted (matches the replacement itself
+                // contains), after]. The active match must never land inside
+                // an insertion — a replacement that still contains the query
+                // (cat -> wildcat) would otherwise compound the same spot on
+                // every tap. Prefer the first match after the insertion. When
+                // none remains: an inert replacement steps back to the last
+                // match before it (the classic behavior — nothing it could
+                // select is ever an insertion), while a query-containing one
+                // deselects (-1), because earlier "before" matches may be
+                // this session's own previous insertions. The surviving
+                // highlights stay reachable through deliberate arrow
+                // navigation, and find() recovers from -1.
                 const inside = matchString(replaceValue, value, options).length;
                 this.search(value, { ...options, highlightIndex: -1 });
                 const total = this.matches.length;
-                const next = Math.min(index + inside, total - 1);
-                if (total && next !== this.index) {
-                    this.index = next;
+                let desired = index + inside;
+                if (desired > total - 1)
+                    desired = inside === 0 ? index - 1 : -1;
+                if (desired !== this.index) {
+                    this.index = desired;
                     this._updateMatches();
                 }
             }

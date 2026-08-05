@@ -338,6 +338,28 @@ describe('createDocumentSearch', () => {
     expect(editor.editor.history.cutoff).not.toHaveBeenCalled()
   })
 
+  it('refuses a single replace while the engine has deselected after a tail replacement', () => {
+    const { editor, documentSearch } = createSearchHarness({ matchCounts: { apple: 1 } })
+
+    documentSearch.openSearch()
+    documentSearch.setQuery('apple')
+    // Tail replacement: every survivor sits inside the insertion, so the
+    // engine reports matches but no active one.
+    editor.replace.mockImplementation(() => ({ matches: [null], index: -1 }))
+    documentSearch.setReplaceValue('pineapple')
+    documentSearch.replaceCurrent()
+
+    expect(editor.replace).toHaveBeenCalledTimes(1)
+    expect(documentSearch.activeMatchIndex.value).toBe(-1)
+    expect(documentSearch.matchCount.value).toBe(1)
+
+    // The next single replace is refused before touching the history.
+    editor.editor.history.cutoff.mockClear()
+    documentSearch.replaceCurrent()
+    expect(editor.replace).toHaveBeenCalledTimes(1)
+    expect(editor.editor.history.cutoff).not.toHaveBeenCalled()
+  })
+
   it('mutes the edit refresh triggered by its own replace dispatch', () => {
     const { editor, documentSearch } = createSearchHarness({ matchCounts: { apple: 2 } })
 

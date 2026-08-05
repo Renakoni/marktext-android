@@ -857,14 +857,18 @@ textarea {
   padding-bottom: 2px;
 }
 
+/* Everything on the replace row meets the 44px touch floor: these are
+   adjacent, frequently tapped controls (the app's smallest targets are the
+   40px top-bar icons; text actions elsewhere run 42-48px). */
 .search-replace-row .search-field {
   flex: 1;
+  min-height: 44px;
 }
 
 .search-case-toggle {
   flex: none;
-  min-height: 36px;
-  padding: 0 11px;
+  min-height: 44px;
+  padding: 0 12px;
   border: var(--hairline) solid var(--border-strong);
   border-radius: 999px;
   background: transparent;
@@ -892,8 +896,8 @@ textarea {
 
 .search-replace-action {
   flex: none;
-  min-height: 36px;
-  padding: 0 10px;
+  min-height: 44px;
+  padding: 0 11px;
   border: 0;
   border-radius: 999px;
   background: transparent;

@@ -222,6 +222,44 @@ test('replaces all matches and reports the consumed total in the count slot', as
   await expect(page.getByTestId('search-count')).toHaveText('1/3')
 })
 
+test('deselects after the last original match when the replacement contains the query', async ({
+  page,
+}) => {
+  await openSearchDraft(page)
+
+  await page.getByTestId('search-open-button').click()
+  await page.getByTestId('search-input').fill('apple')
+  await expect(page.getByTestId('search-count')).toHaveText('1/3')
+
+  await page.getByTestId('search-replace-toggle').click()
+  await page.getByTestId('search-replace-input').fill('pineapple')
+  const replaceOne = page.getByTestId('search-replace-one-button')
+
+  // "pineapple" contains "apple", so the total holds at 3 while the active
+  // match keeps stepping past each fresh insertion.
+  await replaceOne.click()
+  await expect(page.getByTestId('search-count')).toHaveText('2/3')
+  await replaceOne.click()
+  await expect(page.getByTestId('search-count')).toHaveText('3/3')
+
+  // Consuming the last original deselects: nothing left to auto-target,
+  // the single-replace action disables, and the document never compounds.
+  await replaceOne.click()
+  await expect(page.getByTestId('search-count')).toHaveText('0/3')
+  await expect(replaceOne).toBeDisabled()
+  await expect(page.getByTestId('search-replace-all-button')).toBeEnabled()
+  await expect(page.getByTestId('editor-host')).toContainText(
+    'pineapple banana pineapple cherry',
+  )
+  await expect(page.getByTestId('editor-host')).not.toContainText('pinepineapple')
+
+  // The arrows deliberately navigate back into the surviving matches and
+  // re-arm the single replace.
+  await page.getByTestId('search-next-button').click()
+  await expect(page.getByTestId('search-count')).toHaveText('1/3')
+  await expect(replaceOne).toBeEnabled()
+})
+
 test('the case toggle re-runs the query with matching sensitivity', async ({ page }) => {
   await openSearchDraft(page)
 

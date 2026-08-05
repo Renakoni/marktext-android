@@ -241,6 +241,13 @@ export function createDocumentSearch({
       return
     }
 
+    // A single replace consumes the ACTIVE match; after a tail replacement
+    // the engine deselects (every survivor sits inside an insertion), so
+    // there is nothing to consume until the arrows pick a match again.
+    if (isSingle && activeMatchIndex.value < 0) {
+      return
+    }
+
     const consumed = isSingle ? 1 : matchCount.value
     replacing = true
     try {
@@ -261,7 +268,7 @@ export function createDocumentSearch({
     }
 
     replaceAllCount.value = isSingle ? null : consumed
-    if (isSingle && matchCount.value > 0) {
+    if (isSingle && activeMatchIndex.value >= 0) {
       scrollActiveMatchIntoView?.()
     }
     logger?.debug('document search replace applied', {

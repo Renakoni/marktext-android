@@ -277,13 +277,26 @@ describe('search.replace() — single replace advances past the insertion', () =
         expect(search.index).toBe(1);
         expect(search.matches[1].start).toBe('wildcat dog '.length);
 
-        // A second replace therefore hits the remaining original "cat".
+        // The second replace consumes the LAST original occurrence. Every
+        // surviving match now sits inside an insertion, so nothing may stay
+        // auto-selected — the earlier clamp left the active match on the cat
+        // inside the second wildcat, where a habitual third tap compounded
+        // it to wildwildcat.
         search.replace('wildcat', { isSingle: true, isRegexp: false });
         expect(search.matches.length).toBe(2);
+        expect(search.index).toBe(-1);
+
+        // With no active match a further single replace is a no-op…
+        search.replace('wildcat', { isSingle: true, isRegexp: false });
 
         // block.text writes land in the json state on flush.
         muya.editor.jsonState.flush();
         expect(muya.getMarkdown()).toContain('wildcat dog wildcat');
+        expect(muya.getMarkdown()).not.toContain('wildwildcat');
+
+        // …and the arrows deliberately navigate back into the survivors.
+        search.find('next');
+        expect(search.index).toBe(0);
     });
 });
 
