@@ -41,9 +41,13 @@ function bootMuya(markdown: string): Muya {
 }
 
 interface ITableProbe {
+    rowCount: number;
+    columnCount: number;
     cellAt: (row: number, column: number) => {
         firstChild: { text: string; setCursor: (b: number, e: number, u?: boolean) => void };
     };
+    insertRow: (offset: number) => { setCursor: (b: number, e: number, u?: boolean) => void };
+    insertColumn: (offset: number) => { setCursor: (b: number, e: number, u?: boolean) => void };
     outsideContentInContext: () => { setCursor: (b: number, e: number, u?: boolean) => void } | null;
     remove: () => void;
 }
@@ -102,5 +106,51 @@ describe('caret restore across a whole-table delete undo', () => {
         // and not at the document head.
         expect(findTable(muya)).not.toBeNull();
         expect(activeText(muya)).toBe('A');
+    });
+});
+
+describe('caret restore across TAIL insertions (#175 review gap)', () => {
+    // Inserting below the LAST row / right of the LAST column parks the
+    // caret at a tail index that the undo then removes — the recorded
+    // post-op path stops resolving entirely, which is exactly where the
+    // first-record stack fallback broke. Priming records the true
+    // before-command cell, so these must return there.
+    function primedCommand(muya: Muya, run: (table: ITableProbe) => void) {
+        muya.editor.history.cutoff();
+        muya.editor.history.primeRecordSelection();
+        run(findTable(muya)!);
+        muya.editor.jsonState.flush();
+        muya.editor.history.cutoff();
+    }
+
+    it('undoing an insert-below on the last row returns to the origin cell', () => {
+        const muya = bootMuya(DOC);
+        const table = findTable(muya)!;
+        table.cellAt(1, 0).firstChild.setCursor(1, 1, true);
+
+        primedCommand(muya, t => t.insertRow(2).setCursor(0, 0, true));
+        expect(findTable(muya)!.rowCount).toBe(3);
+
+        muya.undo();
+
+        expect(findTable(muya)!.rowCount).toBe(2);
+        expect(activeText(muya)).toBe('one');
+    });
+
+    it('undoing an insert-right on the last column returns to the origin cell', () => {
+        const muya = bootMuya(DOC);
+        const table = findTable(muya)!;
+        table.cellAt(1, 1).firstChild.setCursor(1, 1, true);
+
+        primedCommand(muya, (t) => {
+            t.insertColumn(2);
+            t.cellAt(1, 2)!.firstChild.setCursor(0, 0, true);
+        });
+        expect(findTable(muya)!.columnCount).toBe(3);
+
+        muya.undo();
+
+        expect(findTable(muya)!.columnCount).toBe(2);
+        expect(activeText(muya)).toBe('two');
     });
 });
