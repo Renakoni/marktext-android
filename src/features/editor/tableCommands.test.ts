@@ -19,7 +19,7 @@ interface FakeTreeOptions {
   /** Have every remove* engine call report no survivor. */
   survivorless?: boolean
   outsideContent?: boolean
-  /** The scroll page reports zero children after the mutation. */
+  /** The scroll page has no content descendant left after the mutation. */
   pageEmptyAfter?: boolean
   /** cellAt cannot resolve the freshly inserted cell. */
   cellAtMisses?: boolean
@@ -49,7 +49,10 @@ function createFakeEditor({
 
   const scrollPage = {
     blockName: 'scrollpage',
-    length: vi.fn(() => (pageEmptyAfter ? 0 : 1)),
+    // Contentless means NO content descendant anywhere — empty container
+    // skeletons (a list item whose only child was the table) still count
+    // as top-level children, so the recovery must not count those.
+    firstContentInDescendant: vi.fn(() => (pageEmptyAfter ? null : {})),
     resetToSingleEmptyParagraph: vi.fn(() => recoveredCaret),
   }
   const table = {

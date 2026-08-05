@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { openLocalDraft } from './helpers/drafts'
+import { newBlankDocument, openLocalDraft } from './helpers/drafts'
 
 test.describe.configure({ timeout: 60000 })
 
@@ -158,6 +158,45 @@ test('deleting the only table via its last row restores an editable paragraph', 
   await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(0)
   await page.keyboard.type('afterlife')
   await expect(page.getByTestId('editor-host')).toContainText('afterlife')
+})
+
+test('recovers an editable paragraph when the deleted table was a list item\'s only content', async ({
+  page,
+}) => {
+  // The reachable shape codex round three pinned: inserting a table from
+  // an EMPTY list item replaces the item's paragraph, so the table becomes
+  // the item's only child. Deleting it leaves empty container skeletons —
+  // a top-level block with zero content descendants — and the recovery
+  // must still restore an editable paragraph.
+  await newBlankDocument(page)
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('- ')
+
+  await page.getByTestId('toolbar-expand-button').click()
+  await page.getByTestId('toolbar-group-switcher').click()
+  await page.getByTestId('toolbar-section-option-insert').click()
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+  await expect(page.getByTestId('table-insert-sheet')).toBeVisible()
+  await page.getByTestId('table-insert-button').click()
+
+  // The table nests as the list item's ONLY child.
+  await expect(page.getByTestId('editor-host').locator('li > figure.mu-table')).toHaveCount(1)
+
+  // Tapping a cell brings the TABLE panel up (programmatic insertion does
+  // not emit a selection change, so the panel follows the first tap), and
+  // the sheet flow collapsed the toolbar, so expand it again to see it.
+  await page
+    .getByTestId('editor-host')
+    .locator('figure.mu-table span.mu-table-cell-content')
+    .first()
+    .click()
+  await page.getByTestId('toolbar-expand-button').click()
+  await expect(page.getByTestId('toolbar-table-table-delete-table')).toBeVisible()
+
+  await page.getByTestId('toolbar-table-table-delete-table').click()
+  await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(0)
+  await page.keyboard.type('reborn')
+  await expect(page.getByTestId('editor-host')).toContainText('reborn')
 })
 
 test('delete table removes the whole table in one tap', async ({ page }) => {

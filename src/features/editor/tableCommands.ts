@@ -43,7 +43,7 @@ interface MuyaTableBlock extends TableTreeNode {
 }
 
 interface MuyaScrollPage {
-  length(): number
+  firstContentInDescendant(): unknown
   /** Restores the one-empty-paragraph invariant and seats the caret. */
   resetToSingleEmptyParagraph(): TableCaretContent | null
 }
@@ -163,14 +163,17 @@ export function runTableCommand(editor: MuyaEditor | null, commandId: TableComma
         break
     }
 
-    // Removing the document's ONLY block leaves a zero-child page — not a
-    // supported state (the blank-area click handler dereferences the last
-    // child). Restore the one-empty-paragraph invariant inside the same
-    // undo step, exactly like the engine's whole-table cut path. A table
-    // removed out of a nested container is not this case: the outside
-    // resolution above finds the surrounding content, and the emptied
-    // container stays (the traversal tolerates empty containers, #4644).
-    if (!caret && scrollPage && scrollPage.length() === 0) {
+    // No caret means the outside resolution found no content ANYWHERE
+    // (its two walks cover the whole document, skipping empty containers)
+    // — the document is contentless, even when empty container skeletons
+    // survive at the top level. The reachable case: a list item whose
+    // paragraph was REPLACED by the table (the pipe conversion does this),
+    // so removing the table leaves bullet-list -> item -> nothing. Restore
+    // the one-empty-paragraph invariant inside the same undo step, exactly
+    // like the engine's whole-table cut path; the reset also clears the
+    // leftover skeletons. The content-descendant probe is a guard against
+    // future misuse, not the decision itself.
+    if (!caret && scrollPage && scrollPage.firstContentInDescendant() == null) {
       caret = scrollPage.resetToSingleEmptyParagraph()
     }
 

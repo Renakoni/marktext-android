@@ -83,6 +83,45 @@ describe('table.outsideContentInContext()', () => {
         expect(muya.getMarkdown()).not.toContain('| A | B |');
     });
 
+    it('reports contentless when the table was a list item\'s only child', async () => {
+        // Reachable shape: the pipe conversion REPLACES a list item's
+        // paragraph with the table (listMathEnterConvert pins that as
+        // intentional); createTable from an empty item paragraph takes the
+        // same replace-in-place path.
+        const muya = bootMuya('- placeholder\n');
+        const first = muya.editor.scrollPage!.firstContentInDescendant()!;
+        muya.editor.activeContentBlock = first;
+        first.setCursor(0, 0, true);
+        first.text = '';
+        muya.createTable({ rows: 2, columns: 2 });
+        await vi.waitFor(() => {
+            expect(findTable(muya)).toBeTruthy();
+        });
+
+        const table = findTable(muya);
+        // Sole content: the page's first content descendant IS a table cell.
+        expect(muya.editor.scrollPage!.firstContentInDescendant()?.blockName).toBe(
+            'table.cell.content',
+        );
+        expect(table.outsideContentInContext()).toBeNull();
+
+        // Killing the table leaves only empty container skeletons: still a
+        // top-level child, but NO content descendant — the exact predicate
+        // the app-side empty-document recovery keys on.
+        table.removeRow(1);
+        const outside = table.removeRow(0);
+        expect(outside).toBeNull();
+        const scrollPage = muya.editor.scrollPage!;
+        expect(scrollPage.length()).toBeGreaterThan(0);
+        expect(scrollPage.firstContentInDescendant()).toBeNull();
+
+        // The invariant restore handles the skeleton shape too.
+        const cursorBlock = scrollPage.resetToSingleEmptyParagraph();
+        expect(cursorBlock).not.toBeNull();
+        expect(scrollPage.length()).toBe(1);
+        expect(scrollPage.firstContentInDescendant()?.blockName).toBe('paragraph.content');
+    });
+
     it('resolves the sibling paragraph inside a list item for a nested table', async () => {
         // Same construction as the nested-table cursor spec: createTable from
         // a caret inside a list item nests the table after the item's

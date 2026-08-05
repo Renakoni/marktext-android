@@ -254,7 +254,10 @@ function removeWholeTable(clipboard: Clipboard, table: Table): void {
     // PARENT's siblings and never sees the table's own neighbours.
     const outsideContent = table.outsideContentInContext();
     table.remove();
-    if (clipboard.scrollPage?.length() === 0)
+    // Contentless is the empty-document case even when empty container
+    // skeletons survive at the top level (a table can be a list item's
+    // only child); counting top-level children misses that shape.
+    if (clipboard.scrollPage != null && clipboard.scrollPage.firstContentInDescendant() == null)
         resetToEmptyParagraph(clipboard);
     else
         outsideContent?.setCursor(0, 0, true);
