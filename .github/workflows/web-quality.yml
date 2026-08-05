@@ -94,5 +94,9 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      # pnpm forwards a bare `--` to the underlying command, so the script
+      # form (`pnpm test:e2e -- --shard=…`) hands Playwright a positional
+      # `--` and the shard flag never takes effect — both jobs silently run
+      # the full suite. Invoke the binary directly instead.
       - name: Run Playwright E2E
-        run: pnpm test:e2e -- --shard=${{ matrix.shard }}/2
+        run: pnpm exec playwright test --shard=${{ matrix.shard }}/2
