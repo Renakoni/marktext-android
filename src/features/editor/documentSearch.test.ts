@@ -24,12 +24,29 @@ function createFakeEditor({ matchCounts = {} }: FakeEditorOptions = {}) {
     return { matches, index }
   })
 
-  const focus = vi.fn()
+  const replace = vi.fn((_value: string, opts: { isSingle?: boolean } = {}) => {
+    if (opts.isSingle === false) {
+      matches = []
+      index = -1
+    } else if (matches.length > 0) {
+      matches = matches.slice(0, -1)
+      index = matches.length > 0 ? Math.min(index, matches.length - 1) : -1
+    }
+    return { matches, index }
+  })
 
-  return { search, find, focus } as unknown as MuyaEditor & {
+  const focus = vi.fn()
+  const inner = {
+    history: { cutoff: vi.fn() },
+    jsonState: { flush: vi.fn() },
+  }
+
+  return { search, find, replace, focus, editor: inner } as unknown as MuyaEditor & {
     search: typeof search
     find: typeof find
+    replace: typeof replace
     focus: typeof focus
+    editor: typeof inner
   }
 }
 
@@ -63,7 +80,7 @@ describe('createDocumentSearch', () => {
     documentSearch.openSearch()
     documentSearch.setQuery('apple')
 
-    expect(editor.search).toHaveBeenCalledWith('apple')
+    expect(editor.search).toHaveBeenCalledWith('apple', { isCaseSensitive: false })
     expect(documentSearch.searchQuery.value).toBe('apple')
     expect(documentSearch.matchCount.value).toBe(3)
     expect(documentSearch.activeMatchIndex.value).toBe(0)
@@ -180,7 +197,7 @@ describe('createDocumentSearch', () => {
     editor.search.mockImplementation(() => ({ matches: [null], index: 0 }))
     documentSearch.refreshAfterEdit()
 
-    expect(editor.search).toHaveBeenLastCalledWith('apple')
+    expect(editor.search).toHaveBeenLastCalledWith('apple', { isCaseSensitive: false })
     expect(documentSearch.matchCount.value).toBe(1)
     expect(documentSearch.activeMatchIndex.value).toBe(0)
   })
@@ -243,11 +260,163 @@ describe('createDocumentSearch', () => {
       expect(editor.search).not.toHaveBeenCalled()
       vi.advanceTimersByTime(1)
       expect(editor.search).toHaveBeenCalledTimes(1)
-      expect(editor.search).toHaveBeenCalledWith('apple')
+      expect(editor.search).toHaveBeenCalledWith('apple', { isCaseSensitive: false })
       expect(documentSearch.matchCount.value).toBe(2)
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('replaces the active match as a cutoff-bounded single undo step and scrolls on', () => {
+    const { editor, scrollActiveMatchIntoView, documentSearch } = createSearchHarness({
+      matchCounts: { apple: 3 },
+    })
+
+    documentSearch.openSearch()
+    documentSearch.setQuery('apple')
+    documentSearch.setReplaceValue('pear')
+    documentSearch.replaceCurrent()
+
+    expect(editor.replace).toHaveBeenCalledWith('pear', {
+      isSingle: true,
+      isCaseSensitive: false,
+    })
+    // cutoff -> replace -> flush -> cutoff: the exact boundary sequence the
+    // Muya-side undo contract pins.
+    expect(editor.editor.history.cutoff).toHaveBeenCalledTimes(2)
+    expect(editor.editor.jsonState.flush).toHaveBeenCalledTimes(1)
+    expect(documentSearch.matchCount.value).toBe(2)
+    expect(documentSearch.replaceAllCount.value).toBeNull()
+    // Query scroll + post-replace scroll onto the advanced match.
+    expect(scrollActiveMatchIntoView).toHaveBeenCalledTimes(2)
+  })
+
+  it('replaces all matches and surfaces the consumed count', () => {
+    const { editor, scrollActiveMatchIntoView, documentSearch } = createSearchHarness({
+      matchCounts: { apple: 3 },
+    })
+
+    documentSearch.openSearch()
+    documentSearch.setQuery('apple')
+    documentSearch.replaceAll()
+
+    expect(editor.replace).toHaveBeenCalledWith('', {
+      isSingle: false,
+      isCaseSensitive: false,
+    })
+    expect(documentSearch.matchCount.value).toBe(0)
+    expect(documentSearch.replaceAllCount.value).toBe(3)
+    // Only the query scroll: nothing is active after replace-all.
+    expect(scrollActiveMatchIntoView).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears the replace-all notice on the next search action', () => {
+    const { documentSearch } = createSearchHarness({ matchCounts: { apple: 3, pear: 1 } })
+
+    documentSearch.openSearch()
+    documentSearch.setQuery('apple')
+    documentSearch.replaceAll()
+    expect(documentSearch.replaceAllCount.value).toBe(3)
+
+    documentSearch.setQuery('pear')
+    expect(documentSearch.replaceAllCount.value).toBeNull()
+  })
+
+  it('ignores replace requests without a query, matches, or an editor', () => {
+    const missing = createSearchHarness({ editorMissing: true })
+    missing.documentSearch.openSearch()
+    missing.documentSearch.replaceCurrent()
+    missing.documentSearch.replaceAll()
+
+    const { editor, documentSearch } = createSearchHarness({ matchCounts: { apple: 0 } })
+    documentSearch.openSearch()
+    documentSearch.replaceCurrent()
+    documentSearch.setQuery('apple')
+    documentSearch.replaceAll()
+
+    expect(editor.replace).not.toHaveBeenCalled()
+    expect(editor.editor.history.cutoff).not.toHaveBeenCalled()
+  })
+
+  it('refuses a single replace while the engine has deselected after a tail replacement', () => {
+    const { editor, documentSearch } = createSearchHarness({ matchCounts: { apple: 1 } })
+
+    documentSearch.openSearch()
+    documentSearch.setQuery('apple')
+    // Tail replacement: every survivor sits inside the insertion, so the
+    // engine reports matches but no active one.
+    editor.replace.mockImplementation(() => ({ matches: [null], index: -1 }))
+    documentSearch.setReplaceValue('pineapple')
+    documentSearch.replaceCurrent()
+
+    expect(editor.replace).toHaveBeenCalledTimes(1)
+    expect(documentSearch.activeMatchIndex.value).toBe(-1)
+    expect(documentSearch.matchCount.value).toBe(1)
+
+    // The next single replace is refused before touching the history.
+    editor.editor.history.cutoff.mockClear()
+    documentSearch.replaceCurrent()
+    expect(editor.replace).toHaveBeenCalledTimes(1)
+    expect(editor.editor.history.cutoff).not.toHaveBeenCalled()
+  })
+
+  it('mutes the edit refresh triggered by its own replace dispatch', () => {
+    const { editor, documentSearch } = createSearchHarness({ matchCounts: { apple: 2 } })
+
+    documentSearch.openSearch()
+    documentSearch.setQuery('apple')
+
+    // The real flush fires json-change synchronously, which the app routes
+    // back into refreshAfterEdit mid-replace.
+    editor.editor.jsonState.flush.mockImplementation(() => {
+      documentSearch.refreshAfterEdit()
+    })
+    editor.search.mockClear()
+    documentSearch.replaceCurrent()
+
+    expect(editor.search).not.toHaveBeenCalled()
+    expect(documentSearch.matchCount.value).toBe(1)
+  })
+
+  it('re-runs the query under the flipped case sensitivity', () => {
+    const { editor, documentSearch } = createSearchHarness({ matchCounts: { Apple: 2 } })
+
+    documentSearch.openSearch()
+    documentSearch.setQuery('Apple')
+    documentSearch.toggleCaseSensitive()
+
+    expect(documentSearch.caseSensitive.value).toBe(true)
+    expect(editor.search).toHaveBeenLastCalledWith('Apple', { isCaseSensitive: true })
+
+    documentSearch.toggleCaseSensitive()
+    expect(editor.search).toHaveBeenLastCalledWith('Apple', { isCaseSensitive: false })
+  })
+
+  it('toggles the replace row without touching the editor', () => {
+    const { editor, documentSearch } = createSearchHarness()
+
+    documentSearch.toggleReplaceOpen()
+    expect(documentSearch.replaceOpen.value).toBe(true)
+    documentSearch.toggleReplaceOpen()
+    expect(documentSearch.replaceOpen.value).toBe(false)
+    expect(editor.search).not.toHaveBeenCalled()
+  })
+
+  it('closing resets the replace row, value, sensitivity, and notice', () => {
+    const { documentSearch } = createSearchHarness({ matchCounts: { apple: 2 } })
+
+    documentSearch.openSearch()
+    documentSearch.setQuery('apple')
+    documentSearch.toggleReplaceOpen()
+    documentSearch.setReplaceValue('pear')
+    documentSearch.toggleCaseSensitive()
+    documentSearch.replaceAll()
+    documentSearch.closeSearch()
+
+    expect(documentSearch.replaceOpen.value).toBe(false)
+    expect(documentSearch.replaceValue.value).toBe('')
+    expect(documentSearch.caseSensitive.value).toBe(false)
+    expect(documentSearch.replaceAllCount.value).toBeNull()
   })
 
   it('flushes a pending query before next-match navigation', () => {
@@ -263,7 +432,7 @@ describe('createDocumentSearch', () => {
 
       documentSearch.findNext()
 
-      expect(editor.search).toHaveBeenCalledWith('apple')
+      expect(editor.search).toHaveBeenCalledWith('apple', { isCaseSensitive: false })
       expect(editor.find).toHaveBeenCalledWith('next')
       expect(documentSearch.activeMatchIndex.value).toBe(1)
       vi.runAllTimers()

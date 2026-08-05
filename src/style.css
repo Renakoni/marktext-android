@@ -812,6 +812,10 @@ textarea {
 .search-input {
   flex: 1;
   min-width: 0;
+  /* The input itself is the interactive box — stretch it to the field's
+     full height so taps anywhere in the pill focus it (centered, it would
+     only be one 19px line tall). */
+  align-self: stretch;
   border: 0;
   padding: 0;
   background: transparent;
@@ -840,6 +844,93 @@ textarea {
 
 .search-count-empty {
   color: var(--text-faint);
+}
+
+/* The expand toggle tints while the replace row is out. */
+.search-replace-toggle[aria-expanded='true'] {
+  color: var(--accent-strong);
+}
+
+/* Replace row: a second full-width top-bar row below the find field —
+   in-place expansion, never a sheet. */
+.search-replace-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 2px;
+}
+
+/* Every interactive box on the replace row meets a 44x44 touch floor —
+   width included, since short labels (Aa, All) fall under it on padding
+   alone. These are adjacent, frequently tapped controls (the app's
+   smallest targets elsewhere are the 40px top-bar icons). */
+.search-replace-row .search-field {
+  flex: 1;
+  min-height: 44px;
+}
+
+.search-case-toggle {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: var(--hairline) solid var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  touch-action: manipulation;
+  transition:
+    background-color var(--dur-standard) var(--ease-out),
+    border-color var(--dur-standard) var(--ease-out),
+    color var(--dur-standard) var(--ease-out);
+}
+
+.search-case-toggle[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.search-case-toggle:active {
+  background: var(--press);
+  transition-duration: 0ms;
+}
+
+.search-replace-action {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
+}
+
+.search-replace-action:disabled {
+  color: var(--text-faint);
+  opacity: 0.55;
+}
+
+.search-replace-action:active {
+  background: var(--press);
+  transition-duration: 0ms;
+}
+
+.search-case-toggle:focus-visible,
+.search-replace-action:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
 .icon-button:disabled {

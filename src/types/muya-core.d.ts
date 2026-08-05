@@ -80,9 +80,16 @@ declare module '@muyajs/core' {
       /**
        * The complete logical document. `rawState` is the live state root
        * (no clone) — read-only consumers only, e.g. bounds checks against
-       * the top-level block count during a progressive mount.
+       * the top-level block count during a progressive mount. `flush()`
+       * drains the rAF-deferred op batch synchronously so the history can
+       * be boundary-cut deterministically around a replace.
        */
-      jsonState: { readonly rawState: readonly unknown[] }
+      jsonState: { readonly rawState: readonly unknown[]; flush(): void }
+      /**
+       * `cutoff()` breaks the history's time-window undo coalescing so the
+       * next recorded operation starts its own undo entry.
+       */
+      history: { cutoff(): void }
     }
     constructor(element: HTMLElement, options?: Record<string, unknown>)
     init(): void
@@ -111,6 +118,10 @@ declare module '@muyajs/core' {
     selectAll(): void
     search(value: string, opts?: IMuyaSearchOptions): IMuyaSearchState
     find(action: 'previous' | 'next'): IMuyaSearchState
+    replace(
+      replaceValue: string,
+      opt?: IMuyaSearchOptions & { isSingle?: boolean },
+    ): IMuyaSearchState
     /**
      * Materialize blocks through the given top-level state index (progressive
      * mount, marktext#4887). No-op when the index is already mounted.

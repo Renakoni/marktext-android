@@ -558,11 +558,20 @@ const {
   searchQuery: editorSearchQuery,
   matchCount: editorSearchMatchCount,
   activeMatchIndex: editorSearchActiveIndex,
+  replaceOpen: editorSearchReplaceOpen,
+  replaceValue: editorSearchReplaceValue,
+  caseSensitive: editorSearchCaseSensitive,
+  replaceAllCount: editorSearchReplaceAllCount,
   openSearch: openEditorSearchBar,
   closeSearch: closeEditorSearch,
   setQuery: setEditorSearchQuery,
   findNext: findNextEditorSearchMatch,
   findPrevious: findPreviousEditorSearchMatch,
+  toggleReplaceOpen: toggleEditorSearchReplace,
+  setReplaceValue: setEditorSearchReplaceValue,
+  toggleCaseSensitive: toggleEditorSearchCase,
+  replaceCurrent: replaceCurrentEditorSearchMatch,
+  replaceAll: replaceAllEditorSearchMatches,
   refreshAfterEdit: refreshEditorSearchAfterEdit,
   resetForNewDocument: resetEditorSearchForNewDocument,
 } = createDocumentSearch({
@@ -2079,6 +2088,10 @@ onBeforeUnmount(() => {
     :search-query="editorSearchQuery"
     :search-match-count="editorSearchMatchCount"
     :search-active-index="editorSearchActiveIndex"
+    :search-replace-open="editorSearchReplaceOpen"
+    :search-replace-value="editorSearchReplaceValue"
+    :search-case-sensitive="editorSearchCaseSensitive"
+    :search-replace-all-count="editorSearchReplaceAllCount"
     :outline-open="editorOutlineOpen"
     :outline-items="editorOutlineItems"
     :resume-card-visible="resumeCardVisible"
@@ -2090,6 +2103,11 @@ onBeforeUnmount(() => {
     @update:search-query="setEditorSearchQuery"
     @search-next="findNextEditorSearchMatch"
     @search-previous="findPreviousEditorSearchMatch"
+    @toggle-search-replace="toggleEditorSearchReplace"
+    @update:search-replace-value="setEditorSearchReplaceValue"
+    @toggle-search-case="toggleEditorSearchCase"
+    @search-replace-current="replaceCurrentEditorSearchMatch"
+    @search-replace-all="replaceAllEditorSearchMatches"
     @open-outline="openEditorOutline"
     @close-outline="closeEditorOutline"
     @select-outline-heading="selectEditorOutlineHeading"

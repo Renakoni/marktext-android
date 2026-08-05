@@ -2,7 +2,7 @@ import type Content from '../block/base/content';
 import type TreeNode from '../block/base/treeNode';
 import type { IHighlight } from '../inlineRenderer/types';
 import type { Muya } from '../muya';
-import type { IMatch } from './types';
+import type { IMatch, ISearchOption } from './types';
 import { DEFAULT_SEARCH_OPTIONS } from '../config';
 import { buildRegexValue, matchString } from '../utils/search';
 
@@ -130,11 +130,20 @@ export class Search {
         lastBlock.text = tempText + lastBlock.text.substring(lastEnd);
     }
 
-    replace(replaceValue: string, opt = { isSingle: true, isRegexp: false }) {
-        const { isSingle, isRegexp, ...rest } = opt;
+    replace(
+        replaceValue: string,
+        opt: ISearchOption & { isSingle?: boolean } = { isSingle: true, isRegexp: false },
+    ) {
+        const { isSingle = true, isRegexp, ...rest } = opt;
         const options = Object.assign({}, DEFAULT_SEARCH_OPTIONS, rest);
         const { matches, index } = this;
         const value = this._value;
+
+        // A single replace needs an active match to consume; index is -1
+        // after a previous replace exhausted every match outside its own
+        // insertion (see below). find() navigates out of that state.
+        if (isSingle && index < 0)
+            return this;
 
         if (matches.length) {
             if (isRegexp)
@@ -143,17 +152,36 @@ export class Search {
             if (isSingle) {
                 // replace one
                 this._innerReplace([matches[index]], replaceValue);
+
+                // After the re-search the match array is [before (index
+                // entries), inserted (matches the replacement itself
+                // contains), after]. The active match must never land inside
+                // an insertion — a replacement that still contains the query
+                // (cat -> wildcat) would otherwise compound the same spot on
+                // every tap. Prefer the first match after the insertion. When
+                // none remains: an inert replacement steps back to the last
+                // match before it (the classic behavior — nothing it could
+                // select is ever an insertion), while a query-containing one
+                // deselects (-1), because earlier "before" matches may be
+                // this session's own previous insertions. The surviving
+                // highlights stay reachable through deliberate arrow
+                // navigation, and find() recovers from -1.
+                const inside = matchString(replaceValue, value, options).length;
+                this.search(value, { ...options, highlightIndex: -1 });
+                const total = this.matches.length;
+                let desired = index + inside;
+                if (desired > total - 1)
+                    desired = inside === 0 ? index - 1 : -1;
+                if (desired !== this.index) {
+                    this.index = desired;
+                    this._updateMatches();
+                }
             }
             else {
                 // replace all
                 this._innerReplace(matches, replaceValue);
+                this.search(value, { ...options, highlightIndex: -1 });
             }
-            const highlightIndex = index < matches.length - 1 ? index : index - 1;
-
-            this.search(value, {
-                ...options,
-                highlightIndex: isSingle ? highlightIndex : -1,
-            });
         }
 
         return this;
