@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Monokai Pro.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Monokai Pro is active. Rule grouping
+ * follows the desktop prismjs/monokai-pro.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='monokai-pro'] .token.comment,
+[data-theme='monokai-pro'] .token.prolog,
+[data-theme='monokai-pro'] .token.doctype,
+[data-theme='monokai-pro'] .token.cdata {
+  color: #727072;
+}
+
+[data-theme='monokai-pro'] .token.punctuation {
+  color: #fcfcfa;
+}
+
+[data-theme='monokai-pro'] .token.property,
+[data-theme='monokai-pro'] .token.tag,
+[data-theme='monokai-pro'] .token.constant,
+[data-theme='monokai-pro'] .token.symbol {
+  color: #ff6188;
+}
+
+[data-theme='monokai-pro'] .token.boolean,
+[data-theme='monokai-pro'] .token.number {
+  color: #ab9df2;
+}
+
+[data-theme='monokai-pro'] .token.selector,
+[data-theme='monokai-pro'] .token.attr-name,
+[data-theme='monokai-pro'] .token.string,
+[data-theme='monokai-pro'] .token.char,
+[data-theme='monokai-pro'] .token.builtin {
+  color: #a9dc76;
+}
+
+[data-theme='monokai-pro'] .token.inserted {
+  color: #a9dc76;
+  background: rgba(169, 220, 118, 0.12);
+}
+
+[data-theme='monokai-pro'] .token.deleted {
+  color: #ff6188;
+  background: rgba(255, 97, 136, 0.12);
+}
+
+[data-theme='monokai-pro'] .token.operator,
+[data-theme='monokai-pro'] .token.entity,
+[data-theme='monokai-pro'] .token.url,
+[data-theme='monokai-pro'] .language-css .token.string,
+[data-theme='monokai-pro'] .style .token.string {
+  color: #78dce8;
+}
+
+[data-theme='monokai-pro'] .token.atrule,
+[data-theme='monokai-pro'] .token.attr-value,
+[data-theme='monokai-pro'] .token.function,
+[data-theme='monokai-pro'] .token.class-name {
+  color: #ffd866;
+}
+
+[data-theme='monokai-pro'] .token.keyword {
+  color: #ff6188;
+}
+
+[data-theme='monokai-pro'] .token.regex,
+[data-theme='monokai-pro'] .token.important,
+[data-theme='monokai-pro'] .token.variable {
+  color: #fc9867;
+}

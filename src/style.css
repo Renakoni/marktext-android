@@ -10,6 +10,17 @@
 @import './styles/themes/solarized-light.css';
 @import './styles/themes/tokyo-night-light.css';
 @import './styles/themes/ulysses.css';
+@import './styles/themes/ayu-dark.css';
+@import './styles/themes/ayu-mirage.css';
+@import './styles/themes/catppuccin-mocha.css';
+@import './styles/themes/cyberdream.css';
+@import './styles/themes/dracula.css';
+@import './styles/themes/everforest-dark.css';
+@import './styles/themes/gruvbox-dark.css';
+@import './styles/themes/horizon-dark.css';
+@import './styles/themes/kanagawa.css';
+@import './styles/themes/material-dark.css';
+@import './styles/themes/monokai-pro.css';
 @import './styles/themes/one-dark.css';
 @import './styles/themes/prism-cadmium.css';
 @import './styles/themes/prism-ayu-light.css';
@@ -20,6 +31,17 @@
 @import './styles/themes/prism-solarized-light.css';
 @import './styles/themes/prism-tokyo-night-light.css';
 @import './styles/themes/prism-ulysses.css';
+@import './styles/themes/prism-ayu-dark.css';
+@import './styles/themes/prism-ayu-mirage.css';
+@import './styles/themes/prism-catppuccin-mocha.css';
+@import './styles/themes/prism-cyberdream.css';
+@import './styles/themes/prism-dracula.css';
+@import './styles/themes/prism-everforest-dark.css';
+@import './styles/themes/prism-gruvbox-dark.css';
+@import './styles/themes/prism-horizon-dark.css';
+@import './styles/themes/prism-kanagawa.css';
+@import './styles/themes/prism-material-dark.css';
+@import './styles/themes/prism-monokai-pro.css';
 @import './styles/themes/prism-one-dark.css';
 
 /*

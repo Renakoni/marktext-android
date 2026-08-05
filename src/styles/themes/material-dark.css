@@ -1,0 +1,107 @@
+/*
+ * Material Dark — curated custom theme.
+ *
+ * Heritage: desktop MarkText material-dark theme — the blue-gray #34393f
+ * ground, material orange accent #f48237 (also the blockquote border and
+ * list marker), and a One-Dark-family heading run led by the orange.
+ * Values are plain hex/rgba so every WebView the app can meet renders them
+ * identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Body ink flattens the desktop 0.8-alpha gray to full-opacity #abb2bf
+ *   so it holds WCAG AA on the ground.
+ * - `--accent` and `--danger` are nudged/lightened just past AA; the
+ *   heritage orange stays on `--theme-color`.
+ * - Desktop ships no material prism palette and falls back to the classic
+ *   dark set, so the code palette here mirrors prism-cadmium.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule.
+ */
+
+:root[data-theme='material-dark'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #272d34;
+  --surface: #34393f;
+  --surface-muted: #3f454c;
+  --surface-sunken: #272d34;
+  --surface-raised: #3c4650;
+
+  /* Content */
+  --text: #abb2bf;
+  --text-muted: #99a1ad;
+  --text-faint: #7d8590;
+  --task-completed-color: #9ca4b0;
+  --on-accent: #26221d;
+
+  /* Lines */
+  --border: #454b53;
+  --border-strong: #565d66;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — material orange; "strong" lightens for contrast on the dark
+     ground. */
+  --accent: #f4853c;
+  --accent-strong: #f7a06b;
+  --accent-hover: #f59252;
+  --accent-soft: rgba(244, 130, 55, 0.22);
+  --accent-tint-10: rgba(244, 130, 55, 0.14);
+  --accent-tint-11: rgba(244, 130, 55, 0.16);
+
+  /* State */
+  --danger: #ff7d7d;
+  --focus-ring: rgba(244, 130, 55, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(244, 130, 55, 0.35);
+
+  /* Muya bridge — the desktop material-dark palette on the writing surface. */
+  --theme-color: #f48237;
+  --highlight-color: rgba(244, 130, 55, 0.3);
+  --selection-color: rgba(255, 255, 255, 0.2);
+  --editor-color: #abb2bf;
+  --editor-color-80: rgba(171, 178, 191, 0.85);
+  --editor-color-50: rgba(171, 178, 191, 0.6);
+  --editor-color-30: rgba(171, 178, 191, 0.35);
+  --editor-color-10: rgba(171, 178, 191, 0.12);
+  --editor-color-04: rgba(171, 178, 191, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #ff6969;
+  --icon-color: rgba(255, 255, 255, 0.56);
+  --code-block-bg-color: #3f454c;
+  --table-border-color: #4f585e;
+  --input-bg-color: rgba(0, 0, 0, 0.1);
+  --button-font-color: rgba(255, 255, 255, 0.7);
+  --button-bg-color: #58606a;
+  --button-border: 1px solid #383d44;
+  --button-bg-color-hover: #646d78;
+  --button-border-hover: 1px solid #383d44;
+  --button-bg-color-active: #4a5159;
+  --button-border-active: 1px solid #383d44;
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(255, 255, 255, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.03);
+  --float-shadow: var(--shadow-float);
+  --link-color: #61afef;
+  --h1-color: #f48237;
+  --h2-color: #56b6c2;
+  --h3-color: #c678dd;
+  --h4-color: #98c379;
+  --h5-color: #e5c07b;
+  --h6-color: #61afef;
+  --blockquote-text-color: rgba(171, 178, 191, 0.7);
+  --blockquote-border-color: #f48237;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #f48237;
+  --hr-color: rgba(171, 178, 191, 0.3);
+}

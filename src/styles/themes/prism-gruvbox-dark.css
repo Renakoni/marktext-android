@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Gruvbox Dark.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Gruvbox Dark is active. Rule grouping
+ * follows the desktop prismjs/gruvbox-dark.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='gruvbox-dark'] .token.comment,
+[data-theme='gruvbox-dark'] .token.prolog,
+[data-theme='gruvbox-dark'] .token.doctype,
+[data-theme='gruvbox-dark'] .token.cdata {
+  color: #928374;
+}
+
+[data-theme='gruvbox-dark'] .token.punctuation {
+  color: #ebdbb2;
+}
+
+[data-theme='gruvbox-dark'] .token.property,
+[data-theme='gruvbox-dark'] .token.tag,
+[data-theme='gruvbox-dark'] .token.constant,
+[data-theme='gruvbox-dark'] .token.symbol {
+  color: #fb4934;
+}
+
+[data-theme='gruvbox-dark'] .token.boolean,
+[data-theme='gruvbox-dark'] .token.number {
+  color: #d3869b;
+}
+
+[data-theme='gruvbox-dark'] .token.selector,
+[data-theme='gruvbox-dark'] .token.attr-name,
+[data-theme='gruvbox-dark'] .token.string,
+[data-theme='gruvbox-dark'] .token.char,
+[data-theme='gruvbox-dark'] .token.builtin {
+  color: #b8bb26;
+}
+
+[data-theme='gruvbox-dark'] .token.inserted {
+  color: #b8bb26;
+  background: rgba(184, 187, 38, 0.12);
+}
+
+[data-theme='gruvbox-dark'] .token.deleted {
+  color: #fb4934;
+  background: rgba(251, 73, 52, 0.12);
+}
+
+[data-theme='gruvbox-dark'] .token.operator,
+[data-theme='gruvbox-dark'] .token.entity,
+[data-theme='gruvbox-dark'] .token.url,
+[data-theme='gruvbox-dark'] .language-css .token.string,
+[data-theme='gruvbox-dark'] .style .token.string {
+  color: #8ec07c;
+}
+
+[data-theme='gruvbox-dark'] .token.atrule,
+[data-theme='gruvbox-dark'] .token.attr-value,
+[data-theme='gruvbox-dark'] .token.function,
+[data-theme='gruvbox-dark'] .token.class-name {
+  color: #fabd2f;
+}
+
+[data-theme='gruvbox-dark'] .token.keyword {
+  color: #fb4934;
+}
+
+[data-theme='gruvbox-dark'] .token.regex,
+[data-theme='gruvbox-dark'] .token.important,
+[data-theme='gruvbox-dark'] .token.variable {
+  color: #fe8019;
+}

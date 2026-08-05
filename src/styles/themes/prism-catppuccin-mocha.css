@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Catppuccin Mocha.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Catppuccin Mocha is active. Rule grouping
+ * follows the desktop prismjs/catppuccin-mocha.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='catppuccin-mocha'] .token.comment,
+[data-theme='catppuccin-mocha'] .token.prolog,
+[data-theme='catppuccin-mocha'] .token.doctype,
+[data-theme='catppuccin-mocha'] .token.cdata {
+  color: #6c7086;
+}
+
+[data-theme='catppuccin-mocha'] .token.punctuation {
+  color: #bac2de;
+}
+
+[data-theme='catppuccin-mocha'] .token.property,
+[data-theme='catppuccin-mocha'] .token.tag,
+[data-theme='catppuccin-mocha'] .token.constant,
+[data-theme='catppuccin-mocha'] .token.symbol {
+  color: #f38ba8;
+}
+
+[data-theme='catppuccin-mocha'] .token.boolean,
+[data-theme='catppuccin-mocha'] .token.number {
+  color: #fab387;
+}
+
+[data-theme='catppuccin-mocha'] .token.selector,
+[data-theme='catppuccin-mocha'] .token.attr-name,
+[data-theme='catppuccin-mocha'] .token.string,
+[data-theme='catppuccin-mocha'] .token.char,
+[data-theme='catppuccin-mocha'] .token.builtin {
+  color: #a6e3a1;
+}
+
+[data-theme='catppuccin-mocha'] .token.inserted {
+  color: #a6e3a1;
+  background: rgba(166, 227, 161, 0.12);
+}
+
+[data-theme='catppuccin-mocha'] .token.deleted {
+  color: #f38ba8;
+  background: rgba(243, 139, 168, 0.12);
+}
+
+[data-theme='catppuccin-mocha'] .token.operator,
+[data-theme='catppuccin-mocha'] .token.entity,
+[data-theme='catppuccin-mocha'] .token.url,
+[data-theme='catppuccin-mocha'] .language-css .token.string,
+[data-theme='catppuccin-mocha'] .style .token.string {
+  color: #89dceb;
+}
+
+[data-theme='catppuccin-mocha'] .token.atrule,
+[data-theme='catppuccin-mocha'] .token.attr-value,
+[data-theme='catppuccin-mocha'] .token.function,
+[data-theme='catppuccin-mocha'] .token.class-name {
+  color: #89b4fa;
+}
+
+[data-theme='catppuccin-mocha'] .token.keyword {
+  color: #cba6f7;
+}
+
+[data-theme='catppuccin-mocha'] .token.regex,
+[data-theme='catppuccin-mocha'] .token.important,
+[data-theme='catppuccin-mocha'] .token.variable {
+  color: #f9e2af;
+}

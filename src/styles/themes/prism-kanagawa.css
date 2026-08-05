@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Kanagawa.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Kanagawa is active. Rule grouping follows
+ * the desktop prismjs/kanagawa.theme.css palette; the [data-theme] scope
+ * wins on specificity without !important.
+ */
+
+[data-theme='kanagawa'] .token.comment,
+[data-theme='kanagawa'] .token.prolog,
+[data-theme='kanagawa'] .token.doctype,
+[data-theme='kanagawa'] .token.cdata {
+  color: #727169;
+}
+
+[data-theme='kanagawa'] .token.punctuation {
+  color: #9cabca;
+}
+
+[data-theme='kanagawa'] .token.property,
+[data-theme='kanagawa'] .token.tag,
+[data-theme='kanagawa'] .token.constant,
+[data-theme='kanagawa'] .token.symbol {
+  color: #c34043;
+}
+
+[data-theme='kanagawa'] .token.boolean,
+[data-theme='kanagawa'] .token.number {
+  color: #d27e99;
+}
+
+[data-theme='kanagawa'] .token.selector,
+[data-theme='kanagawa'] .token.attr-name,
+[data-theme='kanagawa'] .token.string,
+[data-theme='kanagawa'] .token.char,
+[data-theme='kanagawa'] .token.builtin {
+  color: #98bb6c;
+}
+
+[data-theme='kanagawa'] .token.inserted {
+  color: #98bb6c;
+  background: rgba(152, 187, 108, 0.12);
+}
+
+[data-theme='kanagawa'] .token.deleted {
+  color: #c34043;
+  background: rgba(195, 64, 67, 0.14);
+}
+
+[data-theme='kanagawa'] .token.operator,
+[data-theme='kanagawa'] .token.entity,
+[data-theme='kanagawa'] .token.url,
+[data-theme='kanagawa'] .language-css .token.string,
+[data-theme='kanagawa'] .style .token.string {
+  color: #7fb4ca;
+}
+
+[data-theme='kanagawa'] .token.atrule,
+[data-theme='kanagawa'] .token.attr-value,
+[data-theme='kanagawa'] .token.function,
+[data-theme='kanagawa'] .token.class-name {
+  color: #7e9cd8;
+}
+
+[data-theme='kanagawa'] .token.keyword {
+  color: #957fb8;
+}
+
+[data-theme='kanagawa'] .token.regex,
+[data-theme='kanagawa'] .token.important,
+[data-theme='kanagawa'] .token.variable {
+  color: #e6c384;
+}

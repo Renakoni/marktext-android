@@ -20,7 +20,8 @@ describe('appearance theme settings', () => {
     expect(normalizeThemeMode(42)).toBe('system')
 
     expect(normalizeCustomTheme('one-dark')).toBe('one-dark')
-    expect(normalizeCustomTheme('dracula')).toBe('ayu-light')
+    expect(normalizeCustomTheme('dracula')).toBe('dracula')
+    expect(normalizeCustomTheme('sepia')).toBe('ayu-light')
     expect(normalizeCustomTheme(undefined)).toBe('ayu-light')
   })
 

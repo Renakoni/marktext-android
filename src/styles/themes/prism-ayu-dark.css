@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Ayu Dark.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Ayu Dark is active. Rule grouping follows
+ * the desktop prismjs/ayu-dark.theme.css palette; the [data-theme] scope
+ * wins on specificity without !important.
+ */
+
+[data-theme='ayu-dark'] .token.comment,
+[data-theme='ayu-dark'] .token.prolog,
+[data-theme='ayu-dark'] .token.doctype,
+[data-theme='ayu-dark'] .token.cdata {
+  color: #626a73;
+}
+
+[data-theme='ayu-dark'] .token.punctuation {
+  color: #bfbdb6;
+}
+
+[data-theme='ayu-dark'] .token.property,
+[data-theme='ayu-dark'] .token.tag,
+[data-theme='ayu-dark'] .token.constant,
+[data-theme='ayu-dark'] .token.symbol {
+  color: #39bae6;
+}
+
+[data-theme='ayu-dark'] .token.boolean,
+[data-theme='ayu-dark'] .token.number {
+  color: #d2a6ff;
+}
+
+[data-theme='ayu-dark'] .token.selector,
+[data-theme='ayu-dark'] .token.attr-name,
+[data-theme='ayu-dark'] .token.string,
+[data-theme='ayu-dark'] .token.char,
+[data-theme='ayu-dark'] .token.builtin {
+  color: #c2d94c;
+}
+
+[data-theme='ayu-dark'] .token.inserted {
+  color: #c2d94c;
+  background: rgba(194, 217, 76, 0.12);
+}
+
+[data-theme='ayu-dark'] .token.deleted {
+  color: #39bae6;
+  background: rgba(57, 186, 230, 0.12);
+}
+
+[data-theme='ayu-dark'] .token.operator,
+[data-theme='ayu-dark'] .token.entity,
+[data-theme='ayu-dark'] .token.url,
+[data-theme='ayu-dark'] .language-css .token.string,
+[data-theme='ayu-dark'] .style .token.string {
+  color: #f29668;
+}
+
+[data-theme='ayu-dark'] .token.atrule,
+[data-theme='ayu-dark'] .token.attr-value,
+[data-theme='ayu-dark'] .token.function,
+[data-theme='ayu-dark'] .token.class-name {
+  color: #ffb454;
+}
+
+[data-theme='ayu-dark'] .token.keyword {
+  color: #ff8f40;
+}
+
+[data-theme='ayu-dark'] .token.regex,
+[data-theme='ayu-dark'] .token.important,
+[data-theme='ayu-dark'] .token.variable {
+  color: #95e6cb;
+}

@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Ayu Mirage.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Ayu Mirage is active. Rule grouping follows
+ * the desktop prismjs/ayu-mirage.theme.css palette; the [data-theme] scope
+ * wins on specificity without !important.
+ */
+
+[data-theme='ayu-mirage'] .token.comment,
+[data-theme='ayu-mirage'] .token.prolog,
+[data-theme='ayu-mirage'] .token.doctype,
+[data-theme='ayu-mirage'] .token.cdata {
+  color: #5c6773;
+}
+
+[data-theme='ayu-mirage'] .token.punctuation {
+  color: #cbccc6;
+}
+
+[data-theme='ayu-mirage'] .token.property,
+[data-theme='ayu-mirage'] .token.tag,
+[data-theme='ayu-mirage'] .token.constant,
+[data-theme='ayu-mirage'] .token.symbol {
+  color: #f28779;
+}
+
+[data-theme='ayu-mirage'] .token.boolean,
+[data-theme='ayu-mirage'] .token.number {
+  color: #ffad66;
+}
+
+[data-theme='ayu-mirage'] .token.selector,
+[data-theme='ayu-mirage'] .token.attr-name,
+[data-theme='ayu-mirage'] .token.string,
+[data-theme='ayu-mirage'] .token.char,
+[data-theme='ayu-mirage'] .token.builtin {
+  color: #bae67e;
+}
+
+[data-theme='ayu-mirage'] .token.inserted {
+  color: #bae67e;
+  background: rgba(186, 230, 126, 0.12);
+}
+
+[data-theme='ayu-mirage'] .token.deleted {
+  color: #f28779;
+  background: rgba(242, 135, 121, 0.12);
+}
+
+[data-theme='ayu-mirage'] .token.operator,
+[data-theme='ayu-mirage'] .token.entity,
+[data-theme='ayu-mirage'] .token.url,
+[data-theme='ayu-mirage'] .language-css .token.string,
+[data-theme='ayu-mirage'] .style .token.string {
+  color: #95e6cb;
+}
+
+[data-theme='ayu-mirage'] .token.atrule,
+[data-theme='ayu-mirage'] .token.attr-value,
+[data-theme='ayu-mirage'] .token.function,
+[data-theme='ayu-mirage'] .token.class-name {
+  color: #ffd580;
+}
+
+[data-theme='ayu-mirage'] .token.keyword {
+  color: #ffcc66;
+}
+
+[data-theme='ayu-mirage'] .token.regex,
+[data-theme='ayu-mirage'] .token.important,
+[data-theme='ayu-mirage'] .token.variable {
+  color: #73d0ff;
+}

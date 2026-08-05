@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Cyberdream.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Cyberdream is active. Rule grouping follows
+ * the desktop prismjs/cyberdream.theme.css palette; the [data-theme] scope
+ * wins on specificity without !important.
+ */
+
+[data-theme='cyberdream'] .token.comment,
+[data-theme='cyberdream'] .token.prolog,
+[data-theme='cyberdream'] .token.doctype,
+[data-theme='cyberdream'] .token.cdata {
+  color: #7b8496;
+}
+
+[data-theme='cyberdream'] .token.punctuation {
+  color: #ffffff;
+}
+
+[data-theme='cyberdream'] .token.property,
+[data-theme='cyberdream'] .token.tag,
+[data-theme='cyberdream'] .token.constant,
+[data-theme='cyberdream'] .token.symbol {
+  color: #ff6e5e;
+}
+
+[data-theme='cyberdream'] .token.boolean,
+[data-theme='cyberdream'] .token.number {
+  color: #ffbd5e;
+}
+
+[data-theme='cyberdream'] .token.selector,
+[data-theme='cyberdream'] .token.attr-name,
+[data-theme='cyberdream'] .token.string,
+[data-theme='cyberdream'] .token.char,
+[data-theme='cyberdream'] .token.builtin {
+  color: #5eff6c;
+}
+
+[data-theme='cyberdream'] .token.inserted {
+  color: #5eff6c;
+  background: rgba(94, 255, 108, 0.1);
+}
+
+[data-theme='cyberdream'] .token.deleted {
+  color: #ff6e5e;
+  background: rgba(255, 110, 94, 0.12);
+}
+
+[data-theme='cyberdream'] .token.operator,
+[data-theme='cyberdream'] .token.entity,
+[data-theme='cyberdream'] .token.url,
+[data-theme='cyberdream'] .language-css .token.string,
+[data-theme='cyberdream'] .style .token.string {
+  color: #5ef1ff;
+}
+
+[data-theme='cyberdream'] .token.atrule,
+[data-theme='cyberdream'] .token.attr-value,
+[data-theme='cyberdream'] .token.function,
+[data-theme='cyberdream'] .token.class-name {
+  color: #5ea1ff;
+}
+
+[data-theme='cyberdream'] .token.keyword {
+  color: #bd5eff;
+}
+
+[data-theme='cyberdream'] .token.regex,
+[data-theme='cyberdream'] .token.important,
+[data-theme='cyberdream'] .token.variable {
+  color: #ff5ef1;
+}

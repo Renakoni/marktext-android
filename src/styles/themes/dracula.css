@@ -1,0 +1,105 @@
+/*
+ * Dracula — curated custom theme.
+ *
+ * Heritage: desktop MarkText dracula theme — the #282a36 ground, purple
+ * accent #bd93f9, near-white ink #f8f8f2, and the dracula heading run
+ * (pink, purple, cyan, green, orange, yellow). Values are plain hex/rgba
+ * so every WebView the app can meet renders them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - The desktop 0.6-alpha purple search highlight softens to 0.3 so
+ *   highlighted text stays readable on a phone.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints bold white and italics yellow).
+ */
+
+:root[data-theme='dracula'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #242631;
+  --surface: #282a36;
+  --surface-muted: #313445;
+  --surface-sunken: #21222c;
+  --surface-raised: #343746;
+
+  /* Content */
+  --text: #f8f8f2;
+  --text-muted: #c3c5d0;
+  --text-faint: #8f96b3;
+  --task-completed-color: #9ca3c7;
+  --on-accent: #21222c;
+
+  /* Lines */
+  --border: #3b3d4d;
+  --border-strong: #4d5066;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — dracula purple; "strong" lightens for contrast on the dark
+     ground. */
+  --accent: #bd93f9;
+  --accent-strong: #d3b5fb;
+  --accent-hover: #c9a4fa;
+  --accent-soft: rgba(189, 147, 249, 0.22);
+  --accent-tint-10: rgba(189, 147, 249, 0.14);
+  --accent-tint-11: rgba(189, 147, 249, 0.16);
+
+  /* State */
+  --danger: #ff5555;
+  --focus-ring: rgba(189, 147, 249, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(189, 147, 249, 0.35);
+
+  /* Muya bridge — the desktop dracula palette on the writing surface. */
+  --theme-color: #bd93f9;
+  --highlight-color: rgba(189, 147, 249, 0.3);
+  --selection-color: rgba(68, 71, 90, 0.8);
+  --editor-color: #f8f8f2;
+  --editor-color-80: rgba(248, 248, 242, 0.8);
+  --editor-color-50: rgba(248, 248, 242, 0.5);
+  --editor-color-30: rgba(248, 248, 242, 0.3);
+  --editor-color-10: rgba(248, 248, 242, 0.1);
+  --editor-color-04: rgba(248, 248, 242, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #ff5555;
+  --icon-color: rgba(248, 248, 242, 0.56);
+  --code-block-bg-color: #44475a;
+  --table-border-color: #44475a;
+  --input-bg-color: #21222c;
+  --button-font-color: rgba(248, 248, 242, 0.7);
+  --button-bg-color: #44475a;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #6272a4;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #383a46;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(248, 248, 242, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #8be9fd;
+  --h1-color: #ff79c6;
+  --h2-color: #bd93f9;
+  --h3-color: #8be9fd;
+  --h4-color: #50fa7b;
+  --h5-color: #ffb86c;
+  --h6-color: #f1fa8c;
+  --blockquote-text-color: rgba(248, 248, 242, 0.6);
+  --blockquote-border-color: #6272a4;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #bd93f9;
+  --hr-color: #44475a;
+}

@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Everforest Dark.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Everforest Dark is active. Rule grouping
+ * follows the desktop prismjs/everforest-dark.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='everforest-dark'] .token.comment,
+[data-theme='everforest-dark'] .token.prolog,
+[data-theme='everforest-dark'] .token.doctype,
+[data-theme='everforest-dark'] .token.cdata {
+  color: #859289;
+}
+
+[data-theme='everforest-dark'] .token.punctuation {
+  color: #d3c6aa;
+}
+
+[data-theme='everforest-dark'] .token.property,
+[data-theme='everforest-dark'] .token.tag,
+[data-theme='everforest-dark'] .token.constant,
+[data-theme='everforest-dark'] .token.symbol {
+  color: #e67e80;
+}
+
+[data-theme='everforest-dark'] .token.boolean,
+[data-theme='everforest-dark'] .token.number {
+  color: #d699b6;
+}
+
+[data-theme='everforest-dark'] .token.selector,
+[data-theme='everforest-dark'] .token.attr-name,
+[data-theme='everforest-dark'] .token.string,
+[data-theme='everforest-dark'] .token.char,
+[data-theme='everforest-dark'] .token.builtin {
+  color: #a7c080;
+}
+
+[data-theme='everforest-dark'] .token.inserted {
+  color: #a7c080;
+  background: rgba(167, 192, 128, 0.12);
+}
+
+[data-theme='everforest-dark'] .token.deleted {
+  color: #e67e80;
+  background: rgba(230, 126, 128, 0.12);
+}
+
+[data-theme='everforest-dark'] .token.operator,
+[data-theme='everforest-dark'] .token.entity,
+[data-theme='everforest-dark'] .token.url,
+[data-theme='everforest-dark'] .language-css .token.string,
+[data-theme='everforest-dark'] .style .token.string {
+  color: #83c092;
+}
+
+[data-theme='everforest-dark'] .token.atrule,
+[data-theme='everforest-dark'] .token.attr-value,
+[data-theme='everforest-dark'] .token.function,
+[data-theme='everforest-dark'] .token.class-name {
+  color: #7fbbb3;
+}
+
+[data-theme='everforest-dark'] .token.keyword {
+  color: #e67e80;
+}
+
+[data-theme='everforest-dark'] .token.regex,
+[data-theme='everforest-dark'] .token.important,
+[data-theme='everforest-dark'] .token.variable {
+  color: #dbbc7f;
+}
