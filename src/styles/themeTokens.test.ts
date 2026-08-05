@@ -139,6 +139,32 @@ function collectReferencedTokens(css: string): Set<string> {
   return new Set(Array.from(css.matchAll(/var\(\s*(--[\w-]+)/g), match => match[1]))
 }
 
+/** Resolves a token that may be an rgba() overlay (e.g. --press). */
+function resolveOverlayToken(
+  tokens: Map<string, string>,
+  token: string,
+): { rgb: [number, number, number]; alpha: number } {
+  const value = tokens.get(token)
+  const rgba = value?.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)$/)
+  if (!rgba) {
+    throw new Error(`expected an rgb/rgba color for ${token}, received: ${value}`)
+  }
+
+  return {
+    rgb: [Number(rgba[1]), Number(rgba[2]), Number(rgba[3])],
+    alpha: rgba[4] === undefined ? 1 : Number(rgba[4]),
+  }
+}
+
+function compositeOver(
+  overlay: { rgb: [number, number, number]; alpha: number },
+  background: [number, number, number],
+): [number, number, number] {
+  return background.map((channel, index) =>
+    Math.round(overlay.alpha * overlay.rgb[index] + (1 - overlay.alpha) * channel),
+  ) as [number, number, number]
+}
+
 describe('theme token architecture', () => {
   it('keeps modern color functions out of shipped styles for old WebViews', () => {
     const modernColorFunctionPattern = /\b(?:oklch|color-mix)\(/
@@ -209,19 +235,46 @@ describe('theme token architecture', () => {
     // render normal-sized copy in these roles: body labels (--text),
     // secondary copy (--text-muted), accent actions (--accent-strong — the
     // accent TEXT role; plain --accent is reserved for fills and borders),
-    // and destructive actions (--danger). A palette whose raised tint
-    // drifts too bright (dark themes) or too dark (light themes) fails
-    // silently there, so the whole contract is pinned.
+    // and destructive actions (--danger). Pressed rows composite --press
+    // over the surface, which shifts it toward the ink and erodes contrast,
+    // so every role is checked against both the resting surface and the
+    // pressed composite.
     const RAISED_TEXT_ROLES = ['--text', '--text-muted', '--accent-strong', '--danger']
 
     for (const path of themePaths) {
       const tokens = collectTokenValues(readFileSync(path, 'utf8'))
       const raised = resolveHexToken(tokens, '--surface-raised')
+      const pressed = compositeOver(resolveOverlayToken(tokens, '--press'), raised)
       const name = relative(process.cwd(), path)
 
       for (const role of RAISED_TEXT_ROLES) {
-        const ratio = contrastRatio(resolveHexToken(tokens, role), raised)
-        expect(ratio, `${name} ${role}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+        const foreground = resolveHexToken(tokens, role)
+        for (const [state, background] of [['resting', raised], ['pressed', pressed]] as const) {
+          const ratio = contrastRatio(foreground, background)
+          expect(ratio, `${name} ${role} (${state}): ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+            4.5,
+          )
+        }
+      }
+    }
+  })
+
+  it('keeps on-accent glyphs at non-text contrast on accent fills in every theme', () => {
+    // Accent fills (the new-document button, primary prompt actions) carry
+    // --on-accent glyphs and text; --accent-hover is the pressed fill
+    // variant. WCAG 1.4.11 requires 3:1 for these non-text pairs.
+    // --accent-strong is deliberately absent: it is the accent TEXT role
+    // and must never be used as a fill.
+    for (const path of themePaths) {
+      const tokens = collectTokenValues(readFileSync(path, 'utf8'))
+      const onAccent = resolveHexToken(tokens, '--on-accent')
+      const name = relative(process.cwd(), path)
+
+      for (const fill of ['--accent', '--accent-hover']) {
+        const ratio = contrastRatio(onAccent, resolveHexToken(tokens, fill))
+        expect(ratio, `${name} on-accent vs ${fill}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+          3,
+        )
       }
     }
   })

@@ -23,7 +23,7 @@
 
   /* Content */
   --text: #b9c1cc;
-  --text-muted: #9da5b2;
+  --text-muted: #b4bac4;
   --text-faint: #6f7887;
   --task-completed-color: #8f97a5;
   --on-accent: #ffffff;
@@ -36,14 +36,14 @@
   /* Accent — heritage slate blue; "strong" means more contrast, so it
      lightens here instead of darkening. */
   --accent: #4d78cc;
-  --accent-strong: #82a7ef;
+  --accent-strong: #9dbaf2;
   --accent-hover: #5d88da;
   --accent-soft: rgba(77, 120, 204, 0.22);
   --accent-tint-10: rgba(77, 120, 204, 0.14);
   --accent-tint-11: rgba(77, 120, 204, 0.16);
 
   /* State */
-  --danger: #e68991;
+  --danger: #eca6ac;
   --focus-ring: rgba(86, 138, 242, 0.45);
   --press: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.6);

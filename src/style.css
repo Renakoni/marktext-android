@@ -208,7 +208,10 @@ body {
 }
 
 .home-new-button:active {
-  background: var(--accent-strong);
+  /* --accent-hover is the pressed FILL variant; --accent-strong is the
+     accent TEXT role and no longer doubles as a background (its lightened
+     dark-theme values sink the --on-accent glyph below 3:1). */
+  background: var(--accent-hover);
   box-shadow: none;
   transform: scale(0.94);
   transition-duration: 0ms;

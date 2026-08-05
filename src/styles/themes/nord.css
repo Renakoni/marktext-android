@@ -30,7 +30,7 @@
 
   /* Content */
   --text: #d8dee9;
-  --text-muted: #b4bccc;
+  --text-muted: #ccd2dd;
   --text-faint: #7d8698;
   --task-completed-color: #a8aebb;
   --on-accent: #2e3440;
@@ -42,14 +42,14 @@
 
   /* Accent — frost blue; "strong" lightens for contrast on polar night. */
   --accent: #81a1c1;
-  --accent-strong: #a9c0d8;
+  --accent-strong: #c5d5e5;
   --accent-hover: #90adca;
   --accent-soft: rgba(129, 161, 193, 0.2);
   --accent-tint-10: rgba(129, 161, 193, 0.14);
   --accent-tint-11: rgba(129, 161, 193, 0.16);
 
   /* State */
-  --danger: #dfb1b6;
+  --danger: #e9cace;
   --focus-ring: rgba(129, 161, 193, 0.45);
   --press: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.6);

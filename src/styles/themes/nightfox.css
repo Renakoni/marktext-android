@@ -30,7 +30,7 @@
 
   /* Content */
   --text: #cdcecf;
-  --text-muted: #aaabad;
+  --text-muted: #b7b8ba;
   --text-faint: #738091;
   --task-completed-color: #9fa3a8;
   --on-accent: #192330;
@@ -50,7 +50,7 @@
   --accent-tint-11: rgba(113, 156, 214, 0.16);
 
   /* State */
-  --danger: #db899e;
+  --danger: #e5a8b8;
   --focus-ring: rgba(113, 156, 214, 0.45);
   --press: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.6);

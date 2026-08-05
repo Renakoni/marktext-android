@@ -41,14 +41,14 @@
   /* Accent — horizon rose; "strong" lightens for contrast on the dusk
      ground. */
   --accent: #e95678;
-  --accent-strong: #f089a1;
+  --accent-strong: #f192a8;
   --accent-hover: #ec6d8a;
   --accent-soft: rgba(233, 86, 120, 0.2);
   --accent-tint-10: rgba(233, 86, 120, 0.14);
   --accent-tint-11: rgba(233, 86, 120, 0.16);
 
   /* State */
-  --danger: #ed718e;
+  --danger: #f191a7;
   --focus-ring: rgba(233, 86, 120, 0.45);
   --press: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.6);
