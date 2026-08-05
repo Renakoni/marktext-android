@@ -31,9 +31,26 @@ const CDN_STYLESHEET_LINKS = `  <!-- https://cdnjs.com/libraries/github-markdown
 // sanitize + DOM stage (#3676): raw-HTML formatting whitespace and
 // authored soft breaks are indistinguishable once parsed, so the marked
 // renderer marks raw newlines before parsing and `renderHtml` swaps them
-// back after the soft-break pass. Private-use characters survive both
-// DOMPurify and innerHTML parsing in text and attribute positions alike.
-const RAW_NEWLINE_SENTINEL = 'mu:raw-nl';
+// back ON THE DOM, before serialization (see _restoreRawNewlines for the
+// security contract). The marker is freshly RANDOM per render, so
+// authored content cannot collide with it — not even through numeric
+// character references, which no input-scan check could enumerate.
+function pickRawNewlineSentinel(): string {
+    const bytes = new Uint8Array(16);
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        crypto.getRandomValues(bytes);
+    }
+    else {
+        for (let i = 0; i < bytes.length; i++)
+            bytes[i] = Math.floor(Math.random() * 256);
+    }
+
+    let token = 'mu-raw-nl-';
+    for (const byte of bytes)
+        token += byte.toString(16).padStart(2, '0');
+
+    return token;
+}
 
 // Containers whose text newlines are CONTENT, never soft breaks. The
 // browser's parser has already resolved raw-text elements, nesting, and
@@ -42,14 +59,19 @@ const RAW_NEWLINE_SENTINEL = 'mu:raw-nl';
 // review rounds of HTML-parser emulation for. `.katex`/`math`/`svg`
 // guard generated math and diagram output.
 const SOFT_BREAK_PROTECTED
-    = 'pre, code, kbd, script, style, textarea, title, svg, math, .katex';
+    = 'pre, code, kbd, script, style, textarea, title, svg, math, table, .katex';
 
-// Block-level elements: a newline touching one of these (or a container
-// edge) separates BLOCKS — marked's own serialization shape — and must
-// not become a visible break. Everything else adjacent is phrasing
-// content, where a newline is an authored soft break.
+// Containers whose DIRECT text children are always serializer whitespace
+// (between <li>s, between table sections/rows/cells): never convert there.
+const STRUCTURAL_PARENT_TAG
+    = /^(?:UL|OL|MENU|DL|TABLE|THEAD|TBODY|TFOOT|TR|COLGROUP|SELECT|OPTGROUP)$/;
+
+// Block-level / structural elements: a newline touching one of these (or
+// a container edge) separates STRUCTURE — marked's own serialization
+// shape — and must not become a visible break. Everything else adjacent
+// is phrasing content, where a newline is an authored soft break.
 const BLOCKISH_TAG
-    = /^(?:ADDRESS|ARTICLE|ASIDE|BLOCKQUOTE|DETAILS|DIV|DL|DD|DT|FIELDSET|FIGCAPTION|FIGURE|FOOTER|FORM|H[1-6]|HEADER|HR|MAIN|NAV|OL|P|PRE|SECTION|TABLE|UL)$/;
+    = /^(?:ADDRESS|ARTICLE|ASIDE|BLOCKQUOTE|CAPTION|COL|COLGROUP|DETAILS|DIV|DL|DD|DT|FIELDSET|FIGCAPTION|FIGURE|FOOTER|FORM|H[1-6]|HEADER|HR|LI|MAIN|NAV|OL|P|PRE|SECTION|TABLE|TBODY|TD|TFOOT|TH|THEAD|TR|UL)$/;
 
 export class MarkdownToHtml {
     private _exportContainer: HTMLDivElement | null = null;
@@ -81,6 +103,8 @@ export class MarkdownToHtml {
     private _convertSoftBreaks(text: Text) {
         const parent = text.parentElement;
         if (!parent || parent.closest(SOFT_BREAK_PROTECTED))
+            return;
+        if (STRUCTURAL_PARENT_TAG.test(parent.tagName))
             return;
         if (!parent.closest('p, li'))
             return;
@@ -122,6 +146,42 @@ export class MarkdownToHtml {
 
         if (converted)
             text.parentNode!.replaceChild(fragment, text);
+    }
+
+    /**
+     * Swap the raw-newline sentinels back, ON THE DOM and BEFORE
+     * serialization — nothing textual is ever modified after the
+     * sanitized document is serialized (the string-level restore this
+     * replaces let `href="java<sentinel>script:alert(1)"` pass DOMPurify
+     * and re-materialize as a newline that URL normalization strips).
+     *
+     * - TEXT nodes restore the real `\n`: text-node mutation cannot cross
+     *   into markup by construction.
+     * - ATTRIBUTE values restore a SPACE instead. Attribute newlines are
+     *   collapsible whitespace semantically, and space is the provably
+     *   safe direction: URL parsing strips tab/newline/CR but preserves
+     *   interior spaces, so a scheme can never reassemble. (Deleting the
+     *   sentinel would be the DANGEROUS direction — `java` + `script:`
+     *   joins.) Sentinels that landed in attribute NAMES (a newline
+     *   between attributes) are junk attributes DOMPurify already
+     *   stripped before this pass.
+     */
+    private _restoreRawNewlines(container: HTMLElement, sentinel: string) {
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+        const texts: Text[] = [];
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if ((node as Text).data.includes(sentinel))
+                texts.push(node as Text);
+        }
+        for (const text of texts)
+            text.data = text.data.split(sentinel).join('\n');
+
+        for (const element of container.querySelectorAll('*')) {
+            for (const attribute of element.attributes) {
+                if (attribute.value.includes(sentinel))
+                    attribute.value = attribute.value.split(sentinel).join(' ');
+            }
+        }
     }
 
     private async _renderMermaid() {
@@ -274,13 +334,14 @@ export class MarkdownToHtml {
     // render pure html by marked
     async renderHtml() {
         const footnote = this._muya?.options?.footnote ?? false;
+        const rawNewlineSentinel = pickRawNewlineSentinel();
         let html = getHighlightHtml(this.markdown, {
             superSubScript: this._muya?.options?.superSubScript ?? true,
             footnote,
             isGitlabCompatibilityEnabled:
         this._muya?.options?.isGitlabCompatibilityEnabled ?? true,
             math: this._muya?.options?.math ?? true,
-        }, { rawNewlineSentinel: RAW_NEWLINE_SENTINEL });
+        }, { rawNewlineSentinel });
 
         // Post-process footnotes into the standard GFM / pandoc shape (inline
         // numbered <sup> refs + bottom <section class="footnotes"> with
@@ -309,8 +370,11 @@ export class MarkdownToHtml {
 
         // Authored soft breaks -> <br> (#3676), on the parsed DOM where
         // the browser has already resolved everything the token stream
-        // cannot express.
+        // cannot express — then restore raw-token newlines, still on the
+        // DOM: serialization is the last step and nothing rewrites the
+        // serialized string afterwards.
         this._renderSoftBreaks(exportContainer);
+        this._restoreRawNewlines(exportContainer, rawNewlineSentinel);
 
         let result = exportContainer.innerHTML;
         exportContainer.remove();
@@ -328,10 +392,6 @@ export class MarkdownToHtml {
         });
 
         this._exportContainer = null;
-
-        // Raw-HTML newlines ride through the DOM pass as sentinels (text
-        // and attribute positions alike); a string-wide swap restores them.
-        result = result.split(RAW_NEWLINE_SENTINEL).join('\n');
 
         return `<article class="markdown-body">${result}</article>`;
     }

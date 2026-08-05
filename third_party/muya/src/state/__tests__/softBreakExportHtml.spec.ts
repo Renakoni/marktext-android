@@ -167,14 +167,38 @@ describe('everything that is NOT an authored soft break stays untouched', () => 
         expect(html).not.toContain('<br>');
     });
 
-    it('keeps raw newlines inside attributes intact', async () => {
+    it('downgrades raw attribute newlines to spaces', async () => {
+        // Attribute sentinels restore as SPACE, not `\n`: URL parsing
+        // strips tab/newline/CR but preserves interior spaces, so a
+        // dangerous scheme can never reassemble around the restored
+        // character (see the href smuggling test below). An attribute
+        // newline is collapsible whitespace semantically, so the space
+        // is presentation-equivalent.
         const html = await exportHtml('<div title="a\nb">x</div>\n');
-        expect(html).toContain('title="a\nb"');
+        expect(html).toContain('title="a b"');
     });
 
     it('keeps table cells untouched', async () => {
         const html = await exportHtml('| a | b |\n| - | - |\n| c | d |\n');
         expect(html).not.toContain('<br>');
+    });
+
+    it('keeps serializer newlines between nested-list siblings structural', async () => {
+        // A multi-child nested list puts `\n` text nodes directly under
+        // the inner <ul> (between the <li>s) — direct children of a
+        // structural container are serializer whitespace, never breaks.
+        const html = await exportHtml('- parent\n  - c1\n  - c2\n');
+        expect(html).not.toContain('<br>');
+        expect(html).toContain('<li>c1</li>');
+        expect(html).toContain('<li>c2</li>');
+    });
+
+    it('keeps a table nested in a list item free of <br>', async () => {
+        const html = await exportHtml(
+            '- item\n\n  | a | b |\n  | - | - |\n  | c | d |\n',
+        );
+        expect(html).not.toContain('<br>');
+        expect(html).toContain('<table>');
     });
 });
 
@@ -186,5 +210,30 @@ describe('raw-token newlines survive verbatim', () => {
         const html = await exportHtml('- left\n  <!-- c -->\n  right\n');
         expect(html).toContain('left<!-- c -->\nright');
         expect(html).not.toContain('<br>');
+    });
+});
+
+describe('the sentinel round-trip cannot be abused', () => {
+    it('cannot smuggle a javascript: URI through an attribute newline', async () => {
+        // The attack the string-level restore allowed: `java\nscript:`
+        // rides through DOMPurify as an inert sentinel-carrying value,
+        // then the post-serialization swap turns it back into a newline
+        // that URL parsing strips — a working javascript: href. Restoring
+        // ON the DOM before serialization, and restoring attributes as
+        // SPACE, kills both halves: nothing textual changes after
+        // sanitization, and a space never disappears from URL parsing.
+        const html = await exportHtml('<a href="java\nscript:alert(1)">x</a>\n');
+        expect(html).not.toContain('javascript:');
+        expect(html).not.toContain('java\nscript');
+        expect(html).not.toContain('java&#10;script');
+    });
+
+    it('leaves authored text that looks like a sentinel untouched', async () => {
+        // The sentinel is freshly random per render, so authored content
+        // — including a verbatim copy of some earlier render's token —
+        // cannot collide with it and get rewritten into a newline.
+        const literal = 'mu-raw-nl-00112233445566778899aabbccddeeff';
+        const html = await exportHtml(`before ${literal} after\n`);
+        expect(html).toContain(literal);
     });
 });
