@@ -170,6 +170,23 @@ test('expands the replace row in place and hands focus back on collapse', async 
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await expect(page.getByTestId('search-replace-input')).toBeFocused()
 
+  // The 44px touch floor holds for the ACTUAL interactive boxes: the
+  // buttons in both dimensions (short labels like "Aa"/"All" fall under
+  // 44 wide on padding alone), and the input stretched across its pill
+  // (centered it would be one 19px text line, so taps in the field's
+  // padding would not focus it).
+  for (const id of [
+    'search-case-toggle',
+    'search-replace-one-button',
+    'search-replace-all-button',
+  ]) {
+    const box = (await page.getByTestId(id).boundingBox())!
+    expect(box.width, `${id} width`).toBeGreaterThanOrEqual(44)
+    expect(box.height, `${id} height`).toBeGreaterThanOrEqual(44)
+  }
+  const inputBox = (await page.getByTestId('search-replace-input').boundingBox())!
+  expect(inputBox.height, 'replace input height').toBeGreaterThanOrEqual(40)
+
   await toggle.click()
   await expect(page.getByTestId('search-replace-row')).toHaveCount(0)
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')

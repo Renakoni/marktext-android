@@ -812,6 +812,10 @@ textarea {
 .search-input {
   flex: 1;
   min-width: 0;
+  /* The input itself is the interactive box — stretch it to the field's
+     full height so taps anywhere in the pill focus it (centered, it would
+     only be one 19px line tall). */
+  align-self: stretch;
   border: 0;
   padding: 0;
   background: transparent;
@@ -857,9 +861,10 @@ textarea {
   padding-bottom: 2px;
 }
 
-/* Everything on the replace row meets the 44px touch floor: these are
-   adjacent, frequently tapped controls (the app's smallest targets are the
-   40px top-bar icons; text actions elsewhere run 42-48px). */
+/* Every interactive box on the replace row meets a 44x44 touch floor —
+   width included, since short labels (Aa, All) fall under it on padding
+   alone. These are adjacent, frequently tapped controls (the app's
+   smallest targets elsewhere are the 40px top-bar icons). */
 .search-replace-row .search-field {
   flex: 1;
   min-height: 44px;
@@ -867,6 +872,7 @@ textarea {
 
 .search-case-toggle {
   flex: none;
+  min-width: 44px;
   min-height: 44px;
   padding: 0 12px;
   border: var(--hairline) solid var(--border-strong);
@@ -896,6 +902,7 @@ textarea {
 
 .search-replace-action {
   flex: none;
+  min-width: 44px;
   min-height: 44px;
   padding: 0 11px;
   border: 0;
