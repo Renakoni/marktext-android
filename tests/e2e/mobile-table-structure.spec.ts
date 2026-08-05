@@ -103,11 +103,14 @@ test('removing the last row or the whole table drops the caret outside and resto
   await expect(tableRows(page)).toHaveCount(1)
 
   // Deleting the last remaining row removes the table itself: the caret
-  // exits, the format panel returns.
+  // exits onto the FOLLOWING prose (not lost in the detached tree), the
+  // format panel returns, and typing proves where the caret landed.
   await tapCell(page, 'Alpha')
   await page.getByTestId('toolbar-table-table-delete-row').click()
   await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(0)
   await expect(page.getByTestId('toolbar-command-format.strong')).toBeVisible()
+  await page.keyboard.type('landed-')
+  await expect(page.getByTestId('editor-host')).toContainText('landed-after')
 })
 
 // A document whose ONLY block is the table: every removal path must
@@ -168,4 +171,8 @@ test('delete table removes the whole table in one tap', async ({ page }) => {
   await expect(page.getByTestId('editor-host')).toContainText('before')
   await expect(page.getByTestId('editor-host')).toContainText('after')
   await expect(page.getByTestId('toolbar-command-format.strong')).toBeVisible()
+
+  // The caret lands on the prose right after the removed table.
+  await page.keyboard.type('landed-')
+  await expect(page.getByTestId('editor-host')).toContainText('landed-after')
 })

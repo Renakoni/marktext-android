@@ -38,8 +38,8 @@ interface MuyaTableBlock extends TableTreeNode {
   removeColumn(offset: number): TableCaretContent | null | undefined
   remove(): void
   cellAt(row: number, column: number): { firstChild: TableCaretContent | null } | null | undefined
-  nextContentInContext(): TableCaretContent | null | undefined
-  previousContentInContext(): TableCaretContent | null | undefined
+  /** The nearest content outside the table; engine-resolved at the boundary. */
+  outsideContentInContext(): TableCaretContent | null | undefined
 }
 
 interface MuyaScrollPage {
@@ -118,8 +118,9 @@ export function runTableCommand(editor: MuyaEditor | null, commandId: TableComma
 
   const { table, rowOffset, columnOffset } = context
   const inner = editor.editor
-  // Captured before the mutation: a removed table's parent link is nulled.
-  const scrollPage = table.parent as unknown as MuyaScrollPage
+  // The REAL page — tables can nest inside list items, so the table's
+  // immediate parent is not necessarily the scroll page.
+  const scrollPage = inner.scrollPage as MuyaScrollPage | null
 
   // The engine returns the new column's FIRST created cell, which is
   // always the header-row cell; the caret must stay in the row it came
@@ -131,47 +132,54 @@ export function runTableCommand(editor: MuyaEditor | null, commandId: TableComma
 
   inner.history.cutoff()
   let caret: TableCaretContent | null | undefined
-  switch (commandId) {
-    case 'table-insert-row-above':
-      // Row 0 is the GFM header; inserting above it makes the new blank
-      // row the header (engine semantics, matched by the desktop menus).
-      caret = table.insertRow(rowOffset)
-      break
-    case 'table-insert-row-below':
-      caret = table.insertRow(rowOffset + 1)
-      break
-    case 'table-insert-column-left':
-      caret = insertColumnAt(columnOffset)
-      break
-    case 'table-insert-column-right':
-      caret = insertColumnAt(columnOffset + 1)
-      break
-    case 'table-delete-row':
-      caret = table.removeRow(rowOffset)
-      break
-    case 'table-delete-column':
-      caret = table.removeColumn(columnOffset)
-      break
-    case 'table-delete-table':
-      // Same pattern as the engine's own whole-table removals: capture the
-      // outside neighbour BEFORE detaching so the caret never lands in a
-      // removed subtree.
-      caret = table.nextContentInContext() ?? table.previousContentInContext()
-      table.remove()
-      break
-  }
+  try {
+    switch (commandId) {
+      case 'table-insert-row-above':
+        // Row 0 is the GFM header; inserting above it makes the new blank
+        // row the header (engine semantics, matched by the desktop menus).
+        caret = table.insertRow(rowOffset)
+        break
+      case 'table-insert-row-below':
+        caret = table.insertRow(rowOffset + 1)
+        break
+      case 'table-insert-column-left':
+        caret = insertColumnAt(columnOffset)
+        break
+      case 'table-insert-column-right':
+        caret = insertColumnAt(columnOffset + 1)
+        break
+      case 'table-delete-row':
+        caret = table.removeRow(rowOffset)
+        break
+      case 'table-delete-column':
+        caret = table.removeColumn(columnOffset)
+        break
+      case 'table-delete-table':
+        // Same pattern as the engine's own whole-table removals: capture
+        // the outside neighbour BEFORE detaching so the caret never lands
+        // in a removed subtree.
+        caret = table.outsideContentInContext()
+        table.remove()
+        break
+    }
 
-  // Removing the document's only table (directly, or via its last
-  // row/column) leaves a zero-child page — not a supported state (the
-  // blank-area click handler dereferences the last child). Restore the
-  // one-empty-paragraph invariant inside the same undo step, exactly like
-  // the engine's whole-table cut path.
-  if (!caret && scrollPage.length() === 0) {
-    caret = scrollPage.resetToSingleEmptyParagraph()
-  }
+    // Removing the document's ONLY block leaves a zero-child page — not a
+    // supported state (the blank-area click handler dereferences the last
+    // child). Restore the one-empty-paragraph invariant inside the same
+    // undo step, exactly like the engine's whole-table cut path. A table
+    // removed out of a nested container is not this case: the outside
+    // resolution above finds the surrounding content, and the emptied
+    // container stays (the traversal tolerates empty containers, #4644).
+    if (!caret && scrollPage && scrollPage.length() === 0) {
+      caret = scrollPage.resetToSingleEmptyParagraph()
+    }
 
-  caret?.setCursor(0, 0, true)
-  inner.jsonState.flush()
-  inner.history.cutoff()
+    caret?.setCursor(0, 0, true)
+  } finally {
+    // Whatever happened above, the op batch must land inside this undo
+    // boundary — a dangling batch would coalesce into the user's next edit.
+    inner.jsonState.flush()
+    inner.history.cutoff()
+  }
   return true
 }

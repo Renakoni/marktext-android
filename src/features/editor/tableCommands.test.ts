@@ -65,8 +65,7 @@ function createFakeEditor({
     removeColumn: vi.fn(() => (survivorless ? null : survivorCaret)),
     remove: vi.fn(),
     cellAt: vi.fn(() => (cellAtMisses ? null : { firstChild: bodyCellCaret })),
-    nextContentInContext: vi.fn(() => (outsideContent ? outsideCaret : null)),
-    previousContentInContext: vi.fn(() => null),
+    outsideContentInContext: vi.fn(() => (outsideContent ? outsideCaret : null)),
   }
   const inner = {
     blockName: breakAt === 'inner' ? 'paragraph' : 'table.inner',
@@ -92,7 +91,7 @@ function createFakeEditor({
   const history = { cutoff: vi.fn() }
   const jsonState = { flush: vi.fn() }
   const editor = {
-    editor: { activeContentBlock: content, history, jsonState },
+    editor: { activeContentBlock: content, history, jsonState, scrollPage },
   } as unknown as MuyaEditor
 
   return {
@@ -256,7 +255,7 @@ describe('runTableCommand', () => {
     runTableCommand(harness.editor, 'table-delete-table')
 
     expect(harness.outsideCaret.setCursor).toHaveBeenCalledWith(0, 0, true)
-    const captureOrder = harness.table.nextContentInContext.mock.invocationCallOrder[0]
+    const captureOrder = harness.table.outsideContentInContext.mock.invocationCallOrder[0]
     const removeOrder = harness.table.remove.mock.invocationCallOrder[0]
     expect(captureOrder).toBeLessThan(removeOrder)
   })

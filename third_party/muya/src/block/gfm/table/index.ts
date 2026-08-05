@@ -182,6 +182,23 @@ class Table extends Parent {
         return firstCellInNewColumn!.firstChild as TableCellContent;
     }
 
+    /**
+     * The nearest content block OUTSIDE the table: the one right after it,
+     * else the one right before. `nextContentInContext` on the table ITSELF
+     * starts at the table's parent's siblings (the traversal is designed
+     * for content blocks), so the table's own neighbours are never seen —
+     * resolve from the boundary content descendants instead, whose upward
+     * recursion crosses the table edge correctly. Must be called BEFORE the
+     * table is detached.
+     */
+    outsideContentInContext(): Nullable<Content> {
+        return (
+            this.lastContentInDescendant()?.nextContentInContext()
+            ?? this.firstContentInDescendant()?.previousContentInContext()
+            ?? null
+        );
+    }
+
     removeRow(offset: number): Nullable<Content> {
         const inner = this.firstChild as TableInner;
         const row = inner.find(offset);
@@ -196,10 +213,8 @@ class Table extends Parent {
         // about-to-be-detached table itself.
         const survivor = (row.next as TableRow | null) ?? (row.prev as TableRow | null);
         // Always grab the outside-of-table fallback as well, in case the
-        // whole table is going away. `nextContentInContext` / `prev` walk
-        // out of the table by design.
-        const outsideContent
-            = this.nextContentInContext() ?? this.previousContentInContext();
+        // whole table is going away.
+        const outsideContent = this.outsideContentInContext();
 
         row.remove();
 
@@ -223,8 +238,7 @@ class Table extends Parent {
             // Same outside-of-table fallback as removeRow when the whole
             // table is removed — never leave the caret inside a detached
             // subtree.
-            const outsideContent
-                = this.nextContentInContext() ?? this.previousContentInContext();
+            const outsideContent = this.outsideContentInContext();
             this.remove();
             return outsideContent ?? null;
         }

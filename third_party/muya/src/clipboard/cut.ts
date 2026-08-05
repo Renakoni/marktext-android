@@ -249,8 +249,10 @@ function selectedTableCells(
 // a single empty paragraph when the table was the only block).
 function removeWholeTable(clipboard: Clipboard, table: Table): void {
     clipboard.selection.table.clear();
-    const outsideContent
-        = table.nextContentInContext() ?? table.previousContentInContext();
+    // Resolved through the boundary content descendants: the plain
+    // `nextContentInContext` on the table itself starts at the table's
+    // PARENT's siblings and never sees the table's own neighbours.
+    const outsideContent = table.outsideContentInContext();
     table.remove();
     if (clipboard.scrollPage?.length() === 0)
         resetToEmptyParagraph(clipboard);
