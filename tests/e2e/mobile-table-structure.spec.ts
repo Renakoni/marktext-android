@@ -33,6 +33,31 @@ async function tapCell(page: Page, text: string) {
   await page.getByTestId('editor-host').locator('figure.mu-table').getByText(text).click()
 }
 
+test('the collapsed quick strip swaps to table commands with the caret', async ({ page }) => {
+  await openTableDraft(page)
+
+  // Toolbar collapsed (the resting state while writing): generic quick
+  // commands, no table trace.
+  await expect(page.getByTestId('toolbar-command-format.strong')).toBeVisible()
+  await expect(page.getByTestId('toolbar-table-table-insert-row-below')).toHaveCount(0)
+
+  // Caret into a cell: the strip mirrors the TABLE panel — undo stays in
+  // reach, the seven structure commands replace the quick commands.
+  await tapCell(page, 'two')
+  await expect(page.getByTestId('toolbar-table-table-insert-row-below')).toBeVisible()
+  await expect(page.getByTestId('toolbar-command-edit.undo')).toBeVisible()
+  await expect(page.getByTestId('toolbar-command-format.strong')).toHaveCount(0)
+
+  // The strip is live, not just visible.
+  await page.getByTestId('toolbar-table-table-insert-row-below').click()
+  await expect(tableRows(page)).toHaveCount(3)
+
+  // Caret out: the user's quick commands return.
+  await page.getByTestId('editor-host').getByText('after').click()
+  await expect(page.getByTestId('toolbar-command-format.strong')).toBeVisible()
+  await expect(page.getByTestId('toolbar-table-table-insert-row-below')).toHaveCount(0)
+})
+
 test('the toolbar follows the caret into the table and back out', async ({ page }) => {
   await openTableDraft(page)
 
@@ -203,18 +228,11 @@ test('recovers an editable paragraph when the deleted table was a list item\'s o
   await expect(page.getByTestId('table-insert-sheet')).toBeVisible()
   await page.getByTestId('table-insert-button').click()
 
-  // The table nests as the list item's ONLY child.
+  // The table nests as the list item's ONLY child, and inserting from the
+  // sheet enters the table toolbar state directly (the engine seats the
+  // caret in the fresh table without a selection change; the app enters
+  // explicitly) — the collapsed strip already shows the commands.
   await expect(page.getByTestId('editor-host').locator('li > figure.mu-table')).toHaveCount(1)
-
-  // Tapping a cell brings the TABLE panel up (programmatic insertion does
-  // not emit a selection change, so the panel follows the first tap), and
-  // the sheet flow collapsed the toolbar, so expand it again to see it.
-  await page
-    .getByTestId('editor-host')
-    .locator('figure.mu-table span.mu-table-cell-content')
-    .first()
-    .click()
-  await page.getByTestId('toolbar-expand-button').click()
   await expect(page.getByTestId('toolbar-table-table-delete-table')).toBeVisible()
 
   await page.getByTestId('toolbar-table-table-delete-table').click()

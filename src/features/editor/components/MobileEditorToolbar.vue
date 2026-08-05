@@ -37,6 +37,9 @@ const emit = defineEmits<{
 
 const panels = MOBILE_TOOLBAR_PANELS
 const editCommands = MOBILE_TOOLBAR_EDIT_COMMANDS
+// The table quick strip keeps undo in reach — repeated structure edits
+// and one-step undos are the panel's natural rhythm.
+const quickUndoCommand = MOBILE_TOOLBAR_EDIT_COMMANDS[0]
 const groupMenuOpen = ref(false)
 const { t } = useI18n()
 let lastEditorSelectionRange: Range | null = null
@@ -83,14 +86,63 @@ watch(
   },
 )
 
+// The Android WebView draws the native caret handle in a compositor layer
+// ABOVE all DOM content — no popup can cover it. Chromium only shows the
+// touch handles for GESTURE-made selections, so re-applying the current
+// selection programmatically hides the handle while the selection, the
+// focus, and therefore the soft keyboard all stay exactly as they were.
+// (Clearing the selection instead would hide the keyboard: with no
+// editable selection the IME dismisses.) The remove+add pair runs in one
+// synchronous task, so no observable empty-selection state exists.
+watch(groupMenuOpen, open => {
+  if (!open) {
+    return
+  }
+
+  const selection = document.getSelection()
+  if (!selection || selection.rangeCount === 0) {
+    return
+  }
+
+  const ranges = Array.from({ length: selection.rangeCount }, (_, i) =>
+    selection.getRangeAt(i),
+  )
+  if (!ranges.some(range => props.host?.contains(range.commonAncestorContainer))) {
+    return
+  }
+
+  const clones = ranges.map(range => range.cloneRange())
+  selection.removeAllRanges()
+  for (const range of clones) {
+    selection.addRange(range)
+  }
+})
+
+// A tap anywhere outside the open panel menu (and its trigger) dismisses
+// it, like any popup — including taps into the document body, which then
+// place the caret as they normally would.
+function dismissGroupMenuFromOutsidePointer(event: PointerEvent) {
+  if (!groupMenuOpen.value || !(event.target instanceof Element)) {
+    return
+  }
+
+  const insideMenu = event.target.closest('[data-testid="mobile-editor-toolbar-panel"]')
+  const onTrigger = event.target.closest('[data-testid="toolbar-group-switcher"]')
+  if (!insideMenu && !onTrigger) {
+    groupMenuOpen.value = false
+  }
+}
+
 onMounted(() => {
   document.addEventListener('selectionchange', rememberCurrentEditorSelection)
   document.addEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
+  document.addEventListener('pointerdown', dismissGroupMenuFromOutsidePointer, true)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('selectionchange', rememberCurrentEditorSelection)
   document.removeEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
+  document.removeEventListener('pointerdown', dismissGroupMenuFromOutsidePointer, true)
 })
 
 watch(
@@ -140,25 +192,69 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
     :aria-label="t('toolbar.markdownTools')"
     data-testid="mobile-editor-toolbar"
   >
-    <!-- collapsed: quick actions + fixed expand handle -->
+    <!-- collapsed: quick actions + fixed expand handle. While the caret is
+         in a table, the strip mirrors the expanded TABLE panel — undo plus
+         the seven structure commands — so the caret-contextual switch is
+         visible in BOTH toolbar states, and restores the user's quick
+         commands the moment the caret leaves. -->
     <div v-if="!expanded" class="toolbar-collapsed">
-      <div class="toolbar-quick-strip" role="toolbar" :aria-label="t('toolbar.quickActions')">
-        <button
-          v-for="command in quickCommands"
-          :key="command.commandId"
-          class="toolbar-button"
-          type="button"
-          :aria-label="getCommandTitle(command)"
-          :title="getCommandTitle(command)"
-          :disabled="!editorReady"
-          :data-command-id="command.commandId"
-          :data-testid="`toolbar-command-${command.commandId}`"
-          @pointerdown.prevent
-          @mousedown.prevent
-          @click="runCommand(command.commandId)"
-        >
-          <ToolbarCommandGlyph :command="command" />
-        </button>
+      <div
+        class="toolbar-quick-strip"
+        role="toolbar"
+        :aria-label="caretInTable ? t(MOBILE_TOOLBAR_TABLE_PANEL.titleKey) : t('toolbar.quickActions')"
+      >
+        <template v-if="caretInTable">
+          <button
+            class="toolbar-button"
+            type="button"
+            :aria-label="getCommandTitle(quickUndoCommand)"
+            :title="getCommandTitle(quickUndoCommand)"
+            :disabled="!editorReady"
+            :data-command-id="quickUndoCommand.commandId"
+            :data-testid="`toolbar-command-${quickUndoCommand.commandId}`"
+            @pointerdown.prevent
+            @mousedown.prevent
+            @click="runCommand(quickUndoCommand.commandId)"
+          >
+            <ToolbarCommandGlyph :command="quickUndoCommand" />
+          </button>
+          <button
+            v-for="command in TABLE_STRIP"
+            :key="command.id"
+            class="toolbar-button toolbar-table-button"
+            :class="{ 'toolbar-table-danger': command.danger }"
+            type="button"
+            :aria-label="t(command.titleKey)"
+            :title="t(command.titleKey)"
+            :disabled="!editorReady"
+            :data-testid="`toolbar-table-${command.id}`"
+            @pointerdown.prevent
+            @mousedown.prevent
+            @click="emit('runTableCommand', command.id)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path v-for="path in command.paths" :key="path" :d="path" />
+            </svg>
+          </button>
+        </template>
+        <template v-else>
+          <button
+            v-for="command in quickCommands"
+            :key="command.commandId"
+            class="toolbar-button"
+            type="button"
+            :aria-label="getCommandTitle(command)"
+            :title="getCommandTitle(command)"
+            :disabled="!editorReady"
+            :data-command-id="command.commandId"
+            :data-testid="`toolbar-command-${command.commandId}`"
+            @pointerdown.prevent
+            @mousedown.prevent
+            @click="runCommand(command.commandId)"
+          >
+            <ToolbarCommandGlyph :command="command" />
+          </button>
+        </template>
       </div>
       <button
         class="toolbar-expand-handle"
