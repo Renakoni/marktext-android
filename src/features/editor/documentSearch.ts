@@ -31,11 +31,28 @@ export interface DocumentSearch {
   matchCount: Ref<number>
   /** 0-based index of the active match; -1 when there is none. */
   activeMatchIndex: Ref<number>
+  /** Whether the replace row under the find bar is expanded. */
+  replaceOpen: Ref<boolean>
+  replaceValue: Ref<string>
+  caseSensitive: Ref<boolean>
+  /**
+   * Occurrences consumed by the last replace-all, surfaced in the count
+   * slot until the next search action; null when no notice is pending.
+   */
+  replaceAllCount: Ref<number | null>
   openSearch(): void
   closeSearch(options?: CloseDocumentSearchOptions): void
   setQuery(value: string): void
   findNext(): void
   findPrevious(): void
+  toggleReplaceOpen(): void
+  setReplaceValue(value: string): void
+  /** Re-runs the current query under the new sensitivity. */
+  toggleCaseSensitive(): void
+  /** Replace the active match and advance to the next one. */
+  replaceCurrent(): void
+  /** Replace every match in the document. */
+  replaceAll(): void
   /** Re-run the current query after the document content changed. */
   refreshAfterEdit(): void
   /** Drop all search state without touching the (gone) editor instance. */
@@ -73,7 +90,16 @@ export function createDocumentSearch({
   const searchQuery = ref('')
   const matchCount = ref(0)
   const activeMatchIndex = ref(-1)
+  const replaceOpen = ref(false)
+  const replaceValue = ref('')
+  const caseSensitive = ref(false)
+  const replaceAllCount = ref<number | null>(null)
   let queryTimer: ReturnType<typeof setTimeout> | null = null
+  // The engine dispatch inside a replace fires the app's synchronous
+  // json-change -> refreshAfterEdit chain; that re-search would reset the
+  // active-match index the engine just advanced, so it is muted while the
+  // replace owns the search state.
+  let replacing = false
 
   function applySearchState(state: { matches: unknown[]; index: number }) {
     matchCount.value = state.matches.length
@@ -84,6 +110,10 @@ export function createDocumentSearch({
     searchQuery.value = ''
     matchCount.value = 0
     activeMatchIndex.value = -1
+    replaceOpen.value = false
+    replaceValue.value = ''
+    caseSensitive.value = false
+    replaceAllCount.value = null
   }
 
   function cancelPendingQuery() {
@@ -99,7 +129,7 @@ export function createDocumentSearch({
       return
     }
 
-    applySearchState(editor.search(value))
+    applySearchState(editor.search(value, { isCaseSensitive: caseSensitive.value }))
 
     if (value && matchCount.value > 0) {
       scrollActiveMatchIntoView?.()
@@ -151,6 +181,7 @@ export function createDocumentSearch({
 
   function setQuery(value: string) {
     searchQuery.value = value
+    replaceAllCount.value = null
     cancelPendingQuery()
 
     if (!value || queryDebounceMs <= 0) {
@@ -171,6 +202,7 @@ export function createDocumentSearch({
       return
     }
 
+    replaceAllCount.value = null
     applySearchState(editor.find(action))
     scrollActiveMatchIntoView?.()
   }
@@ -183,8 +215,72 @@ export function createDocumentSearch({
     findInDirection('previous')
   }
 
+  function toggleReplaceOpen() {
+    replaceOpen.value = !replaceOpen.value
+    logger?.debug('document search replace toggled', { open: replaceOpen.value })
+  }
+
+  function setReplaceValue(value: string) {
+    replaceValue.value = value
+  }
+
+  function toggleCaseSensitive() {
+    caseSensitive.value = !caseSensitive.value
+    replaceAllCount.value = null
+    cancelPendingQuery()
+
+    if (searchQuery.value) {
+      applyQuery(searchQuery.value)
+    }
+  }
+
+  function runReplace(isSingle: boolean) {
+    flushPendingQuery()
+    const editor = getEditor()
+    if (!editor || !searchQuery.value || matchCount.value === 0) {
+      return
+    }
+
+    const consumed = isSingle ? 1 : matchCount.value
+    replacing = true
+    try {
+      // Each user-visible replace is exactly one undo step: the history
+      // coalesces by time window, so cut it on both sides of the
+      // synchronous dispatch (contract pinned in Muya's search.spec).
+      editor.editor.history.cutoff()
+      applySearchState(
+        editor.replace(replaceValue.value, {
+          isSingle,
+          isCaseSensitive: caseSensitive.value,
+        }),
+      )
+      editor.editor.jsonState.flush()
+      editor.editor.history.cutoff()
+    } finally {
+      replacing = false
+    }
+
+    replaceAllCount.value = isSingle ? null : consumed
+    if (isSingle && matchCount.value > 0) {
+      scrollActiveMatchIntoView?.()
+    }
+    logger?.debug('document search replace applied', {
+      all: !isSingle,
+      consumed,
+      remaining: matchCount.value,
+    })
+  }
+
+  function replaceCurrent() {
+    runReplace(true)
+  }
+
+  function replaceAll() {
+    runReplace(false)
+  }
+
   function refreshAfterEdit() {
-    if (!searchOpen.value || !searchQuery.value) {
+    if (replacing || !searchOpen.value || !searchQuery.value) {
       return
     }
 
@@ -210,11 +306,20 @@ export function createDocumentSearch({
     searchQuery,
     matchCount,
     activeMatchIndex,
+    replaceOpen,
+    replaceValue,
+    caseSensitive,
+    replaceAllCount,
     openSearch,
     closeSearch,
     setQuery,
     findNext,
     findPrevious,
+    toggleReplaceOpen,
+    setReplaceValue,
+    toggleCaseSensitive,
+    replaceCurrent,
+    replaceAll,
     refreshAfterEdit,
     resetForNewDocument,
   }

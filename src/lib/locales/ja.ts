@@ -83,6 +83,12 @@ export const ja = {
   'editor.searchNext': '次の一致',
   'editor.searchMatchCount': '{current}/{total}',
   'editor.searchNoMatches': '一致なし',
+  'editor.searchReplaceToggle': '検索と置換',
+  'editor.searchMatchCase': '大文字と小文字を区別',
+  'editor.searchReplacePlaceholder': '置換後の文字列',
+  'editor.searchReplaceOne': '置換',
+  'editor.searchReplaceAll': 'すべて',
+  'editor.searchReplacedCount': '{count} 件を置換しました',
   'editor.outline.title': 'アウトライン',
   'editor.outline.close': 'アウトラインを閉じる',
   'editor.outline.empty':

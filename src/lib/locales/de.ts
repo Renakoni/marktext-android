@@ -83,6 +83,12 @@ export const de = {
   'editor.searchNext': 'Nächster Treffer',
   'editor.searchMatchCount': '{current}/{total}',
   'editor.searchNoMatches': 'Keine Treffer',
+  'editor.searchReplaceToggle': 'Suchen und Ersetzen',
+  'editor.searchMatchCase': 'Groß-/Kleinschreibung beachten',
+  'editor.searchReplacePlaceholder': 'Ersetzen durch',
+  'editor.searchReplaceOne': 'Ersetzen',
+  'editor.searchReplaceAll': 'Alle',
+  'editor.searchReplacedCount': '{count} ersetzt',
   'editor.outline.title': 'Gliederung',
   'editor.outline.close': 'Gliederung schließen',
   'editor.outline.empty':

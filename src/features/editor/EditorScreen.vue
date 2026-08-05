@@ -74,6 +74,10 @@ const props = defineProps<{
   searchQuery: string
   searchMatchCount: number
   searchActiveIndex: number
+  searchReplaceOpen: boolean
+  searchReplaceValue: string
+  searchCaseSensitive: boolean
+  searchReplaceAllCount: number | null
   outlineOpen: boolean
   outlineItems: OutlineItem[]
   resumeCardVisible: boolean
@@ -88,6 +92,11 @@ const emit = defineEmits<{
   'update:searchQuery': [value: string]
   'search-next': []
   'search-previous': []
+  'toggle-search-replace': []
+  'update:searchReplaceValue': [value: string]
+  'toggle-search-case': []
+  'search-replace-current': []
+  'search-replace-all': []
   'open-outline': []
   'close-outline': []
   'select-outline-heading': [slug: string]
@@ -231,6 +240,12 @@ watch(
 )
 
 const searchCountText = computed(() => {
+  // A finished replace-all reports its total in the count slot until the
+  // next search action replaces it with live match feedback.
+  if (props.searchReplaceAllCount !== null) {
+    return t('editor.searchReplacedCount', { count: props.searchReplaceAllCount })
+  }
+
   if (!props.searchQuery) {
     return ''
   }
@@ -249,6 +264,21 @@ watch(
   () => props.searchOpen,
   open => {
     if (open) {
+      void nextTick(() => searchInput.value?.focus())
+    }
+  },
+)
+
+const searchReplaceInput = ref<HTMLInputElement | null>(null)
+
+// Expanding the replace row is a statement of intent, so the replace input
+// takes the caret; collapsing hands it back to the find input.
+watch(
+  () => props.searchReplaceOpen,
+  (open, wasOpen) => {
+    if (open) {
+      void nextTick(() => searchReplaceInput.value?.focus())
+    } else if (wasOpen && props.searchOpen) {
       void nextTick(() => searchInput.value?.focus())
     }
   },
@@ -330,6 +360,74 @@ onBeforeUnmount(() => {
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M6 10l6 6 6-6" />
           </svg>
+        </button>
+        <button
+          class="icon-button search-replace-toggle"
+          type="button"
+          :aria-label="t('editor.searchReplaceToggle')"
+          :aria-expanded="searchReplaceOpen"
+          data-testid="search-replace-toggle"
+          @click="emit('toggle-search-replace')"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4 7h13" />
+            <path d="M13.5 3.5L17 7l-3.5 3.5" />
+            <path d="M20 17H7" />
+            <path d="M10.5 13.5L7 17l3.5 3.5" />
+          </svg>
+        </button>
+      </div>
+      <div
+        v-if="searchReplaceOpen"
+        class="search-replace-row"
+        data-testid="search-replace-row"
+      >
+        <button
+          class="search-case-toggle"
+          type="button"
+          :aria-label="t('editor.searchMatchCase')"
+          :aria-pressed="searchCaseSensitive"
+          data-testid="search-case-toggle"
+          @click="emit('toggle-search-case')"
+        >
+          Aa
+        </button>
+        <div class="search-field">
+          <input
+            ref="searchReplaceInput"
+            class="search-input"
+            type="text"
+            data-testid="search-replace-input"
+            :value="searchReplaceValue"
+            :placeholder="t('editor.searchReplacePlaceholder')"
+            :aria-label="t('editor.searchReplacePlaceholder')"
+            enterkeyhint="done"
+            autocapitalize="off"
+            autocomplete="off"
+            spellcheck="false"
+            @input="emit('update:searchReplaceValue', ($event.target as HTMLInputElement).value)"
+            @keydown.enter="
+              handleSearchEnterKeydown($event, () => emit('search-replace-current'))
+            "
+          >
+        </div>
+        <button
+          class="search-replace-action"
+          type="button"
+          :disabled="searchMatchCount === 0"
+          data-testid="search-replace-one-button"
+          @click="emit('search-replace-current')"
+        >
+          {{ t('editor.searchReplaceOne') }}
+        </button>
+        <button
+          class="search-replace-action"
+          type="button"
+          :disabled="searchMatchCount === 0"
+          data-testid="search-replace-all-button"
+          @click="emit('search-replace-all')"
+        >
+          {{ t('editor.searchReplaceAll') }}
         </button>
       </div>
     </header>

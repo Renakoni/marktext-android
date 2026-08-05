@@ -83,6 +83,12 @@ export const pt = {
   'editor.searchNext': 'Próxima correspondência',
   'editor.searchMatchCount': '{current}/{total}',
   'editor.searchNoMatches': 'Nenhuma correspondência',
+  'editor.searchReplaceToggle': 'Localizar e substituir',
+  'editor.searchMatchCase': 'Diferenciar maiúsculas de minúsculas',
+  'editor.searchReplacePlaceholder': 'Substituir por',
+  'editor.searchReplaceOne': 'Substituir',
+  'editor.searchReplaceAll': 'Tudo',
+  'editor.searchReplacedCount': 'Substituições: {count}',
   'editor.outline.title': 'Estrutura',
   'editor.outline.close': 'Fechar estrutura',
   'editor.outline.empty':

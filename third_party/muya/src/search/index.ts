@@ -2,7 +2,7 @@ import type Content from '../block/base/content';
 import type TreeNode from '../block/base/treeNode';
 import type { IHighlight } from '../inlineRenderer/types';
 import type { Muya } from '../muya';
-import type { IMatch } from './types';
+import type { IMatch, ISearchOption } from './types';
 import { DEFAULT_SEARCH_OPTIONS } from '../config';
 import { buildRegexValue, matchString } from '../utils/search';
 
@@ -130,8 +130,11 @@ export class Search {
         lastBlock.text = tempText + lastBlock.text.substring(lastEnd);
     }
 
-    replace(replaceValue: string, opt = { isSingle: true, isRegexp: false }) {
-        const { isSingle, isRegexp, ...rest } = opt;
+    replace(
+        replaceValue: string,
+        opt: ISearchOption & { isSingle?: boolean } = { isSingle: true, isRegexp: false },
+    ) {
+        const { isSingle = true, isRegexp, ...rest } = opt;
         const options = Object.assign({}, DEFAULT_SEARCH_OPTIONS, rest);
         const { matches, index } = this;
         const value = this._value;
@@ -143,17 +146,29 @@ export class Search {
             if (isSingle) {
                 // replace one
                 this._innerReplace([matches[index]], replaceValue);
+
+                // Matches before the replaced one keep their array positions, so
+                // the re-search would make `index` land on the first match at or
+                // after the insertion point — which sits INSIDE the inserted text
+                // whenever the replacement still contains the query (cat ->
+                // wildcat). Repeated "replace" would then compound the same spot
+                // forever. Skip the matches the replacement itself contributes;
+                // the exact total is only known after the re-search, so clamp and
+                // re-render in a second step (same tick, no visible flash).
+                const inside = matchString(replaceValue, value, options).length;
+                this.search(value, { ...options, highlightIndex: -1 });
+                const total = this.matches.length;
+                const next = Math.min(index + inside, total - 1);
+                if (total && next !== this.index) {
+                    this.index = next;
+                    this._updateMatches();
+                }
             }
             else {
                 // replace all
                 this._innerReplace(matches, replaceValue);
+                this.search(value, { ...options, highlightIndex: -1 });
             }
-            const highlightIndex = index < matches.length - 1 ? index : index - 1;
-
-            this.search(value, {
-                ...options,
-                highlightIndex: isSingle ? highlightIndex : -1,
-            });
         }
 
         return this;

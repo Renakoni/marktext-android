@@ -158,6 +158,90 @@ test('Enter navigates to the next match but a composing Enter is left to the IME
   await expect(page.getByTestId('search-count')).toHaveText('2/3')
 })
 
+test('expands the replace row in place and hands focus back on collapse', async ({ page }) => {
+  await openSearchDraft(page)
+
+  await page.getByTestId('search-open-button').click()
+  await expect(page.getByTestId('search-replace-row')).toHaveCount(0)
+
+  const toggle = page.getByTestId('search-replace-toggle')
+  await toggle.click()
+  await expect(page.getByTestId('search-replace-row')).toBeVisible()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByTestId('search-replace-input')).toBeFocused()
+
+  await toggle.click()
+  await expect(page.getByTestId('search-replace-row')).toHaveCount(0)
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByTestId('search-input')).toBeFocused()
+})
+
+test('replaces the active match, advances, and Enter repeats it', async ({ page }) => {
+  await openSearchDraft(page)
+
+  await page.getByTestId('search-open-button').click()
+  await page.getByTestId('search-input').fill('apple')
+  await expect(page.getByTestId('search-count')).toHaveText('1/3')
+
+  await page.getByTestId('search-replace-toggle').click()
+  const replaceInput = page.getByTestId('search-replace-input')
+  await replaceInput.fill('pear')
+
+  await page.getByTestId('search-replace-one-button').click()
+  await expect(page.getByTestId('search-count')).toHaveText('1/2')
+  await expect(page.getByTestId('editor-host')).toContainText('pear banana apple cherry')
+
+  // Enter inside the replace input replaces the now-active match.
+  await replaceInput.press('Enter')
+  await expect(page.getByTestId('search-count')).toHaveText('1/1')
+  await expect(page.getByTestId('editor-host')).toContainText('pear banana pear cherry')
+})
+
+test('replaces all matches and reports the consumed total in the count slot', async ({
+  page,
+}) => {
+  await openSearchDraft(page)
+
+  await page.getByTestId('search-open-button').click()
+  await page.getByTestId('search-input').fill('apple')
+  await expect(page.getByTestId('search-count')).toHaveText('1/3')
+
+  await page.getByTestId('search-replace-toggle').click()
+  await page.getByTestId('search-replace-input').fill('pear')
+  await page.getByTestId('search-replace-all-button').click()
+
+  await expect(page.getByTestId('search-count')).toHaveText('Replaced 3')
+  await expect(page.locator('span.mu-highlight')).toHaveCount(0)
+  await expect(page.getByTestId('editor-host')).not.toContainText('apple')
+  await expect(page.getByTestId('editor-host')).toContainText('pear in a list')
+  await expect(page.getByTestId('search-replace-one-button')).toBeDisabled()
+  await expect(page.getByTestId('search-replace-all-button')).toBeDisabled()
+
+  // The notice yields to live match feedback on the next query.
+  await page.getByTestId('search-input').fill('pear')
+  await expect(page.getByTestId('search-count')).toHaveText('1/3')
+})
+
+test('the case toggle re-runs the query with matching sensitivity', async ({ page }) => {
+  await openSearchDraft(page)
+
+  await page.getByTestId('search-open-button').click()
+  await page.getByTestId('search-input').fill('Apple')
+  await expect(page.getByTestId('search-count')).toHaveText('1/3')
+
+  await page.getByTestId('search-replace-toggle').click()
+  const caseToggle = page.getByTestId('search-case-toggle')
+  await expect(caseToggle).toHaveAttribute('aria-pressed', 'false')
+
+  await caseToggle.click()
+  await expect(caseToggle).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('search-count')).toHaveText('No matches')
+  await expect(page.getByTestId('search-replace-one-button')).toBeDisabled()
+
+  await caseToggle.click()
+  await expect(page.getByTestId('search-count')).toHaveText('1/3')
+})
+
 test('search matches update after the query changes', async ({ page }) => {
   await openSearchDraft(page)
 
