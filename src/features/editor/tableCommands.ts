@@ -131,6 +131,11 @@ export function runTableCommand(editor: MuyaEditor | null, commandId: TableComma
   }
 
   inner.history.cutoff()
+  // Stamp the entry with the TRUE before-command selection: undoing the
+  // command then puts the caret back where the user actually was (e.g.
+  // inside the restored table after undoing delete-table), instead of the
+  // history's one-record-behind approximation.
+  inner.history.primeRecordSelection()
   let caret: TableCaretContent | null | undefined
   try {
     switch (commandId) {

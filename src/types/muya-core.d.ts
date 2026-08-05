@@ -87,9 +87,11 @@ declare module '@muyajs/core' {
       jsonState: { readonly rawState: readonly unknown[]; flush(): void }
       /**
        * `cutoff()` breaks the history's time-window undo coalescing so the
-       * next recorded operation starts its own undo entry.
+       * next recorded operation starts its own undo entry;
+       * `primeRecordSelection()` stamps the next entry with the CURRENT
+       * selection so its undo restores the true before-command caret.
        */
-      history: { cutoff(): void }
+      history: { cutoff(): void; primeRecordSelection(): void }
       /**
        * The live block-tree root. Kept opaque here — callers narrow it to
        * the members they use (e.g. the table commands' empty-page recovery).
