@@ -83,14 +83,68 @@ watch(
   },
 )
 
+// The Android WebView draws the native caret handle in a compositor layer
+// ABOVE all DOM content — no popup can cover it, so while the panel menu
+// is open the editor's DOM selection is stashed away (which hides the
+// handle) and restored when the menu closes. Muya's own cached selection
+// is untouched, so the editing context survives; the keyboard stays
+// because focus never moves.
+let stashedEditorRanges: Range[] = []
+
+watch(groupMenuOpen, open => {
+  const selection = document.getSelection()
+  if (!selection) {
+    return
+  }
+
+  if (open) {
+    const ranges = Array.from({ length: selection.rangeCount }, (_, i) =>
+      selection.getRangeAt(i),
+    )
+    const editorRanges = ranges.filter(
+      range => props.host?.contains(range.commonAncestorContainer) ?? false,
+    )
+    if (editorRanges.length > 0) {
+      stashedEditorRanges = editorRanges.map(range => range.cloneRange())
+      selection.removeAllRanges()
+    }
+    return
+  }
+
+  if (stashedEditorRanges.length > 0) {
+    selection.removeAllRanges()
+    for (const range of stashedEditorRanges) {
+      selection.addRange(range)
+    }
+    stashedEditorRanges = []
+  }
+})
+
+// A tap anywhere outside the open panel menu (and its trigger) dismisses
+// it, like any popup — including taps into the document body, which then
+// place the caret as they normally would.
+function dismissGroupMenuFromOutsidePointer(event: PointerEvent) {
+  if (!groupMenuOpen.value || !(event.target instanceof Element)) {
+    return
+  }
+
+  const insideMenu = event.target.closest('[data-testid="mobile-editor-toolbar-panel"]')
+  const onTrigger = event.target.closest('[data-testid="toolbar-group-switcher"]')
+  if (!insideMenu && !onTrigger) {
+    groupMenuOpen.value = false
+  }
+}
+
 onMounted(() => {
   document.addEventListener('selectionchange', rememberCurrentEditorSelection)
   document.addEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
+  document.addEventListener('pointerdown', dismissGroupMenuFromOutsidePointer, true)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('selectionchange', rememberCurrentEditorSelection)
   document.removeEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
+  document.removeEventListener('pointerdown', dismissGroupMenuFromOutsidePointer, true)
 })
 
 watch(

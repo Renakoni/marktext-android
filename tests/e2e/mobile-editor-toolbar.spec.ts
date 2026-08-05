@@ -179,6 +179,56 @@ async function installAndroidImagePickerMock(page: Page) {
   })
 }
 
+test('a tap outside the panel menu dismisses it like any popup', async ({ page }) => {
+  await newBlankDocument(page)
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('body text')
+
+  await page.getByTestId('toolbar-expand-button').click()
+  await page.getByTestId('toolbar-group-switcher').click()
+  await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeVisible()
+
+  // Tapping the document body closes the menu; the tap then places the
+  // caret as it normally would.
+  await page.getByTestId('editor-host').getByText('body text').click()
+  await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeHidden()
+})
+
+test('the open panel menu stashes the editor selection and restores it on close', async ({
+  page,
+}) => {
+  await newBlankDocument(page)
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('caret anchor')
+
+  // The native Android caret handle is composited ABOVE all DOM content,
+  // so the only way to keep it from floating over the popup is an empty
+  // DOM selection while the menu is open.
+  await page.getByTestId('toolbar-expand-button').click()
+  await page.getByTestId('toolbar-group-switcher').click()
+  await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeVisible()
+  await expect
+    .poll(() => page.evaluate(() => document.getSelection()?.rangeCount ?? -1))
+    .toBe(0)
+
+  // Closing through a panel choice restores the caret into the editor.
+  await page.getByTestId('toolbar-section-option-insert').click()
+  await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeHidden()
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const selection = document.getSelection()
+        if (!selection || selection.rangeCount === 0) {
+          return 'no-selection'
+        }
+        const anchor = selection.getRangeAt(0).commonAncestorContainer
+        const host = document.querySelector('[data-testid="editor-host"]')
+        return host?.contains(anchor) ? 'in-editor' : 'elsewhere'
+      }),
+    )
+    .toBe('in-editor')
+})
+
 test('applies quick toolbar inline formatting to selected editor text', async ({ page }) => {
   await newBlankDocument(page)
 
