@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Nord.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Nord is active. Rule grouping follows the
+ * desktop prismjs/nord.theme.css palette; the [data-theme] scope wins on
+ * specificity without !important.
+ */
+
+[data-theme='nord'] .token.comment,
+[data-theme='nord'] .token.prolog,
+[data-theme='nord'] .token.doctype,
+[data-theme='nord'] .token.cdata {
+  color: #616e88;
+}
+
+[data-theme='nord'] .token.punctuation {
+  color: #eceff4;
+}
+
+[data-theme='nord'] .token.property,
+[data-theme='nord'] .token.tag,
+[data-theme='nord'] .token.constant,
+[data-theme='nord'] .token.symbol {
+  color: #81a1c1;
+}
+
+[data-theme='nord'] .token.boolean,
+[data-theme='nord'] .token.number {
+  color: #b48ead;
+}
+
+[data-theme='nord'] .token.selector,
+[data-theme='nord'] .token.attr-name,
+[data-theme='nord'] .token.string,
+[data-theme='nord'] .token.char,
+[data-theme='nord'] .token.builtin {
+  color: #a3be8c;
+}
+
+[data-theme='nord'] .token.inserted {
+  color: #a3be8c;
+  background: rgba(163, 190, 140, 0.12);
+}
+
+[data-theme='nord'] .token.deleted {
+  color: #bf616a;
+  background: rgba(191, 97, 106, 0.14);
+}
+
+[data-theme='nord'] .token.operator,
+[data-theme='nord'] .token.entity,
+[data-theme='nord'] .token.url,
+[data-theme='nord'] .language-css .token.string,
+[data-theme='nord'] .style .token.string {
+  color: #81a1c1;
+}
+
+[data-theme='nord'] .token.atrule,
+[data-theme='nord'] .token.attr-value,
+[data-theme='nord'] .token.function,
+[data-theme='nord'] .token.class-name {
+  color: #88c0d0;
+}
+
+[data-theme='nord'] .token.keyword {
+  color: #81a1c1;
+}
+
+[data-theme='nord'] .token.regex,
+[data-theme='nord'] .token.important,
+[data-theme='nord'] .token.variable {
+  color: #ebcb8b;
+}

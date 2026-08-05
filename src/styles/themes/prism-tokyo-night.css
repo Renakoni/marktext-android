@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for tokyo-night.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever the theme is active. Rule grouping follows
+ * the desktop prismjs palette (Tokyo Night and Storm share one token set);
+ * the [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='tokyo-night'] .token.comment,
+[data-theme='tokyo-night'] .token.prolog,
+[data-theme='tokyo-night'] .token.doctype,
+[data-theme='tokyo-night'] .token.cdata {
+  color: #565f89;
+}
+
+[data-theme='tokyo-night'] .token.punctuation {
+  color: #9aa5ce;
+}
+
+[data-theme='tokyo-night'] .token.property,
+[data-theme='tokyo-night'] .token.tag,
+[data-theme='tokyo-night'] .token.constant,
+[data-theme='tokyo-night'] .token.symbol {
+  color: #f7768e;
+}
+
+[data-theme='tokyo-night'] .token.boolean,
+[data-theme='tokyo-night'] .token.number {
+  color: #ff9e64;
+}
+
+[data-theme='tokyo-night'] .token.selector,
+[data-theme='tokyo-night'] .token.attr-name,
+[data-theme='tokyo-night'] .token.string,
+[data-theme='tokyo-night'] .token.char,
+[data-theme='tokyo-night'] .token.builtin {
+  color: #9ece6a;
+}
+
+[data-theme='tokyo-night'] .token.inserted {
+  color: #9ece6a;
+  background: rgba(158, 206, 106, 0.12);
+}
+
+[data-theme='tokyo-night'] .token.deleted {
+  color: #f7768e;
+  background: rgba(247, 118, 142, 0.12);
+}
+
+[data-theme='tokyo-night'] .token.operator,
+[data-theme='tokyo-night'] .token.entity,
+[data-theme='tokyo-night'] .token.url,
+[data-theme='tokyo-night'] .language-css .token.string,
+[data-theme='tokyo-night'] .style .token.string {
+  color: #89ddff;
+}
+
+[data-theme='tokyo-night'] .token.atrule,
+[data-theme='tokyo-night'] .token.attr-value,
+[data-theme='tokyo-night'] .token.function,
+[data-theme='tokyo-night'] .token.class-name {
+  color: #7aa2f7;
+}
+
+[data-theme='tokyo-night'] .token.keyword {
+  color: #bb9af7;
+}
+
+[data-theme='tokyo-night'] .token.regex,
+[data-theme='tokyo-night'] .token.important,
+[data-theme='tokyo-night'] .token.variable {
+  color: #e0af68;
+}

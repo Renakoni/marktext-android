@@ -1,0 +1,108 @@
+/*
+ * Synthwave '84 — curated custom theme.
+ *
+ * Heritage: desktop MarkText synthwave-84 theme — the retro-night
+ * #262335 ground, neon pink accent #ff7edb, white ink, and the outrun
+ * heading run (pink, cyan, yellow, mint, coral, violet). Values are
+ * plain hex/rgba so every WebView the app can meet renders them
+ * identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - `--danger` nudges the neon red just past WCAG AA (heritage #fe4450
+ *   sits at 4.48:1 and stays on the Muya bridge).
+ * - The desktop 0.6-alpha pink search highlight softens to 0.28 for
+ *   phone readability.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints italics pink).
+ */
+
+:root[data-theme='synthwave-84'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #221e2f;
+  --surface: #262335;
+  --surface-muted: #34294a;
+  --surface-sunken: #1e1a29;
+  --surface-raised: #463860;
+
+  /* Content */
+  --text: #ffffff;
+  --text-muted: #cfcbdd;
+  --text-faint: #848bbd;
+  --task-completed-color: #b8b5c5;
+  --on-accent: #262335;
+
+  /* Lines */
+  --border: #34294a;
+  --border-strong: #4d3e6b;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — neon pink; "strong" lightens for contrast on the retro
+     night ground. */
+  --accent: #ff7edb;
+  --accent-strong: #ffa4e6;
+  --accent-hover: #ff8fdf;
+  --accent-soft: rgba(255, 126, 219, 0.2);
+  --accent-tint-10: rgba(255, 126, 219, 0.14);
+  --accent-tint-11: rgba(255, 126, 219, 0.16);
+
+  /* State */
+  --danger: #fea9af;
+  --focus-ring: rgba(255, 126, 219, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 2px 10px rgba(255, 126, 219, 0.35);
+
+  /* Muya bridge — the desktop synthwave-84 palette on the writing surface. */
+  --theme-color: #ff7edb;
+  --highlight-color: rgba(255, 126, 219, 0.28);
+  --selection-color: rgba(52, 41, 72, 0.8);
+  --editor-color: #ffffff;
+  --editor-color-80: rgba(255, 255, 255, 0.8);
+  --editor-color-50: rgba(255, 255, 255, 0.5);
+  --editor-color-30: rgba(255, 255, 255, 0.3);
+  --editor-color-10: rgba(255, 255, 255, 0.1);
+  --editor-color-04: rgba(255, 255, 255, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #fe4450;
+  --icon-color: rgba(255, 255, 255, 0.56);
+  --code-block-bg-color: #34294a;
+  --table-border-color: #34294a;
+  --input-bg-color: #1e1a29;
+  --button-font-color: rgba(255, 255, 255, 0.7);
+  --button-bg-color: #34294a;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #463860;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #2b223d;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(255, 255, 255, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #36f9f6;
+  --h1-color: #ff7edb;
+  --h2-color: #36f9f6;
+  --h3-color: #fede5d;
+  --h4-color: #72f1b8;
+  --h5-color: #f97e72;
+  --h6-color: #b084eb;
+  --blockquote-text-color: rgba(255, 255, 255, 0.6);
+  --blockquote-border-color: #614d85;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #fede5d;
+  --hr-color: #463860;
+}

@@ -19,10 +19,10 @@
 
   /* Content */
   --text: #e6e8ea;
-  --text-muted: #a2a9b0;
+  --text-muted: #aab1b7;
   --text-faint: #7c838a;
   --task-completed-color: #949494;
-  --on-accent: #ffffff;
+  --on-accent: #1a1b1d;
 
   /* Lines */
   --border: #3a3c3f;
@@ -39,7 +39,7 @@
   --accent-tint-11: rgba(64, 158, 255, 0.14);
 
   /* State */
-  --danger: #e07a75;
+  --danger: #e99e9a;
   --focus-ring: rgba(64, 158, 255, 0.4);
   --press: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.55);

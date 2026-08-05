@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Oxocarbon Dark.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Oxocarbon Dark is active. Rule grouping
+ * follows the desktop prismjs/oxocarbon-dark.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='oxocarbon-dark'] .token.comment,
+[data-theme='oxocarbon-dark'] .token.prolog,
+[data-theme='oxocarbon-dark'] .token.doctype,
+[data-theme='oxocarbon-dark'] .token.cdata {
+  color: #525252;
+}
+
+[data-theme='oxocarbon-dark'] .token.punctuation {
+  color: #f2f4f8;
+}
+
+[data-theme='oxocarbon-dark'] .token.property,
+[data-theme='oxocarbon-dark'] .token.tag,
+[data-theme='oxocarbon-dark'] .token.constant,
+[data-theme='oxocarbon-dark'] .token.symbol {
+  color: #ee5396;
+}
+
+[data-theme='oxocarbon-dark'] .token.boolean,
+[data-theme='oxocarbon-dark'] .token.number {
+  color: #ff7eb6;
+}
+
+[data-theme='oxocarbon-dark'] .token.selector,
+[data-theme='oxocarbon-dark'] .token.attr-name,
+[data-theme='oxocarbon-dark'] .token.string,
+[data-theme='oxocarbon-dark'] .token.char,
+[data-theme='oxocarbon-dark'] .token.builtin {
+  color: #42be65;
+}
+
+[data-theme='oxocarbon-dark'] .token.inserted {
+  color: #42be65;
+  background: rgba(66, 190, 101, 0.12);
+}
+
+[data-theme='oxocarbon-dark'] .token.deleted {
+  color: #ee5396;
+  background: rgba(238, 83, 150, 0.12);
+}
+
+[data-theme='oxocarbon-dark'] .token.operator,
+[data-theme='oxocarbon-dark'] .token.entity,
+[data-theme='oxocarbon-dark'] .token.url,
+[data-theme='oxocarbon-dark'] .language-css .token.string,
+[data-theme='oxocarbon-dark'] .style .token.string {
+  color: #3ddbd9;
+}
+
+[data-theme='oxocarbon-dark'] .token.atrule,
+[data-theme='oxocarbon-dark'] .token.attr-value,
+[data-theme='oxocarbon-dark'] .token.function,
+[data-theme='oxocarbon-dark'] .token.class-name {
+  color: #78a9ff;
+}
+
+[data-theme='oxocarbon-dark'] .token.keyword {
+  color: #be95ff;
+}
+
+[data-theme='oxocarbon-dark'] .token.regex,
+[data-theme='oxocarbon-dark'] .token.important,
+[data-theme='oxocarbon-dark'] .token.variable {
+  color: #33b1ff;
+}

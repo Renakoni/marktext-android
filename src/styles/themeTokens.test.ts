@@ -139,6 +139,32 @@ function collectReferencedTokens(css: string): Set<string> {
   return new Set(Array.from(css.matchAll(/var\(\s*(--[\w-]+)/g), match => match[1]))
 }
 
+/** Resolves a token that may be an rgba() overlay (e.g. --press). */
+function resolveOverlayToken(
+  tokens: Map<string, string>,
+  token: string,
+): { rgb: [number, number, number]; alpha: number } {
+  const value = tokens.get(token)
+  const rgba = value?.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)$/)
+  if (!rgba) {
+    throw new Error(`expected an rgb/rgba color for ${token}, received: ${value}`)
+  }
+
+  return {
+    rgb: [Number(rgba[1]), Number(rgba[2]), Number(rgba[3])],
+    alpha: rgba[4] === undefined ? 1 : Number(rgba[4]),
+  }
+}
+
+function compositeOver(
+  overlay: { rgb: [number, number, number]; alpha: number },
+  background: [number, number, number],
+): [number, number, number] {
+  return background.map((channel, index) =>
+    Math.round(overlay.alpha * overlay.rgb[index] + (1 - overlay.alpha) * channel),
+  ) as [number, number, number]
+}
+
 describe('theme token architecture', () => {
   it('keeps modern color functions out of shipped styles for old WebViews', () => {
     const modernColorFunctionPattern = /\b(?:oklch|color-mix)\(/
@@ -201,6 +227,79 @@ describe('theme token architecture', () => {
       const name = relative(process.cwd(), path)
 
       expect(ratio, `${name}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('keeps every raised-surface text role at WCAG AA contrast in every theme', () => {
+    // Sheets, menus, and floating toolbars all sit on --surface-raised and
+    // render normal-sized copy in these roles: body labels (--text),
+    // secondary copy (--text-muted), accent actions (--accent-strong — the
+    // accent TEXT role; plain --accent is reserved for fills and borders),
+    // and destructive actions (--danger). Pressed rows composite --press
+    // over the surface, which shifts it toward the ink and erodes contrast,
+    // so every role is checked against both the resting surface and the
+    // pressed composite.
+    const RAISED_TEXT_ROLES = ['--text', '--text-muted', '--accent-strong', '--danger']
+
+    for (const path of themePaths) {
+      const tokens = collectTokenValues(readFileSync(path, 'utf8'))
+      const raised = resolveHexToken(tokens, '--surface-raised')
+      const pressed = compositeOver(resolveOverlayToken(tokens, '--press'), raised)
+      const name = relative(process.cwd(), path)
+
+      for (const role of RAISED_TEXT_ROLES) {
+        const foreground = resolveHexToken(tokens, role)
+        for (const [state, background] of [['resting', raised], ['pressed', pressed]] as const) {
+          const ratio = contrastRatio(foreground, background)
+          expect(ratio, `${name} ${role} (${state}): ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+            4.5,
+          )
+        }
+      }
+    }
+  })
+
+  it('keeps on-accent contrast on accent fills in every theme', () => {
+    // The resting --accent fill carries normal-sized --on-accent text (the
+    // editor-failure retry action is 15px copy and keeps its fill while
+    // pressed), so that pair needs the full 4.5:1 text contrast. The
+    // pressed --accent-hover fill only ever shows --on-accent glyphs (the
+    // new-document "+" icon), so WCAG 1.4.11's 3:1 non-text minimum
+    // applies there. --accent-strong is deliberately absent: it is the
+    // accent TEXT role and must never be used as a fill.
+    for (const path of themePaths) {
+      const tokens = collectTokenValues(readFileSync(path, 'utf8'))
+      const onAccent = resolveHexToken(tokens, '--on-accent')
+      const name = relative(process.cwd(), path)
+
+      for (const [fill, minimum] of [
+        ['--accent', 4.5],
+        ['--accent-hover', 3],
+      ] as const) {
+        const ratio = contrastRatio(onAccent, resolveHexToken(tokens, fill))
+        expect(ratio, `${name} on-accent vs ${fill}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+          minimum,
+        )
+      }
+    }
+  })
+
+  it('keeps the unchecked toggle thumb visible on its track in every theme', () => {
+    // The resting settings-toggle thumb is --text-muted over the
+    // --surface-sunken track (SettingsToggleRow.vue); --on-accent has no
+    // guaranteed contrast against neutral surfaces, so the thumb must not
+    // use it while unchecked. WCAG 1.4.11 requires 3:1 for this control
+    // boundary. The checked state (on-accent thumb over the accent track)
+    // is covered by the accent-fill contract above.
+    for (const path of themePaths) {
+      const tokens = collectTokenValues(readFileSync(path, 'utf8'))
+      const ratio = contrastRatio(
+        resolveHexToken(tokens, '--text-muted'),
+        resolveHexToken(tokens, '--surface-sunken'),
+      )
+      const name = relative(process.cwd(), path)
+
+      expect(ratio, `${name} thumb vs track: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
     }
   })
 

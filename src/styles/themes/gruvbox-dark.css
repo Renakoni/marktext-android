@@ -28,7 +28,7 @@
 
   /* Content */
   --text: #ebdbb2;
-  --text-muted: #c5b795;
+  --text-muted: #d9cfb9;
   --text-faint: #928374;
   --task-completed-color: #a89984;
   --on-accent: #282828;
@@ -41,14 +41,14 @@
   /* Accent — gruvbox blue-teal; "strong" lightens for contrast on the
      retro ground. */
   --accent: #83a598;
-  --accent-strong: #a3beb3;
+  --accent-strong: #c4d5ce;
   --accent-hover: #91b1a4;
   --accent-soft: rgba(131, 165, 152, 0.2);
   --accent-tint-10: rgba(131, 165, 152, 0.14);
   --accent-tint-11: rgba(131, 165, 152, 0.16);
 
   /* State */
-  --danger: #fc604e;
+  --danger: #fec3bc;
   --focus-ring: rgba(131, 165, 152, 0.45);
   --press: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.6);

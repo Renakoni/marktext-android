@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Synthwave '84.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Synthwave '84 is active. Rule grouping
+ * follows the desktop prismjs/synthwave-84.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='synthwave-84'] .token.comment,
+[data-theme='synthwave-84'] .token.prolog,
+[data-theme='synthwave-84'] .token.doctype,
+[data-theme='synthwave-84'] .token.cdata {
+  color: #848bbd;
+}
+
+[data-theme='synthwave-84'] .token.punctuation {
+  color: #36f9f6;
+}
+
+[data-theme='synthwave-84'] .token.property,
+[data-theme='synthwave-84'] .token.tag,
+[data-theme='synthwave-84'] .token.constant,
+[data-theme='synthwave-84'] .token.symbol {
+  color: #ff7edb;
+}
+
+[data-theme='synthwave-84'] .token.boolean,
+[data-theme='synthwave-84'] .token.number {
+  color: #f97e72;
+}
+
+[data-theme='synthwave-84'] .token.selector,
+[data-theme='synthwave-84'] .token.attr-name,
+[data-theme='synthwave-84'] .token.string,
+[data-theme='synthwave-84'] .token.char,
+[data-theme='synthwave-84'] .token.builtin {
+  color: #72f1b8;
+}
+
+[data-theme='synthwave-84'] .token.inserted {
+  color: #72f1b8;
+  background: rgba(114, 241, 184, 0.12);
+}
+
+[data-theme='synthwave-84'] .token.deleted {
+  color: #ff7edb;
+  background: rgba(255, 126, 219, 0.12);
+}
+
+[data-theme='synthwave-84'] .token.operator,
+[data-theme='synthwave-84'] .token.entity,
+[data-theme='synthwave-84'] .token.url,
+[data-theme='synthwave-84'] .language-css .token.string,
+[data-theme='synthwave-84'] .style .token.string {
+  color: #36f9f6;
+}
+
+[data-theme='synthwave-84'] .token.atrule,
+[data-theme='synthwave-84'] .token.attr-value,
+[data-theme='synthwave-84'] .token.function,
+[data-theme='synthwave-84'] .token.class-name {
+  color: #fede5d;
+}
+
+[data-theme='synthwave-84'] .token.keyword {
+  color: #ff7edb;
+}
+
+[data-theme='synthwave-84'] .token.regex,
+[data-theme='synthwave-84'] .token.important,
+[data-theme='synthwave-84'] .token.variable {
+  color: #fede5d;
+}

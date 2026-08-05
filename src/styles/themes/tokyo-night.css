@@ -1,0 +1,106 @@
+/*
+ * Tokyo Night — curated custom theme.
+ *
+ * Heritage: desktop MarkText tokyo-night theme — the night #1a1b26
+ * ground, tokyo blue accent #7aa2f7, periwinkle ink #c0caf5, and the
+ * tokyo heading run (purple, blue, cyan, green, amber, rose). Values are
+ * plain hex/rgba so every WebView the app can meet renders them
+ * identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - Elevation is expressed with lighter surface tints (one-dark pattern);
+ *   shadows exist only to detach floating surfaces from the scrim.
+ * - The desktop 0.6-alpha blue search highlight softens to 0.3 so
+ *   highlighted text stays readable on a phone.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints italics purple).
+ */
+
+:root[data-theme='tokyo-night'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --app-bg: #181822;
+  --surface: #1a1b26;
+  --surface-muted: #24283b;
+  --surface-sunken: #16161e;
+  --surface-raised: #343b58;
+
+  /* Content */
+  --text: #c0caf5;
+  --text-muted: #b3bbdb;
+  --text-faint: #565f89;
+  --task-completed-color: #9aa2c8;
+  --on-accent: #1a1b26;
+
+  /* Lines */
+  --border: #24283b;
+  --border-strong: #414868;
+  --separator: rgba(255, 255, 255, 0.08);
+
+  /* Accent — tokyo blue; "strong" lightens for contrast on the night
+     ground. */
+  --accent: #7aa2f7;
+  --accent-strong: #a2bdfa;
+  --accent-hover: #8baff8;
+  --accent-soft: rgba(122, 162, 247, 0.2);
+  --accent-tint-10: rgba(122, 162, 247, 0.14);
+  --accent-tint-11: rgba(122, 162, 247, 0.16);
+
+  /* State */
+  --danger: #faa6b6;
+  --focus-ring: rgba(122, 162, 247, 0.45);
+  --press: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-float:
+    0 12px 32px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-thumb: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-accent: 0 2px 10px rgba(122, 162, 247, 0.35);
+
+  /* Muya bridge — the desktop tokyo-night palette on the writing surface. */
+  --theme-color: #7aa2f7;
+  --highlight-color: rgba(122, 162, 247, 0.3);
+  --selection-color: rgba(41, 46, 66, 0.8);
+  --editor-color: #c0caf5;
+  --editor-color-80: rgba(192, 202, 245, 0.8);
+  --editor-color-50: rgba(192, 202, 245, 0.5);
+  --editor-color-30: rgba(192, 202, 245, 0.3);
+  --editor-color-10: rgba(192, 202, 245, 0.1);
+  --editor-color-04: rgba(192, 202, 245, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #f7768e;
+  --icon-color: rgba(192, 202, 245, 0.56);
+  --code-block-bg-color: #24283b;
+  --table-border-color: #24283b;
+  --input-bg-color: #16161e;
+  --button-font-color: rgba(192, 202, 245, 0.7);
+  --button-bg-color: #24283b;
+  --button-border: 1px solid rgba(0, 0, 0, 0.2);
+  --button-bg-color-hover: #343b58;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.3);
+  --button-bg-color-active: #1f2335;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.2);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(192, 202, 245, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.05);
+  --float-shadow: var(--shadow-float);
+  --link-color: #7dcfff;
+  --h1-color: #bb9af7;
+  --h2-color: #7aa2f7;
+  --h3-color: #7dcfff;
+  --h4-color: #9ece6a;
+  --h5-color: #e0af68;
+  --h6-color: #f7768e;
+  --blockquote-text-color: rgba(192, 202, 245, 0.6);
+  --blockquote-border-color: #414868;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #7aa2f7;
+  --hr-color: #3b4261;
+}

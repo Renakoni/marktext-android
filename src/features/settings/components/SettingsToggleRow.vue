@@ -84,9 +84,14 @@ defineEmits<{
   width: 24px;
   height: 24px;
   border-radius: 999px;
-  background: var(--on-accent);
+  /* Neutral ink, not --on-accent: the resting thumb sits on the sunken
+     track, where the on-accent color has no guaranteed contrast (it is
+     defined against accent fills only). */
+  background: var(--text-muted);
   box-shadow: var(--shadow-thumb);
-  transition: transform var(--dur-gentle) var(--ease-spring);
+  transition:
+    transform var(--dur-gentle) var(--ease-spring),
+    background-color var(--dur-standard) var(--ease-out);
 }
 
 .settings-toggle-row[aria-checked='true'] .settings-toggle-track {
@@ -96,6 +101,7 @@ defineEmits<{
 
 .settings-toggle-row[aria-checked='true'] .settings-toggle-thumb {
   transform: translateX(20px);
+  background: var(--on-accent);
 }
 
 @media (prefers-reduced-motion: reduce) {

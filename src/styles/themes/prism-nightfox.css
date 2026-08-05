@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Nightfox.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Nightfox is active. Rule grouping follows
+ * the desktop prismjs/nightfox.theme.css palette; the [data-theme] scope
+ * wins on specificity without !important.
+ */
+
+[data-theme='nightfox'] .token.comment,
+[data-theme='nightfox'] .token.prolog,
+[data-theme='nightfox'] .token.doctype,
+[data-theme='nightfox'] .token.cdata {
+  color: #738091;
+}
+
+[data-theme='nightfox'] .token.punctuation {
+  color: #cdcecf;
+}
+
+[data-theme='nightfox'] .token.property,
+[data-theme='nightfox'] .token.tag,
+[data-theme='nightfox'] .token.constant,
+[data-theme='nightfox'] .token.symbol {
+  color: #c94f6d;
+}
+
+[data-theme='nightfox'] .token.boolean,
+[data-theme='nightfox'] .token.number {
+  color: #f4a261;
+}
+
+[data-theme='nightfox'] .token.selector,
+[data-theme='nightfox'] .token.attr-name,
+[data-theme='nightfox'] .token.string,
+[data-theme='nightfox'] .token.char,
+[data-theme='nightfox'] .token.builtin {
+  color: #81b29a;
+}
+
+[data-theme='nightfox'] .token.inserted {
+  color: #81b29a;
+  background: rgba(129, 178, 154, 0.12);
+}
+
+[data-theme='nightfox'] .token.deleted {
+  color: #c94f6d;
+  background: rgba(201, 79, 109, 0.14);
+}
+
+[data-theme='nightfox'] .token.operator,
+[data-theme='nightfox'] .token.entity,
+[data-theme='nightfox'] .token.url,
+[data-theme='nightfox'] .language-css .token.string,
+[data-theme='nightfox'] .style .token.string {
+  color: #63cdcf;
+}
+
+[data-theme='nightfox'] .token.atrule,
+[data-theme='nightfox'] .token.attr-value,
+[data-theme='nightfox'] .token.function,
+[data-theme='nightfox'] .token.class-name {
+  color: #dbc074;
+}
+
+[data-theme='nightfox'] .token.keyword {
+  color: #9d79d6;
+}
+
+[data-theme='nightfox'] .token.regex,
+[data-theme='nightfox'] .token.important,
+[data-theme='nightfox'] .token.variable {
+  color: #719cd6;
+}

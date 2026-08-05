@@ -28,8 +28,8 @@
   --surface-raised: #3c4650;
 
   /* Content */
-  --text: #abb2bf;
-  --text-muted: #99a1ad;
+  --text: #d0d5dc;
+  --text-muted: #c4c8cf;
   --text-faint: #7d8590;
   --task-completed-color: #9ca4b0;
   --on-accent: #26221d;
@@ -42,14 +42,14 @@
   /* Accent — material orange; "strong" lightens for contrast on the dark
      ground. */
   --accent: #f4853c;
-  --accent-strong: #f7a06b;
+  --accent-strong: #f9bc97;
   --accent-hover: #f59252;
   --accent-soft: rgba(244, 130, 55, 0.22);
   --accent-tint-10: rgba(244, 130, 55, 0.14);
   --accent-tint-11: rgba(244, 130, 55, 0.16);
 
   /* State */
-  --danger: #ff7d7d;
+  --danger: #ffb6b6;
   --focus-ring: rgba(244, 130, 55, 0.45);
   --press: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.6);

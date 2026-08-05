@@ -21,7 +21,17 @@
 @import './styles/themes/kanagawa.css';
 @import './styles/themes/material-dark.css';
 @import './styles/themes/monokai-pro.css';
+@import './styles/themes/nightfox.css';
+@import './styles/themes/nord.css';
 @import './styles/themes/one-dark.css';
+@import './styles/themes/oxocarbon-dark.css';
+@import './styles/themes/palenight.css';
+@import './styles/themes/rose-pine.css';
+@import './styles/themes/rose-pine-moon.css';
+@import './styles/themes/solarized-dark.css';
+@import './styles/themes/synthwave-84.css';
+@import './styles/themes/tokyo-night.css';
+@import './styles/themes/tokyo-night-storm.css';
 @import './styles/themes/prism-cadmium.css';
 @import './styles/themes/prism-ayu-light.css';
 @import './styles/themes/prism-catppuccin-latte.css';
@@ -42,7 +52,17 @@
 @import './styles/themes/prism-kanagawa.css';
 @import './styles/themes/prism-material-dark.css';
 @import './styles/themes/prism-monokai-pro.css';
+@import './styles/themes/prism-nightfox.css';
+@import './styles/themes/prism-nord.css';
 @import './styles/themes/prism-one-dark.css';
+@import './styles/themes/prism-oxocarbon-dark.css';
+@import './styles/themes/prism-palenight.css';
+@import './styles/themes/prism-rose-pine.css';
+@import './styles/themes/prism-rose-pine-moon.css';
+@import './styles/themes/prism-solarized-dark.css';
+@import './styles/themes/prism-synthwave-84.css';
+@import './styles/themes/prism-tokyo-night.css';
+@import './styles/themes/prism-tokyo-night-storm.css';
 
 /*
  * Graphite Ink layout + shared chrome.
@@ -188,7 +208,10 @@ body {
 }
 
 .home-new-button:active {
-  background: var(--accent-strong);
+  /* --accent-hover is the pressed FILL variant; --accent-strong is the
+     accent TEXT role and no longer doubles as a background (its lightened
+     dark-theme values sink the --on-accent glyph below 3:1). */
+  background: var(--accent-hover);
   box-shadow: none;
   transform: scale(0.94);
   transition-duration: 0ms;
@@ -1448,7 +1471,9 @@ body {
   border-top: var(--hairline) solid var(--separator);
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--accent);
+  /* Sheet actions are text on --surface-raised: --accent-strong is the
+     accent role guaranteed AA there (plain --accent is tuned for fills). */
+  color: var(--accent-strong);
   font: inherit;
   font-size: 15.5px;
   font-weight: 500;
@@ -1471,7 +1496,7 @@ body {
 }
 
 .draft-save-actions .primary-action {
-  color: var(--accent);
+  color: var(--accent-strong);
   font-weight: 600;
 }
 

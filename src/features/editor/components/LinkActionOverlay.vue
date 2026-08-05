@@ -377,6 +377,7 @@ watch(
 }
 
 .link-action-icon-check {
-  color: var(--accent);
+  /* State icon on a floating surface: accent-strong keeps it >=3:1. */
+  color: var(--accent-strong);
 }
 </style>

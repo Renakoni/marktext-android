@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Rosé Pine Moon.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Rosé Pine Moon is active. Rule grouping
+ * follows the desktop prismjs/rose-pine-moon.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='rose-pine-moon'] .token.comment,
+[data-theme='rose-pine-moon'] .token.prolog,
+[data-theme='rose-pine-moon'] .token.doctype,
+[data-theme='rose-pine-moon'] .token.cdata {
+  color: #6e6a86;
+}
+
+[data-theme='rose-pine-moon'] .token.punctuation {
+  color: #908caa;
+}
+
+[data-theme='rose-pine-moon'] .token.property,
+[data-theme='rose-pine-moon'] .token.tag,
+[data-theme='rose-pine-moon'] .token.constant,
+[data-theme='rose-pine-moon'] .token.symbol {
+  color: #eb6f92;
+}
+
+[data-theme='rose-pine-moon'] .token.boolean,
+[data-theme='rose-pine-moon'] .token.number {
+  color: #ea9a97;
+}
+
+[data-theme='rose-pine-moon'] .token.selector,
+[data-theme='rose-pine-moon'] .token.attr-name,
+[data-theme='rose-pine-moon'] .token.string,
+[data-theme='rose-pine-moon'] .token.char,
+[data-theme='rose-pine-moon'] .token.builtin {
+  color: #f6c177;
+}
+
+[data-theme='rose-pine-moon'] .token.inserted {
+  color: #9ccfd8;
+  background: rgba(156, 207, 216, 0.12);
+}
+
+[data-theme='rose-pine-moon'] .token.deleted {
+  color: #eb6f92;
+  background: rgba(235, 111, 146, 0.12);
+}
+
+[data-theme='rose-pine-moon'] .token.operator,
+[data-theme='rose-pine-moon'] .token.entity,
+[data-theme='rose-pine-moon'] .token.url,
+[data-theme='rose-pine-moon'] .language-css .token.string,
+[data-theme='rose-pine-moon'] .style .token.string {
+  color: #9ccfd8;
+}
+
+[data-theme='rose-pine-moon'] .token.atrule,
+[data-theme='rose-pine-moon'] .token.attr-value,
+[data-theme='rose-pine-moon'] .token.function,
+[data-theme='rose-pine-moon'] .token.class-name {
+  color: #3e8fb0;
+}
+
+[data-theme='rose-pine-moon'] .token.keyword {
+  color: #c4a7e7;
+}
+
+[data-theme='rose-pine-moon'] .token.regex,
+[data-theme='rose-pine-moon'] .token.important,
+[data-theme='rose-pine-moon'] .token.variable {
+  color: #eb6f92;
+}
