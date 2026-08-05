@@ -34,12 +34,15 @@ const CDN_STYLESHEET_LINKS = `  <!-- https://cdnjs.com/libraries/github-markdown
 // those. Raw HTML is never rewritten in any way: DOMPurify judges its
 // real attribute values (its URI policy sees `\njavascript:` as
 // authored), the HTML parser sees its real tag-syntax whitespace, and
-// comments keep their real data. The sentinel lives exclusively inside
-// escaped text content, where the DOM pass resolves every occurrence to
-// either `<br>` or `\n` — a total function, so none can leak into the
-// output. The marker is freshly RANDOM per render, so authored content
-// cannot collide with it — not even through numeric character
-// references, which no input-scan check could enumerate.
+// comments keep their real data. The sentinel reaches DOM Text nodes
+// only — partly by construction (escaped text cannot originate markup)
+// and partly by sink inventory (image labels, the one text-token path
+// that renders into an ATTRIBUTE, are explicitly exempted in the marking
+// hook) — and the DOM pass resolves every occurrence to either `<br>` or
+// `\n`: a total function, so none can leak into the output. The marker
+// is freshly RANDOM per render, so authored content cannot collide with
+// it — not even through numeric character references, which no
+// input-scan check could enumerate.
 function pickSoftBreakSentinel(): string {
     const bytes = new Uint8Array(16);
     if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {

@@ -18,11 +18,13 @@ import { MarkdownToHtml } from '../markdownToHtml';
 // entire protection surface. The token layer contributes the single bit
 // only it knows — "this newline is markdown text, not raw HTML" — as a
 // sentinel inside TEXT tokens, with no tag tracking at all. The marking
-// direction is the security and correctness contract: text-token content
-// is escaped text by construction, so the sentinel can never sit in tag
-// syntax, an attribute value, or comment data — raw HTML reaches
-// DOMPurify and the parser byte-identical to a sentinel-free render, and
-// the DOM pass resolves every sentinel to either <br> or `\n` (a total
+// direction is the security and correctness contract, with two legs:
+// BY CONSTRUCTION, escaped text-token content cannot originate tag
+// syntax or comment data, so raw HTML reaches DOMPurify and the parser
+// byte-identical to a sentinel-free render; BY SINK INVENTORY, the one
+// text-token path that renders into an ATTRIBUTE (image labels -> alt)
+// is exempted from marking, so every sentinel lands in a DOM Text node
+// and the DOM pass resolves each to either <br> or `\n` (a total
 // function; nothing can leak into the output).
 //
 // The parked suite's ground truths all hold: raw-token newlines

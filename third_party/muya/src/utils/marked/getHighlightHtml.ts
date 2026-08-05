@@ -43,10 +43,19 @@ export interface IHighlightHtmlOptions {
      * alone — and after parsing, the two are indistinguishable in the
      * DOM. The token layer contributes the one bit only it knows ("this
      * newline is markdown text, not raw HTML"), and it marks the SAFE
-     * side of that line: text-token content is escaped text by
-     * construction, so the sentinel can never land in tag syntax, an
-     * attribute, or a comment — raw HTML flows through marked, DOMPurify
-     * and the HTML parser byte-identical to a sentinel-free render.
+     * side of that line. The guarantee has two distinct legs:
+     *
+     * - BY CONSTRUCTION: text-token content is escaped text, so it can
+     *   never originate tag syntax or comment data — raw HTML flows
+     *   through marked, DOMPurify and the HTML parser byte-identical to
+     *   a sentinel-free render.
+     * - BY SINK INVENTORY: a text token's DESTINATION is not guaranteed
+     *   to be a DOM Text node. Marked's image renderer writes label
+     *   text tokens into the `alt` ATTRIBUTE — the one such sink in the
+     *   core renderers — so the hook explicitly exempts image-label
+     *   subtrees. Deleting that exemption re-leaks the sentinel into
+     *   `alt`; the "escaped text" argument alone does NOT cover it.
+     *
      * (The inverse marking — sentinels INSIDE raw HTML tokens — rewrote
      * markup text and died three ways at once: it corrupted multiline
      * tags, leaked into comment data, and let sanitized-inert URI values
