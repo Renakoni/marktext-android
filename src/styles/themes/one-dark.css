@@ -33,9 +33,10 @@
   --border-strong: #4b5363;
   --separator: rgba(255, 255, 255, 0.08);
 
-  /* Accent — heritage slate blue; "strong" means more contrast, so it
-     lightens here instead of darkening. */
-  --accent: #4d78cc;
+  /* Accent — heritage slate blue (kept verbatim on --theme-color); the
+     fill is one step deeper so --on-accent text reaches 4.5:1. "Strong"
+     means more contrast, so it lightens here instead of darkening. */
+  --accent: #4773ca;
   --accent-strong: #9dbaf2;
   --accent-hover: #5d88da;
   --accent-soft: rgba(77, 120, 204, 0.22);

@@ -259,23 +259,47 @@ describe('theme token architecture', () => {
     }
   })
 
-  it('keeps on-accent glyphs at non-text contrast on accent fills in every theme', () => {
-    // Accent fills (the new-document button, primary prompt actions) carry
-    // --on-accent glyphs and text; --accent-hover is the pressed fill
-    // variant. WCAG 1.4.11 requires 3:1 for these non-text pairs.
-    // --accent-strong is deliberately absent: it is the accent TEXT role
-    // and must never be used as a fill.
+  it('keeps on-accent contrast on accent fills in every theme', () => {
+    // The resting --accent fill carries normal-sized --on-accent text (the
+    // editor-failure retry action is 15px copy and keeps its fill while
+    // pressed), so that pair needs the full 4.5:1 text contrast. The
+    // pressed --accent-hover fill only ever shows --on-accent glyphs (the
+    // new-document "+" icon), so WCAG 1.4.11's 3:1 non-text minimum
+    // applies there. --accent-strong is deliberately absent: it is the
+    // accent TEXT role and must never be used as a fill.
     for (const path of themePaths) {
       const tokens = collectTokenValues(readFileSync(path, 'utf8'))
       const onAccent = resolveHexToken(tokens, '--on-accent')
       const name = relative(process.cwd(), path)
 
-      for (const fill of ['--accent', '--accent-hover']) {
+      for (const [fill, minimum] of [
+        ['--accent', 4.5],
+        ['--accent-hover', 3],
+      ] as const) {
         const ratio = contrastRatio(onAccent, resolveHexToken(tokens, fill))
         expect(ratio, `${name} on-accent vs ${fill}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(
-          3,
+          minimum,
         )
       }
+    }
+  })
+
+  it('keeps the unchecked toggle thumb visible on its track in every theme', () => {
+    // The resting settings-toggle thumb is --text-muted over the
+    // --surface-sunken track (SettingsToggleRow.vue); --on-accent has no
+    // guaranteed contrast against neutral surfaces, so the thumb must not
+    // use it while unchecked. WCAG 1.4.11 requires 3:1 for this control
+    // boundary. The checked state (on-accent thumb over the accent track)
+    // is covered by the accent-fill contract above.
+    for (const path of themePaths) {
+      const tokens = collectTokenValues(readFileSync(path, 'utf8'))
+      const ratio = contrastRatio(
+        resolveHexToken(tokens, '--text-muted'),
+        resolveHexToken(tokens, '--surface-sunken'),
+      )
+      const name = relative(process.cwd(), path)
+
+      expect(ratio, `${name} thumb vs track: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
     }
   })
 
