@@ -93,6 +93,21 @@ export function getHighlightHtml(
     }
 
     if (softBreakSentinel) {
+        // Text tokens inside an image LABEL are the one place a text
+        // token does not become a DOM Text node: marked renders the
+        // label into the `alt` attribute, which no text-node pass can
+        // ever visit — a sentinel there would leak into the export
+        // verbatim. Marked walks parents before children, so tagging the
+        // image's subtree at the image token keeps its descendants
+        // unmarked (and the alt newline keeps marked's own behavior).
+        const imageLabelTokens = new WeakSet<object>();
+        const tagImageLabel = (token: { tokens?: object[] }) => {
+            for (const child of token.tokens ?? []) {
+                imageLabelTokens.add(child);
+                tagImageLabel(child);
+            }
+        };
+
         marked.use({
             // Mark soft breaks where they live: leaf `text` tokens. Raw
             // `html` tokens, code, codespans, and every extension token
@@ -102,8 +117,17 @@ export function getHighlightHtml(
             // it.) This instance is per-call, so the closure over this
             // render's sentinel cannot chain into the next render.
             walkTokens(token) {
-                if (token.type === 'text' && token.text.includes('\n'))
+                if (token.type === 'image') {
+                    tagImageLabel(token);
+                    return;
+                }
+                if (
+                    token.type === 'text'
+                    && !imageLabelTokens.has(token)
+                    && token.text.includes('\n')
+                ) {
                     token.text = token.text.replace(/\n/g, softBreakSentinel);
+                }
             },
         });
     }

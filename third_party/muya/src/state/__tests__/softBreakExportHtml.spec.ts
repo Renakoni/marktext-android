@@ -207,12 +207,35 @@ describe('everything that is NOT an authored soft break stays untouched', () => 
         expect(html).toContain('<div class="kept-class">x</div>');
     });
 
-    it('keeps newlines inside raw comment data verbatim', async () => {
+    it('never marks raw comment data (observable via happy-dom)', async () => {
         // Comments parse into Comment nodes, which SHOW_TEXT walkers never
         // visit — safe here because raw comment data is never marked in
-        // the first place.
+        // the first place. Environment note: happy-dom keeps the comment
+        // observable, which makes it a leak probe; PRODUCTION DOMPurify
+        // removes comments outright (pre-existing, sentinel-free
+        // behavior), so this pins "no sentinel ever enters comment data",
+        // not byte-fidelity of comments in shipped exports.
         const html = await exportHtml('before <!-- left\nright --> after\n');
         expect(html).toContain('<!-- left\nright -->');
+    });
+
+    it('keeps a multiline image label out of the sentinel pass (inline)', async () => {
+        // The one place a text token does NOT become a DOM Text node:
+        // marked renders image-label text tokens into the `alt`
+        // attribute, which no text-node pass can visit. The label subtree
+        // is therefore never marked, and alt keeps marked's own newline
+        // (the exportHtml helper asserts no sentinel leaked).
+        const html = await exportHtml(
+            '![alt\ntext](https://example.test/image.png)\n',
+        );
+        expect(html).toContain('alt="alt\ntext"');
+    });
+
+    it('keeps a multiline image label out of the sentinel pass (reference)', async () => {
+        const html = await exportHtml(
+            '![alt\ntext][img]\n\n[img]: https://example.test/image.png\n',
+        );
+        expect(html).toContain('alt="alt\ntext"');
     });
 
     it('keeps table cells untouched', async () => {
