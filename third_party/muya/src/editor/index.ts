@@ -439,8 +439,22 @@ export class Editor {
     }
 
     private _restoreSelection(selection: Nullable<IHistorySelection>, treeRebuilt = false) {
-        if (!selection)
+        if (!selection) {
+            // Nothing to restore — but the op that just applied may have
+            // removed the subtree the active content block lives in (e.g.
+            // undoing an op whose recorded selection predates the history's
+            // selection bookkeeping). Never leave consumers a reference
+            // into detached DOM: a detached block keeps its internal parent
+            // links, so climb until the scroll page (attached) or a dead
+            // end (detached). The climb must STOP at the scroll page — it
+            // has a non-block parent of its own.
+            let node = this.activeContentBlock?.parent ?? null;
+            while (node && node !== (this.scrollPage as unknown) && node.parent)
+                node = node.parent;
+            if (this.activeContentBlock != null && node !== (this.scrollPage as unknown))
+                this.activeContentBlock = null;
             return;
+        }
 
         const { anchor, focus, isSelectionInSameBlock } = selection;
         // `ScrollPage.queryBlock` consumes the path array in place (`path.shift`),

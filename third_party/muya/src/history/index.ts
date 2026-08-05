@@ -298,7 +298,16 @@ class History {
         if (this._selectionStack.length > 2)
             this._selectionStack.shift();
 
-        return this._selectionStack.length === 2 ? this._selectionStack[0] : null;
+        // Two entries: the selection captured at the PREVIOUS record — the
+        // "before the op" approximation undo restores. One entry (the
+        // session's very first record): fall back to the CURRENT selection
+        // instead of null. Undoing that first op then re-resolves the
+        // recorded path against the post-undo tree, which seats the caret
+        // on the live neighbouring block — with null it restored NOTHING,
+        // leaving editor.activeContentBlock pointing into the removed
+        // subtree (the mobile table panel read that as "not in a table"
+        // and every structure command silently no-opped, #144 review).
+        return this._selectionStack[0] ?? null;
     }
 
     private _record(op: JSONOpList, doc: TState[]) {

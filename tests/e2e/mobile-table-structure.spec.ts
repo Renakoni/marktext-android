@@ -90,6 +90,30 @@ test('inserts and deletes rows and columns around the caret cell', async ({ page
   await expect(page.getByTestId('editor-host')).not.toContainText('fresh')
 })
 
+test('a table command works again right after undoing the previous one', async ({ page }) => {
+  // Device-reproduced #144 bug: insert row -> undo -> insert row again
+  // silently no-opped and kicked the panel out. The session's FIRST
+  // recorded op stored no selection, so its undo restored nothing and
+  // the active content block kept pointing into the removed row.
+  await openTableDraft(page)
+
+  await page.getByTestId('toolbar-expand-button').click()
+  await tapCell(page, 'two')
+  await expect(tableRows(page)).toHaveCount(2)
+
+  await page.getByTestId('toolbar-table-table-insert-row-above').click()
+  await expect(tableRows(page)).toHaveCount(3)
+
+  await page.getByTestId('toolbar-command-edit.undo').click()
+  await expect(tableRows(page)).toHaveCount(2)
+
+  // The caret is back on a live cell: the panel stays TABLE and the
+  // repeated command inserts again instead of no-opping.
+  await expect(page.getByTestId('toolbar-table-table-insert-row-above')).toBeVisible()
+  await page.getByTestId('toolbar-table-table-insert-row-above').click()
+  await expect(tableRows(page)).toHaveCount(3)
+})
+
 test('removing the last row or the whole table drops the caret outside and restores the panel', async ({
   page,
 }) => {
