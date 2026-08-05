@@ -2,7 +2,11 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests/e2e',
-  workers: 1,
+  // CI runners have four cores, and every test file is independent (fresh
+  // context + storage per test, one shared dev server), so parallel workers
+  // divide the wall clock by ~4. Local runs stay serial: a long-lived dev
+  // server on the workstation ages under parallel cold-transform load.
+  workers: process.env.CI ? '100%' : 1,
   timeout: 30_000,
   // The Vite cold-transform storm sporadically fails the first editor init (a
   // rejected @muyajs/core dynamic import); a retry clears it, and Playwright
