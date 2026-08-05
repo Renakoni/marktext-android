@@ -1065,6 +1065,10 @@ function insertTableFromSheet() {
 
   closeTableSheet()
   syncAfterToolbarCommand(result.beforeMarkdown)
+  // The engine seats the caret in the fresh table without emitting a
+  // selection change, so enter the table toolbar state explicitly —
+  // shaping the just-created table is the most likely next action.
+  refreshEditorTableCaretState()
 }
 
 async function insertImageFromAndroidPicker(restoreRange: Range | null = null) {
