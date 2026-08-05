@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 interface SettingsSelectOption {
   id: string
@@ -22,12 +22,33 @@ const emit = defineEmits<{
 }>()
 
 const isOpen = ref(false)
+const panelElement = ref<HTMLElement | null>(null)
 const selectedOption = computed(() =>
   props.options.find(option => option.id === props.modelValue) ?? props.options[0],
 )
 
+// Options grouped by their headings so the sheet can expose real listbox
+// group semantics; a headingless select yields one anonymous group.
+const groupedOptions = computed(() => {
+  const groups: { heading?: string; options: SettingsSelectOption[] }[] = []
+  for (const option of props.options) {
+    if (option.heading || groups.length === 0) {
+      groups.push({ heading: option.heading, options: [] })
+    }
+    groups[groups.length - 1].options.push(option)
+  }
+  return groups
+})
+
 function openPicker() {
   isOpen.value = true
+  // The sheet is recreated on every open, so bring the selected option back
+  // into view — a 31-entry theme list otherwise reopens at the top.
+  void nextTick(() => {
+    panelElement.value
+      ?.querySelector('.is-selected')
+      ?.scrollIntoView({ block: 'center' })
+  })
 }
 
 function closePicker() {
@@ -73,17 +94,25 @@ function selectOption(value: string) {
         @click.self="closePicker"
       >
         <div
+          ref="panelElement"
           class="settings-select-panel"
           role="listbox"
           :aria-label="label"
           @keydown.esc="closePicker"
         >
           <div class="settings-select-grabber" aria-hidden="true" />
-          <template v-for="option in options" :key="option.id">
-            <div v-if="option.heading" class="settings-select-group-heading" aria-hidden="true">
-              {{ option.heading }}
+          <div
+            v-for="(group, groupIndex) in groupedOptions"
+            :key="groupIndex"
+            :role="group.heading ? 'group' : undefined"
+            :aria-label="group.heading"
+          >
+            <div v-if="group.heading" class="settings-select-group-heading" aria-hidden="true">
+              {{ group.heading }}
             </div>
             <button
+              v-for="option in group.options"
+              :key="option.id"
               class="settings-select-option"
               :class="{ 'is-selected': modelValue === option.id }"
               type="button"
@@ -105,7 +134,7 @@ function selectOption(value: string) {
               </span>
               <span class="settings-select-option-mark" aria-hidden="true" />
             </button>
-          </template>
+          </div>
         </div>
       </div>
     </Transition>
@@ -200,9 +229,12 @@ function selectOption(value: string) {
   margin-left: -5px;
 }
 
+/* Group headings sit on the raised sheet, so they use the primary ink —
+   the faint/muted tokens fall below WCAG AA there in several palettes.
+   Size, tracking, and case keep them subordinate to option labels. */
 .settings-select-group-heading {
   padding: 14px 14px 6px;
-  color: var(--text-faint);
+  color: var(--text);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.06em;
