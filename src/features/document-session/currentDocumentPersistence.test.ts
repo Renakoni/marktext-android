@@ -85,6 +85,7 @@ function createPersistence(overrides: {
     homeNotice: ref<string | null>(null),
     localDrafts,
     androidRecentDocuments,
+    pinnedDocumentIds: ref<ReadonlySet<string>>(new Set<string>()),
     currentAndroidDocumentCanWrite: ref(true),
     promptLocalDraftSaveOnExit: ref(true),
     draftExitPromptOpen: ref(false),

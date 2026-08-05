@@ -68,6 +68,28 @@ test('every draft beyond the cap is reachable through show-more', async ({ page 
   await expect(page.getByTestId('editor-host')).toContainText('payload-1')
 })
 
+test('expansion hands focus to the first revealed row and announces the growth', async ({ page }) => {
+  await openSeededHome(page)
+
+  // Activate the expander from the keyboard: it removes itself once
+  // nothing is hidden, and dropping focus to <body> would send a
+  // keyboard or switch-access user back through ~100 rows.
+  await page.getByTestId('home-show-all-button').focus()
+  await page.keyboard.press('Enter')
+
+  await expect(documentRows(page)).toHaveCount(TOTAL)
+  // Default sort is newest-first, so the first newly revealed row in DOM
+  // order is the newest previously hidden draft (Probe 5).
+  await expect
+    .poll(async () =>
+      page.evaluate(() => document.activeElement?.getAttribute('data-doc-id') ?? ''),
+    )
+    .toBe('draft-005')
+
+  // The polite live region tells assistive tech how many rows appeared.
+  await expect(page.getByTestId('home-reveal-status')).toHaveText(/5/)
+})
+
 test('pinning a beyond-cap draft keeps it visible in the resting view', async ({ page }) => {
   await openSeededHome(page)
 

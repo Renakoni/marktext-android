@@ -13,6 +13,7 @@ export const zhCN = {
   'home.emptyTitle': '没有最近的 Markdown 文件',
   'home.emptyBody': '新建本地草稿，或从本机打开 Markdown 文件。',
   'home.showAllDocuments': '显示更早的 {count} 篇',
+  'home.documentsRevealed': '已显示更早的 {count} 篇文档',
   'home.source.localDraft': '本地草稿',
   'home.source.markdownDocument': 'Markdown 文档',
   'home.wordCount.one': '{count} 字',

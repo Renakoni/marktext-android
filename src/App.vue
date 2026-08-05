@@ -86,7 +86,7 @@ import {
 } from './features/document-session/documentSessionState'
 import {
   getDocumentSettings,
-  getSortedRecentDocumentListItems,
+  getSortedRecentDocumentRecords,
 } from './features/document-session/documentSettings'
 import { createAutosaveScheduler } from './features/document-session/autosaveScheduler'
 import { createCurrentDocumentPersistence } from './features/document-session/currentDocumentPersistence'
@@ -195,6 +195,7 @@ import {
   createRecentDocumentFromLocalDraft,
   getRecentDocumentListItems,
   normalizeRecentDocuments,
+  toRecentDocumentListItems,
   type RecentDocumentRecord,
 } from './lib/recentDocuments'
 
@@ -402,18 +403,20 @@ const recentActivityDocumentItems = computed(() => getRecentDocumentListItems(re
 // The home's "show all" expansion (#151): the resting view keeps the quiet
 // recency cap, the expanded view reads the COMPLETE collection. Ephemeral —
 // never persisted, so paging can never modify the durable stores.
+//
+// The projection is layered so the cap limits COMPUTATION, not just
+// rendered rows: ordering, cap membership, and the hidden count come from
+// the records level (timestamp/title sort keys only), and list items —
+// whose statistics scan each draft's full Markdown — are materialized
+// only for the records the current state actually renders.
 const pinnedDocumentIds = computed(() => getPinnedDocumentIds(pinnedDocuments.value))
 const homeListExpanded = ref(false)
-const allDocumentItems = computed(() =>
-  getSortedRecentDocumentListItems(
-    recentDocumentRecords.value,
-    documentSettings.value,
-    Number.POSITIVE_INFINITY,
-  ),
+const sortedRecentRecords = computed(() =>
+  getSortedRecentDocumentRecords(recentDocumentRecords.value, documentSettings.value),
 )
-const documentItems = computed(() => {
+const visibleRecentRecords = computed(() => {
   if (homeListExpanded.value) {
-    return allDocumentItems.value
+    return sortedRecentRecords.value
   }
 
   // The resting view = the recency-capped set, plus any PINNED document
@@ -422,12 +425,13 @@ const documentItems = computed(() => {
   const cappedIds = new Set(
     normalizeRecentDocuments(recentDocumentRecords.value).map(record => record.id),
   )
-  return allDocumentItems.value.filter(
-    item => cappedIds.has(item.id) || pinnedDocumentIds.value.has(item.id),
+  return sortedRecentRecords.value.filter(
+    record => cappedIds.has(record.id) || pinnedDocumentIds.value.has(record.id),
   )
 })
+const documentItems = computed(() => toRecentDocumentListItems(visibleRecentRecords.value))
 const hiddenHomeDocumentCount = computed(
-  () => allDocumentItems.value.length - documentItems.value.length,
+  () => sortedRecentRecords.value.length - visibleRecentRecords.value.length,
 )
 const homeDocumentSections = computed(() =>
   partitionHomeDocumentItems(documentItems.value, pinnedDocumentIds.value),
@@ -453,10 +457,13 @@ const allSelectedDocumentsPinned = computed(() =>
 )
 
 // Documents can leave the list while selected (e.g. an autosave drops an
-// emptied draft); the selection must not keep counting them.
-watch(documentItems, items => {
+// emptied draft); the selection must not keep counting them. Watching the
+// RECORDS projection keeps `documentItems` lazy: a watcher on the items
+// computed would re-materialize statistics on every draft autosave even
+// while the home screen is not rendered.
+watch(visibleRecentRecords, records => {
   if (homeSelection.isActive.value) {
-    homeSelection.retain(items.map(item => item.id))
+    homeSelection.retain(records.map(record => record.id))
   }
 })
 
@@ -1258,7 +1265,10 @@ function persistLocalDrafts(nextDrafts: LocalDraftRecord[]) {
 }
 
 function persistAndroidRecentDocuments(nextDocuments: RecentDocumentRecord[]) {
-  const filteredDocuments = writeStoredAndroidRecentDocuments(nextDocuments)
+  const filteredDocuments = writeStoredAndroidRecentDocuments(
+    nextDocuments,
+    pinnedDocumentIds.value,
+  )
   androidRecentDocuments.value = filteredDocuments
 }
 
@@ -1284,6 +1294,7 @@ const {
   homeNotice,
   localDrafts,
   androidRecentDocuments,
+  pinnedDocumentIds,
   currentAndroidDocumentCanWrite,
   promptLocalDraftSaveOnExit,
   draftExitPromptOpen,
@@ -1343,7 +1354,13 @@ function protectAndroidDocumentImportedImages(document: OpenedAndroidDocument) {
 
 function rememberAndroidDocument(document: OpenedAndroidDocument) {
   protectAndroidDocumentImportedImages(document)
-  persistAndroidRecentDocuments(rememberAndroidRecentDocument(androidRecentDocuments.value, document))
+  persistAndroidRecentDocuments(
+    rememberAndroidRecentDocument(
+      androidRecentDocuments.value,
+      document,
+      pinnedDocumentIds.value,
+    ),
+  )
 }
 
 async function openAndroidDocumentResult(

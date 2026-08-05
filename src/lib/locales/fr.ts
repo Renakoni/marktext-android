@@ -13,6 +13,7 @@ export const fr = {
   'home.emptyTitle': 'Aucun fichier Markdown récent',
   'home.emptyBody': 'Créez un brouillon local ou ouvrez un fichier Markdown depuis cet appareil.',
   'home.showAllDocuments': 'Afficher {count} de plus',
+  'home.documentsRevealed': '{count} documents de plus affichés',
   'home.source.localDraft': 'Brouillon local',
   'home.source.markdownDocument': 'Document Markdown',
   'home.wordCount.one': '{count} mot',

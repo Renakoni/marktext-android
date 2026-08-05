@@ -72,6 +72,7 @@ export function readStoredAndroidRecentDocuments(
 
 export function writeStoredAndroidRecentDocuments(
   records: RecentDocumentRecord[],
+  protectedIds?: ReadonlySet<string>,
   storage: DocumentStorage = localStorage,
 ) {
   const androidDocuments = records.filter(record => record.kind === 'android-document')
@@ -79,7 +80,10 @@ export function writeStoredAndroidRecentDocuments(
   if (androidDocuments.length > 0) {
     storage.setItem(
       ANDROID_RECENT_DOCUMENTS_STORAGE_KEY,
-      serializeRecentDocuments(androidDocuments),
+      // Serialization re-applies the storage cap, so it needs the pinned
+      // ids too — otherwise a pinned record kept by a pin-aware upsert
+      // would be dropped right here on the way to disk.
+      serializeRecentDocuments(androidDocuments, protectedIds),
     )
   } else {
     storage.removeItem(ANDROID_RECENT_DOCUMENTS_STORAGE_KEY)

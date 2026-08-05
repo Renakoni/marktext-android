@@ -13,6 +13,7 @@ export const pt = {
   'home.emptyTitle': 'Nenhum arquivo Markdown recente',
   'home.emptyBody': 'Comece um rascunho local ou abra um arquivo Markdown deste dispositivo.',
   'home.showAllDocuments': 'Mostrar mais {count}',
+  'home.documentsRevealed': 'Mais {count} documentos exibidos',
   'home.source.localDraft': 'Rascunho local',
   'home.source.markdownDocument': 'Documento Markdown',
   'home.wordCount.one': '{count} palavra',

@@ -20,9 +20,15 @@ interface SavedAndroidRecentDocumentOptions {
   canWrite: boolean
 }
 
+// The recents store is an Android document's ONLY durable home (local
+// drafts have the unbounded drafts store behind them), so every write
+// that re-applies the storage cap must know which ids are pinned —
+// a pin-blind cap would silently evict a pinned document and its pin
+// would be orphan-pruned on the next startup.
 export function rememberAndroidRecentDocument(
   records: RecentDocumentRecord[],
   document: AndroidRecentDocumentSource,
+  protectedIds?: ReadonlySet<string>,
 ) {
   return upsertRecentDocument(
     records,
@@ -34,6 +40,8 @@ export function rememberAndroidRecentDocument(
       markdown: document.markdown,
       canWrite: document.canWrite,
     }),
+    undefined,
+    protectedIds,
   )
 }
 
@@ -41,6 +49,7 @@ export function markSavedAndroidRecentDocument(
   records: RecentDocumentRecord[],
   sourceUri: string,
   options: SavedAndroidRecentDocumentOptions,
+  protectedIds?: ReadonlySet<string>,
 ) {
   const existingDocument = records.find(record => record.sourceUri === sourceUri)
   if (!existingDocument) {
@@ -54,5 +63,7 @@ export function markSavedAndroidRecentDocument(
       savedAt: options.savedAt,
       canWrite: options.canWrite,
     }),
+    undefined,
+    protectedIds,
   )
 }

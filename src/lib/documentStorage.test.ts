@@ -102,6 +102,7 @@ describe('documentStorage', () => {
 
     const storedRecords = writeStoredAndroidRecentDocuments(
       [localRecentDocument, androidDocument],
+      undefined,
       storage,
     )
 
@@ -113,9 +114,39 @@ describe('documentStorage', () => {
     const storage = new MemoryStorage()
     storage.setItem(ANDROID_RECENT_DOCUMENTS_STORAGE_KEY, JSON.stringify([androidDocument]))
 
-    writeStoredAndroidRecentDocuments([createRecentDocumentFromLocalDraft(localDraft)], storage)
+    writeStoredAndroidRecentDocuments(
+      [createRecentDocumentFromLocalDraft(localDraft)],
+      undefined,
+      storage,
+    )
 
     expect(storage.getItem(ANDROID_RECENT_DOCUMENTS_STORAGE_KEY)).toBeNull()
+  })
+
+  it('keeps pinned Android records across the write cap and reloads', () => {
+    // The recents store is an Android document's only durable home, so a
+    // pin-blind write cap would silently delete the pinned document and
+    // its pin would be orphan-pruned on the next startup.
+    const storage = new MemoryStorage()
+    const base = Date.parse('2026-07-01T00:00:00.000Z')
+    // 102 records = 101 unpinned + 1 pinned: one over the 100-unpinned cap.
+    const records = Array.from({ length: 102 }, (_, index) => ({
+      ...androidDocument,
+      id: `android-document:content://provider/doc-${index}.md`,
+      sourceUri: `content://provider/doc-${index}.md`,
+      updatedAt: new Date(base + index * 60_000).toISOString(),
+      lastOpenedAt: new Date(base + index * 60_000).toISOString(),
+    }))
+    const pinnedOldest = records[0]
+
+    writeStoredAndroidRecentDocuments(records, new Set([pinnedOldest.id]), storage)
+
+    const reloaded = readStoredAndroidRecentDocuments(storage)
+    // 100 newest unpinned survive, plus the pinned oldest; the oldest
+    // UNPINNED record (index 1) is the one evicted.
+    expect(reloaded).toHaveLength(101)
+    expect(reloaded.some(record => record.id === pinnedOldest.id)).toBe(true)
+    expect(reloaded.some(record => record.id === records[1].id)).toBe(false)
   })
 
   it('round-trips pinned documents through their own storage key', () => {

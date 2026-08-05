@@ -177,9 +177,11 @@ export function createRecentDocumentFromAndroidDocument(
 export function normalizeRecentDocuments(
   records: StoredRecentDocumentRecord[],
   limit = DEFAULT_RECENT_LIMIT,
+  protectedIds?: ReadonlySet<string>,
 ) {
   const seen = new Set<string>()
   const normalized: RecentDocumentRecord[] = []
+  let unprotectedCount = 0
 
   for (const rawRecord of [...records].sort(compareRecentDocuments)) {
     const record = normalizeRecentDocumentRecord(rawRecord)
@@ -192,11 +194,25 @@ export function normalizeRecentDocuments(
       continue
     }
 
+    // The cap evicts the oldest UNPROTECTED records; a protected record
+    // (a pinned document, whose only durable home may be this store) is
+    // kept regardless of age — pinning is explicit intent, and recency
+    // eviction silently deleting it would also orphan-prune its pin on
+    // the next startup. Growth stays bounded: at most `limit` unprotected
+    // records plus the (separately capped) pinned set.
+    const isProtected = protectedIds?.has(record.id) ?? false
+    if (!isProtected) {
+      if (unprotectedCount >= limit) {
+        continue
+      }
+      unprotectedCount++
+    }
+
     seen.add(key)
     normalized.push(record)
   }
 
-  return normalized.slice(0, limit)
+  return normalized
 }
 
 export function parseRecentDocuments(value: string | null) {
@@ -210,20 +226,30 @@ export function parseRecentDocuments(value: string | null) {
       return []
     }
 
-    return normalizeRecentDocuments(parsed.filter(isStoredRecentDocumentRecord))
+    // Read-side is deliberately uncapped: the cap is enforced on every
+    // write (pin-aware), and re-capping here without the pin set would
+    // evict pinned-beyond-cap records on every restart.
+    return normalizeRecentDocuments(
+      parsed.filter(isStoredRecentDocumentRecord),
+      Number.POSITIVE_INFINITY,
+    )
   } catch {
     return []
   }
 }
 
-export function serializeRecentDocuments(records: RecentDocumentRecord[]) {
-  return JSON.stringify(normalizeRecentDocuments(records))
+export function serializeRecentDocuments(
+  records: RecentDocumentRecord[],
+  protectedIds?: ReadonlySet<string>,
+) {
+  return JSON.stringify(normalizeRecentDocuments(records, DEFAULT_RECENT_LIMIT, protectedIds))
 }
 
 export function upsertRecentDocument(
   records: RecentDocumentRecord[],
   nextRecord: RecentDocumentRecord,
   limit = DEFAULT_RECENT_LIMIT,
+  protectedIds?: ReadonlySet<string>,
 ) {
   const nextKey = getRecentDocumentKey(nextRecord)
   const existingRecord = records.find(record => getRecentDocumentKey(record) === nextKey)
@@ -238,6 +264,7 @@ export function upsertRecentDocument(
       ...records.filter(record => getRecentDocumentKey(record) !== nextKey),
     ],
     limit,
+    protectedIds,
   )
 }
 
@@ -257,12 +284,24 @@ export function markRecentDocumentSaved(
   }
 }
 
+/**
+ * Materialize list items (with document statistics) from ALREADY
+ * normalized records, preserving their order. Statistics scan each
+ * draft's full Markdown body, so callers keep projections cheap by
+ * materializing only the records they will actually render.
+ */
+export function toRecentDocumentListItems(
+  records: RecentDocumentRecord[],
+): RecentDocumentListItem[] {
+  return records.map(record => ({
+    ...record,
+    stats: record.markdownPreview ? getDocumentStats(record.markdownPreview) : null,
+  }))
+}
+
 export function getRecentDocumentListItems(
   records: RecentDocumentRecord[],
   limit = DEFAULT_RECENT_LIMIT,
 ): RecentDocumentListItem[] {
-  return normalizeRecentDocuments(records, limit).map(record => ({
-    ...record,
-    stats: record.markdownPreview ? getDocumentStats(record.markdownPreview) : null,
-  }))
+  return toRecentDocumentListItems(normalizeRecentDocuments(records, limit))
 }
