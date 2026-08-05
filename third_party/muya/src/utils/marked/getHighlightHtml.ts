@@ -35,7 +35,26 @@ function highlight(code: string, lang: string) {
     return Prism.highlight(code, grammar, lang);
 }
 
-export function getHighlightHtml(src: string, options: ILexOption = {}) {
+export interface IHighlightHtmlOptions {
+    /**
+     * Replace `\n` INSIDE raw HTML tokens with this sentinel string
+     * (#3676, #4951). The DOM-stage export pass converts authored soft
+     * breaks to `<br>` but must leave raw-HTML formatting whitespace
+     * alone — and after parsing, the two are indistinguishable in the
+     * DOM. The token layer contributes the one bit only it knows ("this
+     * text came from a raw HTML token") with NO tag tracking of any
+     * kind; the exporter swaps the sentinel back to `\n` string-wide
+     * after the DOM pass. Export-only: the editor and the conformance
+     * renderer never pass it, so their output stays spec-canonical.
+     */
+    rawNewlineSentinel?: string;
+}
+
+export function getHighlightHtml(
+    src: string,
+    options: ILexOption = {},
+    { rawNewlineSentinel }: IHighlightHtmlOptions = {},
+) {
     options = Object.assign({}, DEFAULT_OPTIONS, options);
     const { footnote, frontMatter, math, isGitlabCompatibilityEnabled, superSubScript }
         = options;
@@ -64,6 +83,18 @@ export function getHighlightHtml(src: string, options: ILexOption = {}) {
                 useKatexRender: true,
             }),
         );
+    }
+
+    if (rawNewlineSentinel) {
+        marked.use({
+            renderer: {
+                // marked v18's base html renderer is `({ text }) => text` for
+                // block and inline raw-HTML tokens alike.
+                html(token) {
+                    return token.text.replace(/\n/g, rawNewlineSentinel);
+                },
+            },
+        });
     }
 
     if (superSubScript)

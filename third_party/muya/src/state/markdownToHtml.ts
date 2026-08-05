@@ -27,10 +27,102 @@ const CDN_STYLESHEET_LINKS = `  <!-- https://cdnjs.com/libraries/github-markdown
   <!-- https://cdnjs.com/libraries/prism -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/themes/prism.min.css" integrity="sha512-/mZ1FHPkg6EKcxo0fKXF51ak6Cr2ocgDi5ytaTBjsQZIH/RNs6GF6+oId/vPe3eJB836T36nXwVh/WBl/cWT4w==" crossorigin="anonymous" referrerpolicy="no-referrer" />`;
 
+// Sentinel standing in for `\n` INSIDE raw HTML tokens through the
+// sanitize + DOM stage (#3676): raw-HTML formatting whitespace and
+// authored soft breaks are indistinguishable once parsed, so the marked
+// renderer marks raw newlines before parsing and `renderHtml` swaps them
+// back after the soft-break pass. Private-use characters survive both
+// DOMPurify and innerHTML parsing in text and attribute positions alike.
+const RAW_NEWLINE_SENTINEL = 'mu:raw-nl';
+
+// Containers whose text newlines are CONTENT, never soft breaks. The
+// browser's parser has already resolved raw-text elements, nesting, and
+// mismatched tags by the time the DOM pass runs — this one selector is
+// the entire protection the token-level attempt (#4951/#160) needed ten
+// review rounds of HTML-parser emulation for. `.katex`/`math`/`svg`
+// guard generated math and diagram output.
+const SOFT_BREAK_PROTECTED
+    = 'pre, code, kbd, script, style, textarea, title, svg, math, .katex';
+
+// Block-level elements: a newline touching one of these (or a container
+// edge) separates BLOCKS — marked's own serialization shape — and must
+// not become a visible break. Everything else adjacent is phrasing
+// content, where a newline is an authored soft break.
+const BLOCKISH_TAG
+    = /^(?:ADDRESS|ARTICLE|ASIDE|BLOCKQUOTE|DETAILS|DIV|DL|DD|DT|FIELDSET|FIGCAPTION|FIGURE|FOOTER|FORM|H[1-6]|HEADER|HR|MAIN|NAV|OL|P|PRE|SECTION|TABLE|UL)$/;
+
 export class MarkdownToHtml {
     private _exportContainer: HTMLDivElement | null = null;
 
     constructor(public markdown: string, private _muya?: Muya) {}
+
+    /**
+     * Render authored soft line breaks as `<br>` (#3676). CommonMark
+     * explicitly permits a renderer to emit soft breaks as hard line
+     * breaks; the editor already SHOWS them as line breaks
+     * (`.mu-content` is pre-wrap), so exports must match. Runs on the
+     * sanitized export DOM: only text nodes in phrasing context under a
+     * paragraph-like host (`p`, `li`) convert, protected containers and
+     * block-structural newlines stay verbatim, and marked's canonical
+     * string output is never modified.
+     */
+    private _renderSoftBreaks(container: HTMLElement) {
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+        const texts: Text[] = [];
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if ((node as Text).data.includes('\n'))
+                texts.push(node as Text);
+        }
+
+        for (const text of texts)
+            this._convertSoftBreaks(text);
+    }
+
+    private _convertSoftBreaks(text: Text) {
+        const parent = text.parentElement;
+        if (!parent || parent.closest(SOFT_BREAK_PROTECTED))
+            return;
+        if (!parent.closest('p, li'))
+            return;
+
+        // A newline at the node's EDGE next to a block-level sibling (a
+        // nested list inside a tight item, a paragraph boundary inside a
+        // loose one) — or at the container edge itself — is structural.
+        const structuralBefore
+            = text.previousSibling == null
+                || (isHTMLElement(text.previousSibling)
+                    && BLOCKISH_TAG.test(text.previousSibling.tagName));
+        const structuralAfter
+            = text.nextSibling == null
+                || (isHTMLElement(text.nextSibling)
+                    && BLOCKISH_TAG.test(text.nextSibling.tagName));
+
+        const parts = text.data.split('\n');
+        const fragment = document.createDocumentFragment();
+        let converted = false;
+        for (let i = 0; i < parts.length; i++) {
+            if (i > 0) {
+                // The boundary between parts[i-1] and parts[i].
+                const leadingEmpty = parts.slice(0, i).every(part => part === '');
+                const trailingEmpty = parts.slice(i).every(part => part === '');
+                const structural
+                    = (leadingEmpty && structuralBefore)
+                        || (trailingEmpty && structuralAfter);
+                if (structural) {
+                    fragment.appendChild(document.createTextNode('\n'));
+                }
+                else {
+                    fragment.appendChild(document.createElement('br'));
+                    converted = true;
+                }
+            }
+            if (parts[i])
+                fragment.appendChild(document.createTextNode(parts[i]));
+        }
+
+        if (converted)
+            text.parentNode!.replaceChild(fragment, text);
+    }
 
     private async _renderMermaid() {
         const codes = this._exportContainer!.querySelectorAll(
@@ -188,7 +280,7 @@ export class MarkdownToHtml {
             isGitlabCompatibilityEnabled:
         this._muya?.options?.isGitlabCompatibilityEnabled ?? true,
             math: this._muya?.options?.math ?? true,
-        });
+        }, { rawNewlineSentinel: RAW_NEWLINE_SENTINEL });
 
         // Post-process footnotes into the standard GFM / pandoc shape (inline
         // numbered <sup> refs + bottom <section class="footnotes"> with
@@ -215,6 +307,11 @@ export class MarkdownToHtml {
         // renderer (`renderToStaticHTML`) is deliberately left untouched.
         this._injectHeadingIds(exportContainer);
 
+        // Authored soft breaks -> <br> (#3676), on the parsed DOM where
+        // the browser has already resolved everything the token stream
+        // cannot express.
+        this._renderSoftBreaks(exportContainer);
+
         let result = exportContainer.innerHTML;
         exportContainer.remove();
 
@@ -231,6 +328,10 @@ export class MarkdownToHtml {
         });
 
         this._exportContainer = null;
+
+        // Raw-HTML newlines ride through the DOM pass as sentinels (text
+        // and attribute positions alike); a string-wide swap restores them.
+        result = result.split(RAW_NEWLINE_SENTINEL).join('\n');
 
         return `<article class="markdown-body">${result}</article>`;
     }
