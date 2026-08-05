@@ -68,17 +68,31 @@ jobs:
         run: pnpm build
 
   e2e:
-    name: Mobile WebView E2E
+    name: Mobile WebView E2E (${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    # The suite outgrew a single serial job (it started hitting the
+    # 15-minute timeout), so it runs sharded across two jobs with parallel
+    # workers inside each (see workers in playwright.config.ts).
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright E2E
-        run: pnpm test:e2e
+        run: pnpm test:e2e -- --shard=${{ matrix.shard }}/2
