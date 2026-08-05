@@ -13,7 +13,8 @@
  * - `--danger` lightens the palenight red just past WCAG AA (heritage
  *   #ff5370 sits at 4.37:1 and stays on the Muya bridge and headings).
  * - The desktop 0.6-alpha periwinkle search highlight softens to 0.3 for
- *   phone readability.
+ *   phone readability, and the raised surface sits a step darker than the
+ *   desktop hover tone so the lavender ink holds WCAG AA on sheets.
  * - `--strong-color`/`--em-color` stay `inherit` per the product rule
  *   (desktop tints italics purple).
  */
@@ -26,7 +27,7 @@
   --surface: #292d3e;
   --surface-muted: #32374d;
   --surface-sunken: #222534;
-  --surface-raised: #3e4460;
+  --surface-raised: #373c56;
 
   /* Content */
   --text: #a6accd;

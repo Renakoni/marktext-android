@@ -12,6 +12,9 @@
  * - `--accent` lifts the solarized blue just past WCAG AA on base03
  *   (heritage sits at 4.08:1 and stays on the Muya bridge); `--danger`
  *   lightens the solarized red the same way (3.25:1).
+ * - UI ink steps up the canonical ladder (base1 text, base0 muted) and
+ *   the raised surface stays near base02, so sheet and menu text holds
+ *   WCAG AA on floating chrome; the editor keeps base0 ink on base03.
  * - The desktop 0.6-alpha blue search highlight softens to 0.3 for phone
  *   readability.
  * - `--strong-color`/`--em-color` stay `inherit` per the product rule
@@ -26,11 +29,11 @@
   --surface: #002b36;
   --surface-muted: #073642;
   --surface-sunken: #001e26;
-  --surface-raised: #0a4a5a;
+  --surface-raised: #073b46;
 
   /* Content */
-  --text: #839496;
-  --text-muted: #768789;
+  --text: #93a1a1;
+  --text-muted: #839496;
   --text-faint: #586e75;
   --task-completed-color: #7d9194;
   --on-accent: #002b36;

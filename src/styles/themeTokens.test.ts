@@ -204,6 +204,22 @@ describe('theme token architecture', () => {
     }
   })
 
+  it('keeps primary ink at WCAG AA contrast on raised surfaces in every theme', () => {
+    // Sheets, menus, and floating toolbars all sit on --surface-raised and
+    // set their labels in --text; a palette whose raised tint drifts too
+    // bright (dark themes) or too dark (light themes) fails silently there.
+    for (const path of themePaths) {
+      const tokens = collectTokenValues(readFileSync(path, 'utf8'))
+      const ratio = contrastRatio(
+        resolveHexToken(tokens, '--text'),
+        resolveHexToken(tokens, '--surface-raised'),
+      )
+      const name = relative(process.cwd(), path)
+
+      expect(ratio, `${name}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
   it('uses the completed-task token for checked task content', () => {
     const taskListStyles = readFileSync(taskListStylesPath, 'utf8')
     const checkedTaskRule = taskListStyles.match(

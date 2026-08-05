@@ -3,8 +3,9 @@
  *
  * Muya bundles a generic light Prism theme unconditionally; these rules
  * re-color the tokens whenever the theme is active. Rule grouping follows
- * the desktop prismjs palette (Tokyo Night and Storm share one token set);
- * the [data-theme] scope wins on specificity without !important.
+ * the desktop prismjs/tokyo-night-storm.theme.css palette (Storm brightens
+ * punctuation and cools the operator cyan relative to Tokyo Night); the
+ * [data-theme] scope wins on specificity without !important.
  */
 
 [data-theme='tokyo-night-storm'] .token.comment,
@@ -15,7 +16,7 @@
 }
 
 [data-theme='tokyo-night-storm'] .token.punctuation {
-  color: #9aa5ce;
+  color: #c0caf5;
 }
 
 [data-theme='tokyo-night-storm'] .token.property,
@@ -53,7 +54,7 @@
 [data-theme='tokyo-night-storm'] .token.url,
 [data-theme='tokyo-night-storm'] .language-css .token.string,
 [data-theme='tokyo-night-storm'] .style .token.string {
-  color: #89ddff;
+  color: #7dcfff;
 }
 
 [data-theme='tokyo-night-storm'] .token.atrule,
