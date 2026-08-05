@@ -74,6 +74,14 @@ export function resolveTableContext(editor: MuyaEditor | null): TableContext | n
     return null
   }
 
+  // A removed table keeps its internal parent links, and the active
+  // content block can briefly point into the detached subtree after a
+  // whole-table removal — only an ATTACHED table (parent = scroll page)
+  // still owns the caret.
+  if (table.parent === null) {
+    return null
+  }
+
   const tableBlock = table as MuyaTableBlock
   return {
     table: tableBlock,

@@ -14,6 +14,8 @@ interface FakeTreeOptions {
   columnCount?: number
   /** Break the climb by renaming one link in the chain. */
   breakAt?: 'content' | 'cell' | 'row' | 'inner' | 'table'
+  /** Simulate a removed table: internal links intact, no scroll-page parent. */
+  detached?: boolean
   /** Have every remove* engine call report no survivor. */
   survivorless?: boolean
   outsideContent?: boolean
@@ -29,6 +31,7 @@ function createFakeEditor({
   rowCount = 3,
   columnCount = 3,
   breakAt,
+  detached = false,
   survivorless = false,
   outsideContent = true,
 }: FakeTreeOptions = {}) {
@@ -38,7 +41,8 @@ function createFakeEditor({
 
   const table = {
     blockName: breakAt === 'table' ? 'paragraph' : 'table',
-    parent: null,
+    // Attached tables hang off the scroll page; a removed one has null.
+    parent: detached ? null : { blockName: 'scrollpage' },
     rowCount,
     columnCount,
     offset: vi.fn(),
@@ -105,6 +109,13 @@ describe('resolveTableContext', () => {
       expect(resolveTableContext(createFakeEditor({ breakAt }).editor)).toBeNull()
     },
   )
+
+  it('returns null when the caret block sits in a detached (removed) table', () => {
+    // After a whole-table removal the active content block can still point
+    // into the detached subtree, whose internal parent links stay intact —
+    // only an attached table owns the caret.
+    expect(resolveTableContext(createFakeEditor({ detached: true }).editor)).toBeNull()
+  })
 })
 
 describe('runTableCommand', () => {

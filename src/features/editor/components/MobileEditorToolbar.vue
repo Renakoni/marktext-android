@@ -4,11 +4,13 @@ import type { MobileCommandId } from '../../../lib/mobileCommands'
 import {
   MOBILE_TOOLBAR_EDIT_COMMANDS,
   MOBILE_TOOLBAR_PANELS,
+  MOBILE_TOOLBAR_TABLE_PANEL,
   getMobileToolbarPanel,
   getMobileToolbarPanelCommands,
   type MobileEditorToolbarPanel,
   type MobileToolbarCommandButton,
 } from '../../../lib/mobileToolbarConfig'
+import type { TableCommandId } from '../tableCommands'
 import { useI18n, type I18nKey } from '../../../lib/i18n'
 import { captureNonCollapsedSelectionRange } from '../selectionToolbar'
 import ToolbarCommandGlyph from '../../../components/ToolbarCommandGlyph.vue'
@@ -23,10 +25,12 @@ const props = defineProps<{
   lineCount: number
   quickCommands: readonly MobileToolbarCommandButton[]
   compact: boolean
+  caretInTable: boolean
 }>()
 
 const emit = defineEmits<{
   runCommand: [commandId: MobileCommandId, restoreRange: Range | null]
+  runTableCommand: [commandId: TableCommandId]
   toggleExpanded: []
   setPanel: [panel: MobileEditorToolbarPanel]
 }>()
@@ -37,8 +41,30 @@ const groupMenuOpen = ref(false)
 const { t } = useI18n()
 let lastEditorSelectionRange: Range | null = null
 
-const activePanelDef = computed(() => getMobileToolbarPanel(props.activePanel))
-const activePanelCommands = computed(() => getMobileToolbarPanelCommands(props.activePanel))
+// The seven table-structure commands, in reading order: grow first, then
+// shrink, whole-table removal last (danger-tinted). Icon paths live here
+// because they are structural glyphs unique to this strip.
+const TABLE_STRIP: { id: TableCommandId; titleKey: I18nKey; danger?: boolean; paths: string[] }[] = [
+  { id: 'table-insert-row-above', titleKey: 'toolbar.table.insertRowAbove', paths: ['M4 13.5h16', 'M4 19h16', 'M12 3v6', 'M9 6h6'] },
+  { id: 'table-insert-row-below', titleKey: 'toolbar.table.insertRowBelow', paths: ['M4 5h16', 'M4 10.5h16', 'M12 15v6', 'M9 18h6'] },
+  { id: 'table-insert-column-left', titleKey: 'toolbar.table.insertColumnLeft', paths: ['M13.5 4v16', 'M19 4v16', 'M3 12h6', 'M6 9v6'] },
+  { id: 'table-insert-column-right', titleKey: 'toolbar.table.insertColumnRight', paths: ['M5 4v16', 'M10.5 4v16', 'M15 12h6', 'M18 9v6'] },
+  { id: 'table-delete-row', titleKey: 'toolbar.table.deleteRow', paths: ['M4 6.5h16', 'M4 17.5h16', 'M9 12h6'] },
+  { id: 'table-delete-column', titleKey: 'toolbar.table.deleteColumn', paths: ['M6.5 4v16', 'M17.5 4v16', 'M12 9v6'] },
+  {
+    id: 'table-delete-table',
+    titleKey: 'toolbar.table.deleteTable',
+    danger: true,
+    paths: ['M5 7h14', 'M10 7V4.5h4V7', 'M7 7l1 13h8l1-13', 'M10.5 10.5v6', 'M13.5 10.5v6'],
+  },
+]
+
+const activePanelDef = computed(() =>
+  props.activePanel === 'table' ? MOBILE_TOOLBAR_TABLE_PANEL : getMobileToolbarPanel(props.activePanel),
+)
+const activePanelCommands = computed(() =>
+  props.activePanel === 'table' ? [] : getMobileToolbarPanelCommands(props.activePanel),
+)
 const statsText = computed(
   () =>
     t('toolbar.stats', {
@@ -212,22 +238,44 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
         @mousedown.prevent
       >
         <div class="toolbar-command-strip" role="toolbar" :aria-label="t(activePanelDef.titleKey)">
-          <button
-            v-for="command in activePanelCommands"
-            :key="command.commandId"
-            class="toolbar-button"
-            type="button"
-            :aria-label="getCommandTitle(command)"
-            :title="getCommandTitle(command)"
-            :disabled="!editorReady"
-            :data-command-id="command.commandId"
-            :data-testid="`toolbar-command-${command.commandId}`"
-            @pointerdown.prevent
-            @mousedown.prevent
-            @click="runCommand(command.commandId)"
-          >
-            <ToolbarCommandGlyph :command="command" />
-          </button>
+          <template v-if="activePanel === 'table'">
+            <button
+              v-for="command in TABLE_STRIP"
+              :key="command.id"
+              class="toolbar-button toolbar-table-button"
+              :class="{ 'toolbar-table-danger': command.danger }"
+              type="button"
+              :aria-label="t(command.titleKey)"
+              :title="t(command.titleKey)"
+              :disabled="!editorReady"
+              :data-testid="`toolbar-table-${command.id}`"
+              @pointerdown.prevent
+              @mousedown.prevent
+              @click="emit('runTableCommand', command.id)"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path v-for="path in command.paths" :key="path" :d="path" />
+              </svg>
+            </button>
+          </template>
+          <template v-else>
+            <button
+              v-for="command in activePanelCommands"
+              :key="command.commandId"
+              class="toolbar-button"
+              type="button"
+              :aria-label="getCommandTitle(command)"
+              :title="getCommandTitle(command)"
+              :disabled="!editorReady"
+              :data-command-id="command.commandId"
+              :data-testid="`toolbar-command-${command.commandId}`"
+              @pointerdown.prevent
+              @mousedown.prevent
+              @click="runCommand(command.commandId)"
+            >
+              <ToolbarCommandGlyph :command="command" />
+            </button>
+          </template>
         </div>
 
         <p class="toolbar-stats" data-testid="toolbar-document-stats">{{ statsText }}</p>
@@ -256,6 +304,19 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
         >
           <span class="group-option-label">{{ t(panel.labelKey) }}</span>
           <span class="group-option-title">{{ t(panel.titleKey) }}</span>
+        </button>
+        <button
+          v-if="caretInTable"
+          class="toolbar-group-option"
+          :class="{ 'is-active': activePanel === 'table' }"
+          type="button"
+          role="menuitemradio"
+          :aria-checked="activePanel === 'table'"
+          data-testid="toolbar-section-option-table"
+          @click="selectPanel('table')"
+        >
+          <span class="group-option-label">{{ t(MOBILE_TOOLBAR_TABLE_PANEL.labelKey) }}</span>
+          <span class="group-option-title">{{ t(MOBILE_TOOLBAR_TABLE_PANEL.titleKey) }}</span>
         </button>
       </section>
     </div>
@@ -388,6 +449,31 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
    icon weight, same states as every other command. */
 .toolbar-history-button {
   color: var(--text);
+}
+
+.toolbar-table-button {
+  display: grid;
+  place-items: center;
+}
+
+.toolbar-table-button svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Removing the whole table sits one danger tier above row/column deletes;
+   undo (one step) is the safety net — no confirmation dialog. */
+.toolbar-table-danger {
+  color: var(--danger);
+}
+
+.toolbar-table-danger:disabled {
+  color: var(--text-faint);
 }
 
 .toolbar-expand-handle {

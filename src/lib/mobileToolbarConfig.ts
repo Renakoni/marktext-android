@@ -2,7 +2,11 @@ import { MOBILE_COMMANDS, type MobileCommandId } from './mobileCommands'
 import type { ToolbarIconName } from './toolbarIcons'
 import type { I18nKey } from './i18n'
 
-export type MobileEditorToolbarPanel = 'format' | 'paragraph' | 'insert' | 'markdown'
+// 'table' is the caret-contextual panel: it exists only while the caret
+// sits in a table (issue #144), lives outside MOBILE_TOOLBAR_PANELS so it
+// can never be chosen as the settings default, and carries its own command
+// list (table-structure commands, not MobileCommandId text commands).
+export type MobileEditorToolbarPanel = 'format' | 'paragraph' | 'insert' | 'markdown' | 'table'
 
 /**
  * A command's visual is either an icon from the toolbar icon set
@@ -62,7 +66,7 @@ export const MOBILE_TOOLBAR_QUICK_COMMANDS = [
 ] as const satisfies readonly MobileToolbarCommandButton[]
 
 const MOBILE_TOOLBAR_PANEL_COMMANDS: Record<
-  MobileEditorToolbarPanel,
+  Exclude<MobileEditorToolbarPanel, 'table'>,
   readonly MobileToolbarCommandButton[]
 > = {
   format: [
@@ -282,6 +286,19 @@ for (const command of [
 ]) {
   MOBILE_TOOLBAR_COMMANDS_BY_ID.set(command.commandId, command)
 }
+
+/**
+ * Label/title for the caret-contextual table panel. It is not a
+ * MobileToolbarPanelDefinition: its commands are table-structure commands
+ * (src/features/editor/tableCommands.ts), rendered by the toolbar itself.
+ */
+export const MOBILE_TOOLBAR_TABLE_PANEL = {
+  id: 'table',
+  label: 'Table',
+  labelKey: 'toolbar.panel.table',
+  title: 'Rows, columns, and the table',
+  titleKey: 'toolbar.panel.tableTitle',
+} as const satisfies Omit<MobileToolbarPanelDefinition, 'commands'>
 
 export function getMobileToolbarPanel(panelId: MobileEditorToolbarPanel) {
   return (

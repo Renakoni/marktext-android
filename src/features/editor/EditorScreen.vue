@@ -15,6 +15,7 @@ import LinkActionOverlay from './components/LinkActionOverlay.vue'
 import ResumeCard from './components/ResumeCard.vue'
 import EditorFailurePanel from './components/EditorFailurePanel.vue'
 import type { SelectionToolbarCommandId } from './selectionToolbar'
+import type { TableCommandId } from './tableCommands'
 import type { SelectionToolbarRows } from './selectionToolbarSettings'
 import type { MobileCommandId } from '../../lib/mobileCommands'
 import type {
@@ -34,6 +35,7 @@ const props = defineProps<{
   toolbarExpanded: boolean
   toolbarPanel: MobileEditorToolbarPanel
   toolbarCompact: boolean
+  toolbarCaretInTable: boolean
   quickToolbarCommands: readonly MobileToolbarCommandButton[]
   wordCount: number
   characterCount: number
@@ -109,6 +111,7 @@ const emit = defineEmits<{
   'save-to-device': []
   'save-copy': []
   'run-toolbar-command': [commandId: MobileCommandId, restoreRange: Range | null]
+  'run-table-command': [commandId: TableCommandId]
   'run-selection-command': [commandId: SelectionToolbarCommandId, restoreRange: Range | null]
   'dismiss-selection': [caretRange: Range | null]
   'open-link': [href: string]
@@ -577,7 +580,9 @@ onBeforeUnmount(() => {
       :word-count="wordCount"
       :character-count="characterCount"
       :line-count="lineCount"
+      :caret-in-table="toolbarCaretInTable"
       @run-command="(commandId, restoreRange) => emit('run-toolbar-command', commandId, restoreRange)"
+      @run-table-command="commandId => emit('run-table-command', commandId)"
       @toggle-expanded="emit('toggle-toolbar')"
       @set-panel="panel => emit('set-toolbar-panel', panel)"
     />
