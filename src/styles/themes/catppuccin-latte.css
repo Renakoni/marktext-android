@@ -1,0 +1,105 @@
+/*
+ * Catppuccin Latte — curated custom theme.
+ *
+ * Heritage: desktop MarkText catppuccin-latte theme — the latte base
+ * (#eff1f5) with mantle/crust panels, blue accent #1e66f5, and the pastel
+ * catppuccin heading run (red, peach, yellow, green, blue, mauve). Values
+ * are plain hex/rgba so every WebView the app can meet renders them
+ * identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - `--accent` nudges the latte blue just past WCAG AA on the base
+ *   (heritage sits at 4.34:1); `--theme-color` keeps the heritage hue.
+ * - Floating surfaces raise to white instead of dropping to mantle: on a
+ *   phone, elevation reads lighter.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints italics pink).
+ */
+
+:root[data-theme='catppuccin-latte'] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --app-bg: #eaedf2;
+  --surface: #eff1f5;
+  --surface-muted: #e6e9ef;
+  --surface-sunken: #dce0e8;
+  --surface-raised: #ffffff;
+
+  /* Content */
+  --text: #4c4f69;
+  --text-muted: #5c5f77;
+  --text-faint: #8c8fa1;
+  --task-completed-color: #63667c;
+  --on-accent: #ffffff;
+
+  /* Lines */
+  --border: #ccd0da;
+  --border-strong: #bcc0cc;
+  --separator: rgba(76, 79, 105, 0.16);
+
+  /* Accent — latte blue; --accent holds AA on the base. */
+  --accent: #145ff5;
+  --accent-strong: #124ecb;
+  --accent-hover: #1357e2;
+  --accent-soft: #dbe4fd;
+  --accent-tint-10: rgba(30, 102, 245, 0.12);
+  --accent-tint-11: rgba(30, 102, 245, 0.14);
+
+  /* State */
+  --danger: #d20f39;
+  --focus-ring: rgba(30, 102, 245, 0.38);
+  --press: rgba(76, 79, 105, 0.09);
+  --scrim: rgba(30, 35, 40, 0.42);
+
+  /* Shadows — reserved for genuinely floating surfaces. */
+  --shadow-sm: 0 1px 2px rgba(56, 60, 75, 0.06);
+  --shadow-float:
+    0 12px 32px rgba(56, 60, 75, 0.16),
+    0 2px 8px rgba(56, 60, 75, 0.08);
+  --shadow-thumb: 0 2px 6px rgba(56, 60, 75, 0.22);
+  --shadow-accent: 0 2px 10px rgba(30, 102, 245, 0.35);
+
+  /* Muya bridge — the desktop catppuccin-latte palette on the writing surface. */
+  --theme-color: #1e66f5;
+  --highlight-color: rgba(30, 102, 245, 0.3);
+  --selection-color: rgba(172, 176, 190, 0.5);
+  --editor-color: #4c4f69;
+  --editor-color-80: rgba(76, 79, 105, 0.8);
+  --editor-color-50: rgba(76, 79, 105, 0.5);
+  --editor-color-30: rgba(76, 79, 105, 0.3);
+  --editor-color-10: rgba(76, 79, 105, 0.1);
+  --editor-color-04: rgba(76, 79, 105, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #d20f39;
+  --icon-color: rgba(76, 79, 105, 0.56);
+  --code-block-bg-color: #e6e9ef;
+  --table-border-color: #ccd0da;
+  --input-bg-color: #dce0e8;
+  --button-font-color: rgba(76, 79, 105, 0.8);
+  --button-bg-color: #e6e9ef;
+  --button-border: 1px solid rgba(0, 0, 0, 0.08);
+  --button-bg-color-hover: #dce0e8;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.12);
+  --button-bg-color-active: #ccd0da;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.08);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(76, 79, 105, 0.06);
+  --float-border-color: rgba(0, 0, 0, 0.08);
+  --float-shadow: var(--shadow-float);
+  --link-color: var(--accent);
+  --h1-color: #d20f39;
+  --h2-color: #fe640b;
+  --h3-color: #df8e1d;
+  --h4-color: #40a02b;
+  --h5-color: #1e66f5;
+  --h6-color: #8839ef;
+  --blockquote-text-color: rgba(76, 79, 105, 0.6);
+  --blockquote-border-color: #9ca0b0;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #7287fd;
+  --hr-color: #ccd0da;
+}

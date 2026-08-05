@@ -1,4 +1,5 @@
 import type { SettingsValue } from './settingsState'
+import { CUSTOM_THEME_IDS, type CustomThemeId } from './themeCatalog'
 
 export type AppearanceTextSettingKey =
   | 'fontSize'
@@ -35,10 +36,8 @@ export const APPEARANCE_FIXED_THEME_IDS = {
   dark: 'dark',
 } as const
 
-export const APPEARANCE_CUSTOM_THEME_IDS = [
-  'ayu-light',
-  'one-dark',
-] as const
+/** Valid custom-theme ids, in picker order — derived from the theme catalog. */
+export const APPEARANCE_CUSTOM_THEME_IDS = CUSTOM_THEME_IDS
 
 export const APPEARANCE_TEXT_SETTING_KEYS = [
   'fontSize',
@@ -81,7 +80,7 @@ const EDITOR_FONT_FAMILIES = new Set<EditorFontFamily>([
 
 const TEXT_DIRECTIONS = new Set<TextDirection>(['ltr', 'rtl'])
 const THEME_MODES = new Set<AppearanceThemeMode>(['system', 'light', 'dark', 'custom'])
-const CUSTOM_THEME_IDS = new Set<string>(APPEARANCE_CUSTOM_THEME_IDS)
+const CUSTOM_THEME_ID_SET = new Set<CustomThemeId>(APPEARANCE_CUSTOM_THEME_IDS)
 
 const OPEN_SANS_STACK =
   '"Open Sans", "Clear Sans", "Helvetica Neue", Helvetica, Arial, sans-serif, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji"'
@@ -181,9 +180,9 @@ export function normalizeThemeMode(value: unknown): AppearanceThemeMode {
     : DEFAULT_APPEARANCE_THEME_SETTINGS.themeMode
 }
 
-export function normalizeCustomTheme(value: unknown): string {
-  return typeof value === 'string' && CUSTOM_THEME_IDS.has(value)
-    ? value
+export function normalizeCustomTheme(value: unknown): CustomThemeId {
+  return typeof value === 'string' && CUSTOM_THEME_ID_SET.has(value as CustomThemeId)
+    ? (value as CustomThemeId)
     : DEFAULT_APPEARANCE_THEME_SETTINGS.customTheme
 }
 

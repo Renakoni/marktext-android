@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 interface SettingsSelectOption {
   id: string
   label: string
+  /** Palette preview dots rendered before the label (theme options). */
+  swatches?: readonly string[]
+  /** Group heading rendered above this option inside the sheet. */
+  heading?: string
 }
 
 const props = defineProps<{
@@ -18,12 +22,33 @@ const emit = defineEmits<{
 }>()
 
 const isOpen = ref(false)
+const panelElement = ref<HTMLElement | null>(null)
 const selectedOption = computed(() =>
   props.options.find(option => option.id === props.modelValue) ?? props.options[0],
 )
 
+// Options grouped by their headings so the sheet can expose real listbox
+// group semantics; a headingless select yields one anonymous group.
+const groupedOptions = computed(() => {
+  const groups: { heading?: string; options: SettingsSelectOption[] }[] = []
+  for (const option of props.options) {
+    if (option.heading || groups.length === 0) {
+      groups.push({ heading: option.heading, options: [] })
+    }
+    groups[groups.length - 1].options.push(option)
+  }
+  return groups
+})
+
 function openPicker() {
   isOpen.value = true
+  // The sheet is recreated on every open, so bring the selected option back
+  // into view — a 31-entry theme list otherwise reopens at the top.
+  void nextTick(() => {
+    panelElement.value
+      ?.querySelector('.is-selected')
+      ?.scrollIntoView({ block: 'center' })
+  })
 }
 
 function closePicker() {
@@ -48,7 +73,17 @@ function selectOption(value: string) {
       :data-testid="testId ? `${testId}-trigger` : undefined"
       @click="openPicker"
     >
-      <span>{{ selectedOption?.label }}</span>
+      <span class="settings-select-trigger-content">
+        <span v-if="selectedOption?.swatches" class="settings-select-swatches" aria-hidden="true">
+          <span
+            v-for="(swatch, swatchIndex) in selectedOption.swatches"
+            :key="swatchIndex"
+            class="settings-select-swatch"
+            :style="{ background: swatch }"
+          />
+        </span>
+        <span class="settings-select-trigger-label">{{ selectedOption?.label }}</span>
+      </span>
     </button>
 
     <Transition name="select-sheet">
@@ -59,26 +94,47 @@ function selectOption(value: string) {
         @click.self="closePicker"
       >
         <div
+          ref="panelElement"
           class="settings-select-panel"
           role="listbox"
           :aria-label="label"
           @keydown.esc="closePicker"
         >
           <div class="settings-select-grabber" aria-hidden="true" />
-          <button
-            v-for="option in options"
-            :key="option.id"
-            class="settings-select-option"
-            :class="{ 'is-selected': modelValue === option.id }"
-            type="button"
-            role="option"
-            :aria-selected="modelValue === option.id"
-            :data-testid="testId ? `${testId}-option-${option.id.replace(/[^a-z0-9]+/gi, '-')}` : undefined"
-            @click="selectOption(option.id)"
+          <div
+            v-for="(group, groupIndex) in groupedOptions"
+            :key="groupIndex"
+            :role="group.heading ? 'group' : undefined"
+            :aria-label="group.heading"
           >
-            <span class="settings-select-option-label">{{ option.label }}</span>
-            <span class="settings-select-option-mark" aria-hidden="true" />
-          </button>
+            <div v-if="group.heading" class="settings-select-group-heading" aria-hidden="true">
+              {{ group.heading }}
+            </div>
+            <button
+              v-for="option in group.options"
+              :key="option.id"
+              class="settings-select-option"
+              :class="{ 'is-selected': modelValue === option.id }"
+              type="button"
+              role="option"
+              :aria-selected="modelValue === option.id"
+              :data-testid="testId ? `${testId}-option-${option.id.replace(/[^a-z0-9]+/gi, '-')}` : undefined"
+              @click="selectOption(option.id)"
+            >
+              <span class="settings-select-option-content">
+                <span v-if="option.swatches" class="settings-select-swatches" aria-hidden="true">
+                  <span
+                    v-for="(swatch, swatchIndex) in option.swatches"
+                    :key="swatchIndex"
+                    class="settings-select-swatch"
+                    :style="{ background: swatch }"
+                  />
+                </span>
+                <span class="settings-select-option-label">{{ option.label }}</span>
+              </span>
+              <span class="settings-select-option-mark" aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </div>
     </Transition>
@@ -140,11 +196,56 @@ function selectOption(value: string) {
   transform: rotate(45deg) translateY(-2px);
 }
 
-.settings-select-trigger span {
+.settings-select-trigger-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-select-trigger-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Palette preview dots: slightly overlapped, ringed so pale swatches stay
+   visible on any surface. */
+.settings-select-swatches {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.settings-select-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+
+.settings-select-swatch + .settings-select-swatch {
+  margin-left: -5px;
+}
+
+/* Group headings sit on the raised sheet, so they use the primary ink —
+   the faint/muted tokens fall below WCAG AA there in several palettes.
+   Size, tracking, and case keep them subordinate to option labels. */
+.settings-select-group-heading {
+  padding: 14px 14px 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings-select-option-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .settings-select-trigger:active {

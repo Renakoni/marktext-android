@@ -1,8 +1,9 @@
 /// <reference types="node" />
 
 import { readdirSync, readFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { basename, join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { APP_THEME_IDS, isDarkAppTheme, type AppThemeId } from '../features/settings/themeRuntime'
 
 const sourceRoot = join(process.cwd(), 'src')
 const themesRoot = join(sourceRoot, 'styles', 'themes')
@@ -17,15 +18,13 @@ const taskListStylesPath = join(
   'blockSyntax.css',
 )
 
-// Every shipped palette; the first entry is the canonical token set the
-// others are compared against. Prism overlay files are rule-only (no token
-// definitions) and stay out of this list.
-const themePaths = [
-  join(themesRoot, 'graphite-light.css'),
-  join(themesRoot, 'cadmium-dark.css'),
-  join(themesRoot, 'ayu-light.css'),
-  join(themesRoot, 'one-dark.css'),
-]
+// Every shipped palette (file name = theme id); the first entry is the
+// canonical token set the others are compared against. Prism overlay files
+// are rule-only (no token definitions) and stay out of this list.
+const themePaths = readdirSync(themesRoot)
+  .filter(name => name.endsWith('.css') && !name.startsWith('prism-'))
+  .sort()
+  .map(name => join(themesRoot, name))
 
 // Tokens set from JS at runtime (inline style vars) rather than in a stylesheet.
 const RUNTIME_DEFINED_TOKENS = new Set(['--editor-area-width', '--outline-indent'])
@@ -149,6 +148,24 @@ describe('theme token architecture', () => {
       .map(path => relative(process.cwd(), path))
 
     expect(offenders).toEqual([])
+  })
+
+  it('ships exactly one palette per registered theme', () => {
+    const paletteIds = themePaths.map(path => basename(path, '.css')).sort()
+    expect(paletteIds).toEqual([...APP_THEME_IDS].sort())
+  })
+
+  it('scopes each palette to its own data-theme and matching color-scheme', () => {
+    for (const path of themePaths) {
+      const id = basename(path, '.css')
+      const css = readFileSync(path, 'utf8')
+
+      expect(css, id).toContain(`[data-theme='${id}']`)
+
+      const scheme = css.match(/color-scheme:\s*(light|dark)/)?.[1]
+      const expected = isDarkAppTheme(id as AppThemeId) ? 'dark' : 'light'
+      expect(scheme, `${id} color-scheme`).toBe(expected)
+    }
   })
 
   it('defines the same token set in every shipped theme', () => {

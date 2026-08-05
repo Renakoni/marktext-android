@@ -1,0 +1,104 @@
+/*
+ * Gruvbox Light — curated custom theme.
+ *
+ * Heritage: desktop MarkText gruvbox-light theme — the retro groove cream
+ * paper (#fbf1c7), warm tan panels (#ebdbb2), teal accent #458588, and the
+ * full gruvbox heading spectrum. Values are plain hex/rgba so every WebView
+ * the app can meet renders them identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - `--accent` deepens the gruvbox teal so interactive text holds WCAG AA
+ *   on the cream paper; `--theme-color` keeps the heritage hue.
+ * - Floating surfaces raise toward the canonical light0-hard (#f9f5d7)
+ *   instead of dropping to tan: on a phone, elevation reads lighter.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule
+ *   (desktop tints emphasis yellow).
+ */
+
+:root[data-theme='gruvbox-light'] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --app-bg: #f3e6bc;
+  --surface: #fbf1c7;
+  --surface-muted: #ebdbb2;
+  --surface-sunken: #e2d1a7;
+  --surface-raised: #f9f5d7;
+
+  /* Content */
+  --text: #3c3836;
+  --text-muted: #665c54;
+  --text-faint: #928374;
+  --task-completed-color: #6b6156;
+  --on-accent: #fbf1c7;
+
+  /* Lines */
+  --border: #ddcda3;
+  --border-strong: #cbb98b;
+  --separator: rgba(60, 56, 54, 0.16);
+
+  /* Accent — gruvbox teal; --accent holds AA on the cream paper. */
+  --accent: #3c7477;
+  --accent-strong: #305d5f;
+  --accent-hover: #386b6e;
+  --accent-soft: #dbe6dd;
+  --accent-tint-10: rgba(69, 133, 136, 0.12);
+  --accent-tint-11: rgba(69, 133, 136, 0.14);
+
+  /* State */
+  --danger: #cc241d;
+  --focus-ring: rgba(69, 133, 136, 0.38);
+  --press: rgba(60, 56, 54, 0.09);
+  --scrim: rgba(30, 32, 28, 0.42);
+
+  /* Shadows — reserved for genuinely floating surfaces. */
+  --shadow-sm: 0 1px 2px rgba(70, 62, 45, 0.07);
+  --shadow-float:
+    0 12px 32px rgba(70, 62, 45, 0.18),
+    0 2px 8px rgba(70, 62, 45, 0.09);
+  --shadow-thumb: 0 2px 6px rgba(70, 62, 45, 0.24);
+  --shadow-accent: 0 2px 10px rgba(69, 133, 136, 0.35);
+
+  /* Muya bridge — the desktop gruvbox-light palette on the writing surface. */
+  --theme-color: #458588;
+  --highlight-color: rgba(69, 133, 136, 0.3);
+  --selection-color: rgba(235, 219, 178, 0.6);
+  --editor-color: #3c3836;
+  --editor-color-80: rgba(60, 56, 54, 0.8);
+  --editor-color-50: rgba(60, 56, 54, 0.5);
+  --editor-color-30: rgba(60, 56, 54, 0.3);
+  --editor-color-10: rgba(60, 56, 54, 0.1);
+  --editor-color-04: rgba(60, 56, 54, 0.04);
+  --editor-bg-color: var(--surface);
+  --delete-color: #cc241d;
+  --icon-color: rgba(60, 56, 54, 0.56);
+  --code-block-bg-color: #ebdbb2;
+  --table-border-color: #d9c79c;
+  --input-bg-color: #f2e5bc;
+  --button-font-color: rgba(60, 56, 54, 0.8);
+  --button-bg-color: #ebdbb2;
+  --button-border: 1px solid rgba(0, 0, 0, 0.08);
+  --button-bg-color-hover: #e2d1a7;
+  --button-border-hover: 1px solid rgba(0, 0, 0, 0.12);
+  --button-bg-color-active: #d9c79c;
+  --button-border-active: 1px solid rgba(0, 0, 0, 0.08);
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(60, 56, 54, 0.06);
+  --float-border-color: rgba(0, 0, 0, 0.08);
+  --float-shadow: var(--shadow-float);
+  --link-color: var(--accent);
+  --h1-color: #cc241d;
+  --h2-color: #d79921;
+  --h3-color: #98971a;
+  --h4-color: #458588;
+  --h5-color: #b16286;
+  --h6-color: #689d6a;
+  --blockquote-text-color: rgba(60, 56, 54, 0.6);
+  --blockquote-border-color: #928374;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #d65d0e;
+  --hr-color: #d9c79c;
+}

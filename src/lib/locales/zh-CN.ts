@@ -587,8 +587,8 @@ export const zhCN = {
   'settings.option.trailing.trim': '清理',
   'settings.option.trailing.ensureOne': '保留一个',
   'settings.option.trailing.preserve': '保留原样',
-  'settings.option.theme.ayuLight': 'Ayu Light',
-  'settings.option.theme.oneDark': 'One Dark',
+  'settings.option.themeGroup.light': '浅色主题',
+  'settings.option.themeGroup.dark': '深色主题',
 
   'about.version': '版本',
   'about.github': 'GitHub',

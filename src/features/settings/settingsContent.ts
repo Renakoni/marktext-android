@@ -1,13 +1,18 @@
 import type { I18nKey } from '../../lib/i18n'
-import {
-  APPEARANCE_CUSTOM_THEME_IDS,
-  DEFAULT_APPEARANCE_THEME_SETTINGS,
-} from './appearanceSettings'
+import { DEFAULT_APPEARANCE_THEME_SETTINGS } from './appearanceSettings'
 import { SETTINGS_PAGES, type SettingsPage } from './settingsNavigation'
+import { THEME_CATALOG } from './themeCatalog'
 
 interface SettingsOption {
   id: string
-  labelKey: I18nKey
+  /** Translatable option copy; omitted when `label` carries a product name. */
+  labelKey?: I18nKey
+  /** Verbatim label for product names the locales must not translate. */
+  label?: string
+  /** Palette preview dots rendered beside theme options. */
+  swatches?: readonly string[]
+  /** Group heading rendered above this option in the picker sheet. */
+  headingKey?: I18nKey
 }
 
 interface SettingsBaseRow {
@@ -97,14 +102,19 @@ export const SETTINGS_PAGE_TITLE_KEYS = {
   [SETTINGS_PAGES.ABOUT]: 'settings.about',
 } as const satisfies Record<SettingsPage, I18nKey>
 
-const themeLabelKeys = {
-  'ayu-light': 'settings.option.theme.ayuLight',
-  'one-dark': 'settings.option.theme.oneDark',
-} as const satisfies Record<(typeof APPEARANCE_CUSTOM_THEME_IDS)[number], I18nKey>
-
-const themeOptions = APPEARANCE_CUSTOM_THEME_IDS.map(id => ({
-  id,
-  labelKey: themeLabelKeys[id],
+// Theme names are product names shown verbatim in every locale. The picker
+// groups themes by appearance; each group's first option carries the group
+// heading.
+const themeOptions = THEME_CATALOG.map((entry, index) => ({
+  id: entry.id,
+  label: entry.label,
+  swatches: entry.swatches,
+  headingKey:
+    index === 0
+      ? ('settings.option.themeGroup.light' as const)
+      : entry.appearance === 'dark' && THEME_CATALOG[index - 1].appearance === 'light'
+        ? ('settings.option.themeGroup.dark' as const)
+        : undefined,
 })) satisfies readonly SettingsOption[]
 
 const themeModeOptions = [

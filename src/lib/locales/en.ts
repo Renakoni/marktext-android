@@ -590,8 +590,8 @@ export const en = {
   'settings.option.trailing.trim': 'Trim',
   'settings.option.trailing.ensureOne': 'Ensure one',
   'settings.option.trailing.preserve': 'Preserve',
-  'settings.option.theme.ayuLight': 'Ayu Light',
-  'settings.option.theme.oneDark': 'One Dark',
+  'settings.option.themeGroup.light': 'Light themes',
+  'settings.option.themeGroup.dark': 'Dark themes',
 
   'about.version': 'Version',
   'about.github': 'GitHub',

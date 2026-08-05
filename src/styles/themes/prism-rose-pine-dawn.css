@@ -1,0 +1,74 @@
+/*
+ * Prism syntax palette for Rosé Pine Dawn.
+ *
+ * Muya bundles a generic light Prism theme unconditionally; these rules
+ * re-color the tokens whenever Rosé Pine Dawn is active. Rule grouping
+ * follows the desktop prismjs/rose-pine-dawn.theme.css palette; the
+ * [data-theme] scope wins on specificity without !important.
+ */
+
+[data-theme='rose-pine-dawn'] .token.comment,
+[data-theme='rose-pine-dawn'] .token.prolog,
+[data-theme='rose-pine-dawn'] .token.doctype,
+[data-theme='rose-pine-dawn'] .token.cdata {
+  color: #9893a5;
+}
+
+[data-theme='rose-pine-dawn'] .token.punctuation {
+  color: #797593;
+}
+
+[data-theme='rose-pine-dawn'] .token.property,
+[data-theme='rose-pine-dawn'] .token.tag,
+[data-theme='rose-pine-dawn'] .token.constant,
+[data-theme='rose-pine-dawn'] .token.symbol {
+  color: #b4637a;
+}
+
+[data-theme='rose-pine-dawn'] .token.boolean,
+[data-theme='rose-pine-dawn'] .token.number {
+  color: #d7827e;
+}
+
+[data-theme='rose-pine-dawn'] .token.selector,
+[data-theme='rose-pine-dawn'] .token.attr-name,
+[data-theme='rose-pine-dawn'] .token.string,
+[data-theme='rose-pine-dawn'] .token.char,
+[data-theme='rose-pine-dawn'] .token.builtin {
+  color: #ea9d34;
+}
+
+[data-theme='rose-pine-dawn'] .token.inserted {
+  color: #56949f;
+  background: rgba(86, 148, 159, 0.12);
+}
+
+[data-theme='rose-pine-dawn'] .token.deleted {
+  color: #b4637a;
+  background: rgba(180, 99, 122, 0.1);
+}
+
+[data-theme='rose-pine-dawn'] .token.operator,
+[data-theme='rose-pine-dawn'] .token.entity,
+[data-theme='rose-pine-dawn'] .token.url,
+[data-theme='rose-pine-dawn'] .language-css .token.string,
+[data-theme='rose-pine-dawn'] .style .token.string {
+  color: #56949f;
+}
+
+[data-theme='rose-pine-dawn'] .token.atrule,
+[data-theme='rose-pine-dawn'] .token.attr-value,
+[data-theme='rose-pine-dawn'] .token.function,
+[data-theme='rose-pine-dawn'] .token.class-name {
+  color: #286983;
+}
+
+[data-theme='rose-pine-dawn'] .token.keyword {
+  color: #907aa9;
+}
+
+[data-theme='rose-pine-dawn'] .token.regex,
+[data-theme='rose-pine-dawn'] .token.important,
+[data-theme='rose-pine-dawn'] .token.variable {
+  color: #b4637a;
+}

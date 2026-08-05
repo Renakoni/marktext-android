@@ -596,8 +596,8 @@ export const ja = {
   'settings.option.trailing.trim': '削除',
   'settings.option.trailing.ensureOne': '1 つにする',
   'settings.option.trailing.preserve': '保持',
-  'settings.option.theme.ayuLight': 'Ayu Light',
-  'settings.option.theme.oneDark': 'One Dark',
+  'settings.option.themeGroup.light': 'ライトテーマ',
+  'settings.option.themeGroup.dark': 'ダークテーマ',
 
   'about.version': 'バージョン',
   'about.github': 'GitHub',

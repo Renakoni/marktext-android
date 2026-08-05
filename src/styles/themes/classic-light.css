@@ -1,0 +1,107 @@
+/*
+ * Classic Light — curated custom theme.
+ *
+ * Heritage: the classic desktop MarkText default light theme (base `:root`
+ * of assets/styles/index.css) — pure white paper, the signature MarkText
+ * green #21b56f, neutral opaque-gray ink steps, and quiet neutral headings.
+ * Values are plain hex/rgba so every WebView the app can meet renders them
+ * identically.
+ *
+ * Product deviations from the desktop palette, matching the fixed themes:
+ * - `--accent` deepens the heritage green so interactive text holds WCAG AA
+ *   on white; `--theme-color` keeps the heritage hue for editorial accents
+ *   (cursor, highlights, blockquote border).
+ * - `--link-color` uses the deepened accent for the same reason.
+ * - `--scrim` darkens like every mobile theme (desktop used a light mask);
+ *   bottom sheets need a dark scrim to read as elevated on a phone.
+ * - `--strong-color`/`--em-color` stay `inherit` per the product rule.
+ */
+
+:root[data-theme='classic-light'] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --app-bg: #f2f2f2;
+  --surface: #ffffff;
+  --surface-muted: #f0f0f0;
+  --surface-sunken: #e6e6e6;
+  --surface-raised: #ffffff;
+
+  /* Content */
+  --text: #3d3d3d;
+  --text-muted: #666666;
+  --text-faint: #8c8c8c;
+  --task-completed-color: #6a6a6a;
+  --on-accent: #ffffff;
+
+  /* Lines */
+  --border: #dcdfe6;
+  --border-strong: #c9cdd4;
+  --separator: rgba(0, 0, 0, 0.12);
+
+  /* Accent — MarkText green; --accent holds AA on white. */
+  --accent: #188652;
+  --accent-strong: #136c42;
+  --accent-hover: #167c4c;
+  --accent-soft: #d9f1e4;
+  --accent-tint-10: rgba(33, 181, 111, 0.12);
+  --accent-tint-11: rgba(33, 181, 111, 0.14);
+
+  /* State */
+  --danger: #c24a4a;
+  --focus-ring: rgba(33, 181, 111, 0.38);
+  --press: rgba(0, 0, 0, 0.08);
+  --scrim: rgba(30, 35, 40, 0.42);
+
+  /* Shadows — reserved for genuinely floating surfaces. */
+  --shadow-sm: 0 1px 2px rgba(40, 44, 48, 0.06);
+  --shadow-float:
+    0 12px 32px rgba(40, 44, 48, 0.16),
+    0 2px 8px rgba(40, 44, 48, 0.08);
+  --shadow-thumb: 0 2px 6px rgba(40, 44, 48, 0.22);
+  --shadow-accent: 0 2px 10px rgba(33, 181, 111, 0.35);
+
+  /* Muya bridge — the classic desktop light palette on the writing surface. */
+  --theme-color: #21b56f;
+  --highlight-color: rgba(33, 181, 111, 0.3);
+  --selection-color: rgba(0, 0, 0, 0.1);
+  --editor-color: #4d4d4d;
+  --editor-color-80: #333333;
+  --editor-color-50: #808080;
+  --editor-color-30: #b3b3b3;
+  --editor-color-10: #e6e6e6;
+  --editor-color-04: #f7f7f7;
+  --editor-bg-color: var(--surface);
+  --delete-color: #ff6969;
+  --icon-color: #6b737b;
+  --code-block-bg-color: #f7f7f7;
+  --table-border-color: #e5e5e5;
+  --input-bg-color: #f0f0f0;
+  --button-font-color: #4d4d4d;
+  --button-bg-color: #ffffff;
+  --button-border: 1px solid #dcdfe6;
+  --button-bg-color-hover: #f5f5f5;
+  --button-border-hover: 1px solid #c9cdd4;
+  --button-bg-color-active: #f0f0f0;
+  --button-border-active: 1px solid #dcdfe6;
+  --button-border-focus: 1px solid var(--accent);
+  --float-bg-color: var(--surface-raised);
+  --float-hover-color: rgba(0, 0, 0, 0.04);
+  --float-border-color: rgba(0, 0, 0, 0.1);
+  --float-shadow: var(--shadow-float);
+  --link-color: var(--accent);
+  /* The classic theme keeps every heading neutral ink. */
+  --h1-color: #333333;
+  --h2-color: #333333;
+  --h3-color: #333333;
+  --h4-color: #333333;
+  --h5-color: #333333;
+  --h6-color: #333333;
+  --blockquote-text-color: #808080;
+  --blockquote-border-color: #21b56f;
+  /* Emphasis keeps the ink color — see graphite-light.css. */
+  --strong-color: inherit;
+  --em-color: inherit;
+  --list-marker-color: #808080;
+  --hr-color: #e6e6e6;
+}
