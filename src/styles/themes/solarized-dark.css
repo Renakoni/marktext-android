@@ -32,8 +32,8 @@
   --surface-raised: #073b46;
 
   /* Content */
-  --text: #93a1a1;
-  --text-muted: #839496;
+  --text: #9fabab;
+  --text-muted: #91a0a2;
   --text-faint: #586e75;
   --task-completed-color: #7d9194;
   --on-accent: #002b36;
@@ -52,7 +52,7 @@
   --accent-tint-11: rgba(38, 139, 210, 0.16);
 
   /* State */
-  --danger: #e56663;
+  --danger: #e9807d;
   --focus-ring: rgba(38, 139, 210, 0.45);
   --press: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.6);

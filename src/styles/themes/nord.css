@@ -42,14 +42,14 @@
 
   /* Accent — frost blue; "strong" lightens for contrast on polar night. */
   --accent: #81a1c1;
-  --accent-strong: #a5bdd6;
+  --accent-strong: #a9c0d8;
   --accent-hover: #90adca;
   --accent-soft: rgba(129, 161, 193, 0.2);
   --accent-tint-10: rgba(129, 161, 193, 0.14);
   --accent-tint-11: rgba(129, 161, 193, 0.16);
 
   /* State */
-  --danger: #cf8990;
+  --danger: #dfb1b6;
   --focus-ring: rgba(129, 161, 193, 0.45);
   --press: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.6);

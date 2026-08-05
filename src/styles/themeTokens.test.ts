@@ -204,19 +204,25 @@ describe('theme token architecture', () => {
     }
   })
 
-  it('keeps primary ink at WCAG AA contrast on raised surfaces in every theme', () => {
+  it('keeps every raised-surface text role at WCAG AA contrast in every theme', () => {
     // Sheets, menus, and floating toolbars all sit on --surface-raised and
-    // set their labels in --text; a palette whose raised tint drifts too
-    // bright (dark themes) or too dark (light themes) fails silently there.
+    // render normal-sized copy in these roles: body labels (--text),
+    // secondary copy (--text-muted), accent actions (--accent-strong — the
+    // accent TEXT role; plain --accent is reserved for fills and borders),
+    // and destructive actions (--danger). A palette whose raised tint
+    // drifts too bright (dark themes) or too dark (light themes) fails
+    // silently there, so the whole contract is pinned.
+    const RAISED_TEXT_ROLES = ['--text', '--text-muted', '--accent-strong', '--danger']
+
     for (const path of themePaths) {
       const tokens = collectTokenValues(readFileSync(path, 'utf8'))
-      const ratio = contrastRatio(
-        resolveHexToken(tokens, '--text'),
-        resolveHexToken(tokens, '--surface-raised'),
-      )
+      const raised = resolveHexToken(tokens, '--surface-raised')
       const name = relative(process.cwd(), path)
 
-      expect(ratio, `${name}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+      for (const role of RAISED_TEXT_ROLES) {
+        const ratio = contrastRatio(resolveHexToken(tokens, role), raised)
+        expect(ratio, `${name} ${role}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+      }
     }
   })
 

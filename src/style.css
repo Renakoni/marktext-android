@@ -1468,7 +1468,9 @@ body {
   border-top: var(--hairline) solid var(--separator);
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--accent);
+  /* Sheet actions are text on --surface-raised: --accent-strong is the
+     accent role guaranteed AA there (plain --accent is tuned for fills). */
+  color: var(--accent-strong);
   font: inherit;
   font-size: 15.5px;
   font-weight: 500;
@@ -1491,7 +1493,7 @@ body {
 }
 
 .draft-save-actions .primary-action {
-  color: var(--accent);
+  color: var(--accent-strong);
   font-weight: 600;
 }
 

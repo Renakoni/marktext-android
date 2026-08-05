@@ -23,7 +23,7 @@
 
   /* Content */
   --text: #b9c1cc;
-  --text-muted: #949dab;
+  --text-muted: #9da5b2;
   --text-faint: #6f7887;
   --task-completed-color: #8f97a5;
   --on-accent: #ffffff;
@@ -43,7 +43,7 @@
   --accent-tint-11: rgba(77, 120, 204, 0.16);
 
   /* State */
-  --danger: #e06c75;
+  --danger: #e68991;
   --focus-ring: rgba(86, 138, 242, 0.45);
   --press: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.6);
