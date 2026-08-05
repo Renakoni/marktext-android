@@ -10,7 +10,7 @@ import {
   serializeRecentDocuments,
 } from '../../lib/recentDocuments'
 import type { LocalDraftRecord } from '../../lib/localDrafts'
-import type { PinnedDocumentRecord } from '../../lib/pinnedDocuments'
+import { prunePinnedDocuments, type PinnedDocumentRecord } from '../../lib/pinnedDocuments'
 import type { RecentDocumentRecord } from '../../lib/recentDocuments'
 import type { ImageSharingSettings } from '../android-documents/imageSharingSettings'
 import { DEFAULT_MARKDOWN_SAVE_SETTINGS } from '../settings/advancedSettings'
@@ -266,7 +266,18 @@ describe('homeDocumentActions', () => {
     // renamed record keeps its old timestamps — persisting it while the
     // pin still carried the OLD id would evict it as an ordinary oldest
     // unpinned record on that very write.
-    const base = Date.parse('2026-07-01T00:00:00.000Z')
+    //
+    // The rename target's timestamps are set EXPLICITLY below the whole
+    // fleet (the shared fixture's 2026-07-09 would silently make it the
+    // NEWEST record and rob this test of its discriminating power — the
+    // first cut of this test had exactly that inversion and stayed green
+    // on the pre-fix ordering).
+    const pinnedOldest = {
+      ...androidRecord,
+      updatedAt: '2026-07-01T00:00:00.000Z',
+      lastOpenedAt: '2026-07-01T00:00:00.000Z',
+    }
+    const base = Date.parse('2026-07-09T00:00:00.000Z')
     const newerRecords = Array.from({ length: 100 }, (_, index) => ({
       ...androidRecord,
       id: `android-document:content://test/doc-${index}.md`,
@@ -275,9 +286,9 @@ describe('homeDocumentActions', () => {
       lastOpenedAt: new Date(base + (index + 1) * 60_000).toISOString(),
     }))
     const { actions, options } = createActions({
-      selectedIds: [androidRecord.id],
-      androidDocuments: [androidRecord, ...newerRecords],
-      pins: [{ id: androidRecord.id, pinnedAt: '2026-07-09T00:00:00.000Z' }],
+      selectedIds: [pinnedOldest.id],
+      androidDocuments: [pinnedOldest, ...newerRecords],
+      pins: [{ id: pinnedOldest.id, pinnedAt: '2026-07-09T00:00:00.000Z' }],
     })
     options.documentItems.value = getRecentDocumentListItems(
       options.androidRecentDocuments.value,
@@ -296,13 +307,18 @@ describe('homeDocumentActions', () => {
       },
     )
 
-    await actions.renameSelectedDocument(androidRecord.id, 'renamed')
+    await actions.renameSelectedDocument(pinnedOldest.id, 'renamed')
 
     const renamedId = 'android-document:content://test/renamed.md'
     const storedIds = options.androidRecentDocuments.value.map(record => record.id)
     expect(storedIds).toContain(renamedId)
-    expect(storedIds).not.toContain(androidRecord.id)
+    expect(storedIds).not.toContain(pinnedOldest.id)
     expect(options.pinnedDocuments.value.map(pin => pin.id)).toEqual([renamedId])
+
+    // The restart chain: startup pruning keeps the migrated pin only
+    // because the renamed record survived the capped, serialized write.
+    const prunedPins = prunePinnedDocuments(options.pinnedDocuments.value, storedIds)
+    expect(prunedPins.map(pin => pin.id)).toEqual([renamedId])
   })
 
   it('drops the entry and its pins when a rename keeps only temporary access', async () => {

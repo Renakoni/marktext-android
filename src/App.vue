@@ -404,11 +404,14 @@ const recentActivityDocumentItems = computed(() => getRecentDocumentListItems(re
 // recency cap, the expanded view reads the COMPLETE collection. Ephemeral —
 // never persisted, so paging can never modify the durable stores.
 //
-// The projection is layered so the cap limits COMPUTATION, not just
-// rendered rows: ordering, cap membership, and the hidden count come from
-// the records level (timestamp/title sort keys only), and list items —
-// whose statistics scan each draft's full Markdown — are materialized
-// only for the records the current state actually renders.
+// The projection is layered to keep the heavy work off the resting path:
+// list-item STATISTICS (full-Markdown scans per draft) are materialized
+// only for the records the current state actually renders. The records
+// level is cheaper but not free — local-draft records derive their title
+// from the draft's Markdown — so it must only evaluate while something
+// actually renders it: the selection watcher below unsubscribes when no
+// selection is active, and everything else reading this chain is mounted
+// only on the home screen.
 const pinnedDocumentIds = computed(() => getPinnedDocumentIds(pinnedDocuments.value))
 const homeListExpanded = ref(false)
 const sortedRecentRecords = computed(() =>
@@ -457,15 +460,23 @@ const allSelectedDocumentsPinned = computed(() =>
 )
 
 // Documents can leave the list while selected (e.g. an autosave drops an
-// emptied draft); the selection must not keep counting them. Watching the
-// RECORDS projection keeps `documentItems` lazy: a watcher on the items
-// computed would re-materialize statistics on every draft autosave even
-// while the home screen is not rendered.
-watch(visibleRecentRecords, records => {
-  if (homeSelection.isActive.value) {
-    homeSelection.retain(records.map(record => record.id))
-  }
-})
+// emptied draft); the selection must not keep counting them. The source
+// getter short-circuits BEFORE touching the records projection when no
+// selection is active: a watcher must evaluate its source on every
+// dependency change (a guard inside the callback cannot prevent that),
+// so an unconditional source would pull the whole projection — including
+// per-draft title derivation over full Markdown bodies — hot on every
+// autosave even while the home screen is not rendered. With the
+// short-circuit, Vue's dynamic dependency tracking drops the projection
+// subscription entirely while selection is inactive.
+watch(
+  () => (homeSelection.isActive.value ? visibleRecentRecords.value : null),
+  records => {
+    if (records) {
+      homeSelection.retain(records.map(record => record.id))
+    }
+  },
+)
 
 watch(homeSelection.isActive, active => {
   if (!active) {
