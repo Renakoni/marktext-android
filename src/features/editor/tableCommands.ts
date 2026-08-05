@@ -37,8 +37,15 @@ interface MuyaTableBlock extends TableTreeNode {
   removeRow(offset: number): TableCaretContent | null | undefined
   removeColumn(offset: number): TableCaretContent | null | undefined
   remove(): void
+  cellAt(row: number, column: number): { firstChild: TableCaretContent | null } | null | undefined
   nextContentInContext(): TableCaretContent | null | undefined
   previousContentInContext(): TableCaretContent | null | undefined
+}
+
+interface MuyaScrollPage {
+  length(): number
+  /** Restores the one-empty-paragraph invariant and seats the caret. */
+  resetToSingleEmptyParagraph(): TableCaretContent | null
 }
 
 export interface TableContext {
@@ -111,6 +118,16 @@ export function runTableCommand(editor: MuyaEditor | null, commandId: TableComma
 
   const { table, rowOffset, columnOffset } = context
   const inner = editor.editor
+  // Captured before the mutation: a removed table's parent link is nulled.
+  const scrollPage = table.parent as unknown as MuyaScrollPage
+
+  // The engine returns the new column's FIRST created cell, which is
+  // always the header-row cell; the caret must stay in the row it came
+  // from, so resolve the new cell at (caret row, new column) instead.
+  function insertColumnAt(newColumn: number): TableCaretContent {
+    const fallback = table.insertColumn(newColumn)
+    return table.cellAt(rowOffset, newColumn)?.firstChild ?? fallback
+  }
 
   inner.history.cutoff()
   let caret: TableCaretContent | null | undefined
@@ -124,10 +141,10 @@ export function runTableCommand(editor: MuyaEditor | null, commandId: TableComma
       caret = table.insertRow(rowOffset + 1)
       break
     case 'table-insert-column-left':
-      caret = table.insertColumn(columnOffset)
+      caret = insertColumnAt(columnOffset)
       break
     case 'table-insert-column-right':
-      caret = table.insertColumn(columnOffset + 1)
+      caret = insertColumnAt(columnOffset + 1)
       break
     case 'table-delete-row':
       caret = table.removeRow(rowOffset)
@@ -142,6 +159,15 @@ export function runTableCommand(editor: MuyaEditor | null, commandId: TableComma
       caret = table.nextContentInContext() ?? table.previousContentInContext()
       table.remove()
       break
+  }
+
+  // Removing the document's only table (directly, or via its last
+  // row/column) leaves a zero-child page — not a supported state (the
+  // blank-area click handler dereferences the last child). Restore the
+  // one-empty-paragraph invariant inside the same undo step, exactly like
+  // the engine's whole-table cut path.
+  if (!caret && scrollPage.length() === 0) {
+    caret = scrollPage.resetToSingleEmptyParagraph()
   }
 
   caret?.setCursor(0, 0, true)

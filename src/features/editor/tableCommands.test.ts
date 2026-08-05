@@ -19,6 +19,10 @@ interface FakeTreeOptions {
   /** Have every remove* engine call report no survivor. */
   survivorless?: boolean
   outsideContent?: boolean
+  /** The scroll page reports zero children after the mutation. */
+  pageEmptyAfter?: boolean
+  /** cellAt cannot resolve the freshly inserted cell. */
+  cellAtMisses?: boolean
 }
 
 function fakeCaret() {
@@ -34,15 +38,24 @@ function createFakeEditor({
   detached = false,
   survivorless = false,
   outsideContent = true,
+  pageEmptyAfter = false,
+  cellAtMisses = false,
 }: FakeTreeOptions = {}) {
   const insertedCaret = fakeCaret()
   const survivorCaret = fakeCaret()
   const outsideCaret = fakeCaret()
+  const bodyCellCaret = fakeCaret()
+  const recoveredCaret = fakeCaret()
 
+  const scrollPage = {
+    blockName: 'scrollpage',
+    length: vi.fn(() => (pageEmptyAfter ? 0 : 1)),
+    resetToSingleEmptyParagraph: vi.fn(() => recoveredCaret),
+  }
   const table = {
     blockName: breakAt === 'table' ? 'paragraph' : 'table',
     // Attached tables hang off the scroll page; a removed one has null.
-    parent: detached ? null : { blockName: 'scrollpage' },
+    parent: detached ? null : scrollPage,
     rowCount,
     columnCount,
     offset: vi.fn(),
@@ -51,6 +64,7 @@ function createFakeEditor({
     removeRow: vi.fn(() => (survivorless ? null : survivorCaret)),
     removeColumn: vi.fn(() => (survivorless ? null : survivorCaret)),
     remove: vi.fn(),
+    cellAt: vi.fn(() => (cellAtMisses ? null : { firstChild: bodyCellCaret })),
     nextContentInContext: vi.fn(() => (outsideContent ? outsideCaret : null)),
     previousContentInContext: vi.fn(() => null),
   }
@@ -81,7 +95,18 @@ function createFakeEditor({
     editor: { activeContentBlock: content, history, jsonState },
   } as unknown as MuyaEditor
 
-  return { editor, table, history, jsonState, insertedCaret, survivorCaret, outsideCaret }
+  return {
+    editor,
+    table,
+    scrollPage,
+    history,
+    jsonState,
+    insertedCaret,
+    survivorCaret,
+    outsideCaret,
+    bodyCellCaret,
+    recoveredCaret,
+  }
 }
 
 describe('resolveTableContext', () => {
@@ -175,12 +200,54 @@ describe('runTableCommand', () => {
     expect(harness.survivorCaret.setCursor).toHaveBeenCalledWith(0, 0, true)
   })
 
-  it('survives a delete that removes the whole table without a neighbour', () => {
-    const harness = createFakeEditor({ survivorless: true, outsideContent: false })
+  it('keeps the caret in the originating row after a column insert', () => {
+    const harness = createFakeEditor({ rowOffset: 2, columnOffset: 1 })
+
+    runTableCommand(harness.editor, 'table-insert-column-right')
+
+    // The engine returns the new column's header-row cell; the caret must
+    // resolve through cellAt(caret row, new column) instead.
+    expect(harness.table.cellAt).toHaveBeenCalledWith(2, 2)
+    expect(harness.bodyCellCaret.setCursor).toHaveBeenCalledWith(0, 0, true)
+    expect(harness.insertedCaret.setCursor).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the engine-returned cell when cellAt cannot resolve one', () => {
+    const harness = createFakeEditor({ cellAtMisses: true })
+
+    runTableCommand(harness.editor, 'table-insert-column-left')
+
+    expect(harness.insertedCaret.setCursor).toHaveBeenCalledWith(0, 0, true)
+  })
+
+  it('restores the one-empty-paragraph invariant when a removal empties the page', () => {
+    for (const id of [
+      'table-delete-row',
+      'table-delete-column',
+      'table-delete-table',
+    ] as const) {
+      const harness = createFakeEditor({
+        survivorless: true,
+        outsideContent: false,
+        pageEmptyAfter: true,
+      })
+
+      expect(runTableCommand(harness.editor, id)).toBe(true)
+      expect(harness.scrollPage.resetToSingleEmptyParagraph).toHaveBeenCalledTimes(1)
+      expect(harness.recoveredCaret.setCursor).toHaveBeenCalledWith(0, 0, true)
+    }
+  })
+
+  it('leaves a non-empty page alone when the delete has no survivor', () => {
+    const harness = createFakeEditor({
+      survivorless: true,
+      outsideContent: false,
+      pageEmptyAfter: false,
+    })
 
     expect(runTableCommand(harness.editor, 'table-delete-row')).toBe(true)
-    expect(runTableCommand(harness.editor, 'table-delete-table')).toBe(true)
-    expect(harness.jsonState.flush).toHaveBeenCalledTimes(2)
+    expect(harness.scrollPage.resetToSingleEmptyParagraph).not.toHaveBeenCalled()
+    expect(harness.jsonState.flush).toHaveBeenCalledTimes(1)
   })
 
   it('moves the caret outside before removing the whole table', () => {

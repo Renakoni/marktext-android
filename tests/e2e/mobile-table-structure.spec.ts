@@ -68,15 +68,20 @@ test('inserts and deletes rows and columns around the caret cell', async ({ page
   await page.keyboard.type('fresh')
   await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toContainText('fresh')
 
-  // Insert column right of the caret cell.
+  // Insert column right of the caret cell: the caret stays in the
+  // ORIGINATING row (the engine's own return value is the header-row
+  // cell), so typing lands in the body row, not the header.
   await tapCell(page, 'two')
   await page.getByTestId('toolbar-table-table-insert-column-right').click()
   await expect(tableRows(page).first().locator('th, td')).toHaveCount(3)
+  await page.keyboard.type('sidecar')
+  await expect(tableRows(page).nth(1)).toContainText('sidecar')
+  await expect(tableRows(page).first()).not.toContainText('sidecar')
 
-  // Delete that column again from a cell inside it? The caret sits in the
-  // NEW column after the insert, so deleting the column consumes it.
+  // The caret sits in the new column, so deleting the column consumes it.
   await page.getByTestId('toolbar-table-table-delete-column').click()
   await expect(tableRows(page).first().locator('th, td')).toHaveCount(2)
+  await expect(page.getByTestId('editor-host')).not.toContainText('sidecar')
 
   // Delete the row that holds the caret.
   await tapCell(page, 'fresh')
@@ -103,6 +108,53 @@ test('removing the last row or the whole table drops the caret outside and resto
   await page.getByTestId('toolbar-table-table-delete-row').click()
   await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(0)
   await expect(page.getByTestId('toolbar-command-format.strong')).toBeVisible()
+})
+
+// A document whose ONLY block is the table: every removal path must
+// restore the one-empty-paragraph invariant instead of leaving a dead,
+// uneditable page.
+const TABLE_ONLY_MARKDOWN = `| Solo | Table |
+| --- | --- |
+| one | two |
+`
+
+test('deleting the only table restores an editable empty paragraph', async ({ page }) => {
+  await openLocalDraft(page, {
+    id: 'table-only-draft',
+    markdown: TABLE_ONLY_MARKDOWN,
+    title: /Solo/,
+    now: '2026-07-01T10:00:00.000Z',
+  })
+
+  await page.getByTestId('toolbar-expand-button').click()
+  await tapCell(page, 'one')
+  await page.getByTestId('toolbar-table-table-delete-table').click()
+
+  await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(0)
+  await expect(page.getByTestId('toolbar-command-format.strong')).toBeVisible()
+  await page.keyboard.type('reborn')
+  await expect(page.getByTestId('editor-host')).toContainText('reborn')
+})
+
+test('deleting the only table via its last row restores an editable paragraph', async ({
+  page,
+}) => {
+  await openLocalDraft(page, {
+    id: 'table-only-rows-draft',
+    markdown: TABLE_ONLY_MARKDOWN,
+    title: /Solo/,
+    now: '2026-07-01T10:00:00.000Z',
+  })
+
+  await page.getByTestId('toolbar-expand-button').click()
+  await tapCell(page, 'one')
+  await page.getByTestId('toolbar-table-table-delete-row').click()
+  await tapCell(page, 'Solo')
+  await page.getByTestId('toolbar-table-table-delete-row').click()
+
+  await expect(page.getByTestId('editor-host').locator('figure.mu-table')).toHaveCount(0)
+  await page.keyboard.type('afterlife')
+  await expect(page.getByTestId('editor-host')).toContainText('afterlife')
 })
 
 test('delete table removes the whole table in one tap', async ({ page }) => {

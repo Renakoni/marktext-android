@@ -38,22 +38,7 @@ function isSelectAll(
  * caret in it.
  */
 function resetToEmptyParagraph(clipboard: Clipboard): void {
-    const { scrollPage } = clipboard;
-    if (scrollPage == null)
-        return;
-
-    scrollPage.forEach((child) => {
-        (child as Parent).remove();
-    });
-
-    const newParagraphBlock = ScrollPage.loadBlock('paragraph').create(
-        clipboard.muya,
-        { name: 'paragraph', text: '' },
-    );
-    scrollPage.append(newParagraphBlock, 'user');
-
-    const cursorBlock = newParagraphBlock.firstContentInDescendant();
-    cursorBlock?.setCursor(0, 0, true);
+    clipboard.scrollPage?.resetToSingleEmptyParagraph();
 }
 
 // Seat the caret and re-evaluate the block's type from its new text — a cut can
