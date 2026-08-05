@@ -28,8 +28,12 @@ test('manages home documents through long-press selection mode', async ({ page }
   await page.reload()
 
   // Long-press an Earlier row: selection mode starts with that row selected,
-  // and the release click must not immediately toggle it back off.
+  // and the release click must not immediately toggle it back off. Home
+  // chrome is not text-selectable, so the gesture cannot degrade into
+  // native selection handles grabbing the title or section label.
   const earlierRow = page.getByRole('button', { name: /Earlier selection note/ })
+  await expect(earlierRow).toHaveCSS('user-select', 'none')
+  await expect(page.getByText('Earlier').first()).toHaveCSS('user-select', 'none')
   await longPress(page, earlierRow)
 
   await expect(page.getByTestId('home-selection-bar')).toBeVisible()
@@ -129,6 +133,8 @@ test('drops a renamed Android recent when only temporary access remains', async 
   await longPress(page, row)
   await page.getByTestId('home-selection-menu').click()
   await page.getByTestId('home-selection-rename').click()
+  // The rename input opts back out of the home screen's user-select: none.
+  await expect(page.getByTestId('home-rename-input')).toHaveCSS('user-select', 'text')
   await page.getByTestId('home-rename-input').fill('trip-plan')
   await page.getByTestId('home-rename-confirm').click()
 
