@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.webp" alt="MarkText for Android 標誌" width="96" height="96">
+  <img src="../assets/logo.webp" alt="MarkText for Android 標誌" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -7,7 +7,7 @@
 <p align="center">
   <sub>
     🌐&nbsp;
-    <a href="README.md">English</a>
+    <a href="../../README.md">English</a>
     &nbsp;·&nbsp; <a href="README.zh-CN.md">简体中文</a>
     &nbsp;·&nbsp; <b>繁體中文</b>
     &nbsp;·&nbsp; <a href="README.de.md">Deutsch</a>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.webp" alt="以淺色主題編輯 Markdown 文件" width="240">
+  <img src="../screenshots/editor-light.webp" alt="以淺色主題編輯 Markdown 文件" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.webp" alt="同一份文件的深色主題" width="240">
+  <img src="../screenshots/editor-dark.webp" alt="同一份文件的深色主題" width="240">
 </p>
 
 <p align="center">
@@ -74,17 +74,23 @@ MarkText for Android 將 MarkText 的即時預覽 Markdown 編輯體驗帶到手
 <td valign="middle">
 
 - 真正的即時預覽（WYSIWYG）編輯。
+
 - 完整支援 CommonMark 與 GitHub Flavored Markdown：數學（KaTeX）、表格、
   註腳、Front Matter、圖表，以及帶語法標示的程式碼。
+
 - 文件大綱與編輯器內建搜尋，即使在長檔案中也保持流暢。
+
 - 匯出為 **PDF**，數學、程式碼標示與字型全部內嵌。
-- **絕不遺失您的成果。** 自動儲存、修復草稿與原子式寫入，保留每一次變更。
-- **預設即私密。** 無帳號、無雲端、無遙測；一切都留在裝置上。
-- **輕量。** Vue + Capacitor 外殼讓整個應用程式僅約 7.8 MB——小巧輕盈，
+
+- **絕不遺失您的成果**。自動儲存、修復草稿與原子式寫入，保留每一次變更。
+
+- **預設即私密**。無帳號、無雲端、無遙測；一切都留在裝置上。
+
+- **輕量**。Vue + Capacitor 外殼讓整個應用程式僅約 7.8 MB——小巧輕盈，
   功能卻一應俱全。
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="輸入的同時即時算繪表格、程式碼與數學" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/editor-rich.webp" alt="輸入的同時即時算繪表格、程式碼與數學" width="200"></td>
 </tr>
 </table>
 
@@ -92,24 +98,24 @@ MarkText for Android 將 MarkText 的即時預覽 Markdown 編輯體驗帶到手
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="編輯時顯示的停靠格式工具列與自訂的選取（貼上）列" width="200"></td>
+<td width="220" valign="middle"><img src="../screenshots/makeityours.webp" alt="編輯時顯示的停靠格式工具列與自訂的選取（貼上）列" width="200"></td>
 <td valign="middle">
 
-- **打造您自己的工具列。** 從指令池中組合底部快速列，並以拖曳重新
+- **打造您自己的工具列**。從指令池中組合底部快速列，並以拖曳重新
   排序。就連選取工具列也能放入您自己的指令。
 
 <br>
 
-- **主題與外觀。** 淺色、深色與自訂主題；文字與版面皆可調整。
+- **主題與外觀**。淺色、深色與 30+ 款自訂主題；文字與版面皆可調整。
 
 <br>
 
-- **Markdown 隨您的口味。** 從清單符號到 Front Matter，Markdown 的
+- **Markdown 隨您的口味**。從清單符號到 Front Matter，Markdown 的
   書寫與算繪方式皆可細調。
 
 <br>
 
-- **檔案層級的掌控。** 針對每份文件設定編碼、換行字元與結尾換行的
+- **檔案層級的掌控**。針對每份文件設定編碼、換行字元與結尾換行的
   處理方式。
 
 </td>
@@ -120,20 +126,20 @@ MarkText for Android 將 MarkText 的即時預覽 Markdown 編輯體驗帶到手
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="以中文介面顯示中文文件的編輯器" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/cjk.webp" alt="以中文介面顯示中文文件的編輯器" width="200"></td>
 <td valign="middle">
 
-- **您的檔案留在原地。** 透過系統選擇器直接編輯任何儲存空間提供者中的
+- **您的檔案留在原地**。透過系統選擇器直接編輯任何儲存空間提供者中的
   `.md` 檔案，並經由分享面板與其他應用程式互傳文件。
 
 <br>
 
-- **為拇指而設計。** 舒適的單手操作範圍與沉靜、以編輯器為先的版面
+- **為拇指而設計**。舒適的單手操作範圍與沉靜、以編輯器為先的版面
   配置。
 
 <br>
 
-- **無障礙且克制。** 沉靜的石墨色設計符合 WCAG 2.2 AA，焦點順序清晰，
+- **無障礙且克制**。沉靜的石墨色設計符合 WCAG 2.2 AA，焦點順序清晰，
   動態效果輕而不擾。
 
 <br>
@@ -171,7 +177,7 @@ pnpm android:open     # 在 Android Studio 中開啟，然後在裝置或模擬�
 ```
 
 其他指令碼（`test`、`lint`、`typecheck`、`build`）列於 `package.json`。
-發行維護者請依循 [`docs/RELEASING.md`](docs/RELEASING.md)。
+發行維護者請依循 [`docs/RELEASING.md`](../RELEASING.md)。
 
 > [!TIP]
 > Markdown 編輯器核心是 `@muyajs/core`（Muya）的一份隨附且**經過修改**的
@@ -185,7 +191,7 @@ pnpm android:open     # 在 Android Studio 中開啟，然後在裝置或模擬�
 
 ## 授權與出處
 
-MarkText for Android 以 [MIT License](LICENSE) 發行。
+MarkText for Android 以 [MIT License](../../LICENSE) 發行。
 
 本專案是**非官方**移植版，建立在 MarkText 的開源成果之上，與 MarkText
 專案沒有隸屬關係，也未獲其背書：
@@ -194,7 +200,7 @@ MarkText for Android 以 [MIT License](LICENSE) 發行。
   Ran 與 MarkText 貢獻者，以 MIT 授權。
 - **Muya**（`@muyajs/core`）——編輯器核心，以隨附且經過修改的形式置於
   `third_party/muya`，並保留其原始 MIT 授權
-  （[`third_party/muya/LICENSE`](third_party/muya/LICENSE)）。
+  （[`third_party/muya/LICENSE`](../../third_party/muya/LICENSE)）。
 
 ## 致謝
 

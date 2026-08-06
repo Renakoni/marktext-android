@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.webp" alt="MarkText for Android 徽标" width="96" height="96">
+  <img src="../assets/logo.webp" alt="MarkText for Android 徽标" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -7,7 +7,7 @@
 <p align="center">
   <sub>
     🌐&nbsp;
-    <a href="README.md">English</a>
+    <a href="../../README.md">English</a>
     &nbsp;·&nbsp; <b>简体中文</b>
     &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a>
     &nbsp;·&nbsp; <a href="README.de.md">Deutsch</a>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.webp" alt="浅色主题下编辑 Markdown 文档" width="240">
+  <img src="../screenshots/editor-light.webp" alt="浅色主题下编辑 Markdown 文档" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.webp" alt="同一文档的深色主题效果" width="240">
+  <img src="../screenshots/editor-dark.webp" alt="同一文档的深色主题效果" width="240">
 </p>
 
 <p align="center">
@@ -73,17 +73,23 @@ MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机
 <td valign="middle">
 
 - 真正的实时预览（所见即所得）编辑。
+
 - 完整支持 CommonMark 与 GitHub Flavored Markdown：公式（KaTeX）、表格、
   脚注、前置元数据、图表，以及带语法高亮的代码。
+
 - 文档大纲与编辑器内搜索，在长文件中依然流畅。
+
 - 导出 **PDF**，公式、代码高亮与字体全部内嵌。
-- **绝不丢失你的内容。**自动保存、恢复草稿与原子化写入，留住每一次修改。
-- **默认私密。**无账号、无云端、无遥测；一切都留在设备上。
-- **轻量。**Vue + Capacitor 外壳让整个应用仅约 7.8 MB —— 小巧轻盈，
+
+- **绝不丢失你的内容**。自动保存、恢复草稿与原子化写入，留住每一次修改。
+
+- **默认私密**。无账号、无云端、无遥测；一切都留在设备上。
+
+- **轻量**。Vue + Capacitor 外壳让整个应用仅约 7.8 MB —— 小巧轻盈，
   功能却一应俱全。
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="输入时实时渲染表格、代码与公式" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/editor-rich.webp" alt="输入时实时渲染表格、代码与公式" width="200"></td>
 </tr>
 </table>
 
@@ -91,23 +97,23 @@ MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="编辑时显示的底部停靠格式工具栏与自定义的选择（粘贴）栏" width="200"></td>
+<td width="220" valign="middle"><img src="../screenshots/makeityours.webp" alt="编辑时显示的底部停靠格式工具栏与自定义的选择（粘贴）栏" width="200"></td>
 <td valign="middle">
 
-- **打造你自己的工具栏。**从命令池中自由组合底部快捷栏，并拖动排序。
+- **打造你自己的工具栏**。从命令池中自由组合底部快捷栏，并拖动排序。
   就连选择工具栏也能装入你自己的命令。
 
 <br>
 
-- **主题与外观。**浅色、深色与自定义主题，外观细节随你调整。
+- **主题与外观**。浅色、深色与 30+ 款自定义主题，外观细节随你调整。
 
 <br>
 
-- **合你口味的 Markdown。**从列表标记到前置元数据，书写与渲染方式都可细调。
+- **合你口味的 Markdown**。从列表标记到前置元数据，书写与渲染方式都可细调。
 
 <br>
 
-- **文件级控制。**逐文档设置编码、换行符与末尾换行处理。
+- **文件级控制**。逐文档设置编码、换行符与末尾换行处理。
 
 </td>
 </tr>
@@ -117,19 +123,19 @@ MarkText for Android 把 MarkText 的实时预览 Markdown 编辑带到了手机
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="中文界面下显示中文文档的编辑器" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/cjk.webp" alt="中文界面下显示中文文档的编辑器" width="200"></td>
 <td valign="middle">
 
-- **你的文件留在原地。**通过系统选择器直接编辑任意存储提供方中的 `.md`
+- **你的文件留在原地**。通过系统选择器直接编辑任意存储提供方中的 `.md`
   文件，并借助分享面板与其他应用互传文档。
 
 <br>
 
-- **为拇指而设计。**舒适的单手可及范围，沉静、以编辑器为先的布局。
+- **为拇指而设计**。舒适的单手可及范围，沉静、以编辑器为先的布局。
 
 <br>
 
-- **无障碍且克制。**安静的石墨色设计符合 WCAG 2.2 AA，焦点顺序清晰，
+- **无障碍且克制**。安静的石墨色设计符合 WCAG 2.2 AA，焦点顺序清晰，
   动效轻而不扰。
 
 <br>
@@ -167,7 +173,7 @@ pnpm android:open     # 在 Android Studio 中打开，然后在设备或模拟�
 ```
 
 其他脚本（`test`、`lint`、`typecheck`、`build`）见 `package.json`。
-发布维护者请遵循 [`docs/RELEASING.md`](docs/RELEASING.md)。
+发布维护者请遵循 [`docs/RELEASING.md`](../RELEASING.md)。
 
 > [!TIP]
 > Markdown 编辑器核心是 `@muyajs/core`（Muya）的一份内置且经过**修改**的副本，
@@ -180,7 +186,7 @@ pnpm android:open     # 在 Android Studio 中打开，然后在设备或模拟�
 
 ## 许可证与署名
 
-MarkText for Android 基于 [MIT 许可证](LICENSE)发布。
+MarkText for Android 基于 [MIT 许可证](../../LICENSE)发布。
 
 这是一个**非官方**移植版，构建于 MarkText 的开源成果之上，与 MarkText 项目
 没有隶属关系，也未获其认可：
@@ -189,7 +195,7 @@ MarkText for Android 基于 [MIT 许可证](LICENSE)发布。
   及 MarkText 贡献者，MIT 许可。
 - **Muya**（`@muyajs/core`）—— 编辑器核心，以内置形式收录并修改于
   `third_party/muya`，其原始 MIT 许可证得以保留
-  （[`third_party/muya/LICENSE`](third_party/muya/LICENSE)）。
+  （[`third_party/muya/LICENSE`](../../third_party/muya/LICENSE)）。
 
 ## 致谢
 

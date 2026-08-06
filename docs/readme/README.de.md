@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.webp" alt="Logo von MarkText for Android" width="96" height="96">
+  <img src="../assets/logo.webp" alt="Logo von MarkText for Android" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -7,7 +7,7 @@
 <p align="center">
   <sub>
     🌐&nbsp;
-    <a href="README.md">English</a>
+    <a href="../../README.md">English</a>
     &nbsp;·&nbsp; <a href="README.zh-CN.md">简体中文</a>
     &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a>
     &nbsp;·&nbsp; <b>Deutsch</b>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.webp" alt="Bearbeitung eines Markdown-Dokuments – helles Design" width="240">
+  <img src="../screenshots/editor-light.webp" alt="Bearbeitung eines Markdown-Dokuments – helles Design" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.webp" alt="Dasselbe Dokument in einem dunklen Design" width="240">
+  <img src="../screenshots/editor-dark.webp" alt="Dasselbe Dokument in einem dunklen Design" width="240">
 </p>
 
 <p align="center">
@@ -76,22 +76,28 @@ Oberfläche, die für eine Hand gebaut ist.
 <td valign="middle">
 
 - Echte Live-Vorschau (WYSIWYG) beim Schreiben.
+
 - Vollständiges CommonMark und GitHub Flavored Markdown: Mathematik (KaTeX),
   Tabellen, Fußnoten, Front Matter, Diagramme und Code mit Syntaxhervorhebung.
+
 - Eine Dokumentgliederung und eine Suche im Editor, die selbst in langen Dateien
   flüssig bleiben.
+
 - Export als **PDF** – mit Mathematik, Code-Hervorhebung und fest eingebetteten
   Schriften.
+
 - **Verliert nie deine Arbeit.** Automatisches Speichern,
   Wiederherstellungsentwürfe und atomare Schreibvorgänge bewahren jede
   Änderung.
+
 - **Standardmäßig privat.** Kein Konto, keine Cloud, keine Telemetrie – alles
   bleibt auf dem Gerät.
+
 - **Leichtgewichtig.** Eine Shell aus Vue + Capacitor hält die ganze App bei
   rund 7,8 MB – klein und leicht, aber voll ausgestattet.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="Tabellen, Code und Mathematik werden beim Tippen live gerendert" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/editor-rich.webp" alt="Tabellen, Code und Mathematik werden beim Tippen live gerendert" width="200"></td>
 </tr>
 </table>
 
@@ -99,7 +105,7 @@ Oberfläche, die für eine Hand gebaut ist.
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="Die angedockte Format-Symbolleiste und eine angepasste Auswahl-Leiste (Einfügen) während der Bearbeitung" width="200"></td>
+<td width="220" valign="middle"><img src="../screenshots/makeityours.webp" alt="Die angedockte Format-Symbolleiste und eine angepasste Auswahl-Leiste (Einfügen) während der Bearbeitung" width="200"></td>
 <td valign="middle">
 
 - **Baue deine eigenen Symbolleisten.** Stelle die untere Schnellleiste aus
@@ -108,7 +114,7 @@ Oberfläche, die für eine Hand gebaut ist.
 
 <br>
 
-- **Designs und Erscheinungsbild.** Helle, dunkle und benutzerdefinierte
+- **Designs und Erscheinungsbild.** Helle, dunkle und über 30 weitere
   Designs; Schrift und Layout einstellbar.
 
 <br>
@@ -129,7 +135,7 @@ Oberfläche, die für eine Hand gebaut ist.
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="Der Editor mit einem chinesischen Dokument und chinesischer Oberfläche" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/cjk.webp" alt="Der Editor mit einem chinesischen Dokument und chinesischer Oberfläche" width="200"></td>
 <td valign="middle">
 
 - **Deine Dateien bleiben, wo sie sind.** Bearbeite `.md` direkt aus jedem
@@ -185,7 +191,7 @@ pnpm android:open     # in Android Studio öffnen, dann auf Gerät oder Emulator
 
 Weitere Skripte (`test`, `lint`, `typecheck`, `build`) stehen in der
 `package.json`. Release-Verantwortliche folgen
-[`docs/RELEASING.md`](docs/RELEASING.md).
+[`docs/RELEASING.md`](../RELEASING.md).
 
 > [!TIP]
 > Der Markdown-Editor-Kern ist eine eingebundene, **modifizierte** Kopie von
@@ -200,7 +206,7 @@ schreib Tests, wo es sinnvoll ist.
 
 ## Lizenz & Namensnennung
 
-MarkText for Android erscheint unter der [MIT-Lizenz](LICENSE).
+MarkText for Android erscheint unter der [MIT-Lizenz](../../LICENSE).
 
 Es ist ein **inoffizieller** Port, der auf MarkTexts Open-Source-Arbeit aufbaut
 und weder mit dem MarkText-Projekt verbunden ist noch von ihm unterstützt wird:
@@ -209,7 +215,7 @@ und weder mit dem MarkText-Projekt verbunden ist noch von ihm unterstützt wird:
   Copyright © Luo Ran und die MarkText-Mitwirkenden, MIT-lizenziert.
 - **Muya** (`@muyajs/core`) – der Editor-Kern, eingebunden und modifiziert unter
   `third_party/muya`, mit unverändert beibehaltener MIT-Originallizenz
-  ([`third_party/muya/LICENSE`](third_party/muya/LICENSE)).
+  ([`third_party/muya/LICENSE`](../../third_party/muya/LICENSE)).
 
 ## Danksagungen
 

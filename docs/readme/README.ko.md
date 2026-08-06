@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.webp" alt="MarkText for Android 로고" width="96" height="96">
+  <img src="../assets/logo.webp" alt="MarkText for Android 로고" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -7,7 +7,7 @@
 <p align="center">
   <sub>
     🌐&nbsp;
-    <a href="README.md">English</a>
+    <a href="../../README.md">English</a>
     &nbsp;·&nbsp; <a href="README.zh-CN.md">简体中文</a>
     &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a>
     &nbsp;·&nbsp; <a href="README.de.md">Deutsch</a>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.webp" alt="Markdown 문서 편집 — 라이트 테마" width="240">
+  <img src="../screenshots/editor-light.webp" alt="Markdown 문서 편집 — 라이트 테마" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.webp" alt="다크 테마로 본 같은 문서" width="240">
+  <img src="../screenshots/editor-dark.webp" alt="다크 테마로 본 같은 문서" width="240">
 </p>
 
 <p align="center">
@@ -76,19 +76,25 @@ MarkText for Android는 MarkText의 실시간 미리 보기 Markdown 편집을 �
 <td valign="middle">
 
 - 진짜 실시간 미리 보기(WYSIWYG) 편집.
+
 - CommonMark와 GitHub Flavored Markdown 완전 지원: 수식(KaTeX), 표, 각주,
   front matter, 다이어그램, 구문 강조 코드까지.
+
 - 긴 파일에서도 부드럽게 동작하는 문서 개요와 편집기 내 검색.
+
 - 수식, 코드 강조, 글꼴까지 모두 담아 **PDF**로 내보내기.
+
 - **작업을 절대 잃지 않습니다.** 자동 저장, 복구 초안, 원자적 쓰기가 모든
   변경 사항을 지킵니다.
+
 - **기본이 프라이버시.** 계정도, 클라우드도, 원격 측정도 없습니다. 모든 것이
   기기 안에 머뭅니다.
+
 - **가볍습니다.** Vue + Capacitor 셸을 사용해 앱 전체가 약 7.8 MB — 작고
   가볍지만 기능은 온전합니다.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="입력하는 동안 실시간으로 렌더링되는 표, 코드, 수식" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/editor-rich.webp" alt="입력하는 동안 실시간으로 렌더링되는 표, 코드, 수식" width="200"></td>
 </tr>
 </table>
 
@@ -96,7 +102,7 @@ MarkText for Android는 MarkText의 실시간 미리 보기 Markdown 편집을 �
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="편집 중 표시되는 하단 고정 서식 도구 모음과 사용자 정의 선택(붙여넣기) 막대" width="200"></td>
+<td width="220" valign="middle"><img src="../screenshots/makeityours.webp" alt="편집 중 표시되는 하단 고정 서식 도구 모음과 사용자 정의 선택(붙여넣기) 막대" width="200"></td>
 <td valign="middle">
 
 - **나만의 도구 모음 만들기.** 명령 풀에서 하단 빠른 도구 막대를 구성하고
@@ -104,7 +110,7 @@ MarkText for Android는 MarkText의 실시간 미리 보기 Markdown 편집을 �
 
 <br>
 
-- **테마와 외관.** 라이트, 다크, 사용자 정의 테마를 고르고, 글자와 레이아웃을
+- **테마와 외관.** 라이트, 다크에 더해 30가지가 넘는 사용자 정의 테마를 고르고, 글자와 레이아웃을
   조정할 수 있습니다.
 
 <br>
@@ -124,7 +130,7 @@ MarkText for Android는 MarkText의 실시간 미리 보기 Markdown 편집을 �
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="중국어 인터페이스로 중국어 문서를 표시한 편집기" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/cjk.webp" alt="중국어 인터페이스로 중국어 문서를 표시한 편집기" width="200"></td>
 <td valign="middle">
 
 - **파일은 제자리에 그대로.** 시스템 선택기를 통해 어떤 저장소 제공자에서든
@@ -177,7 +183,7 @@ pnpm android:open     # Android Studio로 열고 기기 또는 에뮬레이터�
 ```
 
 다른 스크립트(`test`, `lint`, `typecheck`, `build`)는 `package.json`에
-있습니다. 릴리스 관리자는 [`docs/RELEASING.md`](docs/RELEASING.md)를 따르세요.
+있습니다. 릴리스 관리자는 [`docs/RELEASING.md`](../RELEASING.md)를 따르세요.
 
 > [!TIP]
 > Markdown 편집기 코어는 `third_party/muya` 아래에 벤더링된, **수정된**
@@ -192,7 +198,7 @@ pnpm android:open     # Android Studio로 열고 기기 또는 에뮬레이터�
 
 ## 라이선스 및 저작자 표시
 
-MarkText for Android는 [MIT 라이선스](LICENSE)로 배포됩니다.
+MarkText for Android는 [MIT 라이선스](../../LICENSE)로 배포됩니다.
 
 이 앱은 MarkText의 오픈 소스 작업 위에 만들어진 **비공식** 포트로, MarkText
 프로젝트와 관련이 없으며 승인을 받지 않았습니다:
@@ -201,7 +207,7 @@ MarkText for Android는 [MIT 라이선스](LICENSE)로 배포됩니다.
   Ran 및 MarkText 기여자, MIT 라이선스.
 - **Muya** (`@muyajs/core`) — 편집기 코어. `third_party/muya` 아래에 벤더링해
   수정했으며, 원본 MIT 라이선스를 유지합니다
-  ([`third_party/muya/LICENSE`](third_party/muya/LICENSE)).
+  ([`third_party/muya/LICENSE`](../../third_party/muya/LICENSE)).
 
 ## 감사의 말
 

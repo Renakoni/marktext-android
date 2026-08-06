@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.webp" alt="Logotipo de MarkText for Android" width="96" height="96">
+  <img src="../assets/logo.webp" alt="Logotipo de MarkText for Android" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -7,7 +7,7 @@
 <p align="center">
   <sub>
     🌐&nbsp;
-    <a href="README.md">English</a>
+    <a href="../../README.md">English</a>
     &nbsp;·&nbsp; <a href="README.zh-CN.md">简体中文</a>
     &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a>
     &nbsp;·&nbsp; <a href="README.de.md">Deutsch</a>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.webp" alt="Edición de un documento Markdown — tema claro" width="240">
+  <img src="../screenshots/editor-light.webp" alt="Edición de un documento Markdown — tema claro" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.webp" alt="El mismo documento con un tema oscuro" width="240">
+  <img src="../screenshots/editor-dark.webp" alt="El mismo documento con un tema oscuro" width="240">
 </p>
 
 <p align="center">
@@ -76,22 +76,28 @@ escritorio, en una interfaz pensada para usarla con una mano.
 <td valign="middle">
 
 - Edición con vista previa en vivo real (WYSIWYG).
+
 - CommonMark y GitHub Flavored Markdown completos: matemáticas (KaTeX), tablas,
   notas al pie, metadatos (front matter), diagramas y código con resaltado de
   sintaxis.
+
 - Un esquema del documento y una búsqueda dentro del editor que siguen siendo
   fluidos incluso en archivos largos.
+
 - Exportación a **PDF** con matemáticas, resaltado de código y fuentes ya
   incorporados.
+
 - **Nunca pierde tu trabajo.** El autoguardado, los borradores de recuperación y
   las escrituras atómicas conservan cada cambio.
+
 - **Privado por defecto.** Sin cuenta, sin nube, sin telemetría; todo se queda en
   el dispositivo.
+
 - **Ligero.** Una carcasa Vue + Capacitor mantiene toda la app en torno a 7,8 MB:
   pequeña y ligera, pero con todas sus funciones.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="Tablas, código y matemáticas renderizados en vivo mientras escribes" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/editor-rich.webp" alt="Tablas, código y matemáticas renderizados en vivo mientras escribes" width="200"></td>
 </tr>
 </table>
 
@@ -99,7 +105,7 @@ escritorio, en una interfaz pensada para usarla con una mano.
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="La barra de formato anclada y una barra de selección (pegar) personalizada mostradas durante la edición" width="200"></td>
+<td width="220" valign="middle"><img src="../screenshots/makeityours.webp" alt="La barra de formato anclada y una barra de selección (pegar) personalizada mostradas durante la edición" width="200"></td>
 <td valign="middle">
 
 - **Crea tus propias barras de herramientas.** Compón la barra rápida inferior a
@@ -108,7 +114,8 @@ escritorio, en una interfaz pensada para usarla con una mano.
 
 <br>
 
-- **Temas y apariencia.** Temas claro, oscuro y personalizados; tipografía y
+- **Temas y apariencia.** Temas claro, oscuro y más de 30 temas
+  personalizados; tipografía y
   disposición ajustables.
 
 <br>
@@ -129,7 +136,7 @@ escritorio, en una interfaz pensada para usarla con una mano.
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="El editor mostrando un documento en chino con la interfaz en chino" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/cjk.webp" alt="El editor mostrando un documento en chino con la interfaz en chino" width="200"></td>
 <td valign="middle">
 
 - **Tus archivos no se mueven de su sitio.** Edita `.md` directamente desde
@@ -184,7 +191,7 @@ pnpm android:open     # ábrelo en Android Studio y ejecútalo en un dispositivo
 
 Los demás scripts (`test`, `lint`, `typecheck`, `build`) están en `package.json`.
 Quienes mantienen las publicaciones deben seguir
-[`docs/RELEASING.md`](docs/RELEASING.md).
+[`docs/RELEASING.md`](../RELEASING.md).
 
 > [!TIP]
 > El núcleo del editor de Markdown es una copia **modificada** de `@muyajs/core`
@@ -199,7 +206,7 @@ añade tests donde tengan sentido.
 
 ## Licencia y atribución
 
-MarkText for Android se publica bajo la [licencia MIT](LICENSE).
+MarkText for Android se publica bajo la [licencia MIT](../../LICENSE).
 
 Es una adaptación **no oficial**, construida sobre el trabajo de código abierto de
 MarkText y sin afiliación con el proyecto MarkText, que tampoco la avala:
@@ -208,7 +215,7 @@ MarkText y sin afiliación con el proyecto MarkText, que tampoco la avala:
   Copyright © Luo Ran y los colaboradores de MarkText, bajo licencia MIT.
 - **Muya** (`@muyajs/core`) — el núcleo del editor, incorporado y modificado bajo
   `third_party/muya` conservando su licencia MIT original
-  ([`third_party/muya/LICENSE`](third_party/muya/LICENSE)).
+  ([`third_party/muya/LICENSE`](../../third_party/muya/LICENSE)).
 
 ## Agradecimientos
 

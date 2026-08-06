@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.webp" alt="MarkText for Android のロゴ" width="96" height="96">
+  <img src="../assets/logo.webp" alt="MarkText for Android のロゴ" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -7,7 +7,7 @@
 <p align="center">
   <sub>
     🌐&nbsp;
-    <a href="README.md">English</a>
+    <a href="../../README.md">English</a>
     &nbsp;·&nbsp; <a href="README.zh-CN.md">简体中文</a>
     &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a>
     &nbsp;·&nbsp; <a href="README.de.md">Deutsch</a>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.webp" alt="Markdown ドキュメントを編集中 — ライトテーマ" width="240">
+  <img src="../screenshots/editor-light.webp" alt="Markdown ドキュメントを編集中 — ライトテーマ" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.webp" alt="同じドキュメントをダークテーマで表示" width="240">
+  <img src="../screenshots/editor-dark.webp" alt="同じドキュメントをダークテーマで表示" width="240">
 </p>
 
 <p align="center">
@@ -76,19 +76,25 @@ MarkText のオープンソースコアである Muya で、モバイル向け�
 <td valign="middle">
 
 - 本物のライブプレビュー（WYSIWYG）編集。
+
 - CommonMark と GitHub Flavored Markdown を完全サポート: 数式（KaTeX）、表、脚注、
   フロントマター、図表、シンタックスハイライト付きコード。
+
 - 長いファイルでも滑らかに動き続けるドキュメントアウトラインとエディター内検索。
+
 - 数式、コードハイライト、フォントをすべて埋め込んだ **PDF** エクスポート。
+
 - **作業内容を決して失いません。** 自動保存、復元用下書き、アトミックな
   書き込みがすべての変更を保持します。
+
 - **デフォルトでプライベート。** アカウント不要、クラウドなし、テレメトリーなし。
   すべては端末の中にとどまります。
+
 - **軽量。** Vue + Capacitor シェルにより、アプリ全体は約 7.8 MB — 小さく軽く、
   それでいてフル機能です。
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="入力しながら表・コード・数式がライブでレンダリングされる様子" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/editor-rich.webp" alt="入力しながら表・コード・数式がライブでレンダリングされる様子" width="200"></td>
 </tr>
 </table>
 
@@ -96,7 +102,7 @@ MarkText のオープンソースコアである Muya で、モバイル向け�
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="編集中に表示された下部固定の書式ツールバーと、カスタマイズした選択（貼り付け）バー" width="200"></td>
+<td width="220" valign="middle"><img src="../screenshots/makeityours.webp" alt="編集中に表示された下部固定の書式ツールバーと、カスタマイズした選択（貼り付け）バー" width="200"></td>
 <td valign="middle">
 
 - **ツールバーを自作できます。** 下部のクイックバーはコマンド一覧から組み立て、
@@ -104,7 +110,7 @@ MarkText のオープンソースコアである Muya で、モバイル向け�
 
 <br>
 
-- **テーマと外観。** ライト、ダーク、カスタムテーマ。文字とレイアウトも調整
+- **テーマと外観。** ライト、ダークに加えて 30 種類以上のカスタムテーマ。文字とレイアウトも調整
   できます。
 
 <br>
@@ -125,7 +131,7 @@ MarkText のオープンソースコアである Muya で、モバイル向け�
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="中国語インターフェイスで中国語ドキュメントを表示するエディター" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/cjk.webp" alt="中国語インターフェイスで中国語ドキュメントを表示するエディター" width="200"></td>
 <td valign="middle">
 
 - **ファイルは元の場所のまま。** システムピッカーを通じて任意のストレージ
@@ -180,7 +186,7 @@ pnpm android:open     # Android Studio で開き、端末またはエミュレ�
 ```
 
 その他のスクリプト（`test`、`lint`、`typecheck`、`build`）は `package.json` に
-あります。リリース担当者は [`docs/RELEASING.md`](docs/RELEASING.md) に従って
+あります。リリース担当者は [`docs/RELEASING.md`](../RELEASING.md) に従って
 ください。
 
 > [!TIP]
@@ -196,7 +202,7 @@ Issue と Pull Request を歓迎します。変更は一つひとつ焦点を絞
 
 ## ライセンスと帰属表示
 
-MarkText for Android は [MIT ライセンス](LICENSE)の下で公開されています。
+MarkText for Android は [MIT ライセンス](../../LICENSE)の下で公開されています。
 
 本アプリは MarkText のオープンソースの成果の上に構築された**非公式**の移植版で
 あり、MarkText プロジェクトとの提携やその承認はありません:
@@ -205,7 +211,7 @@ MarkText for Android は [MIT ライセンス](LICENSE)の下で公開されて�
   Copyright © Luo Ran および MarkText コントリビューター、MIT ライセンス。
 - **Muya**（`@muyajs/core`）— エディターコア。元の MIT ライセンスを保持したまま
   `third_party/muya` に取り込み、改変しています
-  （[`third_party/muya/LICENSE`](third_party/muya/LICENSE)）。
+  （[`third_party/muya/LICENSE`](../../third_party/muya/LICENSE)）。
 
 ## 謝辞
 
