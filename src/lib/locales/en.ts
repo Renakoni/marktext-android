@@ -147,7 +147,7 @@ export const en = {
     'MarkText could not save this file. Save a copy or keep a recovery draft before leaving.',
   'editor.incomingOpen.title': 'Discard unsaved changes?',
   'editor.incomingOpen.body':
-    'Opening “{name}” replaces the current document, whose unsaved changes can’t be saved.',
+    'Opening “{name}” replaces the current document; its unsaved changes will be lost.',
   'editor.incomingOpen.keep': 'Keep editing',
   'editor.incomingOpen.discard': 'Discard & open',
 
@@ -333,7 +333,7 @@ export const en = {
   'settings.editing.quickInsert': 'Quick insert',
   'settings.editing.linkPopup': 'Link popup',
   'settings.editing.taskSync': 'Task sync',
-  'settings.editing.sourceMode': 'Source mode',
+  'settings.editing.sourceMode': 'Source code mode',
   'settings.editing.toolbarDisplayMode': 'Display',
   'settings.editing.defaultToolbarPanel': 'Default panel',
   'settings.editing.rememberToolbarPanel': 'Remember last panel',
@@ -360,7 +360,7 @@ export const en = {
   'settings.markdown.plantumlServer': 'PlantUML server',
 
   'settings.documents.localDrafts': 'Local drafts',
-  'settings.documents.recovery': 'Save failed drafts',
+  'settings.documents.recovery': 'Recovery drafts',
   'settings.documents.autosave': 'Autosave',
   'settings.documents.saveDelay': 'Save delay',
   'settings.documents.restoreSession': 'Restore session',
@@ -616,7 +616,7 @@ export const en = {
   'about.update.available': 'Update available: v{version}',
   'about.update.current': 'You are on the latest version',
   'about.update.noReleases': 'No published releases yet',
-  'about.update.badRelease': 'Latest release did not include a version',
+  'about.update.badRelease': 'Latest release did not include a version number',
   'about.update.unavailable': 'Could not reach GitHub releases',
   'about.update.openRelease': 'Open GitHub release',
 }
