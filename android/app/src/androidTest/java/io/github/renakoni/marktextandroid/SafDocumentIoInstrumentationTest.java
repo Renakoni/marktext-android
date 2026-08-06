@@ -2,12 +2,16 @@ package io.github.renakoni.marktextandroid;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import org.junit.Before;
@@ -43,6 +47,16 @@ public final class SafDocumentIoInstrumentationTest {
         return uri;
     }
 
+    private void assertDoesNotExist(Uri uri) {
+        try (InputStream ignored = resolver.openInputStream(uri)) {
+            fail("expected " + uri + " to not exist before the fresh-create write");
+        } catch (FileNotFoundException expected) {
+            // good — the document is absent
+        } catch (IOException other) {
+            throw new AssertionError("unexpected error probing " + uri, other);
+        }
+    }
+
     @Test
     public void readsExistingDocumentThroughRealResolver() throws Exception {
         Uri uri = seedDocument("read.md", "# Existing\n\nReal resolver read.");
@@ -70,11 +84,15 @@ public final class SafDocumentIoInstrumentationTest {
 
     @Test
     public void writesFreshlyCreatedDocument() throws Exception {
-        // No seed: the write path itself creates the document, as it does for a
-        // freshly created SAF file (protectExisting=false, no backup).
-        Uri uri = TestDocumentProvider.uriFor("fresh.md");
-        byte[] body = "# Fresh\n\nNo backup path.".getBytes(StandardCharsets.UTF_8);
+        // A unique name plus an explicit delete guarantees the document is absent
+        // before the write, so this genuinely exercises the create path
+        // (protectExisting=false, no backup) rather than an overwrite — even when
+        // the same emulator runs the suite more than once.
+        Uri uri = TestDocumentProvider.uriFor("fresh-" + System.nanoTime() + ".md");
+        resolver.delete(uri, null, null);
+        assertDoesNotExist(uri);
 
+        byte[] body = "# Fresh\n\nNo backup path.".getBytes(StandardCharsets.UTF_8);
         ContentResolverDocumentIo io =
             new ContentResolverDocumentIo(resolver, uri, MarkdownCodec.MAX_MARKDOWN_BYTES);
         SafeDocumentWriter.write(io, body, false);

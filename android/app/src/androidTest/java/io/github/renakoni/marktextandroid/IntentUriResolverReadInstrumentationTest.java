@@ -15,13 +15,22 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Instrumentation smoke that ties a real incoming intent to a real document
- * read: the JVM IncomingIntentParserTest proves classification against synthetic
- * intents, but only here does a content URI carried by an ACTION_VIEW /
- * ACTION_SEND intent get read back through the actual ContentResolver.
+ * Instrumentation smoke for the seam between intent parsing and real document
+ * I/O — deliberately NOT an end-to-end incoming-intent test. It constructs an
+ * {@code ACTION_VIEW} / {@code ACTION_SEND} {@link Intent} directly, classifies
+ * it with {@link IncomingIntentParser}, and reads the resulting content URI back
+ * through the actual ContentResolver.
+ *
+ * <p>It does NOT launch {@code MainActivity}, pass through the manifest intent
+ * filters, or exercise {@code AndroidDocumentsPlugin.handleIncomingIntent} / the
+ * plugin's JS event path — so a broken filter, missing {@code onNewIntent}, or a
+ * dropped URI grant would NOT be caught here. That dispatch chain is covered by
+ * the on-device share-intent verification recorded on #158. What this adds over
+ * the JVM {@code IncomingIntentParserTest} is that the parsed URI points at
+ * content the real resolver can actually read.
  */
 @RunWith(AndroidJUnit4.class)
-public final class IncomingIntentContentUriInstrumentationTest {
+public final class IntentUriResolverReadInstrumentationTest {
 
     private ContentResolver resolver;
 

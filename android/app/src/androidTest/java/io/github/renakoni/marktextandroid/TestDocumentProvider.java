@@ -66,7 +66,7 @@ public final class TestDocumentProvider extends ContentProvider {
 
     @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
-        return 0;
+        return fileFor(uri).delete() ? 1 : 0;
     }
 
     @Override
