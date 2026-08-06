@@ -24,6 +24,14 @@ final class MarkdownCodec {
     // falls back to the user-selected default and its explicit failure.
     private static final int DETECTION_CONFIDENCE_THRESHOLD = 50;
 
+    // When the user-selected default encoding itself strictly round-trips the
+    // bytes, it is a viable reading and overriding it needs strong evidence.
+    // The bar sits between two ICU landmarks: a lone UTF-8 multi-byte
+    // sequence (a "©" that is equally plausible cp1252 "Â©") scores 80, while
+    // real UTF-8/UTF-16/UTF-32 documents score 100. Below the bar the user's
+    // explicit choice wins.
+    private static final int VIABLE_DEFAULT_OVERRIDE_CONFIDENCE = 85;
+
     private static final byte[] UTF8_BOM = new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
     private static final byte[] UTF16BE_BOM = new byte[] { (byte) 0xFE, (byte) 0xFF };
     private static final byte[] UTF16LE_BOM = new byte[] { (byte) 0xFF, (byte) 0xFE };
@@ -85,13 +93,19 @@ final class MarkdownCodec {
     }
 
     /**
-     * Decodes Markdown bytes. For bytes without a BOM and auto-detect on, a
-     * guess is accepted only when it is provable: strict UTF-8
-     * self-validation first, then the sniffer's top candidate — and only when
-     * that candidate maps into the supported encoding set, reaches the
-     * confidence threshold, and survives a full decode/re-encode byte round
-     * trip. Anything less confident falls back to the user-selected default
-     * encoding and its explicit failure, exactly as before.
+     * Decodes Markdown bytes. For bytes without a BOM and auto-detect on, the
+     * sniffer's top candidate is accepted only when it maps into the
+     * supported encoding set, clears the confidence bar, and survives a full
+     * decode/re-encode byte round trip. The bar depends on the user's
+     * default: {@link #DETECTION_CONFIDENCE_THRESHOLD} when the default
+     * cannot round-trip the bytes, {@link #VIABLE_DEFAULT_OVERRIDE_CONFIDENCE}
+     * when it can — byte reversibility alone never proves character
+     * semantics, so a viable explicit default is only overridden on strong
+     * statistical evidence. Anything less confident falls back to the
+     * default; if the bytes contain NUL and the default is not a UTF-16/32
+     * family encoding, that fallback fails explicitly instead of silently
+     * embedding NULs (the signature of BOM-less UTF-16/32 read as an
+     * ASCII-compatible charset).
      */
     static DecodedMarkdown decode(
         byte[] bytes,
@@ -101,9 +115,15 @@ final class MarkdownCodec {
     ) throws DocumentReadException {
         Bom bom = detectBom(bytes, defaultEncoding);
         if (!bom.hasBom && autoDetectEncoding) {
-            String detected = detectEncodingWithoutBom(bytes, sniffer);
+            String detected = detectEncodingWithoutBom(bytes, defaultEncoding, sniffer);
             if (detected != null) {
                 return new DecodedMarkdown(strictDecode(bytes, 0, detected), detected, false);
+            }
+            if (containsNul(bytes) && !isNulTolerantEncoding(normalizeEncoding(defaultEncoding))) {
+                throw new DocumentReadException(
+                    "DOCUMENT_ENCODING_FAILED",
+                    "Could not decode Markdown with the selected encoding"
+                );
             }
         }
         boolean useBom = bom.hasBom && (
@@ -136,16 +156,17 @@ final class MarkdownCodec {
         }
     }
 
-    private static String detectEncodingWithoutBom(byte[] bytes, CharsetSniffer sniffer) {
+    private static String detectEncodingWithoutBom(
+        byte[] bytes,
+        String defaultEncoding,
+        CharsetSniffer sniffer
+    ) {
         if (bytes.length == 0 || isAscii(bytes)) {
-            // ASCII bytes decode identically under every ASCII-compatible
-            // encoding, so the user-selected default stays authoritative.
+            // NUL-free ASCII bytes decode identically under every
+            // ASCII-compatible encoding, so the user-selected default stays
+            // authoritative. NUL is deliberately NOT ASCII here: it is the
+            // signature of BOM-less UTF-16/32 and must reach the sniffer.
             return null;
-        }
-        if (roundTrips(bytes, "utf8")) {
-            // Multi-byte UTF-8 is self-validating; a strict decode of
-            // non-ASCII input is decisive without statistics.
-            return "utf8";
         }
         if (sniffer == null) {
             return null;
@@ -163,7 +184,10 @@ final class MarkdownCodec {
         // because a stronger one is unsupported would trade the fail-closed
         // contract for a statistically worse guess.
         CharsetSniffer.Guess top = guesses.get(0);
-        if (top.confidence < DETECTION_CONFIDENCE_THRESHOLD) {
+        int requiredConfidence = roundTrips(bytes, normalizeEncoding(defaultEncoding))
+            ? VIABLE_DEFAULT_OVERRIDE_CONFIDENCE
+            : DETECTION_CONFIDENCE_THRESHOLD;
+        if (top.confidence < requiredConfidence) {
             return null;
         }
         String encoding = supportedEncodingForCharsetName(top.charsetName);
@@ -175,11 +199,33 @@ final class MarkdownCodec {
 
     private static boolean isAscii(byte[] bytes) {
         for (byte value : bytes) {
-            if (value < 0) {
+            // Positive means 0x01-0x7F: negative is a high byte, zero is NUL.
+            if (value <= 0) {
                 return false;
             }
         }
         return true;
+    }
+
+    private static boolean containsNul(byte[] bytes) {
+        for (byte value : bytes) {
+            if (value == 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isNulTolerantEncoding(String encoding) {
+        switch (encoding) {
+            case "utf16be":
+            case "utf16le":
+            case "utf32be":
+            case "utf32le":
+                return true;
+            default:
+                return false;
+        }
     }
 
     private static boolean roundTrips(byte[] bytes, String encoding) {

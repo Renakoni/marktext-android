@@ -5,7 +5,9 @@ import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ComponentName;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.UriPermission;
 import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
@@ -49,6 +51,13 @@ public class AndroidDocumentsPlugin extends Plugin {
     private static final String EVENT_OPEN_WITH_DOCUMENT = "openWithDocument";
     private static final String EVENT_SHARE_DOCUMENT = "shareDocument";
     private static final String IMPORTED_IMAGE_DIRECTORY = "images";
+    // Native mirror of the web-layer encoding settings. Cold-start intents
+    // (ACTION_VIEW / ACTION_SEND) are read in load(), before the WebView has
+    // booted and pushed settings through configureMarkdownSettings — without
+    // the mirror those first reads would silently use the built-in defaults.
+    private static final String MARKDOWN_SETTINGS_PREFS = "markdown_settings";
+    private static final String PREF_DEFAULT_ENCODING = "defaultEncoding";
+    private static final String PREF_AUTO_DETECT_ENCODING = "autoDetectEncoding";
     private String lastHandledIncomingIntentId = "";
     private String defaultMarkdownEncoding = "utf8";
     private boolean autoDetectMarkdownEncoding = true;
@@ -57,6 +66,7 @@ public class AndroidDocumentsPlugin extends Plugin {
     @Override
     public void load() {
         super.load();
+        restorePersistedMarkdownSettings();
         Activity activity = getActivity();
         if (activity != null) {
             handleIncomingIntent(activity.getIntent());
@@ -1217,8 +1227,32 @@ public class AndroidDocumentsPlugin extends Plugin {
     }
 
     private void applyMarkdownSettingsFromCall(PluginCall call) {
-        defaultMarkdownEncoding = MarkdownCodec.normalizeEncoding(call.getString("defaultEncoding", defaultMarkdownEncoding));
-        autoDetectMarkdownEncoding = call.getBoolean("autoDetectEncoding", autoDetectMarkdownEncoding);
+        String nextEncoding = MarkdownCodec.normalizeEncoding(call.getString("defaultEncoding", defaultMarkdownEncoding));
+        boolean nextAutoDetect = call.getBoolean("autoDetectEncoding", autoDetectMarkdownEncoding);
+        boolean changed = !nextEncoding.equals(defaultMarkdownEncoding)
+            || nextAutoDetect != autoDetectMarkdownEncoding;
+        defaultMarkdownEncoding = nextEncoding;
+        autoDetectMarkdownEncoding = nextAutoDetect;
+        if (changed) {
+            persistMarkdownSettings();
+        }
+    }
+
+    private void restorePersistedMarkdownSettings() {
+        SharedPreferences prefs = getContext()
+            .getSharedPreferences(MARKDOWN_SETTINGS_PREFS, Context.MODE_PRIVATE);
+        defaultMarkdownEncoding = MarkdownCodec.normalizeEncoding(
+            prefs.getString(PREF_DEFAULT_ENCODING, defaultMarkdownEncoding));
+        autoDetectMarkdownEncoding = prefs.getBoolean(PREF_AUTO_DETECT_ENCODING, autoDetectMarkdownEncoding);
+    }
+
+    private void persistMarkdownSettings() {
+        getContext()
+            .getSharedPreferences(MARKDOWN_SETTINGS_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(PREF_DEFAULT_ENCODING, defaultMarkdownEncoding)
+            .putBoolean(PREF_AUTO_DETECT_ENCODING, autoDetectMarkdownEncoding)
+            .apply();
     }
 
     private MarkdownWriteOptions getMarkdownWriteOptions(PluginCall call) {
