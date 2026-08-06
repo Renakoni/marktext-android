@@ -199,7 +199,7 @@ test('switches between document home and the settings about screen', async ({ pa
     'aria-checked',
     'true',
   )
-  await expect(page.getByTestId('settings-documents-recovery')).toContainText('Save failed drafts')
+  await expect(page.getByTestId('settings-documents-recovery')).toContainText('Recovery drafts')
   await expect(page.getByTestId('settings-documents-startup-action')).toContainText('Home')
   await expect(page.getByTestId('settings-documents-sort-by')).toContainText('Modified')
   await expect(page.getByTestId('settings-documents-sort-order')).toContainText('Desc')
