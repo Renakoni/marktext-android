@@ -126,10 +126,18 @@ declare module '@muyajs/core' {
       anchor: { line: number; ch: number } | null
       focus: { line: number; ch: number } | null
     } | null
-    setCursorByOffset(cursor: {
-      anchor: { line: number; ch: number }
-      focus: { line: number; ch: number }
-    }): boolean
+    setCursorByOffset(
+      cursor: {
+        anchor: { line: number; ch: number }
+        focus: { line: number; ch: number }
+      },
+      /**
+       * The serialization the cursor coordinates are expressed against,
+       * when it differs from getMarkdown() — the source-mode exit passes
+       * the raw textarea text so the caret survives canonicalization.
+       */
+      sourceMarkdown?: string,
+    ): boolean
     format(type: string): void
     updateParagraph(type: string): void
     createTable(

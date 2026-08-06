@@ -159,6 +159,53 @@ describe('source-mode hand-off composition (#180)', () => {
         expect(muya.getSelection()).toBeNull();
     });
 
+    it('maps the exit caret through the RAW source text, not the canonical serialization', async () => {
+        // Review repro (#182 round 1): the textarea caret's {line, ch} is
+        // expressed against the RAW text the user typed, but the document
+        // after replaceContent is the CANONICAL serialization — table
+        // columns padded, so the same {line, ch} points at a different
+        // character. setCursorByOffset must inject its sentinels into the
+        // RAW text (both serializations parse to the same state, so the
+        // located block + offset are valid in the canonical tree).
+        const raw = 'alpha\n\n| a | b |\n| - | - |\n| c | d |\n';
+        const muya = bootMuya('alpha\n');
+        await vi.waitFor(() => expect(muya.getMarkdown().trim()).toBe('alpha'));
+
+        placeCursor(muya, 'first', 0, 0);
+        expect(muya.replaceContent(raw, muya.getSelection())).toBe(true);
+        const canonical = muya.getMarkdown();
+        // Discriminating premise: canonicalization really changed the text.
+        expect(canonical).not.toBe(raw);
+        const canonicalLines = canonical.split('\n');
+
+        // Caret right AFTER the 'd' cell text, in RAW coordinates.
+        const rawLines = raw.split('\n');
+        const cursor = {
+            anchor: { line: 4, ch: rawLines[4].indexOf('d') + 1 },
+            focus: { line: 4, ch: rawLines[4].indexOf('d') + 1 },
+        };
+
+        // Fixed path: raw-text injection lands the caret after 'd' in the
+        // canonical document.
+        expect(muya.setCursorByOffset(cursor, raw)).toBe(true);
+        const mapped = muya.getCursorOffset();
+        expect(mapped?.focus).toBeTruthy();
+        expect(
+            canonicalLines[mapped!.focus!.line].slice(0, mapped!.focus!.ch).endsWith('d'),
+        ).toBe(true);
+
+        // Built-in counterfactual: WITHOUT the source text (the old
+        // behavior), the same raw coordinates resolve against the padded
+        // canonical line and either fail or land away from 'd'. This pins
+        // the parameter's discriminating power forever.
+        const staleResolved = muya.setCursorByOffset(cursor);
+        const stale = staleResolved ? muya.getCursorOffset() : null;
+        expect(
+            stale?.focus == null
+            || !canonicalLines[stale.focus.line].slice(0, stale.focus.ch).endsWith('d'),
+        ).toBe(true);
+    });
+
     it('round-trips structure-heavy documents to their CANONICAL serialization', async () => {
         // The engine re-serializes on exit: what comes back is muya's
         // canonical markdown (table columns padded to width, etc.), exactly

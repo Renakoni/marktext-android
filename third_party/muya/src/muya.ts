@@ -1116,14 +1116,25 @@ export class Muya {
      * stack is preserved, leaving only the caret changed. No-op (returns
      * `false`) when the cursor is stale / unresolvable, letting the caller fall
      * back to its default.
+     *
+     * `sourceMarkdown` is for callers whose `{ line, ch }` positions are
+     * expressed against a DIFFERENT serialization of the same document than
+     * `getMarkdown()` — the mobile source-mode exit, where the offsets come
+     * from the user's raw textarea text while the editor already holds the
+     * CANONICAL re-serialization (table columns padded, etc.). The sentinels
+     * are injected into that source text so they land at the position the
+     * user actually saw; the located block paths and content offsets are
+     * then valid in the canonical tree too, because both serializations
+     * parse to the same state (canonicalization is serializer-side only).
+     * The clean rebuild always uses the editor's own markdown.
      */
-    setCursorByOffset(indexCursor: IIndexCursor): boolean {
+    setCursorByOffset(indexCursor: IIndexCursor, sourceMarkdown?: string): boolean {
         const { scrollPage } = this.editor;
         if (!scrollPage)
             return false;
 
         const cleanMarkdown = this.getMarkdown();
-        const sentinelMarkdown = injectSentinels(cleanMarkdown, indexCursor);
+        const sentinelMarkdown = injectSentinels(sourceMarkdown ?? cleanMarkdown, indexCursor);
         if (sentinelMarkdown == null)
             return false;
 

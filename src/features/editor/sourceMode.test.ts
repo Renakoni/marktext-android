@@ -62,8 +62,8 @@ function createFakeEditor(options: FakeEditorOptions = {}) {
       }
       return changed
     },
-    setCursorByOffset: cursor => {
-      calls.setCursorByOffset.push(cursor)
+    setCursorByOffset: (cursor, sourceMarkdown) => {
+      calls.setCursorByOffset.push({ cursor, sourceMarkdown })
       return options.setCursorResult ?? true
     },
   }
@@ -140,8 +140,13 @@ describe('source mode controller', () => {
     expect(fake.calls.replaceContent).toEqual([
       { content: 'edited body\n', recordSelection: { marker: 'entry' } },
     ])
+    // The RAW textarea text rides along so the engine maps the caret
+    // through what the user saw, not the canonical re-serialization.
     expect(fake.calls.setCursorByOffset).toEqual([
-      { anchor: { line: 0, ch: 6 }, focus: { line: 0, ch: 6 } },
+      {
+        cursor: { anchor: { line: 0, ch: 6 }, focus: { line: 0, ch: 6 } },
+        sourceMarkdown: 'edited body\n',
+      },
     ])
     // The hand-back changed the document: the canonical serialization must
     // flow through the same pipeline as WYSIWYG edits.
@@ -158,7 +163,10 @@ describe('source mode controller', () => {
     controller.exit(null)
 
     expect(fake.calls.setCursorByOffset).toEqual([
-      { anchor: { line: 0, ch: 3 }, focus: { line: 0, ch: 5 } },
+      {
+        cursor: { anchor: { line: 0, ch: 3 }, focus: { line: 0, ch: 5 } },
+        sourceMarkdown: 'changed\n',
+      },
     ])
   })
 

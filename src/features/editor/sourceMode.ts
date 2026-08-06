@@ -36,10 +36,13 @@ export interface SourceModeEditor {
   getSelection(): unknown
   getCursorOffset(): SourceIndexCursor | null
   replaceContent(content: string, recordSelection?: unknown): boolean
-  setCursorByOffset(cursor: {
-    anchor: SourceIndexPosition
-    focus: SourceIndexPosition
-  }): boolean
+  setCursorByOffset(
+    cursor: {
+      anchor: SourceIndexPosition
+      focus: SourceIndexPosition
+    },
+    sourceMarkdown?: string,
+  ): boolean
 }
 
 export interface SourceCaretRange {
@@ -180,10 +183,18 @@ export function createSourceModeController(
     const changed = editor.replaceContent(nextText, entrySelection ?? null)
 
     if (changed && exitCaret) {
-      const restored = editor.setCursorByOffset({
-        anchor: offsetToIndexPosition(nextText, exitCaret.start),
-        focus: offsetToIndexPosition(nextText, exitCaret.end),
-      })
+      // The caret coordinates are expressed against the RAW textarea text,
+      // but the document is now the CANONICAL re-serialization — hand the
+      // raw text along so the engine injects its position sentinels into
+      // what the user actually saw (audited: both parse to the same state,
+      // so the located block + offset are valid in the canonical tree).
+      const restored = editor.setCursorByOffset(
+        {
+          anchor: offsetToIndexPosition(nextText, exitCaret.start),
+          focus: offsetToIndexPosition(nextText, exitCaret.end),
+        },
+        nextText,
+      )
       if (!restored) {
         options.logger.warn('source mode exit caret unresolved', exitCaret)
       }
