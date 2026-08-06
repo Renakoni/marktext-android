@@ -188,6 +188,10 @@ export function createSourceModeController(
       // raw text along so the engine injects its position sentinels into
       // what the user actually saw (audited: both parse to the same state,
       // so the located block + offset are valid in the canonical tree).
+      // The engine's own contract already snaps a syntax-boundary caret to
+      // the nearest editable position at or before it; if even that fails,
+      // the DETERMINISTIC fallback is the document start — never a silent
+      // caret loss.
       const restored = editor.setCursorByOffset(
         {
           anchor: offsetToIndexPosition(nextText, exitCaret.start),
@@ -196,7 +200,17 @@ export function createSourceModeController(
         nextText,
       )
       if (!restored) {
-        options.logger.warn('source mode exit caret unresolved', exitCaret)
+        const snappedToStart = editor.setCursorByOffset(
+          {
+            anchor: { line: 0, ch: 0 },
+            focus: { line: 0, ch: 0 },
+          },
+          nextText,
+        )
+        options.logger.warn('source mode exit caret snapped to document start', {
+          exitCaret,
+          snappedToStart,
+        })
       }
     }
 

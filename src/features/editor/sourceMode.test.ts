@@ -170,6 +170,27 @@ describe('source mode controller', () => {
     ])
   })
 
+  it('snaps to the document start when even the engine ladder cannot resolve', () => {
+    // Deterministic fallback, never a silent caret loss: if the engine
+    // reports the exit caret unresolvable (its own backstep ladder
+    // exhausted), the controller pins the caret to the document start.
+    const fake = createFakeEditor({
+      cursorOffset: { line: 0, ch: 0 },
+      setCursorResult: false,
+    })
+    const { controller } = createController(fake)
+    controller.enter()
+    controller.updateText('| a |\n| - |\n| b |\n', { start: 18, end: 18 })
+
+    controller.exit({ start: 18, end: 18 })
+
+    expect(fake.calls.setCursorByOffset).toHaveLength(2)
+    expect(fake.calls.setCursorByOffset[1]).toEqual({
+      cursor: { anchor: { line: 0, ch: 0 }, focus: { line: 0, ch: 0 } },
+      sourceMarkdown: '| a |\n| - |\n| b |\n',
+    })
+  })
+
   it('skips the caret restore and the edit pipeline when nothing changed', () => {
     const fake = createFakeEditor({ cursorOffset: { line: 0, ch: 0 } })
     const { controller, onDocumentEdited } = createController(fake)

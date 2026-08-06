@@ -206,6 +206,54 @@ describe('source-mode hand-off composition (#180)', () => {
         ).toBe(true);
     });
 
+    it('snaps a caret parked on a table syntax boundary to the nearest editable position', async () => {
+        // Review repro (#182 round 2): End on a table row parks the caret
+        // AFTER the closing pipe — a sentinel injected exactly there breaks
+        // the row's syntax, the sentinel tree degrades, and the caret was
+        // lost with only a warning. The engine now walks the position
+        // backward (each candidate validated by the parse itself) until one
+        // resolves: the caret restores to the nearest editable position at
+        // or before the one requested.
+        const raw = 'alpha\n\n| a | longer |\n| - | - |\n| c | d |\n';
+        const muya = bootMuya('alpha\n');
+        await vi.waitFor(() => expect(muya.getMarkdown().trim()).toBe('alpha'));
+
+        placeCursor(muya, 'first', 0, 0);
+        expect(muya.replaceContent(raw, muya.getSelection())).toBe(true);
+        const canonicalLines = muya.getMarkdown().split('\n');
+
+        // Caret at the very END of the last row (after the closing pipe).
+        const rawLines = raw.split('\n');
+        const rowEnd = {
+            anchor: { line: 4, ch: rawLines[4].length },
+            focus: { line: 4, ch: rawLines[4].length },
+        };
+        expect(muya.setCursorByOffset(rowEnd, raw)).toBe(true);
+        const snapped = muya.getCursorOffset();
+        // The nearest editable position before the closing pipe is inside
+        // the LAST cell — same canonical row, at or after the 'd' text.
+        expect(snapped?.focus?.line).toBe(4);
+        expect(
+            canonicalLines[4].slice(0, snapped!.focus!.ch).includes('d'),
+        ).toBe(true);
+
+        // A caret inside the DELIMITER row (pure syntax, no editable text
+        // on the whole line) walks back across the line boundary and still
+        // RESOLVES instead of losing the caret. The read-back interface
+        // (getCursorOffset) may return null for some landing blocks — its
+        // own documented nullability — so the pinned contract here is the
+        // restore succeeding, with the read-back asserted only when
+        // available.
+        const delimiterMiddle = {
+            anchor: { line: 3, ch: 4 },
+            focus: { line: 3, ch: 4 },
+        };
+        expect(muya.setCursorByOffset(delimiterMiddle, raw)).toBe(true);
+        const delimiterSnapped = muya.getCursorOffset();
+        if (delimiterSnapped?.focus)
+            expect(delimiterSnapped.focus.line).toBeLessThanOrEqual(3);
+    });
+
     it('round-trips structure-heavy documents to their CANONICAL serialization', async () => {
         // The engine re-serializes on exit: what comes back is muya's
         // canonical markdown (table columns padded to width, etc.), exactly
