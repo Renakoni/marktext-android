@@ -168,12 +168,15 @@ code.mu-inline-rule {
    behavior) instead of MarkText's default visual line break. `.mu-content` is
    pre-wrap, so overriding the soft-break span's own white-space is what makes
    its bare `\n` collapse; the DOM text and cursor offsets are untouched. The
-   trailing variant also drops its forced block so it no longer breaks the line. */
+   trailing variant also drops its forced block so it no longer breaks the line.
+   Both rules must stay scoped to `.mu-soft-line-break`: `.mu-line-end` alone is
+   also emitted for trailing hard breaks (hardLineBreak renderer) and trailing
+   code-block newlines (highlightHTML), which this preference must not touch. */
 .mu-soft-break-as-space .mu-soft-line-break {
     white-space: normal;
 }
 
-.mu-soft-break-as-space .mu-line-end {
+.mu-soft-break-as-space .mu-soft-line-break.mu-line-end {
     display: inline;
 }
 
