@@ -12,6 +12,7 @@ defineProps<{
   exportingPdf: boolean
   savingToDevice: boolean
   savingCopy: boolean
+  sourceModeActive: boolean
 }>()
 
 const emit = defineEmits<{
@@ -20,6 +21,7 @@ const emit = defineEmits<{
   'export-pdf': []
   'save-to-device': []
   'save-copy': []
+  'toggle-source-mode': []
 }>()
 
 const { t } = useI18n()
@@ -46,6 +48,24 @@ const { onModalKeydown } = useModalFocus({
       <div class="editor-action-grabber" aria-hidden="true" />
       <h2 class="editor-action-title">{{ t('editor.actions.document') }}</h2>
       <div class="editor-action-list" role="menu">
+        <button
+          class="editor-action-row"
+          type="button"
+          role="menuitemcheckbox"
+          :aria-checked="sourceModeActive"
+          data-testid="source-mode-toggle-button"
+          @click="emit('toggle-source-mode')"
+        >
+          <span class="editor-action-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M9 6l-5 6 5 6" />
+              <path d="M15 6l5 6-5 6" />
+            </svg>
+          </span>
+          <span class="editor-action-label">
+            {{ sourceModeActive ? t('editor.actions.exitSourceMode') : t('editor.actions.sourceMode') }}
+          </span>
+        </button>
         <button
           v-if="canShare"
           class="editor-action-row"

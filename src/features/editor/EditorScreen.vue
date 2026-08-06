@@ -84,6 +84,11 @@ const props = defineProps<{
   outlineItems: OutlineItem[]
   resumeCardVisible: boolean
   resumeCardText: string
+  sourceModeActive: boolean
+  sourceText: string
+  sourceEntryCaret: number
+  /** False for setting-driven auto-entry: opening a document must not pop the keyboard. */
+  sourceFocusOnEnter: boolean
 }>()
 
 const emit = defineEmits<{
@@ -134,6 +139,8 @@ const emit = defineEmits<{
   'keep-incoming': []
   'discard-incoming': []
   'editor-host-change': [element: HTMLElement | null]
+  'toggle-source-mode': [caret: { start: number, end: number } | null]
+  'update:source-text': [value: string, caret: { start: number, end: number } | null]
 }>()
 
 const editorHost = ref<HTMLElement | null>(null)
@@ -142,6 +149,55 @@ const editorHost = ref<HTMLElement | null>(null)
 // is the stable containment root for selection checks.
 const editorShell = ref<HTMLElement | null>(null)
 const { t } = useI18n()
+
+// Source code mode: the raw-Markdown textarea replacing the WYSIWYG surface.
+const sourceTextarea = ref<HTMLTextAreaElement | null>(null)
+
+function readSourceCaret(): { start: number, end: number } | null {
+  const area = sourceTextarea.value
+  if (!area) {
+    return null
+  }
+  return { start: area.selectionStart, end: area.selectionEnd }
+}
+
+function onSourceInput(event: Event) {
+  const area = event.target as HTMLTextAreaElement
+  emit('update:source-text', area.value, {
+    start: area.selectionStart,
+    end: area.selectionEnd,
+  })
+}
+
+function onToggleSourceMode() {
+  // Entering: no textarea caret exists yet. Exiting: hand the current one up.
+  emit('toggle-source-mode', props.sourceModeActive ? readSourceCaret() : null)
+}
+
+watch(
+  () => props.sourceModeActive,
+  active => {
+    if (!active) {
+      return
+    }
+    void nextTick(() => {
+      const area = sourceTextarea.value
+      if (!area) {
+        return
+      }
+      if (props.sourceFocusOnEnter) {
+        area.focus()
+      }
+      const offset = Math.min(props.sourceEntryCaret, area.value.length)
+      area.setSelectionRange(offset, offset)
+      // Bring the caret's line roughly into the upper third of the view —
+      // textareas do not scroll to a programmatic selection on their own.
+      const lineIndex = area.value.slice(0, offset).split('\n').length - 1
+      const lineHeight = Number.parseFloat(getComputedStyle(area).lineHeight) || 24
+      area.scrollTop = Math.max(0, lineIndex * lineHeight - area.clientHeight / 3)
+    })
+  },
+)
 
 // Any sheet or prompt above the editor takes over the interaction surface,
 // so the floating selection toolbar must stand down while one is open.
@@ -456,6 +512,7 @@ onBeforeUnmount(() => {
       </div>
       <div v-if="editorReady" class="editor-actions">
         <button
+          v-if="!sourceModeActive"
           class="icon-button"
           type="button"
           :aria-label="t('editor.search')"
@@ -469,6 +526,7 @@ onBeforeUnmount(() => {
           </svg>
         </button>
         <button
+          v-if="!sourceModeActive"
           ref="outlineButton"
           class="icon-button"
           type="button"
@@ -511,6 +569,7 @@ onBeforeUnmount(() => {
       :aria-hidden="linkSheetBackgroundAriaHidden"
     >
       <div
+        v-show="!sourceModeActive"
         ref="editorShell"
         class="editor-host-shell"
         :dir="textDirection"
@@ -521,10 +580,28 @@ onBeforeUnmount(() => {
         <div ref="editorHost" class="muya-host" />
       </div>
 
+      <!-- Source code mode: a plain monospace textarea IS the document while
+           active. Native IME/undo behavior for free; no syntax highlighting
+           by design; colors ride the theme variables. -->
+      <textarea
+        v-if="sourceModeActive"
+        ref="sourceTextarea"
+        class="source-mode-editor"
+        :value="sourceText"
+        :dir="textDirection"
+        :aria-label="t('editor.sourceMode.aria')"
+        data-testid="source-mode-editor"
+        autocapitalize="off"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+        @input="onSourceInput"
+      />
+
       <!-- Non-modal offer: never blocks the editor, never scrolls on its own. -->
       <Transition name="resume-card">
         <ResumeCard
-          v-if="resumeCardVisible"
+          v-if="resumeCardVisible && !sourceModeActive"
           :text="resumeCardText"
           @activate="emit('resume-activate')"
           @dismiss="emit('resume-dismiss')"
@@ -541,6 +618,7 @@ onBeforeUnmount(() => {
     </section>
 
     <MobileSelectionToolbar
+      v-if="!sourceModeActive"
       :aria-hidden="linkSheetBackgroundAriaHidden"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
@@ -559,6 +637,7 @@ onBeforeUnmount(() => {
     />
 
     <LinkActionOverlay
+      v-if="!sourceModeActive"
       :aria-hidden="linkSheetBackgroundAriaHidden"
       :editor-ready="editorReady"
       :suspended="selectionToolbarSuspended"
@@ -569,7 +648,7 @@ onBeforeUnmount(() => {
     />
 
     <MobileEditorToolbar
-      v-if="toolbarVisible && !editorFailed"
+      v-if="toolbarVisible && !editorFailed && !sourceModeActive"
       :aria-hidden="linkSheetBackgroundAriaHidden"
       :expanded="toolbarExpanded"
       :active-panel="toolbarPanel"
@@ -598,7 +677,9 @@ onBeforeUnmount(() => {
         :exporting-pdf="exportingPdf"
         :saving-to-device="savingToDevice"
         :saving-copy="savingCopy"
+        :source-mode-active="sourceModeActive"
         @close="emit('close-menu')"
+        @toggle-source-mode="onToggleSourceMode"
         @share="emit('share')"
         @export-pdf="emit('export-pdf')"
         @save-to-device="emit('save-to-device')"
