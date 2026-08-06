@@ -490,7 +490,7 @@ export const es = {
   'settings.option.system': 'Sistema',
   'settings.option.light': 'Claro',
   'settings.option.dark': 'Oscuro',
-  'settings.option.custom': 'Personalizado',
+  'settings.option.custom': 'Más',
   'settings.option.off': 'Desactivado',
   'settings.option.ltr': 'LTR',
   'settings.option.rtl': 'RTL',

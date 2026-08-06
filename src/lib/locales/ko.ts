@@ -490,7 +490,7 @@ export const ko = {
   'settings.option.system': '시스템',
   'settings.option.light': '라이트',
   'settings.option.dark': '다크',
-  'settings.option.custom': '사용자 정의',
+  'settings.option.custom': '더보기',
   'settings.option.off': '꺼짐',
   'settings.option.ltr': 'LTR',
   'settings.option.rtl': 'RTL',
