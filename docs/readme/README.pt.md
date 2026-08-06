@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.webp" alt="Logotipo do MarkText for Android" width="96" height="96">
+  <img src="../assets/logo.webp" alt="Logotipo do MarkText for Android" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -7,7 +7,7 @@
 <p align="center">
   <sub>
     🌐&nbsp;
-    <a href="README.md">English</a>
+    <a href="../../README.md">English</a>
     &nbsp;·&nbsp; <a href="README.zh-CN.md">简体中文</a>
     &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a>
     &nbsp;·&nbsp; <a href="README.de.md">Deutsch</a>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.webp" alt="Editando um documento Markdown — tema claro" width="240">
+  <img src="../screenshots/editor-light.webp" alt="Editando um documento Markdown — tema claro" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.webp" alt="O mesmo documento em um tema escuro" width="240">
+  <img src="../screenshots/editor-dark.webp" alt="O mesmo documento em um tema escuro" width="240">
 </p>
 
 <p align="center">
@@ -96,7 +96,7 @@ a mesma fidelidade do desktop, em uma interface feita para uma mão só.
   7,8 MB — pequeno e leve, porém completo em recursos.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="Tabelas, código e matemática renderizados ao vivo enquanto você digita" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/editor-rich.webp" alt="Tabelas, código e matemática renderizados ao vivo enquanto você digita" width="200"></td>
 </tr>
 </table>
 
@@ -104,7 +104,7 @@ a mesma fidelidade do desktop, em uma interface feita para uma mão só.
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="A barra de formatação fixada e uma barra de seleção (colar) personalizada exibidas durante a edição" width="200"></td>
+<td width="220" valign="middle"><img src="../screenshots/makeityours.webp" alt="A barra de formatação fixada e uma barra de seleção (colar) personalizada exibidas durante a edição" width="200"></td>
 <td valign="middle">
 
 - **Monte suas próprias barras de ferramentas.** Componha a barra rápida inferior
@@ -135,7 +135,7 @@ a mesma fidelidade do desktop, em uma interface feita para uma mão só.
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="O editor exibindo um documento em chinês com a interface em chinês" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/cjk.webp" alt="O editor exibindo um documento em chinês com a interface em chinês" width="200"></td>
 <td valign="middle">
 
 - **Seus arquivos ficam onde estão.** Edite `.md` diretamente de qualquer
@@ -189,7 +189,7 @@ pnpm android:open     # abre no Android Studio; depois execute em um dispositivo
 ```
 
 Outros scripts (`test`, `lint`, `typecheck`, `build`) estão no `package.json`.
-Mantenedores de release devem seguir o [`docs/RELEASING.md`](docs/RELEASING.md).
+Mantenedores de release devem seguir o [`docs/RELEASING.md`](../RELEASING.md).
 
 > [!TIP]
 > O núcleo do editor Markdown é uma cópia **modificada** do `@muyajs/core` (Muya),
@@ -204,7 +204,7 @@ testes quando fizer sentido.
 
 ## Licença e atribuição
 
-O MarkText for Android é distribuído sob a [Licença MIT](LICENSE).
+O MarkText for Android é distribuído sob a [Licença MIT](../../LICENSE).
 
 É um port **não oficial**, construído sobre o trabalho de código aberto do
 MarkText e sem afiliação ou endosso do projeto MarkText:
@@ -213,7 +213,7 @@ MarkText e sem afiliação ou endosso do projeto MarkText:
   Luo Ran e os colaboradores do MarkText, sob licença MIT.
 - **Muya** (`@muyajs/core`) — o núcleo do editor, incorporado e modificado em
   `third_party/muya`, com sua licença MIT original mantida
-  ([`third_party/muya/LICENSE`](third_party/muya/LICENSE)).
+  ([`third_party/muya/LICENSE`](../../third_party/muya/LICENSE)).
 
 ## Agradecimentos
 

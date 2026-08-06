@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.webp" alt="MarkText for Android 標誌" width="96" height="96">
+  <img src="../assets/logo.webp" alt="MarkText for Android 標誌" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -7,7 +7,7 @@
 <p align="center">
   <sub>
     🌐&nbsp;
-    <a href="README.md">English</a>
+    <a href="../../README.md">English</a>
     &nbsp;·&nbsp; <a href="README.zh-CN.md">简体中文</a>
     &nbsp;·&nbsp; <b>繁體中文</b>
     &nbsp;·&nbsp; <a href="README.de.md">Deutsch</a>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.webp" alt="以淺色主題編輯 Markdown 文件" width="240">
+  <img src="../screenshots/editor-light.webp" alt="以淺色主題編輯 Markdown 文件" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.webp" alt="同一份文件的深色主題" width="240">
+  <img src="../screenshots/editor-dark.webp" alt="同一份文件的深色主題" width="240">
 </p>
 
 <p align="center">
@@ -90,7 +90,7 @@ MarkText for Android 將 MarkText 的即時預覽 Markdown 編輯體驗帶到手
   功能卻一應俱全。
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="輸入的同時即時算繪表格、程式碼與數學" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/editor-rich.webp" alt="輸入的同時即時算繪表格、程式碼與數學" width="200"></td>
 </tr>
 </table>
 
@@ -98,7 +98,7 @@ MarkText for Android 將 MarkText 的即時預覽 Markdown 編輯體驗帶到手
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="編輯時顯示的停靠格式工具列與自訂的選取（貼上）列" width="200"></td>
+<td width="220" valign="middle"><img src="../screenshots/makeityours.webp" alt="編輯時顯示的停靠格式工具列與自訂的選取（貼上）列" width="200"></td>
 <td valign="middle">
 
 - **打造您自己的工具列**。從指令池中組合底部快速列，並以拖曳重新
@@ -126,7 +126,7 @@ MarkText for Android 將 MarkText 的即時預覽 Markdown 編輯體驗帶到手
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="以中文介面顯示中文文件的編輯器" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/cjk.webp" alt="以中文介面顯示中文文件的編輯器" width="200"></td>
 <td valign="middle">
 
 - **您的檔案留在原地**。透過系統選擇器直接編輯任何儲存空間提供者中的
@@ -177,7 +177,7 @@ pnpm android:open     # 在 Android Studio 中開啟，然後在裝置或模擬�
 ```
 
 其他指令碼（`test`、`lint`、`typecheck`、`build`）列於 `package.json`。
-發行維護者請依循 [`docs/RELEASING.md`](docs/RELEASING.md)。
+發行維護者請依循 [`docs/RELEASING.md`](../RELEASING.md)。
 
 > [!TIP]
 > Markdown 編輯器核心是 `@muyajs/core`（Muya）的一份隨附且**經過修改**的
@@ -191,7 +191,7 @@ pnpm android:open     # 在 Android Studio 中開啟，然後在裝置或模擬�
 
 ## 授權與出處
 
-MarkText for Android 以 [MIT License](LICENSE) 發行。
+MarkText for Android 以 [MIT License](../../LICENSE) 發行。
 
 本專案是**非官方**移植版，建立在 MarkText 的開源成果之上，與 MarkText
 專案沒有隸屬關係，也未獲其背書：
@@ -200,7 +200,7 @@ MarkText for Android 以 [MIT License](LICENSE) 發行。
   Ran 與 MarkText 貢獻者，以 MIT 授權。
 - **Muya**（`@muyajs/core`）——編輯器核心，以隨附且經過修改的形式置於
   `third_party/muya`，並保留其原始 MIT 授權
-  （[`third_party/muya/LICENSE`](third_party/muya/LICENSE)）。
+  （[`third_party/muya/LICENSE`](../../third_party/muya/LICENSE)）。
 
 ## 致謝
 

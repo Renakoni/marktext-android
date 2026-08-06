@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.webp" alt="MarkText for Android logosu" width="96" height="96">
+  <img src="../assets/logo.webp" alt="MarkText for Android logosu" width="96" height="96">
 </p>
 
 <h1 align="center">MarkText for Android</h1>
@@ -7,7 +7,7 @@
 <p align="center">
   <sub>
     🌐&nbsp;
-    <a href="README.md">English</a>
+    <a href="../../README.md">English</a>
     &nbsp;·&nbsp; <a href="README.zh-CN.md">简体中文</a>
     &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a>
     &nbsp;·&nbsp; <a href="README.de.md">Deutsch</a>
@@ -43,9 +43,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-light.webp" alt="Bir Markdown belgesini düzenleme — açık tema" width="240">
+  <img src="../screenshots/editor-light.webp" alt="Bir Markdown belgesini düzenleme — açık tema" width="240">
   &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
-  <img src="docs/screenshots/editor-dark.webp" alt="Aynı belge koyu temada" width="240">
+  <img src="../screenshots/editor-dark.webp" alt="Aynı belge koyu temada" width="240">
 </p>
 
 <p align="center">
@@ -94,7 +94,7 @@ aynı doğrulukla işlenir.
   tutar — küçük ve hafif, yine de tam donanımlı.
 
 </td>
-<td width="220" valign="top"><img src="docs/screenshots/editor-rich.webp" alt="Yazarken canlı işlenen tablolar, kod ve matematik" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/editor-rich.webp" alt="Yazarken canlı işlenen tablolar, kod ve matematik" width="200"></td>
 </tr>
 </table>
 
@@ -102,7 +102,7 @@ aynı doğrulukla işlenir.
 
 <table width="100%">
 <tr>
-<td width="220" valign="middle"><img src="docs/screenshots/makeityours.webp" alt="Düzenleme sırasında görünen sabit biçim araç çubuğu ve özelleştirilmiş bir seçim (yapıştırma) çubuğu" width="200"></td>
+<td width="220" valign="middle"><img src="../screenshots/makeityours.webp" alt="Düzenleme sırasında görünen sabit biçim araç çubuğu ve özelleştirilmiş bir seçim (yapıştırma) çubuğu" width="200"></td>
 <td valign="middle">
 
 - **Kendi araç çubuklarınızı oluşturun.** Alttaki hızlı çubuğu bir komut
@@ -133,7 +133,7 @@ aynı doğrulukla işlenir.
 
 <table width="100%">
 <tr>
-<td width="220" valign="top"><img src="docs/screenshots/cjk.webp" alt="Çince arayüzle Çince bir belgeyi gösteren düzenleyici" width="200"></td>
+<td width="220" valign="top"><img src="../screenshots/cjk.webp" alt="Çince arayüzle Çince bir belgeyi gösteren düzenleyici" width="200"></td>
 <td valign="middle">
 
 - **Dosyalarınız yerinde kalır.** Sistem seçicisi üzerinden herhangi bir
@@ -188,7 +188,7 @@ pnpm android:open     # Android Studio'da açın, sonra bir cihazda veya emülat
 ```
 
 Diğer betikler (`test`, `lint`, `typecheck`, `build`) `package.json` içindedir.
-Sürüm sorumluları [`docs/RELEASING.md`](docs/RELEASING.md) belgesini izlemelidir.
+Sürüm sorumluları [`docs/RELEASING.md`](../RELEASING.md) belgesini izlemelidir.
 
 > [!TIP]
 > Markdown düzenleyici çekirdeği, `third_party/muya` altında tutulan,
@@ -203,7 +203,7 @@ tutun ve mantıklı olan yerlerde test ekleyin.
 
 ## Lisans ve atıf
 
-MarkText for Android, [MIT Lisansı](LICENSE) ile yayımlanır.
+MarkText for Android, [MIT Lisansı](../../LICENSE) ile yayımlanır.
 
 Bu, MarkText'in açık kaynaklı çalışması üzerine kurulu, MarkText projesiyle
 bağlantısı olmayan ve proje tarafından onaylanmamış **resmî olmayan** bir
@@ -212,7 +212,7 @@ porttur:
 - **MarkText** — bu portun izlediği masaüstü düzenleyici ve tasarım. Telif hakkı
   © Luo Ran ve MarkText'e katkıda bulunanlar, MIT lisanslıdır.
 - **Muya** (`@muyajs/core`) — düzenleyici çekirdeği; özgün MIT lisansı korunarak
-  ([`third_party/muya/LICENSE`](third_party/muya/LICENSE)) `third_party/muya`
+  ([`third_party/muya/LICENSE`](../../third_party/muya/LICENSE)) `third_party/muya`
   altında tutulur ve değiştirilmiştir.
 
 ## Teşekkürler
