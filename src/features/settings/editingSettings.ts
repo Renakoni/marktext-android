@@ -5,7 +5,6 @@ export type OrderListDelimiter = '.' | ')'
 export type ListIndentation = 'dfm' | 'tab' | 1 | 2 | 3 | 4
 export type FrontmatterType = '-' | '+' | ';' | '{'
 export type SequenceTheme = 'hand' | 'simple'
-export type PreferHeadingStyle = 'atx' | 'setext'
 export type CodeFontFamily = 'dejavu-sans-mono' | 'system-mono' | 'monospace'
 export type SpellcheckerLanguage = 'en-US' | 'zh-CN' | 'de-DE' | 'fr-FR'
 
@@ -21,7 +20,6 @@ export type EditingSettingKey =
   | 'bulletListMarker'
   | 'orderListDelimiter'
   | 'listIndentation'
-  | 'preferHeadingStyle'
   | 'frontmatterType'
   | 'footnote'
   | 'superSubScript'
@@ -51,7 +49,6 @@ export interface EditingSettings {
   bulletListMarker: BulletListMarker
   orderListDelimiter: OrderListDelimiter
   listIndentation: ListIndentation
-  preferHeadingStyle: PreferHeadingStyle
   frontmatterType: FrontmatterType
   footnote: boolean
   superSubScript: boolean
@@ -99,7 +96,6 @@ export const EDITING_SETTING_KEYS = [
   'bulletListMarker',
   'orderListDelimiter',
   'listIndentation',
-  'preferHeadingStyle',
   'frontmatterType',
   'footnote',
   'superSubScript',
@@ -130,7 +126,6 @@ export const DEFAULT_EDITING_SETTINGS = {
   bulletListMarker: '-',
   orderListDelimiter: '.',
   listIndentation: 1,
-  preferHeadingStyle: 'atx',
   frontmatterType: '-',
   footnote: false,
   superSubScript: false,
@@ -153,7 +148,6 @@ const BULLET_LIST_MARKERS = new Set<BulletListMarker>(['-', '*', '+'])
 const ORDER_LIST_DELIMITERS = new Set<OrderListDelimiter>(['.', ')'])
 const FRONTMATTER_TYPES = new Set<FrontmatterType>(['-', '+', ';', '{'])
 const SEQUENCE_THEMES = new Set<SequenceTheme>(['hand', 'simple'])
-const HEADING_STYLES = new Set<PreferHeadingStyle>(['atx', 'setext'])
 const CODE_FONT_FAMILIES = new Set<CodeFontFamily>([
   'dejavu-sans-mono',
   'system-mono',
@@ -276,8 +270,6 @@ export function normalizeEditingSettingValue(key: EditingSettingKey, value: Sett
       )
     case 'listIndentation':
       return normalizeListIndentation(value)
-    case 'preferHeadingStyle':
-      return normalizeChoice(value, HEADING_STYLES, DEFAULT_EDITING_SETTINGS.preferHeadingStyle)
     case 'frontmatterType':
       return normalizeChoice(value, FRONTMATTER_TYPES, DEFAULT_EDITING_SETTINGS.frontmatterType)
     case 'sequenceTheme':
@@ -350,11 +342,6 @@ export function getEditingSettings(
     ),
     listIndentation: normalizeListIndentation(
       getValue('listIndentation', String(DEFAULT_EDITING_SETTINGS.listIndentation)),
-    ),
-    preferHeadingStyle: normalizeChoice(
-      getValue('preferHeadingStyle', DEFAULT_EDITING_SETTINGS.preferHeadingStyle),
-      HEADING_STYLES,
-      DEFAULT_EDITING_SETTINGS.preferHeadingStyle,
     ),
     frontmatterType: normalizeChoice(
       getValue('frontmatterType', DEFAULT_EDITING_SETTINGS.frontmatterType),

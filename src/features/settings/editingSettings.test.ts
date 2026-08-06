@@ -133,7 +133,6 @@ describe('editingSettings', () => {
       codeBlockLineNumbers: true,
       listIndentation: 4,
       sourceCodeModeEnabled: true,
-      preferHeadingStyle: 'setext',
       spellcheckerLanguage: 'zh-CN',
     }
 
@@ -159,11 +158,10 @@ describe('editingSettings', () => {
     ])
   })
 
-  it('does not emit runtime work for unsupported source and heading preference rows', () => {
+  it('does not emit runtime work for the stored-only source mode row', () => {
     const next: EditingSettings = {
       ...DEFAULT_EDITING_SETTINGS,
       sourceCodeModeEnabled: true,
-      preferHeadingStyle: 'setext',
     }
 
     expect(getMuyaEditingRuntimeUpdates(next, DEFAULT_EDITING_SETTINGS)).toEqual([])
