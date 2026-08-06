@@ -70,7 +70,11 @@ jobs:
           disable-animations: true
           script: |
             chmod +x android/gradlew
-            ./android/gradlew -p android connectedDebugAndroidTest --no-daemon
+            # Scope to the app module: a bare connectedDebugAndroidTest also
+            # builds the androidTest variant of capacitor-cordova-android-plugins,
+            # whose kotlin-stdlib graph has a duplicate-classes conflict we do
+            # not need to touch — only app carries our instrumentation tests.
+            ./android/gradlew -p android :app:connectedDebugAndroidTest --no-daemon
 
       - name: Upload test report
         if: ${{ always() }}
