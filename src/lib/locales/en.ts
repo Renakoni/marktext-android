@@ -485,7 +485,7 @@ export const en = {
   'settings.option.system': 'System',
   'settings.option.light': 'Light',
   'settings.option.dark': 'Dark',
-  'settings.option.custom': 'Custom',
+  'settings.option.custom': 'More',
   'settings.option.off': 'Off',
   'settings.option.ltr': 'LTR',
   'settings.option.rtl': 'RTL',
