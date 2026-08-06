@@ -45,9 +45,8 @@ type SettingsDefaultValueRow = Exclude<
   { kind: 'customToolbar' | 'customSelectionToolbar' }
 >
 
-const EXPECTED_STORED_ONLY_ROW_IDS = new Set([
-  'sourceCodeModeEnabled',
-])
+// #149's done state: every interactive row is either implemented or gone.
+const EXPECTED_STORED_ONLY_ROW_IDS = new Set<string>([])
 
 const EXPECTED_UNFINISHED_ROW_IDS = new Set([
   'shareLinkedImages',
@@ -73,6 +72,7 @@ const OWNED_STORED_SETTING_KEYS = new Set<string>([
 ])
 
 const RUNTIME_SETTING_DEFAULTS = new Map<string, SettingsValue>([
+  ['sourceCodeModeEnabled', DEFAULT_EDITING_SETTINGS.sourceCodeModeEnabled],
   ['themeMode', DEFAULT_APPEARANCE_THEME_SETTINGS.themeMode],
   ['customTheme', DEFAULT_APPEARANCE_THEME_SETTINGS.customTheme],
 
@@ -138,9 +138,7 @@ const RUNTIME_SETTING_DEFAULTS = new Map<string, SettingsValue>([
   ['selectionInputDiagnostics', DEFAULT_ADVANCED_SETTINGS.selectionInputDiagnostics],
 ])
 
-const STORED_ONLY_SETTING_DEFAULTS = new Map<string, SettingsValue>([
-  ['sourceCodeModeEnabled', DEFAULT_EDITING_SETTINGS.sourceCodeModeEnabled],
-])
+const STORED_ONLY_SETTING_DEFAULTS = new Map<string, SettingsValue>([])
 
 function getRows(): SettingsRowWithLocation[] {
   return Object.entries(SETTINGS_DETAIL_SECTIONS).flatMap(([page, sections]) =>

@@ -431,7 +431,7 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
         {
           kind: 'toggle',
           id: 'sourceCodeModeEnabled',
-          implementation: 'storedOnly',
+          implementation: 'runtime',
           labelKey: 'settings.editing.sourceMode',
           defaultValue: false,
           testId: 'settings-editing-source-mode',

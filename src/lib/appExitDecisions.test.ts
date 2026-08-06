@@ -22,6 +22,7 @@ const baseBackState: AppBackButtonState = {
   editorOutlineOpen: false,
   editorSearchOpen: false,
   editorToolbarExpanded: false,
+  editorSourceModeActive: false,
   homeSelectionActive: false,
   homeSheetOpen: false,
 }
@@ -137,6 +138,28 @@ describe('appExitDecisions', () => {
       currentScreen: 'editor',
       editorToolbarExpanded: true,
     })).toBe('close-editor-toolbar')
+
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'editor',
+    })).toBe('show-home')
+  })
+
+  it('dismisses source code mode before leaving the editor, after overlays', () => {
+    // The menu can sit ON TOP of source mode; it dismisses first.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'editor',
+      editorMenuOpen: true,
+      editorSourceModeActive: true,
+    })).toBe('close-editor-menu')
+
+    // Bare source mode dismisses like a panel; the next Back leaves.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'editor',
+      editorSourceModeActive: true,
+    })).toBe('close-editor-source-mode')
 
     expect(getAppBackButtonAction({
       ...baseBackState,

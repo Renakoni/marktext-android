@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { expectEditorReady } from './editor'
 
 export const DRAFTS_STORAGE_KEY = 'marktext-for-android:drafts'
@@ -10,6 +10,8 @@ interface OpenLocalDraftOptions {
   title: RegExp
   now?: string
   settings?: Record<string, boolean | number | string>
+  /** 'source-mode' when sourceCodeModeEnabled auto-entry hides the WYSIWYG host. */
+  waitFor?: 'editor' | 'source-mode'
 }
 
 export async function newBlankDocument(
@@ -39,6 +41,7 @@ export async function openLocalDraft(
     title,
     now = '2026-07-01T09:00:00.000Z',
     settings = {},
+    waitFor = 'editor',
   }: OpenLocalDraftOptions,
 ) {
   await page.goto('/')
@@ -64,7 +67,11 @@ export async function openLocalDraft(
   )
   await page.reload()
   await page.getByRole('button', { name: title }).click()
-  await expectEditorReady(page)
+  if (waitFor === 'source-mode') {
+    await expect(page.getByTestId('source-mode-editor')).toBeVisible({ timeout: 30000 })
+  } else {
+    await expectEditorReady(page)
+  }
 }
 
 export function getDraftStorage(page: Page) {

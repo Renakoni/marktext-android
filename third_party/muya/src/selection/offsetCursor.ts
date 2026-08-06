@@ -84,6 +84,54 @@ export function injectSentinels(
     return lines.join('\n');
 }
 
+function _toAbsoluteOffset(lines: string[], position: IIndexPosition): number {
+    const line = Math.min(Math.max(position.line, 0), lines.length - 1);
+    let offset = 0;
+    for (let index = 0; index < line; index++)
+        offset += lines[index]!.length + 1;
+
+    return offset + _clampOffset(position.ch, lines[line]!.length);
+}
+
+function _toIndexPosition(lines: string[], offset: number): IIndexPosition {
+    let remaining = offset;
+    for (let line = 0; line < lines.length; line++) {
+        const length = lines[line]!.length;
+        if (remaining <= length)
+            return { line, ch: remaining };
+        remaining -= length + 1;
+    }
+
+    const lastLine = lines.length - 1;
+    return { line: lastLine, ch: lines[lastLine]!.length };
+}
+
+/**
+ * Shift both cursor ends `steps` characters toward the document start
+ * (newlines count as one character). Returns `null` once either end would
+ * pass the start — the caller's retry ladder is exhausted.
+ */
+export function stepIndexCursorBack(
+    markdown: string,
+    cursor: IIndexCursor,
+    steps: number,
+): IIndexCursor | null {
+    const { anchor, focus } = cursor;
+    if (!anchor || !focus)
+        return null;
+
+    const lines = markdown.split('\n');
+    const anchorOffset = _toAbsoluteOffset(lines, anchor) - steps;
+    const focusOffset = _toAbsoluteOffset(lines, focus) - steps;
+    if (anchorOffset < 0 || focusOffset < 0)
+        return null;
+
+    return {
+        anchor: _toIndexPosition(lines, anchorOffset),
+        focus: _toIndexPosition(lines, focusOffset),
+    };
+}
+
 interface ISentinelHit {
     block: Content;
     offset: number;

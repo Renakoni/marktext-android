@@ -1060,6 +1060,39 @@ textarea {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Source code mode (#180): the raw-Markdown textarea standing in for the
+   WYSIWYG surface. Same card geometry as the editor shell so the toggle does
+   not jump; colors ride the theme variables (dark themes included); plain
+   monospace, no syntax highlighting by design — the mode's whole point is
+   the unrendered source. */
+.source-mode-editor {
+  display: block;
+  width: min(100%, 980px);
+  height: 100%;
+  margin: 0 auto;
+  /* Mirrors the shell's fluid gutter (that custom property is scoped to the
+     shell element and cannot be inherited by a sibling). */
+  padding: 20px clamp(16px, calc(16px + (100vw - 720px) * 0.4), 50px);
+  border: var(--hairline) solid var(--separator);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  font-family: 'DejaVu Sans Mono', 'Roboto Mono', ui-monospace, monospace;
+  font-size: 15px;
+  line-height: 1.6;
+  resize: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  caret-color: var(--accent-strong);
+}
+
+.source-mode-editor:focus {
+  outline: none;
+}
+
 .editor-host-shell .muya-host {
   min-height: 100%;
 }

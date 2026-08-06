@@ -25,6 +25,7 @@ export interface AppBackButtonState {
   editorOutlineOpen: boolean
   editorSearchOpen: boolean
   editorToolbarExpanded: boolean
+  editorSourceModeActive: boolean
   homeSelectionActive: boolean
   homeSheetOpen: boolean
 }
@@ -39,6 +40,7 @@ export type AppBackButtonAction =
   | 'close-editor-outline'
   | 'close-editor-search'
   | 'close-editor-toolbar'
+  | 'close-editor-source-mode'
   | 'close-home-sheet'
   | 'clear-home-selection'
   | 'show-home'
@@ -87,6 +89,7 @@ export function getAppBackButtonAction({
   editorOutlineOpen,
   editorSearchOpen,
   editorToolbarExpanded,
+  editorSourceModeActive,
   homeSelectionActive,
   homeSheetOpen,
 }: AppBackButtonState): AppBackButtonAction {
@@ -125,6 +128,12 @@ export function getAppBackButtonAction({
 
   if (editorToolbarExpanded) {
     return 'close-editor-toolbar'
+  }
+
+  // Source mode dismisses like a panel: first Back hands the text back to
+  // the WYSIWYG editor, a second Back leaves the editor.
+  if (currentScreen === 'editor' && editorSourceModeActive) {
+    return 'close-editor-source-mode'
   }
 
   if (currentScreen === 'editor') {

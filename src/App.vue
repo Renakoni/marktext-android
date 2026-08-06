@@ -190,6 +190,10 @@ import {
   type AdvancedMaintenanceActionId,
 } from './features/settings/advancedSettings'
 import { createMuyaMobileEditorCommandTarget } from './lib/muyaMobileAdapter'
+import {
+  createSourceModeController,
+  type SourceModeController,
+} from './features/editor/sourceMode'
 import { AUTO_APP_LOCALE, translateKnownText, useI18n } from './lib/i18n'
 import {
   createRecentDocumentFromLocalDraft,
@@ -540,6 +544,10 @@ const {
   saveAndroidDocument: () => saveAndroidDocument(),
 })
 
+// Source code mode controller (assigned right after the editor session; the
+// session's markdown-override option dereferences it lazily per snapshot).
+let sourceModeController: SourceModeController | null = null
+
 // Deferred lookup: the editor session below owns the editor instance; the
 // follow handler only dereferences it per selection-change event.
 const caretFollow = createCaretFollow({
@@ -574,6 +582,7 @@ const {
   createMuyaEditor,
   destroyMuyaEditor,
   syncMarkdown: nextStatus => syncMarkdown(nextStatus),
+  getMarkdownOverride: () => sourceModeController?.activeText() ?? null,
   onEditorSelectionChange: (...args: unknown[]) => {
     caretFollow.onEditorSelectionChange(...args)
     refreshEditorTableCaretState()
@@ -607,6 +616,56 @@ const {
   closeEditorToolbar,
   logger: editorLog,
 })
+
+// Source code mode (#180): a plain textarea replaces the WYSIWYG surface.
+// While active the session's markdown override makes the textarea the
+// document for every consumer (autosave, share, export, lifecycle flushes);
+// entry/exit compose the engine's audited replaceContent/getCursorOffset/
+// setCursorByOffset hand-off, and edits drive the same syncMarkdown pipeline
+// WYSIWYG changes do.
+sourceModeController = createSourceModeController({
+  getEditor: () => getEditor(),
+  getMarkdownSnapshot: flushPending => getEditorMarkdownSnapshot(flushPending),
+  onDocumentEdited: () => syncMarkdown('Edited'),
+  logger: editorLog,
+})
+const sourceMode = sourceModeController
+const sourceModeActive = sourceMode.active
+const sourceModeText = sourceMode.text
+const sourceModeEntryCaret = sourceMode.entryCaretOffset
+// Menu-driven entry focuses the textarea (the user asked for the mode);
+// setting-driven auto-entry must not pop the keyboard on open, matching
+// releaseEditorFocusAfterOpen's contract for the WYSIWYG surface.
+const sourceModeFocusOnEnter = ref(true)
+
+function enterSourceMode(options: { focus: boolean } = { focus: true }) {
+  if (!editorReady.value || sourceModeActive.value) {
+    return
+  }
+
+  // The mode owns the whole editing surface: panels that act on the muya
+  // tree stand down first.
+  closeEditorMenu()
+  closeEditorSearch({ restoreCursor: false })
+  closeEditorOutline()
+  closeEditorToolbar()
+  endSelectionCaretSession('entering source mode')
+  sourceModeFocusOnEnter.value = options.focus
+  sourceMode.enter()
+}
+
+function exitSourceMode(caret: { start: number, end: number } | null) {
+  closeEditorMenu()
+  sourceMode.exit(caret)
+}
+
+function toggleSourceModeFromScreen(caret: { start: number, end: number } | null) {
+  if (sourceModeActive.value) {
+    exitSourceMode(caret)
+  } else {
+    enterSourceMode()
+  }
+}
 
 const {
   searchOpen: editorSearchOpen,
@@ -903,7 +962,10 @@ function canShareCurrentDocument() {
 }
 
 function canShowEditorActions() {
-  return canShareCurrentDocument() || canSaveLocalDraftToAndroidDocument() || canSaveAndroidDocumentCopy()
+  // The action sheet always carries at least the source-mode toggle, so the
+  // menu button no longer hides when the share/save bridges are unavailable
+  // (plain-web runs included); the capability rows still gate themselves.
+  return true
 }
 
 function shouldPromptAndroidExitAfterSaveFailure() {
@@ -1201,6 +1263,16 @@ function refreshEditorTableCaretState() {
 watch(editorReady, ready => {
   if (!ready) {
     setEditorCaretInTable(false)
+    // The mode never survives an editor teardown/remount; the document
+    // state was already synced from the textarea on every input.
+    sourceMode.reset()
+    return
+  }
+
+  if (currentScreen.value === 'editor' && editingSettings.value.sourceCodeModeEnabled) {
+    // The wired half of #149: the stored setting now opens documents in
+    // source code mode. No keyboard pop on open.
+    enterSourceMode({ focus: false })
   }
 })
 
@@ -1595,6 +1667,9 @@ function closeEditorToHome() {
   closeLinkSheet()
   closeTableSheet()
   closeEditorToolbar()
+  // No hand-back on the way out: the document state already tracks the
+  // textarea, and the muya instance is about to be destroyed anyway.
+  sourceMode.reset()
   destroyEditor()
   homeTab.value = HOME_TABS.DOCUMENTS
   settingsPage.value = DEFAULT_SETTINGS_PAGE
@@ -1749,6 +1824,7 @@ async function handleAppBackButton() {
     outlineOpen: editorOutlineOpen.value,
     searchOpen: editorSearchOpen.value,
     toolbarOpen: editorToolbarExpanded.value,
+    sourceModeOpen: sourceModeActive.value,
   })
 
   const action = getAppBackButtonAction({
@@ -1764,6 +1840,7 @@ async function handleAppBackButton() {
     editorOutlineOpen: editorOutlineOpen.value,
     editorSearchOpen: editorSearchOpen.value,
     editorToolbarExpanded: editorToolbarExpanded.value,
+    editorSourceModeActive: sourceModeActive.value,
     homeSelectionActive: homeSelection.isActive.value,
     homeSheetOpen: homeDeleteSheetOpen.value || homeRenameSheetOpen.value,
   })
@@ -1795,6 +1872,11 @@ async function handleAppBackButton() {
       return
     case 'close-editor-menu':
       closeEditorMenu()
+      return
+    case 'close-editor-source-mode':
+      // Back dismisses the mode like a panel; the controller falls back to
+      // the last known textarea caret for the WYSIWYG hand-back.
+      exitSourceMode(null)
       return
     case 'close-editor-outline':
       closeEditorOutline()
@@ -2195,6 +2277,15 @@ onBeforeUnmount(() => {
     :outline-items="editorOutlineItems"
     :resume-card-visible="resumeCardVisible"
     :resume-card-text="resumeCardText"
+    :source-mode-active="sourceModeActive"
+    :source-text="sourceModeText"
+    :source-entry-caret="sourceModeEntryCaret"
+    :source-focus-on-enter="sourceModeFocusOnEnter"
+    @toggle-source-mode="toggleSourceModeFromScreen"
+    @update:source-text="
+      (value: string, caret: { start: number, end: number } | null) =>
+        sourceMode.updateText(value, caret)
+    "
     @back="showHome"
     @retry-editor="retryEditorFromRecovery"
     @search="openEditorSearch"

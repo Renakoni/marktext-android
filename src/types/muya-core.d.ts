@@ -115,6 +115,29 @@ declare module '@muyajs/core' {
     redo(): void
     setContent(content: unknown[] | string, autoFocus?: boolean): void
     replaceContent(content: unknown[] | string, recordSelection?: unknown): boolean
+    /**
+     * Source-mode hand-off surface (#180). All three read/write the LIVE
+     * DOM selection only — after the ranges are cleared they return null,
+     * so callers capture entry state at toggle time and fall back
+     * deterministically (pinned by the engine's sourceModeHandoff spec).
+     */
+    getSelection(): unknown
+    getCursorOffset(): {
+      anchor: { line: number; ch: number } | null
+      focus: { line: number; ch: number } | null
+    } | null
+    setCursorByOffset(
+      cursor: {
+        anchor: { line: number; ch: number }
+        focus: { line: number; ch: number }
+      },
+      /**
+       * The serialization the cursor coordinates are expressed against,
+       * when it differs from getMarkdown() — the source-mode exit passes
+       * the raw textarea text so the caret survives canonicalization.
+       */
+      sourceMarkdown?: string,
+    ): boolean
     format(type: string): void
     updateParagraph(type: string): void
     createTable(

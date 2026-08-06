@@ -28,6 +28,7 @@ import {
     injectStateSentinels,
     locateSentinelOffsets,
     resolveSentinelCursor,
+    stepIndexCursorBack,
 } from './selection/offsetCursor';
 import { isAnyListState, isAtxHeadingState, isCodeBlockState } from './state/types';
 import { Ui } from './ui/ui';
@@ -95,6 +96,12 @@ const PARAGRAPH_LABEL_MAP: Record<string, string> = {
 
 // The outmost-block labels that wrap a cross-block selection into a list.
 const CROSS_BLOCK_LIST_LABELS = new Set(['bullet-list', 'order-list', 'task-list']);
+
+// Bound for setCursorByOffset's backward retry ladder when the requested
+// position sits between syntax characters (each retry costs one parse of the
+// sentinel document). 32 clears a four-column table delimiter row
+// (`| --- | --- | --- | --- |` is 25 characters) with headroom.
+const MAX_CURSOR_BACKSTEPS = 32;
 
 // Paragraph-menu labels whose block toggles back to a paragraph when the cursor
 // is already inside one (the menu item is checked) — clicking unwraps/removes it.
@@ -1116,23 +1123,63 @@ export class Muya {
      * stack is preserved, leaving only the caret changed. No-op (returns
      * `false`) when the cursor is stale / unresolvable, letting the caller fall
      * back to its default.
+     *
+     * `sourceMarkdown` is for callers whose `{ line, ch }` positions are
+     * expressed against a DIFFERENT serialization of the same document than
+     * `getMarkdown()` — the mobile source-mode exit, where the offsets come
+     * from the user's raw textarea text while the editor already holds the
+     * CANONICAL re-serialization (table columns padded, etc.). The sentinels
+     * are injected into that source text so they land at the position the
+     * user actually saw; the located block paths and content offsets are
+     * then valid in the canonical tree too, because both serializations
+     * parse to the same state (canonicalization is serializer-side only).
+     * The clean rebuild always uses the editor's own markdown.
+     *
+     * A caret BETWEEN syntax characters — after a table row's closing pipe,
+     * inside a delimiter row — breaks the construct when a sentinel lands
+     * there: the sentinel tree degrades and the caret cannot be located.
+     * Rather than guessing at syntax (parser-emulation is how the previous
+     * generation of this feature died), the position walks backward one
+     * character at a time, each candidate validated by the parse itself,
+     * until one resolves or the bounded ladder runs out. The contract:
+     * the caret restores to the NEAREST EDITABLE POSITION AT OR BEFORE the
+     * requested one, or the method reports false.
      */
-    setCursorByOffset(indexCursor: IIndexCursor): boolean {
+    setCursorByOffset(indexCursor: IIndexCursor, sourceMarkdown?: string): boolean {
         const { scrollPage } = this.editor;
         if (!scrollPage)
             return false;
 
         const cleanMarkdown = this.getMarkdown();
-        const sentinelMarkdown = injectSentinels(cleanMarkdown, indexCursor);
-        if (sentinelMarkdown == null)
-            return false;
+        const source = sourceMarkdown ?? cleanMarkdown;
 
-        // Preserve the undo history across the internal setContent rebuild
+        // Preserve the undo history across the internal setContent rebuilds
         // (setContent clears it) so this stays a caret-only operation.
         const savedHistory = this.getHistory();
 
-        this.editor.setContent(sentinelMarkdown);
-        const cursor = resolveSentinelCursor(this.editor.scrollPage!);
+        let cursor = null;
+        let attempted = false;
+        for (let backstep = 0; backstep <= MAX_CURSOR_BACKSTEPS; backstep++) {
+            const candidate = backstep === 0
+                ? indexCursor
+                : stepIndexCursorBack(source, indexCursor, backstep);
+            if (candidate == null)
+                break;
+
+            const sentinelMarkdown = injectSentinels(source, candidate);
+            if (sentinelMarkdown == null)
+                break;
+
+            attempted = true;
+            this.editor.setContent(sentinelMarkdown);
+            cursor = resolveSentinelCursor(this.editor.scrollPage!);
+            if (cursor)
+                break;
+        }
+
+        if (!attempted)
+            return false;
+
         this.editor.setContent(cleanMarkdown);
         this.setHistory(savedHistory);
 

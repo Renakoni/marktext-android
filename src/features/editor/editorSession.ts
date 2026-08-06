@@ -50,6 +50,13 @@ export interface EditorSessionOptions {
   destroyMuyaEditor: (editor: MuyaEditor | null) => void
   // Editor-content handlers owned by App (status + autosave coordination).
   syncMarkdown: (nextStatus?: unknown) => void
+  /**
+   * While source code mode is active the textarea IS the document: every
+   * snapshot consumer (autosave, share, export, lifecycle flushes) must read
+   * it instead of the stale Muya tree. Returning a string overrides the
+   * snapshot at this single choke point; null defers to Muya.
+   */
+  getMarkdownOverride?: () => string | null
   onEditorSelectionChange?: (...args: unknown[]) => void
   onEditorFocus: () => void
   onEditorBlur: () => void
@@ -132,6 +139,11 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
   }
 
   function getEditorMarkdownSnapshot(flushPending = false) {
+    const override = options.getMarkdownOverride?.()
+    if (override != null) {
+      return normalizeEditorMarkdown(override)
+    }
+
     if (!editor) {
       return ''
     }
@@ -143,7 +155,7 @@ export function createEditorSession(options: EditorSessionOptions): EditorSessio
   }
 
   function syncDocumentFromEditor(markDirty = false, flushPending = false) {
-    if (!editor) {
+    if (!editor && options.getMarkdownOverride?.() == null) {
       return options.documentState.value
     }
 

@@ -34,6 +34,7 @@ function createHarness(overrides: {
   diagnosticsEnabled?: boolean
   createMuyaEditor?: (options: CreateMuyaEditorOptions) => Promise<MuyaEditor | null>
   remountHostOnOpen?: boolean
+  getMarkdownOverride?: () => string | null
 } = {}) {
   document.body.innerHTML = ''
   const currentScreen = ref<AppScreen>(overrides.screen ?? 'home')
@@ -78,6 +79,7 @@ function createHarness(overrides: {
     createMuyaEditor,
     destroyMuyaEditor,
     syncMarkdown,
+    getMarkdownOverride: overrides.getMarkdownOverride,
     onEditorFocus: vi.fn(),
     onEditorBlur,
     ensureAndroidImageResolver: vi.fn(async () => true),
@@ -275,6 +277,27 @@ describe('editorSession', () => {
     expect(synced.markdown).toBe('dirty change')
     expect(synced.isDirty).toBe(true)
     expect(harness.documentState.value).toBe(synced)
+  })
+
+  it('lets the markdown override stand in for the editor (source mode)', async () => {
+    let override: string | null = null
+    const harness = createHarness({ getMarkdownOverride: () => override })
+    await harness.session.openEditor('# muya text')
+    harness.createdEditors[0].markdown = '# muya text'
+
+    // Inactive override defers to Muya.
+    expect(harness.session.getEditorMarkdownSnapshot()).toBe('# muya text')
+
+    // Active override IS the document for snapshots and document sync —
+    // every consumer (autosave, share, export, flushes) reads this path.
+    override = '# textarea text'
+    expect(harness.session.getEditorMarkdownSnapshot()).toBe('# textarea text')
+    const synced = harness.session.syncDocumentFromEditor(true)
+    expect(synced.markdown).toBe('# textarea text')
+
+    // The single-newline normalization applies to the override too.
+    override = '\n'
+    expect(harness.session.getEditorMarkdownSnapshot()).toBe('')
   })
 
   it('destroys the editor and tears the session down', async () => {
