@@ -681,6 +681,14 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
           defaultValue: false,
           testId: 'settings-markdown-gitlab',
         },
+        {
+          kind: 'toggle',
+          id: 'renderSoftBreakAsSpace',
+          implementation: 'runtime',
+          labelKey: 'settings.markdown.softBreakAsSpace',
+          defaultValue: false,
+          testId: 'settings-markdown-soft-break-as-space',
+        },
       ],
     },
     {

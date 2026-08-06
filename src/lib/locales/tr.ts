@@ -361,6 +361,7 @@ export const tr = {
   'settings.markdown.footnotes': 'Dipnotlar',
   'settings.markdown.superSub': 'Üst/alt simge',
   'settings.markdown.gitlab': 'GitLab',
+  'settings.markdown.softBreakAsSpace': 'Yumuşak satır sonları boşluğa',
   'settings.markdown.sequenceTheme': 'Sekans teması',
   'settings.markdown.plantumlServer': 'PlantUML sunucusu',
 

@@ -361,6 +361,7 @@ export const ja = {
   'settings.markdown.footnotes': '脚注',
   'settings.markdown.superSub': '上付き/下付き文字',
   'settings.markdown.gitlab': 'GitLab',
+  'settings.markdown.softBreakAsSpace': 'ソフト改行をスペースに',
   'settings.markdown.sequenceTheme': 'シーケンス図テーマ',
   'settings.markdown.plantumlServer': 'PlantUML サーバー',
 

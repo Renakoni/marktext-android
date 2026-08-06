@@ -115,6 +115,15 @@ export class MarkdownToHtml {
         const parts = text.data.split(sentinel);
         const parent = text.parentElement;
 
+        // Reader opted into CommonMark soft-break spacing (#142): restore the
+        // plain newline everywhere instead of emitting <br>. The export
+        // paragraph's default `white-space: normal` then collapses it to a
+        // space, matching what the editor shows with the same preference on.
+        if (this._muya?.options?.renderSoftBreakAsSpace) {
+            text.data = parts.join('\n');
+            return;
+        }
+
         // Contexts that never convert restore the plain newline: a text
         // token's newline that parsed into a protected or structural
         // position (an inline raw `<pre>` interior, a multiline setext

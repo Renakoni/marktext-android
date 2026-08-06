@@ -354,6 +354,17 @@ export class Muya {
             );
         }
 
+        // Soft-break-as-space is a pure presentation switch (#142): toggling
+        // this class re-styles the existing soft-break spans without a re-parse
+        // (it is deliberately NOT in PARSE_AFFECTING_OPTIONS), so the document
+        // model, DOM text, and cursor offsets are all untouched.
+        if ('renderSoftBreakAsSpace' in options) {
+            this.domNode.classList.toggle(
+                CLASS_NAMES.MU_SOFT_BREAK_AS_SPACE,
+                !!options.renderSoftBreakAsSpace,
+            );
+        }
+
         applyAppearance(this.domNode, options);
 
         if (!forceRender)
@@ -1742,7 +1753,7 @@ function applyAppearance(domNode: HTMLElement, options: Partial<IMuyaOptions>) {
  * [ensureContainerDiv ensure container element is div]
  */
 function getContainer(originContainer: HTMLElement, options: IMuyaOptions) {
-    const { spellcheckEnabled, spellcheckHideMarks, hideQuickInsertHint, focusMode } = options;
+    const { spellcheckEnabled, spellcheckHideMarks, hideQuickInsertHint, focusMode, renderSoftBreakAsSpace } = options;
     const newContainer = document.createElement('div');
     const attrs = originContainer.attributes;
     // Copy attrs from origin container to new container
@@ -1755,6 +1766,9 @@ function getContainer(originContainer: HTMLElement, options: IMuyaOptions) {
 
     if (spellcheckHideMarks)
         newContainer.classList.add(CLASS_NAMES.MU_HIDE_SPELLING_MARKS);
+
+    if (renderSoftBreakAsSpace)
+        newContainer.classList.add(CLASS_NAMES.MU_SOFT_BREAK_AS_SPACE);
 
     // Apply focus mode at construction when initially enabled; `setFocusMode`
     // toggles it thereafter.

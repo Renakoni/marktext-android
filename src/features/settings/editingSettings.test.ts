@@ -158,6 +158,24 @@ describe('editingSettings', () => {
     ])
   })
 
+  it('sends soft-break-as-space as a no-reparse presentation option (#142)', () => {
+    const next: EditingSettings = {
+      ...DEFAULT_EDITING_SETTINGS,
+      renderSoftBreakAsSpace: true,
+    }
+
+    expect(getMuyaEditingOptions(next)).toMatchObject({ renderSoftBreakAsSpace: true })
+    // A pure CSS re-style: muya toggles a root class, so the live update must
+    // NOT force a re-parse (that would drop the cursor and undo history).
+    expect(getMuyaEditingRuntimeUpdates(next, DEFAULT_EDITING_SETTINGS)).toEqual([
+      {
+        kind: 'setOptions',
+        options: { renderSoftBreakAsSpace: true },
+        forceRender: false,
+      },
+    ])
+  })
+
   it('does not emit runtime work for the stored-only source mode row', () => {
     const next: EditingSettings = {
       ...DEFAULT_EDITING_SETTINGS,
