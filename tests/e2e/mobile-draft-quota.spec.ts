@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 // #152 — the draft store is one JSON array in localStorage, and the quota
 // (~5 MB in Chromium-family engines) is its binding constraint. This pins
