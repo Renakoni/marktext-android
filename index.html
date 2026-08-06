@@ -5,6 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MarkText</title>
+    <!--
+      Engine floor check. Capacitor's minWebViewVersion gate covers standard
+      Android WebViews, but Huawei WebView is judged against a separate,
+      unrelated version scheme, so an old Chromium core can be waved through
+      and then die parsing the modern bundle. The user agent carries the real
+      core version ("Chrome/NNN") for every Chromium-based WebView, so check
+      that directly. Must stay ES5: it has to run on the WebViews it rejects.
+      Keep the version in sync with Vite's build target (Chrome 111).
+    -->
+    <script>
+      ;(function () {
+        var match = navigator.userAgent.match(/Chrome\/(\d+)/)
+        if (match && parseInt(match[1], 10) < 111) {
+          location.replace('webview-error.html')
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>
