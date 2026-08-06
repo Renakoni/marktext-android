@@ -169,7 +169,6 @@ test('switches between document home and the settings about screen', async ({ pa
     'aria-checked',
     'true',
   )
-  await expect(page.getByTestId('settings-markdown-heading-style')).toContainText('ATX')
   await expect(page.getByTestId('settings-spelling-enabled')).toHaveAttribute(
     'aria-checked',
     'false',

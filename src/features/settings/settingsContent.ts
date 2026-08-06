@@ -191,11 +191,6 @@ const listIndentOptions = [
   { id: '4', labelKey: 'settings.option.indent.four' },
 ] as const satisfies readonly SettingsOption[]
 
-const headingStyleOptions = [
-  { id: 'atx', labelKey: 'settings.option.heading.atx' },
-  { id: 'setext', labelKey: 'settings.option.heading.setext' },
-] as const satisfies readonly SettingsOption[]
-
 const frontMatterOptions = [
   { id: '-', labelKey: 'settings.option.frontMatter.yaml' },
   { id: '+', labelKey: 'settings.option.frontMatter.toml' },
@@ -633,20 +628,6 @@ const SETTINGS_DETAIL_SECTIONS_BASE: Partial<Record<SettingsPage, readonly Setti
           display: 'select',
           options: listIndentOptions,
           testId: 'settings-markdown-list-indentation',
-        },
-      ],
-    },
-    {
-      titleKey: 'settings.section.headings',
-      rows: [
-        {
-          kind: 'choice',
-          id: 'preferHeadingStyle',
-          implementation: 'storedOnly',
-          labelKey: 'settings.markdown.headingStyle',
-          defaultValue: 'atx',
-          options: headingStyleOptions,
-          testId: 'settings-markdown-heading-style',
         },
       ],
     },

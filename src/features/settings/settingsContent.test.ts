@@ -47,7 +47,6 @@ type SettingsDefaultValueRow = Exclude<
 
 const EXPECTED_STORED_ONLY_ROW_IDS = new Set([
   'sourceCodeModeEnabled',
-  'preferHeadingStyle',
 ])
 
 const EXPECTED_UNFINISHED_ROW_IDS = new Set([
@@ -141,7 +140,6 @@ const RUNTIME_SETTING_DEFAULTS = new Map<string, SettingsValue>([
 
 const STORED_ONLY_SETTING_DEFAULTS = new Map<string, SettingsValue>([
   ['sourceCodeModeEnabled', DEFAULT_EDITING_SETTINGS.sourceCodeModeEnabled],
-  ['preferHeadingStyle', DEFAULT_EDITING_SETTINGS.preferHeadingStyle],
 ])
 
 function getRows(): SettingsRowWithLocation[] {
