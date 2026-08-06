@@ -2,8 +2,14 @@ import Sortable, { type SortableEvent } from 'sortablejs'
 import { nextTick, onBeforeUnmount, ref, watch, type Ref } from 'vue'
 import type { MobileCommandId } from '../../../lib/mobileCommands'
 
-const ENTER_EDIT_MODE_DELAY_MS = 1200
-const PICK_UP_DELAY_MS = 360
+// Device-tuned press timings (#183 review feedback): 660ms to enter edit
+// mode keeps a clear margin over the Android system long-press (~400ms) so
+// scrolling the row cannot trigger it, without the original 1200ms wait.
+// Inside edit mode the intent is already dragging, so the pick-up delay
+// drops to 250ms; the 10px move-cancel threshold below still guards
+// scroll-through gestures.
+const ENTER_EDIT_MODE_DELAY_MS = 660
+const PICK_UP_DELAY_MS = 250
 const MOVE_CANCEL_THRESHOLD_PX = 10
 const EDGE_SCROLL_ZONE_PX = 64
 const EDGE_SCROLL_MIN_PX = 5
