@@ -490,7 +490,7 @@ export const tr = {
   'settings.option.system': 'Sistem',
   'settings.option.light': 'Açık',
   'settings.option.dark': 'Koyu',
-  'settings.option.custom': 'Özel',
+  'settings.option.custom': 'Daha fazla',
   'settings.option.off': 'Kapalı',
   'settings.option.ltr': 'LTR',
   'settings.option.rtl': 'RTL',

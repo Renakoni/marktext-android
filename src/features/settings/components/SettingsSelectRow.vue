@@ -270,6 +270,12 @@ function selectOption(value: string) {
 
 .settings-select-panel {
   display: grid;
+  /* The single implicit column must be explicit: an auto track sizes to its
+     content, which shrank every option row (and its divider) to the width of
+     its swatches + label — the space right of the radio was dead to taps.
+     A 1fr track stretches the rows to the panel, so the WHOLE row is the
+     hit target and the radio marks align on the right edge. */
+  grid-template-columns: minmax(0, 1fr);
   width: min(100%, 520px);
   max-height: min(72vh, 620px);
   overflow: auto;
@@ -295,6 +301,10 @@ function selectOption(value: string) {
   grid-template-columns: minmax(0, 1fr) 22px;
   align-items: center;
   gap: 16px;
+  /* A button's auto width is shrink-to-fit even as a grid container, which
+     silently collapsed every row (and its divider) to its content — the
+     space right of the radio was dead to taps. The row IS the hit target. */
+  width: 100%;
   min-height: 52px;
   padding: 0 12px 0 14px;
   border: 0;

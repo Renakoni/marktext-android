@@ -490,7 +490,7 @@ export const fr = {
   'settings.option.system': 'Système',
   'settings.option.light': 'Clair',
   'settings.option.dark': 'Sombre',
-  'settings.option.custom': 'Personnalisé',
+  'settings.option.custom': 'Plus',
   'settings.option.off': 'Désactivé',
   'settings.option.ltr': 'LTR',
   'settings.option.rtl': 'RTL',
