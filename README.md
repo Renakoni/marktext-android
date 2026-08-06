@@ -74,14 +74,20 @@ desktop, in an interface built for one hand.
 <td valign="middle">
 
 - True live-preview (WYSIWYG) editing.
+
 - Full CommonMark and GitHub Flavored Markdown: math (KaTeX), tables, footnotes,
   front matter, diagrams, and syntax-highlighted code.
+
 - A document outline and in-editor search that stay smooth even in long files.
+
 - Export to **PDF** with math, code highlighting, and fonts all baked in.
+
 - **Never loses your work.** Autosave, recovery drafts, and atomic writes keep
   every change.
+
 - **Private by default.** No account, no cloud, no telemetry; everything stays on
   the device.
+
 - **Lightweight.** A Vue + Capacitor shell keeps the whole app around 7.8 MB —
   small and light, yet fully featured.
 
@@ -102,8 +108,8 @@ desktop, in an interface built for one hand.
 
 <br>
 
-- **Themes and appearance.** Light, dark, and custom themes; adjustable type and
-  layout.
+- **Themes and appearance.** Light, dark, and 30+ custom themes; adjustable
+  type and layout.
 
 <br>
 

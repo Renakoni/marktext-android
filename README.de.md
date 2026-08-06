@@ -76,17 +76,23 @@ Oberfläche, die für eine Hand gebaut ist.
 <td valign="middle">
 
 - Echte Live-Vorschau (WYSIWYG) beim Schreiben.
+
 - Vollständiges CommonMark und GitHub Flavored Markdown: Mathematik (KaTeX),
   Tabellen, Fußnoten, Front Matter, Diagramme und Code mit Syntaxhervorhebung.
+
 - Eine Dokumentgliederung und eine Suche im Editor, die selbst in langen Dateien
   flüssig bleiben.
+
 - Export als **PDF** – mit Mathematik, Code-Hervorhebung und fest eingebetteten
   Schriften.
+
 - **Verliert nie deine Arbeit.** Automatisches Speichern,
   Wiederherstellungsentwürfe und atomare Schreibvorgänge bewahren jede
   Änderung.
+
 - **Standardmäßig privat.** Kein Konto, keine Cloud, keine Telemetrie – alles
   bleibt auf dem Gerät.
+
 - **Leichtgewichtig.** Eine Shell aus Vue + Capacitor hält die ganze App bei
   rund 7,8 MB – klein und leicht, aber voll ausgestattet.
 
@@ -108,7 +114,7 @@ Oberfläche, die für eine Hand gebaut ist.
 
 <br>
 
-- **Designs und Erscheinungsbild.** Helle, dunkle und benutzerdefinierte
+- **Designs und Erscheinungsbild.** Helle, dunkle und über 30 weitere
   Designs; Schrift und Layout einstellbar.
 
 <br>

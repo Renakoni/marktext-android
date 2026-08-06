@@ -76,18 +76,24 @@ bureau, dans une interface pensée pour une seule main.
 <td valign="middle">
 
 - Une véritable édition en aperçu direct (WYSIWYG).
+
 - CommonMark et GitHub Flavored Markdown complets : maths (KaTeX), tableaux,
   notes de bas de page, front matter, diagrammes et code avec coloration
   syntaxique.
+
 - Un plan du document et une recherche intégrée à l’éditeur qui restent fluides
   même dans les longs fichiers.
+
 - Export en **PDF** avec les maths, la coloration du code et les polices
   directement incorporées.
+
 - **Ne perd jamais votre travail.** L’enregistrement automatique, les
   brouillons de récupération et les écritures atomiques conservent chaque
   modification.
+
 - **Privé par défaut.** Pas de compte, pas de cloud, pas de télémétrie ; tout
   reste sur l’appareil.
+
 - **Léger.** Une coque Vue + Capacitor maintient l’application entière autour
   de 7,8 Mo — petite et légère, mais complète.
 
@@ -109,7 +115,8 @@ bureau, dans une interface pensée pour une seule main.
 
 <br>
 
-- **Thèmes et apparence.** Thèmes clair, sombre et personnalisés ; typographie
+- **Thèmes et apparence.** Thèmes clair, sombre et plus de 30 thèmes
+  personnalisés ; typographie
   et mise en page ajustables.
 
 <br>

@@ -76,14 +76,20 @@ aynı doğrulukla işlenir.
 <td valign="middle">
 
 - Gerçek canlı önizlemeli (WYSIWYG) düzenleme.
+
 - Eksiksiz CommonMark ve GitHub Flavored Markdown desteği: matematik (KaTeX),
   tablolar, dipnotlar, ön bilgi, diyagramlar ve söz dizimi vurgulamalı kod.
+
 - Uzun dosyalarda bile akıcı kalan bir belge ana hattı ve düzenleyici içi arama.
+
 - Matematik, kod vurgulama ve yazı tipleri gömülü olarak **PDF**'ye dışa aktarma.
+
 - **Emeğinizi asla kaybetmez.** Otomatik kaydetme, kurtarma taslakları ve
   atomik yazma işlemleri her değişikliği korur.
+
 - **Varsayılan olarak gizli.** Hesap yok, bulut yok, telemetri yok; her şey
   cihazda kalır.
+
 - **Hafif.** Bir Vue + Capacitor kabuğu, tüm uygulamayı yaklaşık 7,8 MB'ta
   tutar — küçük ve hafif, yine de tam donanımlı.
 
@@ -105,7 +111,8 @@ aynı doğrulukla işlenir.
 
 <br>
 
-- **Temalar ve görünüm.** Açık, koyu ve özel temalar; ayarlanabilir yazı ve
+- **Temalar ve görünüm.** Açık, koyu ve 30'dan fazla özel tema; ayarlanabilir
+  yazı ve
   yerleşim.
 
 <br>

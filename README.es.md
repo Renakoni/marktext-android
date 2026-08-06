@@ -76,17 +76,23 @@ escritorio, en una interfaz pensada para usarla con una mano.
 <td valign="middle">
 
 - Edición con vista previa en vivo real (WYSIWYG).
+
 - CommonMark y GitHub Flavored Markdown completos: matemáticas (KaTeX), tablas,
   notas al pie, metadatos (front matter), diagramas y código con resaltado de
   sintaxis.
+
 - Un esquema del documento y una búsqueda dentro del editor que siguen siendo
   fluidos incluso en archivos largos.
+
 - Exportación a **PDF** con matemáticas, resaltado de código y fuentes ya
   incorporados.
+
 - **Nunca pierde tu trabajo.** El autoguardado, los borradores de recuperación y
   las escrituras atómicas conservan cada cambio.
+
 - **Privado por defecto.** Sin cuenta, sin nube, sin telemetría; todo se queda en
   el dispositivo.
+
 - **Ligero.** Una carcasa Vue + Capacitor mantiene toda la app en torno a 7,8 MB:
   pequeña y ligera, pero con todas sus funciones.
 
@@ -108,7 +114,8 @@ escritorio, en una interfaz pensada para usarla con una mano.
 
 <br>
 
-- **Temas y apariencia.** Temas claro, oscuro y personalizados; tipografía y
+- **Temas y apariencia.** Temas claro, oscuro y más de 30 temas
+  personalizados; tipografía y
   disposición ajustables.
 
 <br>
