@@ -86,7 +86,7 @@ import {
 } from './features/document-session/documentSessionState'
 import {
   getDocumentSettings,
-  getSortedRecentDocumentListItems,
+  getSortedRecentDocumentRecords,
 } from './features/document-session/documentSettings'
 import { createAutosaveScheduler } from './features/document-session/autosaveScheduler'
 import { createCurrentDocumentPersistence } from './features/document-session/currentDocumentPersistence'
@@ -194,6 +194,8 @@ import { AUTO_APP_LOCALE, translateKnownText, useI18n } from './lib/i18n'
 import {
   createRecentDocumentFromLocalDraft,
   getRecentDocumentListItems,
+  normalizeRecentDocuments,
+  toRecentDocumentListItems,
   type RecentDocumentRecord,
 } from './lib/recentDocuments'
 
@@ -398,10 +400,42 @@ const recentDocumentRecords = computed(() =>
   ],
 )
 const recentActivityDocumentItems = computed(() => getRecentDocumentListItems(recentDocumentRecords.value))
-const documentItems = computed(() =>
-  getSortedRecentDocumentListItems(recentDocumentRecords.value, documentSettings.value),
-)
+// The home's "show all" expansion (#151): the resting view keeps the quiet
+// recency cap, the expanded view reads the COMPLETE collection. Ephemeral —
+// never persisted, so paging can never modify the durable stores.
+//
+// The projection is layered to keep the heavy work off the resting path:
+// list-item STATISTICS (full-Markdown scans per draft) are materialized
+// only for the records the current state actually renders. The records
+// level is cheaper but not free — local-draft records derive their title
+// from the draft's Markdown — so it must only evaluate while something
+// actually renders it: the selection watcher below unsubscribes when no
+// selection is active, and everything else reading this chain is mounted
+// only on the home screen.
 const pinnedDocumentIds = computed(() => getPinnedDocumentIds(pinnedDocuments.value))
+const homeListExpanded = ref(false)
+const sortedRecentRecords = computed(() =>
+  getSortedRecentDocumentRecords(recentDocumentRecords.value, documentSettings.value),
+)
+const visibleRecentRecords = computed(() => {
+  if (homeListExpanded.value) {
+    return sortedRecentRecords.value
+  }
+
+  // The resting view = the recency-capped set, plus any PINNED document
+  // beyond the cap — pinning is explicit intent and must keep an item
+  // visible without expanding.
+  const cappedIds = new Set(
+    normalizeRecentDocuments(recentDocumentRecords.value).map(record => record.id),
+  )
+  return sortedRecentRecords.value.filter(
+    record => cappedIds.has(record.id) || pinnedDocumentIds.value.has(record.id),
+  )
+})
+const documentItems = computed(() => toRecentDocumentListItems(visibleRecentRecords.value))
+const hiddenHomeDocumentCount = computed(
+  () => sortedRecentRecords.value.length - visibleRecentRecords.value.length,
+)
 const homeDocumentSections = computed(() =>
   partitionHomeDocumentItems(documentItems.value, pinnedDocumentIds.value),
 )
@@ -426,12 +460,23 @@ const allSelectedDocumentsPinned = computed(() =>
 )
 
 // Documents can leave the list while selected (e.g. an autosave drops an
-// emptied draft); the selection must not keep counting them.
-watch(documentItems, items => {
-  if (homeSelection.isActive.value) {
-    homeSelection.retain(items.map(item => item.id))
-  }
-})
+// emptied draft); the selection must not keep counting them. The source
+// getter short-circuits BEFORE touching the records projection when no
+// selection is active: a watcher must evaluate its source on every
+// dependency change (a guard inside the callback cannot prevent that),
+// so an unconditional source would pull the whole projection — including
+// per-draft title derivation over full Markdown bodies — hot on every
+// autosave even while the home screen is not rendered. With the
+// short-circuit, Vue's dynamic dependency tracking drops the projection
+// subscription entirely while selection is inactive.
+watch(
+  () => (homeSelection.isActive.value ? visibleRecentRecords.value : null),
+  records => {
+    if (records) {
+      homeSelection.retain(records.map(record => record.id))
+    }
+  },
+)
 
 watch(homeSelection.isActive, active => {
   if (!active) {
@@ -1231,7 +1276,10 @@ function persistLocalDrafts(nextDrafts: LocalDraftRecord[]) {
 }
 
 function persistAndroidRecentDocuments(nextDocuments: RecentDocumentRecord[]) {
-  const filteredDocuments = writeStoredAndroidRecentDocuments(nextDocuments)
+  const filteredDocuments = writeStoredAndroidRecentDocuments(
+    nextDocuments,
+    pinnedDocumentIds.value,
+  )
   androidRecentDocuments.value = filteredDocuments
 }
 
@@ -1257,6 +1305,7 @@ const {
   homeNotice,
   localDrafts,
   androidRecentDocuments,
+  pinnedDocumentIds,
   currentAndroidDocumentCanWrite,
   promptLocalDraftSaveOnExit,
   draftExitPromptOpen,
@@ -1316,7 +1365,13 @@ function protectAndroidDocumentImportedImages(document: OpenedAndroidDocument) {
 
 function rememberAndroidDocument(document: OpenedAndroidDocument) {
   protectAndroidDocumentImportedImages(document)
-  persistAndroidRecentDocuments(rememberAndroidRecentDocument(androidRecentDocuments.value, document))
+  persistAndroidRecentDocuments(
+    rememberAndroidRecentDocument(
+      androidRecentDocuments.value,
+      document,
+      pinnedDocumentIds.value,
+    ),
+  )
 }
 
 async function openAndroidDocumentResult(
@@ -2053,6 +2108,7 @@ onBeforeUnmount(() => {
     :continue-document="continueDocument"
     :pinned-documents="pinnedHomeDocuments"
     :earlier-documents="earlierDocuments"
+    :hidden-document-count="hiddenHomeDocumentCount"
     :notice="displayHomeNotice"
     :selection-active="homeSelection.isActive.value"
     :selection-count="homeSelection.count.value"
@@ -2064,6 +2120,7 @@ onBeforeUnmount(() => {
     @new-document="newDocument"
     @open-document="openDocument"
     @open-file="openFileFromAndroid"
+    @show-all-documents="homeListExpanded = true"
     @set-tab="setHomeTab"
     @set-settings-page="setSettingsPage"
     @select-document="homeSelection.beginWith"

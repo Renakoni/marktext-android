@@ -12,6 +12,8 @@ export const tr = {
   'home.earlier': 'Daha önce',
   'home.emptyTitle': 'Son kullanılan Markdown dosyası yok',
   'home.emptyBody': 'Yerel bir taslak başlatın veya bu cihazdan bir Markdown dosyası açın.',
+  'home.showAllDocuments': '{count} tane daha göster',
+  'home.documentsRevealed': '{count} belge daha gösteriliyor',
   'home.source.localDraft': 'Yerel taslak',
   'home.source.markdownDocument': 'Markdown belgesi',
   'home.wordCount.one': '{count} sözcük',

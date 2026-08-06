@@ -55,6 +55,10 @@ export interface CurrentDocumentPersistenceOptions {
   homeNotice: Ref<string | null>
   localDrafts: Ref<LocalDraftRecord[]>
   androidRecentDocuments: Ref<RecentDocumentRecord[]>
+  // Pinned ids protect their records from the recents storage cap on
+  // every write (the recents store is an Android document's only durable
+  // home).
+  pinnedDocumentIds: Ref<ReadonlySet<string>>
   currentAndroidDocumentCanWrite: Ref<boolean>
   promptLocalDraftSaveOnExit: Ref<boolean>
   draftExitPromptOpen: Ref<boolean>
@@ -201,6 +205,7 @@ export function createCurrentDocumentPersistence(
         savedAt,
         canWrite: options.currentAndroidDocumentCanWrite.value,
       },
+      options.pinnedDocumentIds.value,
     )
     if (!nextDocuments) {
       options.documentLogger.warn('saved Android recent document not found', { sourceUri })

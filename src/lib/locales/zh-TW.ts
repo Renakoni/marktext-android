@@ -12,6 +12,8 @@ export const zhTW = {
   'home.earlier': '更早',
   'home.emptyTitle': '沒有最近的 Markdown 檔案',
   'home.emptyBody': '建立本機草稿，或從此裝置開啟 Markdown 檔案。',
+  'home.showAllDocuments': '顯示更早的 {count} 篇',
+  'home.documentsRevealed': '已顯示更早的 {count} 篇文件',
   'home.source.localDraft': '本機草稿',
   'home.source.markdownDocument': 'Markdown 文件',
   'home.wordCount.one': '{count} 字',

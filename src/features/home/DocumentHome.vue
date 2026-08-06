@@ -12,6 +12,8 @@ interface Props {
   continueDocument: HomeDocumentItem | null
   pinnedDocuments: HomeDocumentItem[]
   earlierDocuments: HomeDocumentItem[]
+  /** Documents beyond the resting recency cap; 0 hides the expander (#151). */
+  hiddenDocumentCount: number
   notice: string | null
   selectionActive: boolean
   selectionCount: number
@@ -29,6 +31,7 @@ const emit = defineEmits<{
   openDocument: [id: string]
   openFile: []
   newDocument: []
+  showAllDocuments: []
   selectDocument: [id: string]
   toggleDocument: [id: string]
   exitSelection: []
@@ -92,6 +95,45 @@ function onDocumentClick(id: string) {
     emit('openDocument', id)
   }
 }
+
+// The show-all button removes itself once nothing is hidden, which would
+// drop keyboard/switch-access focus to <body> and force a full re-traverse.
+// Snapshot the visible ids at activation; when the list grows, hand focus
+// to the first newly revealed row and announce the growth politely.
+const preExpandIds = ref<Set<string> | null>(null)
+const revealedAnnouncement = ref('')
+
+function showAllDocuments() {
+  preExpandIds.value = new Set(allDocuments.value.map(item => item.id))
+  emit('showAllDocuments')
+}
+
+watch(allDocuments, documents => {
+  const before = preExpandIds.value
+  if (!before) {
+    return
+  }
+  preExpandIds.value = null
+
+  const revealedCount = documents.filter(item => !before.has(item.id)).length
+  if (revealedCount === 0) {
+    return
+  }
+  revealedAnnouncement.value = t('home.documentsRevealed', { count: revealedCount })
+  void nextTick(() => {
+    // First newly revealed row in DOM order — under title or ascending
+    // sorts revealed records interleave rather than append.
+    const rows
+      = homeScreen.value?.querySelectorAll<HTMLElement>('[data-doc-id]') ?? []
+    for (const row of rows) {
+      const id = row.dataset.docId
+      if (id && !before.has(id)) {
+        row.focus()
+        break
+      }
+    }
+  })
+})
 
 function confirmDelete() {
   emit('update:deleteSheetOpen', false)
@@ -196,6 +238,7 @@ watch(
             'is-selected': selectionActive && isSelected(continueDocument.id),
           }"
           type="button"
+          :data-doc-id="continueDocument.id"
           :aria-pressed="selectionActive ? isSelected(continueDocument.id) : undefined"
           @click="onDocumentClick(continueDocument.id)"
           @pointerdown="longPress.onPointerDown($event, continueDocument.id)"
@@ -236,6 +279,7 @@ watch(
               'has-pin': section.pinned,
             }"
             type="button"
+            :data-doc-id="document.id"
             :aria-pressed="selectionActive ? isSelected(document.id) : undefined"
             @click="onDocumentClick(document.id)"
             @pointerdown="longPress.onPointerDown($event, document.id)"
@@ -280,6 +324,27 @@ watch(
           </button>
         </div>
       </section>
+
+      <button
+        v-if="hiddenDocumentCount > 0"
+        class="home-show-all"
+        type="button"
+        data-testid="home-show-all-button"
+        @click="showAllDocuments"
+      >
+        {{ t('home.showAllDocuments', { count: hiddenDocumentCount }) }}
+      </button>
+
+      <!-- Always mounted so the polite live region exists before it is
+           populated — screen readers ignore text born inside a fresh
+           region. -->
+      <p
+        class="home-reveal-status"
+        role="status"
+        data-testid="home-reveal-status"
+      >
+        {{ revealedAnnouncement }}
+      </p>
 
       <section
         v-if="!continueDocument && pinnedDocuments.length === 0 && earlierDocuments.length === 0"

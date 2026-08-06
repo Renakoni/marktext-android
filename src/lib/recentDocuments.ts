@@ -58,7 +58,18 @@ type StoredRecentDocumentRecord = Omit<RecentDocumentRecord, 'createdAt'> & {
   createdAt?: string
 }
 
-const DEFAULT_RECENT_LIMIT = 50
+// Presentation cap for the home's resting view AND the write cap for the
+// stored Android recents (their records carry SAF URI references, which
+// must not grow unboundedly — the fine-grained grant lifecycle is #153).
+// 100 is double Word's own recent-list ceiling and leaves headroom under
+// Android 10-and-below's 128-grant system limit. The limit is a TOTAL:
+// protected (pinned) records occupy slots inside it with priority and the
+// newest unprotected records fill the remainder, so the store never
+// exceeds 100 records (pins are separately capped at 50, so protection
+// alone can never overflow the total). Local drafts are NEVER bounded by
+// this: their storage is complete, and the home's "show all" expansion
+// reads past the cap (#151).
+const DEFAULT_RECENT_LIMIT = 100
 
 function isRecentDocumentKind(value: unknown): value is RecentDocumentKind {
   return value === 'local-draft' || value === 'android-document' || value === 'incoming-document'
@@ -170,6 +181,7 @@ export function createRecentDocumentFromAndroidDocument(
 export function normalizeRecentDocuments(
   records: StoredRecentDocumentRecord[],
   limit = DEFAULT_RECENT_LIMIT,
+  protectedIds?: ReadonlySet<string>,
 ) {
   const seen = new Set<string>()
   const normalized: RecentDocumentRecord[] = []
@@ -189,7 +201,36 @@ export function normalizeRecentDocuments(
     normalized.push(record)
   }
 
-  return normalized.slice(0, limit)
+  if (normalized.length <= limit) {
+    return normalized
+  }
+
+  // The limit is a TOTAL cap. Protected records (pinned documents, whose
+  // only durable home may be this store) claim their slots first and are
+  // kept regardless of age — pinning is explicit intent, and recency
+  // eviction silently deleting one would also orphan-prune its pin on
+  // the next startup. The NEWEST unprotected records fill the remaining
+  // slots, so the oldest unprotected record is the one evicted and the
+  // store never exceeds `limit`.
+  const protectedCount = protectedIds
+    ? normalized.filter(record => protectedIds.has(record.id)).length
+    : 0
+  let unprotectedAllowance = Math.max(0, limit - protectedCount)
+
+  const capped: RecentDocumentRecord[] = []
+  for (const record of normalized) {
+    const isProtected = protectedIds?.has(record.id) ?? false
+    if (!isProtected) {
+      if (unprotectedAllowance <= 0) {
+        continue
+      }
+      unprotectedAllowance--
+    }
+
+    capped.push(record)
+  }
+
+  return capped
 }
 
 export function parseRecentDocuments(value: string | null) {
@@ -203,20 +244,30 @@ export function parseRecentDocuments(value: string | null) {
       return []
     }
 
-    return normalizeRecentDocuments(parsed.filter(isStoredRecentDocumentRecord))
+    // Read-side is deliberately uncapped: the cap is enforced on every
+    // write (pin-aware), and re-capping here without the pin set would
+    // evict pinned-beyond-cap records on every restart.
+    return normalizeRecentDocuments(
+      parsed.filter(isStoredRecentDocumentRecord),
+      Number.POSITIVE_INFINITY,
+    )
   } catch {
     return []
   }
 }
 
-export function serializeRecentDocuments(records: RecentDocumentRecord[]) {
-  return JSON.stringify(normalizeRecentDocuments(records))
+export function serializeRecentDocuments(
+  records: RecentDocumentRecord[],
+  protectedIds?: ReadonlySet<string>,
+) {
+  return JSON.stringify(normalizeRecentDocuments(records, DEFAULT_RECENT_LIMIT, protectedIds))
 }
 
 export function upsertRecentDocument(
   records: RecentDocumentRecord[],
   nextRecord: RecentDocumentRecord,
   limit = DEFAULT_RECENT_LIMIT,
+  protectedIds?: ReadonlySet<string>,
 ) {
   const nextKey = getRecentDocumentKey(nextRecord)
   const existingRecord = records.find(record => getRecentDocumentKey(record) === nextKey)
@@ -231,6 +282,7 @@ export function upsertRecentDocument(
       ...records.filter(record => getRecentDocumentKey(record) !== nextKey),
     ],
     limit,
+    protectedIds,
   )
 }
 
@@ -250,11 +302,24 @@ export function markRecentDocumentSaved(
   }
 }
 
-export function getRecentDocumentListItems(
+/**
+ * Materialize list items (with document statistics) from ALREADY
+ * normalized records, preserving their order. Statistics scan each
+ * draft's full Markdown body, so callers keep projections cheap by
+ * materializing only the records they will actually render.
+ */
+export function toRecentDocumentListItems(
   records: RecentDocumentRecord[],
 ): RecentDocumentListItem[] {
-  return normalizeRecentDocuments(records).map(record => ({
+  return records.map(record => ({
     ...record,
     stats: record.markdownPreview ? getDocumentStats(record.markdownPreview) : null,
   }))
+}
+
+export function getRecentDocumentListItems(
+  records: RecentDocumentRecord[],
+  limit = DEFAULT_RECENT_LIMIT,
+): RecentDocumentListItem[] {
+  return toRecentDocumentListItems(normalizeRecentDocuments(records, limit))
 }

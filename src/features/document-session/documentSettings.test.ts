@@ -3,6 +3,7 @@ import {
   DEFAULT_DOCUMENT_SETTINGS,
   getDocumentSettings,
   getSortedRecentDocumentListItems,
+  getSortedRecentDocumentRecords,
   normalizeAutoSaveDelaySeconds,
   normalizeDocumentSettingValue,
 } from './documentSettings'
@@ -149,4 +150,29 @@ describe('documentSettings', () => {
     ).toEqual(['charlie', 'alpha', 'bravo'])
   })
 
+  it('sorts the complete record collection without materializing statistics', () => {
+    // The records projection backs cap membership and hidden counts, so
+    // it must read the COMPLETE collection (no recency cap) and stay at
+    // the record level (no per-draft stats scans).
+    const base = Date.parse('2026-06-01T00:00:00.000Z')
+    const records = Array.from({ length: 105 }, (_, index) =>
+      createRecord({
+        id: `draft-${String(index + 1).padStart(3, '0')}`,
+        title: `Draft ${index + 1}`,
+        createdAt: new Date(base).toISOString(),
+        updatedAt: new Date(base + (index + 1) * 1000).toISOString(),
+        lastOpenedAt: new Date(base + (index + 1) * 1000).toISOString(),
+      }),
+    )
+
+    const sorted = getSortedRecentDocumentRecords(records, {
+      fileSortBy: 'modified',
+      fileSortOrder: 'asc',
+    })
+
+    expect(sorted).toHaveLength(105)
+    expect(sorted[0].id).toBe('draft-001')
+    expect(sorted.at(-1)?.id).toBe('draft-105')
+    expect('stats' in sorted[0]).toBe(false)
+  })
 })

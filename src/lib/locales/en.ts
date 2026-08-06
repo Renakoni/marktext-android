@@ -10,6 +10,8 @@ export const en = {
   'home.earlier': 'Earlier',
   'home.emptyTitle': 'No recent Markdown files',
   'home.emptyBody': 'Start a local draft or open a Markdown file from this device.',
+  'home.showAllDocuments': 'Show {count} more',
+  'home.documentsRevealed': '{count} more documents shown',
   'home.source.localDraft': 'Local draft',
   'home.source.markdownDocument': 'Markdown document',
   'home.wordCount.one': '{count} word',

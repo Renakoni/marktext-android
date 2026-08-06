@@ -1,4 +1,8 @@
-import { getRecentDocumentListItems, type RecentDocumentRecord } from '../../lib/recentDocuments'
+import {
+  getRecentDocumentListItems,
+  normalizeRecentDocuments,
+  type RecentDocumentRecord,
+} from '../../lib/recentDocuments'
 import type { SettingsValue } from '../settings/settingsState'
 
 export type DocumentSettingKey =
@@ -178,6 +182,22 @@ export function getSortedRecentDocumentListItems(
   settings: Pick<DocumentSettings, 'fileSortBy' | 'fileSortOrder'>,
 ) {
   return getRecentDocumentListItems(records).sort((left, right) =>
+    compareRecentDocumentsForSettings(left, right, settings),
+  )
+}
+
+/**
+ * The complete collection as sorted RECORDS — no list-item statistics.
+ * Sort keys are timestamps and titles, so ordering, cap membership, and
+ * hidden counts never need the per-draft full-Markdown scans that item
+ * materialization performs; callers materialize items only for the
+ * records they render (#151).
+ */
+export function getSortedRecentDocumentRecords(
+  records: RecentDocumentRecord[],
+  settings: Pick<DocumentSettings, 'fileSortBy' | 'fileSortOrder'>,
+) {
+  return normalizeRecentDocuments(records, Number.POSITIVE_INFINITY).sort((left, right) =>
     compareRecentDocumentsForSettings(left, right, settings),
   )
 }

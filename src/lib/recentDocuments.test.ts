@@ -7,6 +7,7 @@ import {
   normalizeRecentDocuments,
   parseRecentDocuments,
   serializeRecentDocuments,
+  toRecentDocumentListItems,
   upsertRecentDocument,
   type RecentDocumentRecord,
 } from './recentDocuments'
@@ -210,5 +211,116 @@ describe('recentDocuments', () => {
     const items = getRecentDocumentListItems([androidDocument])
 
     expect(items[0].stats).toBeNull()
+  })
+
+  it('caps the resting list at 100 and lets an explicit limit read past it (#151)', () => {
+    const base = Date.parse('2026-06-01T00:00:00.000Z')
+    const drafts = Array.from({ length: 105 }, (_, i) =>
+      createRecentDocumentFromLocalDraft({
+        id: `draft-${i + 1}`,
+        markdown: `# Draft ${i + 1}\n\ncontent`,
+        createdAt: new Date(base).toISOString(),
+        updatedAt: new Date(base + (i + 1) * 1000).toISOString(),
+        lastSavedAt: null,
+      }),
+    )
+
+    expect(getRecentDocumentListItems(drafts)).toHaveLength(100)
+    // The "show all" expansion reads the COMPLETE collection.
+    expect(getRecentDocumentListItems(drafts, Number.POSITIVE_INFINITY)).toHaveLength(105)
+  })
+
+  it('materializes list items from pre-sorted records without reordering', () => {
+    // toRecentDocumentListItems is the projection stage AFTER settings
+    // sorting — re-normalizing here would re-sort by recency and destroy
+    // a title or ascending order.
+    const older = createRecentDocumentFromLocalDraft(olderDraft)
+    const newer = createRecentDocumentFromLocalDraft(newerDraft)
+
+    const items = toRecentDocumentListItems([older, newer])
+
+    expect(items.map(item => item.id)).toEqual(['older', 'newer'])
+    expect(items[0].stats?.words).toBe(3)
+  })
+
+  describe('the storage cap protects pinned records', () => {
+    const base = Date.parse('2026-06-01T00:00:00.000Z')
+
+    function androidRecords(count: number) {
+      return Array.from({ length: count }, (_, index) => ({
+        ...androidDocument,
+        id: `android-document:content://provider/doc-${index}.md`,
+        sourceUri: `content://provider/doc-${index}.md`,
+        updatedAt: new Date(base + index * 60_000).toISOString(),
+        lastOpenedAt: new Date(base + index * 60_000).toISOString(),
+      }))
+    }
+
+    it('evicts the oldest UNPINNED records when an upsert crosses the cap', () => {
+      // The concrete data-loss sequence: 100 unpinned Android records +
+      // 1 pinned oldest, then the user opens one more document. Pin-blind
+      // recency eviction would drop the pinned record — whose only
+      // durable home is this store — and its pin would be orphan-pruned
+      // at the next startup.
+      const existing = androidRecords(101)
+      const pinnedOldest = existing[0]
+      const incoming = {
+        ...androidDocument,
+        id: 'android-document:content://provider/incoming.md',
+        sourceUri: 'content://provider/incoming.md',
+        updatedAt: new Date(base + 200 * 60_000).toISOString(),
+        lastOpenedAt: new Date(base + 200 * 60_000).toISOString(),
+      }
+
+      const records = upsertRecentDocument(
+        existing,
+        incoming,
+        undefined,
+        new Set([pinnedOldest.id]),
+      )
+
+      // The limit is a TOTAL cap: the pinned record claims a slot with
+      // priority, the newest unprotected records fill the remainder.
+      expect(records).toHaveLength(100)
+      expect(records.some(record => record.id === pinnedOldest.id)).toBe(true)
+      expect(records.some(record => record.id === incoming.id)).toBe(true)
+      // The oldest unpinned records are the ones that leave.
+      expect(records.some(record => record.id === existing[1].id)).toBe(false)
+      expect(records.some(record => record.id === existing[2].id)).toBe(false)
+    })
+
+    it('serializes a pinned beyond-cap record and parses it back uncapped', () => {
+      const records = androidRecords(102)
+      const pinnedOldest = records[0]
+
+      const roundTripped = parseRecentDocuments(
+        serializeRecentDocuments(records, new Set([pinnedOldest.id])),
+      )
+
+      // The pinned oldest plus the 99 newest unpinned survive within the
+      // total cap; the read side must not re-cap them (it has no pin
+      // knowledge).
+      expect(roundTripped).toHaveLength(100)
+      expect(roundTripped.some(record => record.id === pinnedOldest.id)).toBe(true)
+    })
+
+    it('never exceeds the total cap even at the pin ceiling', () => {
+      // Worst case: 50 pinned (the pin store's own ceiling) + 100
+      // unpinned. The advertised cap is a TOTAL — the store must hold
+      // 100 records (50 pinned + the 50 newest unpinned), not 150,
+      // preserving the headroom argument under Android <= 10's
+      // 128-persisted-grant limit.
+      const records = androidRecords(150)
+      const pinnedIds = new Set(records.slice(0, 50).map(record => record.id))
+
+      const roundTripped = parseRecentDocuments(
+        serializeRecentDocuments(records, pinnedIds),
+      )
+
+      expect(roundTripped).toHaveLength(100)
+      for (const id of pinnedIds) {
+        expect(roundTripped.some(record => record.id === id)).toBe(true)
+      }
+    })
   })
 })

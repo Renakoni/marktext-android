@@ -12,6 +12,8 @@ export const ko = {
   'home.earlier': '이전',
   'home.emptyTitle': '최근 Markdown 파일 없음',
   'home.emptyBody': '로컬 초안을 시작하거나 이 기기의 Markdown 파일을 여세요.',
+  'home.showAllDocuments': '이전 문서 {count}개 표시',
+  'home.documentsRevealed': '문서 {count}개를 더 표시했습니다',
   'home.source.localDraft': '로컬 초안',
   'home.source.markdownDocument': 'Markdown 문서',
   'home.wordCount.one': '{count}개 단어',

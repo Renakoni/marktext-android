@@ -259,6 +259,49 @@ textarea {
   text-transform: uppercase;
 }
 
+/* The "show all" expander (#151): a quiet text action closing the Earlier
+   list; present only while older documents are hidden by the recency cap. */
+.home-show-all {
+  display: block;
+  min-height: 44px;
+  margin: 4px auto 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  touch-action: manipulation;
+  transition: background-color var(--dur-standard) var(--ease-out);
+}
+
+.home-show-all:active {
+  background: var(--press);
+  transition-duration: 0ms;
+}
+
+.home-show-all:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* Screen-reader-only live region announcing how many rows the expander
+   revealed; visually collapsed but never display:none, which would mute
+   the announcement. */
+.home-reveal-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .home-content {
   max-width: 720px;
   margin: 6px auto 0;
