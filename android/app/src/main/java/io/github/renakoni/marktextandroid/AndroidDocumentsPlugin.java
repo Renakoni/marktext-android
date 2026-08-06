@@ -52,6 +52,7 @@ public class AndroidDocumentsPlugin extends Plugin {
     private String lastHandledIncomingIntentId = "";
     private String defaultMarkdownEncoding = "utf8";
     private boolean autoDetectMarkdownEncoding = true;
+    private final CharsetSniffer markdownCharsetSniffer = new IcuCharsetSniffer();
 
     @Override
     public void load() {
@@ -1206,7 +1207,12 @@ public class AndroidDocumentsPlugin extends Plugin {
                 }
                 output.write(buffer, 0, read);
             }
-            return MarkdownCodec.decode(output.toByteArray(), defaultMarkdownEncoding, autoDetectMarkdownEncoding);
+            return MarkdownCodec.decode(
+                output.toByteArray(),
+                defaultMarkdownEncoding,
+                autoDetectMarkdownEncoding,
+                markdownCharsetSniffer
+            );
         }
     }
 
