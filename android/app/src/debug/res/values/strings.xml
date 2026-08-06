@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Debug installs carry their own launcher label so the coexisting
+         release app stays unmistakable on device. -->
+    <string name="app_name">MarkText Debug</string>
+</resources>

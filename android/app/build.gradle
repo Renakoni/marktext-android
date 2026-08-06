@@ -48,6 +48,13 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        debug {
+            // Debug installs coexist with the release app instead of
+            // replacing it: separate application id, separate data, and a
+            // distinguishable launcher label. Measurement and smoke installs
+            // on a daily-driver device must never touch the real app.
+            applicationIdSuffix ".debug"
+        }
     }
 }
 
