@@ -87,3 +87,29 @@ test('lists every catalog theme in the picker with swatches and group headings',
 
   await page.screenshot({ path: 'test-results/theme-gallery/picker.png' })
 })
+
+test('the whole picker row is the hit target, not just its swatches and label', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+
+  await page.getByTestId('bottom-nav-settings').click()
+  await page.getByTestId('settings-entry-appearance').click()
+  await page.getByTestId('settings-appearance-theme-mode-option-custom').click()
+  await page.getByTestId('settings-appearance-custom-theme-trigger').click()
+
+  // Every option row stretches to the panel width — the auto grid track
+  // used to shrink rows to their content, leaving the space right of the
+  // radio dead to taps.
+  const panelBox = await page.locator('.settings-select-panel').boundingBox()
+  const option = page.getByTestId('settings-appearance-custom-theme-option-nord')
+  const optionBox = await option.boundingBox()
+  expect(optionBox!.width).toBeGreaterThan(panelBox!.width - 24)
+
+  // Selecting by tapping the far RIGHT edge of the row (formerly dead
+  // space) works.
+  await option.click({ position: { x: optionBox!.width - 8, y: optionBox!.height / 2 } })
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'nord')
+})

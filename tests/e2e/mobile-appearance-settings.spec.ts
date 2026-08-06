@@ -45,9 +45,10 @@ test('keeps the theme mode segments on screen with long locale labels', async ({
   await page.goto('/')
   await page.evaluate(() => {
     localStorage.clear()
-    // German has the longest mode label ("Benutzerdefiniert"); it used to push
-    // the segmented control past the right screen edge.
-    localStorage.setItem('marktext-for-android:locale', 'de')
+    // Turkish carries the longest surviving mode label ("Daha fazla") now
+    // that the fourth mode is "More" everywhere (German "Benutzerdefiniert"
+    // went away with the rename); it exercises the same overflow guard.
+    localStorage.setItem('marktext-for-android:locale', 'tr')
   })
   await page.reload()
 
@@ -78,8 +79,13 @@ test('keeps the theme mode segments on screen with long locale labels', async ({
   await expectSegmentsOnScreen()
 
   // On a narrower phone the segments stack into two balanced columns; every
-  // label must still be fully on screen and unclipped.
-  await page.setViewportSize({ width: 360, height: 800 })
+  // label must still be fully on screen and unclipped. The shorter "More"
+  // labels fit a 360px line, so the stacking threshold sits lower now;
+  // 320px is the app's minimum supported layout width and Turkish stacks
+  // there (narrower viewports leave the layout viewport pinned at ~320,
+  // which would fail the on-screen assertions for reasons unrelated to
+  // this control).
+  await page.setViewportSize({ width: 320, height: 800 })
   await expect
     .poll(() =>
       modeControl

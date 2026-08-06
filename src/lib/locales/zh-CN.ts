@@ -483,7 +483,7 @@ export const zhCN = {
   'settings.option.system': '系统',
   'settings.option.light': '浅色',
   'settings.option.dark': '深色',
-  'settings.option.custom': '自定义',
+  'settings.option.custom': '更多',
   'settings.option.off': '关',
   'settings.option.ltr': 'LTR',
   'settings.option.rtl': 'RTL',

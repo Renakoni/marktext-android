@@ -490,7 +490,7 @@ export const ja = {
   'settings.option.system': 'システム',
   'settings.option.light': 'ライト',
   'settings.option.dark': 'ダーク',
-  'settings.option.custom': 'カスタム',
+  'settings.option.custom': 'その他',
   'settings.option.off': 'オフ',
   'settings.option.ltr': 'LTR',
   'settings.option.rtl': 'RTL',

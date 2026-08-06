@@ -490,7 +490,7 @@ export const zhTW = {
   'settings.option.system': '系統',
   'settings.option.light': '淺色',
   'settings.option.dark': '深色',
-  'settings.option.custom': '自訂',
+  'settings.option.custom': '更多',
   'settings.option.off': '關',
   'settings.option.ltr': 'LTR',
   'settings.option.rtl': 'RTL',
