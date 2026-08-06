@@ -447,7 +447,7 @@ export const zhTW = {
 
   'settings.value.on': '開',
   'settings.value.off': '關',
-  'settings.value.system': '系統預設',
+  'settings.value.system': '跟隨系統',
   'settings.value.default': '預設',
   'settings.value.medium': '中',
   'settings.value.normal': '標準',

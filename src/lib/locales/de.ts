@@ -95,7 +95,7 @@ export const de = {
   'editor.outline.title': 'Gliederung',
   'editor.outline.close': 'Gliederung schließen',
   'editor.outline.empty':
-    'Noch keine Überschriften. Füge welche hinzu, um eine Gliederung zu erstellen.',
+    'Noch keine Überschriften. Füge Überschriften hinzu, um eine Gliederung zu erstellen.',
   'editor.resume.title': 'Willkommen zurück',
   'editor.resume.action': 'Weitermachen, wo du aufgehört hast',
   'editor.resume.dismiss': 'Fortsetzungshinweis ausblenden',

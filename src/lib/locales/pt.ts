@@ -170,7 +170,7 @@ export const pt = {
   'toolbar.panel.insert': 'Inserir',
   'toolbar.panel.insertTitle': 'Links, imagens, tabelas, linhas horizontais',
   'toolbar.panel.markdown': 'Markdown',
-  'toolbar.panel.markdownTitle': 'Código, matemática e sintaxe avançada',
+  'toolbar.panel.markdownTitle': 'Código, matemática e sintaxe bruta',
   'toolbar.panel.table': 'Tabela',
   'toolbar.panel.tableTitle': 'Linhas, colunas e a tabela inteira',
   'toolbar.table.insertRowAbove': 'Inserir linha acima',
