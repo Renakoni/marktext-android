@@ -34,7 +34,7 @@ export interface SharedAndroidDocument {
   shareKind: 'text' | 'stream'
 }
 
-interface SavedAndroidDocument {
+export interface SavedAndroidDocument {
   sourceUri: string
   displayName: string
   providerName: string | null
@@ -367,6 +367,46 @@ export function getAndroidDocumentUserMessage(error: unknown) {
   const code = getAndroidDocumentErrorCode(error)
   if (code === 'UNAVAILABLE') {
     return 'Open Markdown files from the Android app build.'
+  }
+
+  if (code === 'CLOUD_NOT_CONNECTED' || code === 'CLOUD_AUTH_EXPIRED') {
+    return 'Sign in to OneDrive to open this document.'
+  }
+
+  if (code === 'CLOUD_AUTH_FAILED' || code === 'CLOUD_AUTH_CANCELED') {
+    return 'The OneDrive sign-in was not completed.'
+  }
+
+  if (code === 'CLOUD_CLIENT_ID_MISSING') {
+    return 'OneDrive is not configured in this build.'
+  }
+
+  if (code === 'CLOUD_BROWSER_UNAVAILABLE') {
+    return 'No browser is available for the OneDrive sign-in.'
+  }
+
+  if (code === 'CLOUD_DOCUMENT_CONFLICT') {
+    return 'This document changed on OneDrive since it was opened.'
+  }
+
+  if (code === 'CLOUD_DOCUMENT_NOT_FOUND') {
+    return 'This OneDrive document was moved or deleted.'
+  }
+
+  if (code === 'CLOUD_NETWORK_FAILED' || code === 'CLOUD_UNAVAILABLE') {
+    return 'Could not reach OneDrive. Check the connection and try again.'
+  }
+
+  if (code === 'CLOUD_PROVIDER_UNAVAILABLE') {
+    return 'This cloud provider is not available yet.'
+  }
+
+  if (code === 'CLOUD_READ_FAILED' || code === 'CLOUD_REQUEST_FAILED') {
+    return 'Could not read this document from OneDrive.'
+  }
+
+  if (code === 'CLOUD_WRITE_FAILED') {
+    return 'Could not save this document to OneDrive.'
   }
 
   if (code === 'UNSUPPORTED_DOCUMENT') {

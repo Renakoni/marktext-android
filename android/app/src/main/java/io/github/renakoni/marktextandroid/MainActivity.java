@@ -45,6 +45,7 @@ public class MainActivity extends BridgeActivity {
             androidx.core.splashscreen.SplashScreen.installSplashScreen(this);
 
         registerPlugin(AndroidDocumentsPlugin.class);
+        registerPlugin(CloudDocumentsPlugin.class);
         registerPlugin(NativeLoggerPlugin.class);
         registerPlugin(AndroidAppInfoPlugin.class);
         registerPlugin(AndroidSelectionPlugin.class);
