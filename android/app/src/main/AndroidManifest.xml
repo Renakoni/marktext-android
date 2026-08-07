@@ -72,7 +72,8 @@
 
             <!-- The Google OAuth redirect intent-filter is per-variant (the
                  scheme is the reversed client id, which is bound to the
-                 signing certificate): see src/debug/AndroidManifest.xml. -->
+                 signing certificate): see src/debug/AndroidManifest.xml and
+                 src/release/AndroidManifest.xml. -->
 
         </activity>
 

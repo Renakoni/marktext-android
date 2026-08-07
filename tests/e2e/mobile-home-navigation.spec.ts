@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { APP_INFO } from '../../src/lib/appInfo'
 
 interface MockCapacitorWindow {
   __emitCapacitorAppBackButton?: () => void
@@ -277,7 +278,8 @@ test('switches between document home and the settings about screen', async ({ pa
   await expect(page.getByTestId('settings-title')).toContainText('About')
   await expect(page.getByTestId('settings-about-page')).toBeVisible()
   await expect(page.getByTestId('settings-about-app')).toBeVisible()
-  await expect(page.getByTestId('settings-about-version')).toContainText('0.1.0')
+  // Sourced from appInfo so a version bump can never strand this test.
+  await expect(page.getByTestId('settings-about-version')).toContainText(APP_INFO.version)
   await expect(page.getByTestId('settings-about-github')).toHaveAttribute(
     'href',
     'https://github.com/Renakoni/marktext-android',

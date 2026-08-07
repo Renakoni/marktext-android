@@ -165,9 +165,9 @@ aynı doğrulukla işlenir.
 ## Proje durumu
 
 > [!IMPORTANT]
-> İlk imzalı genel sürüm **v0.1.0** yayında. APK'sı deponun sürüm iş akışıyla
-> derlenir, resmî sürüm sertifikasına sabitlenmiştir ve Android 14 üzerinde
-> temiz kurulum ile aynı anahtarla yükseltme denetimlerinden geçmiştir.
+> İmzalı genel sürümler yayında. Her sürüm APK'sı deponun sürüm iş akışıyla
+> derlenir, resmî sürüm sertifikasına sabitlenmiştir ve yayımlanmadan önce
+> temiz kurulum ile aynı anahtarla yükseltme denetimlerinden geçer.
 
 İmzalı derlemeleri
 [Sürümler](https://github.com/Renakoni/marktext-android/releases/latest)

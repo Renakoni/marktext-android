@@ -161,9 +161,9 @@ MarkText for Android는 MarkText의 실시간 미리 보기 Markdown 편집을 �
 ## 프로젝트 현황
 
 > [!IMPORTANT]
-> 처음으로 서명된 공개 릴리스 **v0.1.0**을 사용할 수 있습니다. APK는 저장소의
-> 릴리스 워크플로로 빌드되고 공식 릴리스 인증서에 고정되며, Android 14에서 클린
-> 설치와 동일 키 업그레이드 검사를 통과했습니다.
+> 서명된 공개 릴리스를 제공하고 있습니다. 각 릴리스 APK는 저장소의 릴리스
+> 워크플로로 빌드되고 공식 릴리스 인증서에 고정되며, 게시 전에 클린 설치와
+> 동일 키 업그레이드 검사를 통과합니다.
 
 서명된 빌드는
 [Releases](https://github.com/Renakoni/marktext-android/releases/latest)

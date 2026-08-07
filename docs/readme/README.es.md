@@ -168,10 +168,10 @@ escritorio, en una interfaz pensada para usarla con una mano.
 ## Estado del proyecto
 
 > [!IMPORTANT]
-> Ya está disponible la primera versión pública firmada, **v0.1.0**. Su APK lo
+> Hay disponibles versiones públicas firmadas. Cada APK de publicación lo
 > genera el flujo de publicación del repositorio, está fijado al certificado
-> oficial de publicación y ha superado comprobaciones de instalación limpia y de
-> actualización con la misma clave en Android 14.
+> oficial de publicación y supera antes de publicarse comprobaciones de
+> instalación limpia y de actualización con la misma clave.
 
 Descarga las compilaciones firmadas desde la página de
 [versiones publicadas](https://github.com/Renakoni/marktext-android/releases/latest).

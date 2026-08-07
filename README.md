@@ -161,9 +161,9 @@ desktop, in an interface built for one hand.
 ## Project status
 
 > [!IMPORTANT]
-> The first signed public release, **v0.1.0**, is available. Its APK is built by
-> the repository's release workflow, pinned to the official release certificate,
-> and has passed clean-install and same-key upgrade checks on Android 14.
+> Signed public releases are available. Each release APK is built by the
+> repository's release workflow, pinned to the official release certificate,
+> and passes clean-install and same-key upgrade checks before publishing.
 
 Download signed builds from the
 [Releases](https://github.com/Renakoni/marktext-android/releases/latest) page.
