@@ -70,6 +70,18 @@
                 <data android:scheme="${applicationId}" android:host="oauth" />
             </intent-filter>
 
+            <!-- Google OAuth redirect: Google mandates the reversed client
+                 id as the scheme (CloudAuthConfig.GOOGLEDRIVE_REDIRECT_SCHEME
+                 must match). The id is per-signing-certificate, so this is
+                 the debug client until a release client is registered. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="com.googleusercontent.apps.432194989716-i513ggpqg5mt3853s584b9o6s4cp159l" />
+            </intent-filter>
+
         </activity>
 
         <provider

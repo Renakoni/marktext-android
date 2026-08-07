@@ -3,7 +3,7 @@ import { AndroidDocumentError, isAndroidDocumentAccessAvailable } from './androi
 import type { AndroidMarkdownSettings } from '../features/settings/advancedSettings'
 import type { MarkdownEncoding } from '../features/settings/advancedSettings'
 
-export type CloudProviderId = 'onedrive' | 'webdav'
+export type CloudProviderId = 'onedrive' | 'googledrive' | 'webdav'
 
 export interface CloudAccountState {
   connected: boolean
@@ -46,6 +46,13 @@ export interface CloudAuthEvent {
   message?: string
 }
 
+/** Picker session config: a fresh token plus the console-side identifiers. */
+export interface CloudAccessToken {
+  accessToken: string
+  pickerApiKey: string
+  appId: string
+}
+
 interface CloudDocumentsPlugin {
   addListener(
     eventName: 'cloudAuthCompleted',
@@ -58,6 +65,7 @@ interface CloudDocumentsPlugin {
     provider: CloudProviderId
     folderId?: string
   }): Promise<{ entries: CloudFolderEntry[] }>
+  getCloudAccessToken(options: { provider: CloudProviderId }): Promise<CloudAccessToken>
   readCloudDocument(options: {
     provider: CloudProviderId
     fileId: string
@@ -113,6 +121,10 @@ export async function listCloudFolder(provider: CloudProviderId, folderId?: stri
     CloudDocuments.listCloudFolder({ provider, folderId }),
   )
   return result.entries
+}
+
+export async function getCloudAccessToken(provider: CloudProviderId) {
+  return wrapCloudErrors(() => CloudDocuments.getCloudAccessToken({ provider }))
 }
 
 export async function readCloudDocument(

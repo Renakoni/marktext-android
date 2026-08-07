@@ -70,7 +70,7 @@ const { t } = useI18n()
           {{ connecting ? t('cloudBrowser.connecting') : t('cloudBrowser.connect') }}
         </button>
         <p v-if="!accountState.available" class="cloud-browser-hint">
-          {{ t('openLocations.onedriveUnavailable') }}
+          {{ t('openLocations.cloudUnavailable') }}
         </p>
       </template>
 

@@ -45,7 +45,7 @@ beforeEach(() => {
 
 describe('cloudDocumentBridge', () => {
   it('adapts cloud content to the opened-document shape with a cloud source URI', () => {
-    const opened = toOpenedDocumentFromCloud(CLOUD_CONTENT)
+    const opened = toOpenedDocumentFromCloud('onedrive', CLOUD_CONTENT)
 
     expect(opened.sourceUri).toBe('cloud:onedrive:item-1')
     expect(opened.displayName).toBe('notes.md')
@@ -53,6 +53,16 @@ describe('cloudDocumentBridge', () => {
     expect(opened.canWrite).toBe(true)
     expect(opened.persisted).toBe(true)
     expect(opened.providerName).toBe('OneDrive')
+  })
+
+  it('builds the source URI from the caller-declared provider', () => {
+    const opened = toOpenedDocumentFromCloud('googledrive', {
+      ...CLOUD_CONTENT,
+      providerName: 'Google Drive',
+    })
+
+    expect(opened.sourceUri).toBe('cloud:googledrive:item-1')
+    expect(opened.providerName).toBe('Google Drive')
   })
 
   it('routes cloud source URIs to the cloud plugin on read', async () => {
@@ -67,6 +77,16 @@ describe('cloudDocumentBridge', () => {
     })
     expect(readAndroidMarkdownDocument).not.toHaveBeenCalled()
     expect(opened.sourceUri).toBe('cloud:onedrive:item-1')
+  })
+
+  it('routes Google Drive source URIs with the googledrive provider id', async () => {
+    readCloudDocument.mockResolvedValue({ ...CLOUD_CONTENT, providerName: 'Google Drive' })
+
+    const opened = await readRoutedMarkdownDocument('cloud:googledrive:item-1', {})
+
+    expect(readCloudDocument).toHaveBeenCalledWith('googledrive', 'item-1', {})
+    expect(opened.sourceUri).toBe('cloud:googledrive:item-1')
+    expect(opened.providerName).toBe('Google Drive')
   })
 
   it('passes content URIs through to the SAF reader', async () => {

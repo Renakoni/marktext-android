@@ -134,7 +134,7 @@ final class OneDriveGraphClient {
             "POST",
             AUTHORITY + "/token",
             formHeaders(),
-            encodeForm(form).getBytes(StandardCharsets.UTF_8)
+            HttpTransport.encodeForm(form).getBytes(StandardCharsets.UTF_8)
         ));
 
         JSONObject json = parseJson(response.body);
@@ -385,17 +385,6 @@ final class OneDriveGraphClient {
         headers.put("Content-Type", "application/x-www-form-urlencoded");
         headers.put("Accept", "application/json");
         return headers;
-    }
-
-    static String encodeForm(Map<String, String> form) {
-        StringBuilder encoded = new StringBuilder();
-        for (Map.Entry<String, String> field : form.entrySet()) {
-            if (encoded.length() > 0) {
-                encoded.append('&');
-            }
-            encoded.append(urlEncode(field.getKey())).append('=').append(urlEncode(field.getValue()));
-        }
-        return encoded.toString();
     }
 
     private static JSONObject parseJson(byte[] body) {

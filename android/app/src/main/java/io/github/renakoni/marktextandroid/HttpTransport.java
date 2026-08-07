@@ -61,4 +61,23 @@ interface HttpTransport {
 
     /** Executes without following redirects; redirect handling is client policy. */
     Response execute(Request request) throws IOException;
+
+    /** application/x-www-form-urlencoded body encoding shared by the OAuth clients. */
+    static String encodeForm(Map<String, String> form) {
+        StringBuilder encoded = new StringBuilder();
+        for (Map.Entry<String, String> field : form.entrySet()) {
+            if (encoded.length() > 0) {
+                encoded.append('&');
+            }
+            try {
+                encoded
+                    .append(java.net.URLEncoder.encode(field.getKey(), "UTF-8"))
+                    .append('=')
+                    .append(java.net.URLEncoder.encode(field.getValue(), "UTF-8"));
+            } catch (java.io.UnsupportedEncodingException ex) {
+                throw new IllegalStateException("UTF-8 unavailable", ex);
+            }
+        }
+        return encoded.toString();
+    }
 }

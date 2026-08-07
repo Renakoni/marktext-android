@@ -20,6 +20,7 @@ import {
   addCloudAuthListener,
   connectCloudAccount,
   disconnectCloudAccount,
+  getCloudAccessToken,
   getCloudAccountState,
   isCloudDocumentAccessAvailable,
   listCloudFolder,
@@ -27,6 +28,7 @@ import {
   type CloudAccountState,
   type CloudFolderEntry,
 } from './lib/cloudDocuments'
+import { showGoogleDrivePicker } from './features/open-locations/googleDrivePicker'
 import { isCloudSourceUri } from './lib/cloudDocumentUris'
 import {
   readRoutedMarkdownDocument,
@@ -1530,7 +1532,7 @@ async function openFileFromAndroid() {
   }
 }
 
-// --- Open locations + OneDrive browser (#185) ---
+// --- Open locations + cloud providers (#185) ---
 
 const oneDriveAccountState = ref<CloudAccountState | null>(null)
 const cloudConnecting = ref(false)
@@ -1555,8 +1557,10 @@ async function refreshOneDriveAccountState() {
 
 function showOpenLocations() {
   homeNotice.value = null
+  openLocationsNotice.value = null
   currentScreen.value = 'open-locations'
   void refreshOneDriveAccountState()
+  void refreshGoogleDriveAccountState()
 }
 
 async function openFileFromLocations() {
@@ -1648,7 +1652,7 @@ async function handleCloudEntryOpen(entry: CloudFolderEntry) {
   cloudOpeningFileId.value = entry.id
   try {
     const content = await readCloudDocument('onedrive', entry.id, androidMarkdownSettings.value)
-    await openAndroidDocumentResult(toOpenedDocumentFromCloud(content))
+    await openAndroidDocumentResult(toOpenedDocumentFromCloud('onedrive', content))
   } catch (error) {
     cloudBrowserError.value = getAndroidDocumentUserMessage(error)
     androidDocumentLog.error('open OneDrive document failed', { fileId: entry.id, error })
@@ -1662,6 +1666,97 @@ async function cloudBrowserNavigateUp() {
   await loadCloudFolder()
 }
 
+// --- Google Drive (Picker-based; drive.file cannot browse folders) ---
+
+const googleDriveAccountState = ref<CloudAccountState | null>(null)
+const googleDriveBusy = ref<'connecting' | 'picker' | null>(null)
+const openLocationsNotice = ref<string | null>(null)
+// Auto-open the Picker after the sign-in that the Drive row itself started.
+let openPickerAfterGoogleAuth = false
+
+async function refreshGoogleDriveAccountState() {
+  if (!isCloudDocumentAccessAvailable()) {
+    googleDriveAccountState.value = { connected: false, available: false, accountName: null }
+    return
+  }
+  try {
+    googleDriveAccountState.value = await getCloudAccountState('googledrive')
+  } catch (error) {
+    androidDocumentLog.warn('Google Drive account state unavailable', { error })
+    googleDriveAccountState.value = { connected: false, available: false, accountName: null }
+  }
+}
+
+async function handleOpenGoogleDrive() {
+  if (googleDriveBusy.value !== null) {
+    return
+  }
+  openLocationsNotice.value = null
+  if (googleDriveAccountState.value === null) {
+    await refreshGoogleDriveAccountState()
+  }
+  const state = googleDriveAccountState.value
+  if (!state?.available) {
+    return
+  }
+  if (!state.connected) {
+    googleDriveBusy.value = 'connecting'
+    openPickerAfterGoogleAuth = true
+    try {
+      await connectCloudAccount('googledrive')
+      // Completion arrives through the cloudAuthCompleted listener once the
+      // browser redirects back.
+    } catch (error) {
+      googleDriveBusy.value = null
+      openPickerAfterGoogleAuth = false
+      openLocationsNotice.value = getAndroidDocumentUserMessage(error)
+      androidDocumentLog.warn('Google Drive connect failed to start', { error })
+    }
+    return
+  }
+  await openGoogleDrivePickerSession()
+}
+
+async function openGoogleDrivePickerSession() {
+  googleDriveBusy.value = 'picker'
+  openLocationsNotice.value = null
+  try {
+    const session = await getCloudAccessToken('googledrive')
+    const picked = await showGoogleDrivePicker({
+      accessToken: session.accessToken,
+      pickerApiKey: session.pickerApiKey,
+      appId: session.appId,
+      locale: locale.value,
+    })
+    if (!picked) {
+      return
+    }
+    const content = await readCloudDocument(
+      'googledrive',
+      picked.fileId,
+      androidMarkdownSettings.value,
+    )
+    await openAndroidDocumentResult(toOpenedDocumentFromCloud('googledrive', content))
+  } catch (error) {
+    openLocationsNotice.value = getAndroidDocumentUserMessage(error)
+    androidDocumentLog.error('open Google Drive document failed', { error })
+    // A dead refresh token was dropped by the plugin; reflect the row state.
+    void refreshGoogleDriveAccountState()
+  } finally {
+    googleDriveBusy.value = null
+  }
+}
+
+async function disconnectGoogleDrive() {
+  try {
+    await disconnectCloudAccount('googledrive')
+  } catch (error) {
+    androidDocumentLog.warn('Google Drive disconnect failed', { error })
+  }
+  openLocationsNotice.value = null
+  await refreshGoogleDriveAccountState()
+}
+
 function installCloudAuthListener() {
   if (!isCloudDocumentAccessAvailable()) {
     return
@@ -1671,12 +1766,44 @@ function installCloudAuthListener() {
   // means exactly that. Reset so the button recovers — a redirect that DID
   // land completes asynchronously and wins via the auth event below.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && cloudConnecting.value) {
+    if (document.visibilityState !== 'visible') {
+      return
+    }
+    if (cloudConnecting.value) {
       cloudConnecting.value = false
       void refreshOneDriveAccountState()
     }
+    if (googleDriveBusy.value === 'connecting') {
+      // openPickerAfterGoogleAuth survives on purpose: a redirect that DID
+      // land delivers its auth event after this visibility flip and must
+      // still open the Picker.
+      googleDriveBusy.value = null
+      void refreshGoogleDriveAccountState()
+    }
   })
   void addCloudAuthListener(event => {
+    if (event.provider === 'googledrive') {
+      const openPicker = openPickerAfterGoogleAuth
+      openPickerAfterGoogleAuth = false
+      if (googleDriveBusy.value === 'connecting') {
+        googleDriveBusy.value = null
+      }
+      if (event.connected) {
+        void refreshGoogleDriveAccountState().then(() => {
+          if (openPicker && currentScreen.value === 'open-locations') {
+            void openGoogleDrivePickerSession()
+          }
+        })
+        return
+      }
+      if (event.errorCode !== 'CLOUD_AUTH_CANCELED') {
+        openLocationsNotice.value = event.message ?? 'The Google Drive sign-in failed'
+      }
+      androidDocumentLog.warn('Google Drive sign-in did not complete', {
+        errorCode: event.errorCode,
+      })
+      return
+    }
     cloudConnecting.value = false
     if (event.connected) {
       void refreshOneDriveAccountState().then(() => {
@@ -2444,10 +2571,15 @@ onBeforeUnmount(() => {
   <OpenLocationsScreen
     v-else-if="currentScreen === 'open-locations'"
     :one-drive-state="oneDriveAccountState"
+    :google-drive-state="googleDriveAccountState"
+    :google-drive-busy="googleDriveBusy"
+    :notice="openLocationsNotice"
     @back="currentScreen = 'home'"
     @open-this-phone="openFileFromLocations"
     @browse-all="openFileFromLocations"
     @open-one-drive="showCloudBrowser"
+    @open-google-drive="handleOpenGoogleDrive"
+    @disconnect-google-drive="disconnectGoogleDrive"
   />
 
   <CloudBrowserScreen
