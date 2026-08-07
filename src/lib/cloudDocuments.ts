@@ -42,15 +42,13 @@ export interface CloudAuthEvent {
   provider: CloudProviderId
   connected: boolean
   accountName: string | null
+  /**
+   * Files chosen in Google's in-flow picker (the authorization page hosts
+   * the picker itself; the selection rides the OAuth redirect).
+   */
+  pickedFileIds?: string[]
   errorCode?: string
   message?: string
-}
-
-/** Picker session config: a fresh token plus the console-side identifiers. */
-export interface CloudAccessToken {
-  accessToken: string
-  pickerApiKey: string
-  appId: string
 }
 
 interface CloudDocumentsPlugin {
@@ -65,7 +63,6 @@ interface CloudDocumentsPlugin {
     provider: CloudProviderId
     folderId?: string
   }): Promise<{ entries: CloudFolderEntry[] }>
-  getCloudAccessToken(options: { provider: CloudProviderId }): Promise<CloudAccessToken>
   readCloudDocument(options: {
     provider: CloudProviderId
     fileId: string
@@ -121,10 +118,6 @@ export async function listCloudFolder(provider: CloudProviderId, folderId?: stri
     CloudDocuments.listCloudFolder({ provider, folderId }),
   )
   return result.entries
-}
-
-export async function getCloudAccessToken(provider: CloudProviderId) {
-  return wrapCloudErrors(() => CloudDocuments.getCloudAccessToken({ provider }))
 }
 
 export async function readCloudDocument(

@@ -48,11 +48,13 @@ final class GoogleDriveClient {
 
         final String name;
         final String headRevisionId;
+        final boolean canWrite;
         final byte[] bytes;
 
-        FileContent(String name, String headRevisionId, byte[] bytes) {
+        FileContent(String name, String headRevisionId, boolean canWrite, byte[] bytes) {
             this.name = name;
             this.headRevisionId = headRevisionId;
+            this.canWrite = canWrite;
             this.bytes = bytes;
         }
     }
@@ -76,7 +78,23 @@ final class GoogleDriveClient {
         this.transport = transport;
     }
 
-    static String buildAuthorizeUrl(String clientId, String redirectUri, String state, String codeChallenge) {
+    /**
+     * Markdown candidates as Drive stores them: .md uploads get
+     * text/markdown (older ones text/plain or application/octet-stream).
+     */
+    static final String PICKER_MIME_TYPES =
+        "text/markdown,text/x-markdown,text/plain,application/octet-stream";
+
+    /**
+     * The authorization URL doubles as the file picker: with
+     * {@code trigger_onepick} the Google Picker runs INSIDE the OAuth flow
+     * in the user's real browser (where their Google session lives — an
+     * embedded WebView has none and Google blocks signing in there), and
+     * the redirect carries {@code picked_file_ids} next to the code. This
+     * is Google's documented Picker integration for desktop/mobile apps;
+     * every pick is one browser round trip.
+     */
+    static String buildPickerAuthorizeUrl(String clientId, String redirectUri, String state, String codeChallenge) {
         return AUTH_ENDPOINT
             + "?client_id=" + urlEncode(clientId)
             + "&response_type=code"
@@ -85,9 +103,11 @@ final class GoogleDriveClient {
             + "&state=" + urlEncode(state)
             + "&code_challenge=" + urlEncode(codeChallenge)
             + "&code_challenge_method=S256"
-            // Installed-app clients receive refresh tokens by default;
-            // offline access is stated anyway so the grant is explicit.
-            + "&access_type=offline";
+            + "&access_type=offline"
+            // Both are required for the in-flow picker.
+            + "&prompt=consent"
+            + "&trigger_onepick=true"
+            + "&mimetypes=" + urlEncode(PICKER_MIME_TYPES);
     }
 
     TokenResult exchangeCode(String clientId, String redirectUri, String code, String codeVerifier, long nowMillis)
@@ -157,16 +177,27 @@ final class GoogleDriveClient {
         return new TokenResult(new CloudTokenStore(accessToken, refreshToken, expiresAt, accountName));
     }
 
-    /** Best-effort token revocation on disconnect; failures are the caller's to ignore. */
-    void revoke(String token) throws IOException {
+    /** Best-effort token revocation on disconnect; returns whether Google confirmed it. */
+    boolean revoke(String token) throws IOException {
         Map<String, String> form = new LinkedHashMap<>();
         form.put("token", token);
-        transport.execute(new HttpTransport.Request(
+        HttpTransport.Response response = transport.execute(new HttpTransport.Request(
             "POST",
             REVOKE_ENDPOINT,
             formHeaders(),
             HttpTransport.encodeForm(form).getBytes(StandardCharsets.UTF_8)
         ));
+        return response.status >= 200 && response.status < 300;
+    }
+
+    /** The reversed-client-id redirect scheme Google mandates for native apps. */
+    static String redirectSchemeFor(String clientId) {
+        String suffix = ".apps.googleusercontent.com";
+        if (clientId == null || !clientId.endsWith(suffix)) {
+            return "";
+        }
+        return "com.googleusercontent.apps."
+            + clientId.substring(0, clientId.length() - suffix.length());
     }
 
     /** The account label from the Drive about resource — no extra scopes needed. */
@@ -184,12 +215,27 @@ final class GoogleDriveClient {
         throws IOException, CloudProviderException {
         JSONObject metadata = driveJson(
             accessToken,
-            DRIVE + "/files/" + urlEncode(fileId) + "?fields=name,headRevisionId,size,trashed"
+            DRIVE + "/files/" + urlEncode(fileId)
+                + "?fields=name,mimeType,headRevisionId,size,trashed,capabilities/canEdit"
         );
         if (metadata.optBoolean("trashed", false)) {
             throw new CloudProviderException(
                 "CLOUD_DOCUMENT_NOT_FOUND",
                 "This Google Drive document was moved to the trash"
+            );
+        }
+        // The picker MIME filter admits application/octet-stream (how Drive
+        // stored older .md uploads), which also matches arbitrary binaries.
+        // A decodable-but-binary payload would survive charset validation,
+        // get edited as garbage, and then overwrite the original — so
+        // non-text MIME types must carry a Markdown/text extension.
+        String name = metadata.optString("name", "");
+        String mimeType = metadata.optString("mimeType", "");
+        boolean isTextMime = mimeType.toLowerCase(Locale.US).startsWith("text/");
+        if (!isTextMime && !OneDriveGraphClient.isListableDocumentName(name)) {
+            throw new CloudProviderException(
+                "UNSUPPORTED_DOCUMENT",
+                "This Google Drive file is not a Markdown or plain text document"
             );
         }
         // Drive v3 serializes size as a string; optLong parses it.
@@ -218,9 +264,14 @@ final class GoogleDriveClient {
                 "Markdown document is larger than the current 5 MB limit"
             );
         }
+        // The picker offers read-only shared files too; canWrite must be
+        // the file's real capability or autosave runs into 403s.
+        JSONObject capabilities = metadata.optJSONObject("capabilities");
+        boolean canWrite = capabilities == null || capabilities.optBoolean("canEdit", true);
         return new FileContent(
-            metadata.optString("name", ""),
+            name,
             metadata.optString("headRevisionId", ""),
+            canWrite,
             bytes
         );
     }
@@ -305,13 +356,19 @@ final class GoogleDriveClient {
             return authExpired();
         }
         if (response.status == 403) {
-            // Drive reports rate limiting as 403 with a *RateLimitExceeded
-            // or quota reason; every other 403 means access is gone.
+            // Drive multiplexes 403: rate limiting (retryable), per-file
+            // permission problems (this document, not the account), and
+            // real authorization loss. Only the last may declare the
+            // account disconnected.
             String body = response.body == null
                 ? ""
                 : new String(response.body, StandardCharsets.UTF_8).toLowerCase(Locale.US);
             if (body.contains("ratelimit") || body.contains("quota")) {
                 return unavailable();
+            }
+            if (body.contains("insufficient") || body.contains("cannotmodify")
+                || body.contains("filenotdownloadable")) {
+                return new CloudProviderException(fallbackCode, fallbackMessage + " (no permission)");
             }
             return authExpired();
         }

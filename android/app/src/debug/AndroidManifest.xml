@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity android:name=".MainActivity">
+
+            <!-- Google OAuth redirect for the DEBUG client: the scheme is
+                 the reversed client id (must stay in sync with the
+                 googledrive_client_id resValue in build.gradle). Google
+                 binds Android OAuth clients to package + signing cert, so
+                 a release client gets its own filter at ship time. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="com.googleusercontent.apps.432194989716-i513ggpqg5mt3853s584b9o6s4cp159l" />
+            </intent-filter>
+
+        </activity>
+    </application>
+</manifest>

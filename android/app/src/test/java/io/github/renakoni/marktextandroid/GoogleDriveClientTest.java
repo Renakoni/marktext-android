@@ -1,6 +1,7 @@
 package io.github.renakoni.marktextandroid;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -40,8 +41,8 @@ public class GoogleDriveClientTest {
     }
 
     @Test
-    public void authorizeUrlCarriesPkceStateAndTheDriveFileScope() {
-        String url = GoogleDriveClient.buildAuthorizeUrl(
+    public void pickerAuthorizeUrlCarriesPkceStateScopeAndThePickerTrigger() {
+        String url = GoogleDriveClient.buildPickerAuthorizeUrl(
             "client-123.apps.googleusercontent.com",
             "com.googleusercontent.apps.client-123:/oauth2redirect",
             "state-x",
@@ -56,6 +57,22 @@ public class GoogleDriveClientTest {
         assertTrue(url.contains("code_challenge_method=S256"));
         assertTrue(url.contains(
             "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.file"));
+        // The in-flow picker: consent is mandatory alongside the trigger,
+        // and it guarantees a fresh refresh token on every pick.
+        assertTrue(url.contains("prompt=consent"));
+        assertTrue(url.contains("trigger_onepick=true"));
+        assertTrue(url.contains("mimetypes=text%2Fmarkdown"));
+        assertTrue(url.contains("access_type=offline"));
+    }
+
+    @Test
+    public void redirectSchemeIsTheReversedClientId() {
+        assertEquals(
+            "com.googleusercontent.apps.432-abc",
+            GoogleDriveClient.redirectSchemeFor("432-abc.apps.googleusercontent.com"));
+        assertEquals("", GoogleDriveClient.redirectSchemeFor(""));
+        assertEquals("", GoogleDriveClient.redirectSchemeFor("not-a-google-client-id"));
+        assertEquals("", GoogleDriveClient.redirectSchemeFor(null));
     }
 
     @Test
@@ -126,7 +143,8 @@ public class GoogleDriveClientTest {
     public void readFetchesMetadataThenMediaWithTheByteCap() throws Exception {
         FakeTransport transport = new FakeTransport();
         // Drive v3 serializes size as a string.
-        transport.enqueue(200, "{\"name\":\"notes.md\",\"headRevisionId\":\"rev-1\",\"size\":\"5\"}");
+        transport.enqueue(200, "{\"name\":\"notes.md\",\"mimeType\":\"text/markdown\","
+            + "\"headRevisionId\":\"rev-1\",\"size\":\"5\",\"capabilities\":{\"canEdit\":true}}");
         transport.enqueue(200, "hello");
 
         GoogleDriveClient.FileContent file =
@@ -134,14 +152,63 @@ public class GoogleDriveClientTest {
 
         assertEquals("notes.md", file.name);
         assertEquals("rev-1", file.headRevisionId);
+        assertTrue(file.canWrite);
         assertEquals("hello", new String(file.bytes, StandardCharsets.UTF_8));
 
         HttpTransport.Request metadata = transport.requests.get(0);
         assertTrue(metadata.url.startsWith(GoogleDriveClient.DRIVE + "/files/file-1?fields="));
+        assertTrue(metadata.url.contains("capabilities/canEdit"));
         HttpTransport.Request download = transport.requests.get(1);
         assertEquals(GoogleDriveClient.DRIVE + "/files/file-1?alt=media", download.url);
         assertEquals("Bearer AT", download.headers.get("Authorization"));
         assertEquals(1024, download.maxResponseBytes);
+    }
+
+    @Test
+    public void readReportsReadOnlySharedFilesAsNotWritable() throws Exception {
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(200, "{\"name\":\"shared.md\",\"mimeType\":\"text/markdown\","
+            + "\"headRevisionId\":\"rev-1\",\"size\":\"5\",\"capabilities\":{\"canEdit\":false}}");
+        transport.enqueue(200, "hello");
+
+        GoogleDriveClient.FileContent file =
+            new GoogleDriveClient(transport).readFile("AT", "file-1", 1024);
+
+        assertFalse(file.canWrite);
+    }
+
+    @Test
+    public void readRejectsBinariesThatOnlyMatchedTheOctetStreamFilter() {
+        // application/octet-stream is in the picker filter because old .md
+        // uploads carry it — but it also matches arbitrary binaries. A
+        // non-text MIME without a Markdown/text extension must not reach
+        // the charset decoder (decodable bytes are not necessarily text).
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(200, "{\"name\":\"model.bin\",\"mimeType\":\"application/octet-stream\","
+            + "\"headRevisionId\":\"rev-1\",\"size\":\"5\"}");
+
+        try {
+            new GoogleDriveClient(transport).readFile("AT", "file-1", 1024);
+            fail("expected CloudProviderException");
+        } catch (CloudProviderException ex) {
+            assertEquals("UNSUPPORTED_DOCUMENT", ex.code);
+            assertEquals(1, transport.requests.size());
+        } catch (Exception ex) {
+            fail("unexpected " + ex);
+        }
+    }
+
+    @Test
+    public void readAcceptsOctetStreamFilesWithAMarkdownExtension() throws Exception {
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(200, "{\"name\":\"legacy.md\",\"mimeType\":\"application/octet-stream\","
+            + "\"headRevisionId\":\"rev-1\",\"size\":\"5\"}");
+        transport.enqueue(200, "hello");
+
+        GoogleDriveClient.FileContent file =
+            new GoogleDriveClient(transport).readFile("AT", "file-1", 1024);
+
+        assertEquals("legacy.md", file.name);
     }
 
     @Test
@@ -280,8 +347,11 @@ public class GoogleDriveClientTest {
             fail("unexpected " + ex);
         }
 
+        // Per-file permission reasons route to the request-level code (see
+        // perFilePermission403DoesNotDisconnectTheAccount); only the
+        // remaining 403s mean authorization itself is gone.
         FakeTransport forbidden = new FakeTransport();
-        forbidden.enqueue(403, "{\"error\":{\"errors\":[{\"reason\":\"insufficientPermissions\"}],\"code\":403}}");
+        forbidden.enqueue(403, "{\"error\":{\"errors\":[{\"reason\":\"forbidden\"}],\"code\":403}}");
         try {
             new GoogleDriveClient(forbidden).readFile("AT", "file-1", 1024);
             fail("expected CloudProviderException");
@@ -290,6 +360,36 @@ public class GoogleDriveClientTest {
         } catch (Exception ex) {
             fail("unexpected " + ex);
         }
+    }
+
+    @Test
+    public void perFilePermission403DoesNotDisconnectTheAccount() {
+        // A read-only shared file that slipped into a write, or a
+        // not-downloadable file, is a document problem — mapping it to
+        // CLOUD_AUTH_EXPIRED would wrongly tell the user to sign in again.
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(403,
+            "{\"error\":{\"errors\":[{\"reason\":\"insufficientFilePermissions\"}],\"code\":403}}");
+
+        try {
+            new GoogleDriveClient(transport).readFile("AT", "file-1", 1024);
+            fail("expected CloudProviderException");
+        } catch (CloudProviderException ex) {
+            assertEquals("CLOUD_REQUEST_FAILED", ex.code);
+        } catch (Exception ex) {
+            fail("unexpected " + ex);
+        }
+    }
+
+    @Test
+    public void revokeReportsWhetherGoogleConfirmedIt() throws Exception {
+        FakeTransport confirmed = new FakeTransport();
+        confirmed.enqueue(200, "{}");
+        assertTrue(new GoogleDriveClient(confirmed).revoke("RT"));
+
+        FakeTransport refused = new FakeTransport();
+        refused.enqueue(400, "{\"error\":\"invalid_token\"}");
+        assertFalse(new GoogleDriveClient(refused).revoke("RT"));
     }
 
     @Test

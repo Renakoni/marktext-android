@@ -5,8 +5,8 @@ import type { CloudAccountState } from '../../lib/cloudDocuments'
 defineProps<{
   oneDriveState: CloudAccountState | null
   googleDriveState: CloudAccountState | null
-  /** Google flow feedback: waiting for the sign-in browser / the Picker. */
-  googleDriveBusy: 'connecting' | 'picker' | null
+  /** Google flow feedback: browser pick trip / opening the picked file. */
+  googleDriveBusy: 'connecting' | 'opening' | null
   notice: string | null
 }>()
 
@@ -15,6 +15,7 @@ const emit = defineEmits<{
   openThisPhone: []
   openOneDrive: []
   openGoogleDrive: []
+  disconnectOneDrive: []
   disconnectGoogleDrive: []
   browseAll: []
 }>()
@@ -59,36 +60,56 @@ const { t } = useI18n()
         </span>
       </button>
 
-      <button
-        type="button"
-        class="open-location-row"
-        :disabled="oneDriveState !== null && !oneDriveState.available"
-        @click="emit('openOneDrive')"
-      >
-        <span class="open-location-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="24" height="24">
+      <div class="open-location-row-group">
+        <button
+          type="button"
+          class="open-location-row"
+          :disabled="oneDriveState !== null && !oneDriveState.available"
+          @click="emit('openOneDrive')"
+        >
+          <span class="open-location-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+              <path
+                d="M7 17.5h10.6a3.4 3.4 0 0 0 .6-6.75 5.2 5.2 0 0 0-10-1.4A4.1 4.1 0 0 0 7 17.5Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+          <span class="open-location-text">
+            <span class="open-location-label">OneDrive</span>
+            <span class="open-location-subtitle">
+              <template v-if="oneDriveState === null">…</template>
+              <template v-else-if="!oneDriveState.available">{{ t('openLocations.cloudUnavailable') }}</template>
+              <template v-else-if="oneDriveState.connected && oneDriveState.accountName">
+                {{ oneDriveState.accountName }}
+              </template>
+              <template v-else-if="oneDriveState.connected">{{ t('openLocations.cloudConnected') }}</template>
+              <template v-else>{{ t('openLocations.cloudSignIn') }}</template>
+            </span>
+          </span>
+        </button>
+        <button
+          v-if="oneDriveState?.connected"
+          type="button"
+          class="open-location-signout"
+          :aria-label="t('cloudBrowser.disconnect')"
+          @click="emit('disconnectOneDrive')"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
             <path
-              d="M7 17.5h10.6a3.4 3.4 0 0 0 .6-6.75 5.2 5.2 0 0 0-10-1.4A4.1 4.1 0 0 0 7 17.5Z"
+              d="M14 6V4.8A1.3 1.3 0 0 0 12.7 3.5H5.8A1.3 1.3 0 0 0 4.5 4.8v14.4a1.3 1.3 0 0 0 1.3 1.3h6.9a1.3 1.3 0 0 0 1.3-1.3V18m2-9.5 3.5 3.5-3.5 3.5M9.5 12H19"
               fill="none"
               stroke="currentColor"
               stroke-width="1.8"
+              stroke-linecap="round"
               stroke-linejoin="round"
             />
           </svg>
-        </span>
-        <span class="open-location-text">
-          <span class="open-location-label">OneDrive</span>
-          <span class="open-location-subtitle">
-            <template v-if="oneDriveState === null">…</template>
-            <template v-else-if="!oneDriveState.available">{{ t('openLocations.cloudUnavailable') }}</template>
-            <template v-else-if="oneDriveState.connected && oneDriveState.accountName">
-              {{ oneDriveState.accountName }}
-            </template>
-            <template v-else-if="oneDriveState.connected">{{ t('openLocations.cloudConnected') }}</template>
-            <template v-else>{{ t('openLocations.cloudSignIn') }}</template>
-          </span>
-        </span>
-      </button>
+        </button>
+      </div>
 
       <div class="open-location-row-group">
         <button
@@ -112,7 +133,7 @@ const { t } = useI18n()
             <span class="open-location-label">Google Drive</span>
             <span class="open-location-subtitle">
               <template v-if="googleDriveBusy === 'connecting'">{{ t('openLocations.cloudConnecting') }}</template>
-              <template v-else-if="googleDriveBusy === 'picker'">{{ t('openLocations.googleDrivePickerLoading') }}</template>
+              <template v-else-if="googleDriveBusy === 'opening'">{{ t('openLocations.cloudOpening') }}</template>
               <template v-else-if="googleDriveState === null">…</template>
               <template v-else-if="!googleDriveState.available">{{ t('openLocations.cloudUnavailable') }}</template>
               <template v-else-if="googleDriveState.connected && googleDriveState.accountName">
@@ -129,7 +150,7 @@ const { t } = useI18n()
           v-if="googleDriveState?.connected && googleDriveBusy === null"
           type="button"
           class="open-location-signout"
-          :aria-label="t('openLocations.googleDriveSignOut')"
+          :aria-label="t('cloudBrowser.disconnect')"
           @click="emit('disconnectGoogleDrive')"
         >
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">

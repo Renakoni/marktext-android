@@ -153,25 +153,32 @@ public class CloudDocumentsPlugin extends Plugin {
 
         @Override
         String clientId() {
-            return CloudAuthConfig.GOOGLEDRIVE_CLIENT_ID;
+            // Per-variant resource: Google binds Android clients to the
+            // package name + signing certificate, so the debug and release
+            // builds cannot share one id. Empty (release, until a release
+            // client is registered) reads as provider-unavailable.
+            return getContext().getString(R.string.googledrive_client_id).trim();
         }
 
         @Override
         String redirectUri() {
             // Google's documented native-app form: the reversed client id
             // as the scheme, no authority.
-            return CloudAuthConfig.GOOGLEDRIVE_REDIRECT_SCHEME + ":" + OAUTH_GOOGLEDRIVE_PATH;
+            return GoogleDriveClient.redirectSchemeFor(clientId()) + ":" + OAUTH_GOOGLEDRIVE_PATH;
         }
 
         @Override
         boolean matchesRedirect(Uri data) {
             // Only auth redirects ever use the reversed-client-id scheme.
-            return CloudAuthConfig.GOOGLEDRIVE_REDIRECT_SCHEME.equals(data.getScheme());
+            String scheme = GoogleDriveClient.redirectSchemeFor(clientId());
+            return scheme.length() > 0 && scheme.equals(data.getScheme());
         }
 
         @Override
         String authorizeUrl(String state, String codeChallenge) {
-            return GoogleDriveClient.buildAuthorizeUrl(clientId(), redirectUri(), state, codeChallenge);
+            // The authorization page hosts the file picker itself
+            // (trigger_onepick); the redirect returns picked_file_ids.
+            return GoogleDriveClient.buildPickerAuthorizeUrl(clientId(), redirectUri(), state, codeChallenge);
         }
 
         @Override
@@ -197,8 +204,11 @@ public class CloudDocumentsPlugin extends Plugin {
             // the local state is already cleared, so failures only log.
             cloudExecutor.execute(() -> {
                 try {
-                    driveClient.revoke(tokens.refreshToken);
-                    Log.i(TAG, "Revoked the Google Drive grant");
+                    if (driveClient.revoke(tokens.refreshToken)) {
+                        Log.i(TAG, "Revoked the Google Drive grant");
+                    } else {
+                        Log.w(TAG, "Google Drive did not confirm the token revocation");
+                    }
                 } catch (IOException ex) {
                     Log.w(TAG, "Google Drive token revocation failed", ex);
                 }
@@ -290,7 +300,16 @@ public class CloudDocumentsPlugin extends Plugin {
 
         String authorizeUrl = auth.authorizeUrl(state, PkceUtil.challengeFor(verifier));
         try {
-            activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(authorizeUrl)));
+            // A Custom Tab keeps the browser trip visually inside the app
+            // (slides over it, returns on redirect) while still being the
+            // real system browser with the user's Google/Microsoft session
+            // — embedded WebViews are provider-blocked AND session-less.
+            // Browsers without Custom Tab support open it as a plain link.
+            androidx.browser.customtabs.CustomTabsIntent customTab =
+                new androidx.browser.customtabs.CustomTabsIntent.Builder()
+                    .setShowTitle(true)
+                    .build();
+            customTab.launchUrl(activity, Uri.parse(authorizeUrl));
         } catch (ActivityNotFoundException ex) {
             cloudPrefs().edit().remove(auth.pendingPrefKey).apply();
             call.reject(
@@ -379,40 +398,6 @@ public class CloudDocumentsPlugin extends Plugin {
         });
     }
 
-    /**
-     * A fresh access token plus the Picker configuration, exposed only for
-     * the in-WebView Google Picker (the WebView is this app's own code; the
-     * token never leaves the process except toward Google's own origin).
-     */
-    @PluginMethod
-    public void getCloudAccessToken(PluginCall call) {
-        String provider = call.getString("provider", "");
-        if (!PROVIDER_GOOGLEDRIVE.equals(provider)) {
-            call.reject(
-                "Access tokens are only exposed for the Google Drive picker",
-                "CLOUD_OPERATION_UNSUPPORTED"
-            );
-            return;
-        }
-
-        cloudExecutor.execute(() -> {
-            try {
-                CloudTokenStore tokens = requireFreshTokens(googleDriveAuth);
-                JSObject result = new JSObject();
-                result.put("accessToken", tokens.accessToken);
-                result.put("pickerApiKey", CloudAuthConfig.GOOGLE_PICKER_API_KEY);
-                result.put("appId", CloudAuthConfig.GOOGLE_PROJECT_NUMBER);
-                call.resolve(result);
-            } catch (CloudProviderException ex) {
-                Log.w(TAG, "Google Drive token request failed: " + ex.getMessage());
-                call.reject(ex.getMessage(), ex.code, ex);
-            } catch (IOException ex) {
-                Log.w(TAG, "Google Drive token request failed", ex);
-                call.reject("Could not reach Google Drive", "CLOUD_NETWORK_FAILED", ex);
-            }
-        });
-    }
-
     @PluginMethod
     public void readCloudDocument(PluginCall call) {
         String provider = call.getString("provider", "");
@@ -433,6 +418,7 @@ public class CloudDocumentsPlugin extends Plugin {
                 CloudTokenStore tokens = requireFreshTokens(auth);
                 String name;
                 String versionTag;
+                boolean canWrite;
                 byte[] bytes;
                 if (auth == googleDriveAuth) {
                     GoogleDriveClient.FileContent file = driveClient.readFile(
@@ -442,6 +428,7 @@ public class CloudDocumentsPlugin extends Plugin {
                     );
                     name = file.name;
                     versionTag = file.headRevisionId;
+                    canWrite = file.canWrite;
                     bytes = file.bytes;
                 } else {
                     OneDriveGraphClient.FileContent file = graphClient.readFile(
@@ -451,6 +438,7 @@ public class CloudDocumentsPlugin extends Plugin {
                     );
                     name = file.name;
                     versionTag = file.eTag;
+                    canWrite = true;
                     bytes = file.bytes;
                 }
                 DecodedMarkdown decoded = MarkdownCodec.decode(
@@ -468,7 +456,7 @@ public class CloudDocumentsPlugin extends Plugin {
                 result.put("hasEncodingBom", decoded.hasBom);
                 result.put("eTag", versionTag);
                 result.put("providerName", auth.label);
-                result.put("canWrite", true);
+                result.put("canWrite", canWrite);
                 Log.i(TAG, "Read " + auth.label + " document: " + safeForLog(name));
                 call.resolve(result);
             } catch (CloudProviderException ex) {
@@ -599,7 +587,7 @@ public class CloudDocumentsPlugin extends Plugin {
         } catch (JSONException ex) {
             cloudPrefs().edit().remove(auth.pendingPrefKey).apply();
             emitAuthResult(auth, false, null, "CLOUD_AUTH_FAILED",
-                "The " + auth.label + " sign-in state was unreadable");
+                "The " + auth.label + " sign-in state was unreadable", null);
             return;
         }
 
@@ -628,7 +616,8 @@ public class CloudDocumentsPlugin extends Plugin {
                 canceled ? "CLOUD_AUTH_CANCELED" : "CLOUD_AUTH_FAILED",
                 canceled
                     ? "The " + auth.label + " sign-in was canceled"
-                    : "The " + auth.label + " sign-in failed"
+                    : "The " + auth.label + " sign-in failed",
+                null
             );
             return;
         }
@@ -636,8 +625,20 @@ public class CloudDocumentsPlugin extends Plugin {
         String code = data.getQueryParameter("code");
         if (code == null || code.length() == 0) {
             emitAuthResult(auth, false, null, "CLOUD_AUTH_FAILED",
-                "The " + auth.label + " sign-in response was invalid");
+                "The " + auth.label + " sign-in response was invalid", null);
             return;
+        }
+
+        // Google's in-flow picker (trigger_onepick) appends the selection
+        // to the same redirect; empty on plain sign-ins and for OneDrive.
+        String pickedSerialized = data.getQueryParameter("picked_file_ids");
+        JSArray pickedFileIds = new JSArray();
+        if (pickedSerialized != null && pickedSerialized.length() > 0) {
+            for (String pickedId : pickedSerialized.split(",")) {
+                if (pickedId.trim().length() > 0) {
+                    pickedFileIds.put(pickedId.trim());
+                }
+            }
         }
 
         cloudExecutor.execute(() -> {
@@ -651,15 +652,16 @@ public class CloudDocumentsPlugin extends Plugin {
                     Log.w(TAG, "Could not read the " + auth.label + " account name", ex);
                 }
                 saveTokens(auth, exchanged.withAccountName(accountName));
-                Log.i(TAG, "Connected the " + auth.label + " account");
-                emitAuthResult(auth, true, accountName, null, null);
+                Log.i(TAG, "Connected the " + auth.label + " account"
+                    + (pickedFileIds.length() > 0 ? " with a picked document" : ""));
+                emitAuthResult(auth, true, accountName, null, null, pickedFileIds);
             } catch (CloudProviderException ex) {
                 Log.w(TAG, auth.label + " sign-in completion failed: " + ex.getMessage());
-                emitAuthResult(auth, false, null, ex.code, ex.getMessage());
+                emitAuthResult(auth, false, null, ex.code, ex.getMessage(), null);
             } catch (IOException ex) {
                 Log.w(TAG, auth.label + " sign-in completion failed", ex);
                 emitAuthResult(auth, false, null, "CLOUD_NETWORK_FAILED",
-                    "Could not reach " + auth.label);
+                    "Could not reach " + auth.label, null);
             }
         });
     }
@@ -669,12 +671,16 @@ public class CloudDocumentsPlugin extends Plugin {
         boolean connected,
         String accountName,
         String errorCode,
-        String message
+        String message,
+        JSArray pickedFileIds
     ) {
         JSObject event = new JSObject();
         event.put("provider", auth.id);
         event.put("connected", connected);
         event.put("accountName", accountName == null ? JSObject.NULL : accountName);
+        if (pickedFileIds != null && pickedFileIds.length() > 0) {
+            event.put("pickedFileIds", pickedFileIds);
+        }
         if (errorCode != null) {
             event.put("errorCode", errorCode);
             event.put("message", message);
