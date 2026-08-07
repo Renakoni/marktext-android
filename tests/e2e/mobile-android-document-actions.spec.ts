@@ -298,9 +298,21 @@ test('keeps the live editor session across a canceled and a completed save-as', 
   await page.getByTestId('editor-menu-button').click()
   await page.getByTestId('save-copy-button').click()
   await expect(page.getByRole('heading', { name: 'Save as', exact: true })).toBeVisible()
+
+  // The editor behind the page leaves the accessibility tree and the Tab
+  // order, and focus lands inside the destination page.
+  await expect(page.locator('main.app-shell')).toHaveAttribute('aria-hidden', 'true')
+  await expect(page.locator('main.app-shell')).toHaveAttribute('inert', '')
+  await expect
+    .poll(async () =>
+      page.evaluate(() => document.activeElement?.closest('.save-flow-screen') !== null),
+    )
+    .toBe(true)
+
   await page.locator('.save-flow-screen').getByRole('button', { name: 'Back' }).click()
 
   await expect(page.getByRole('heading', { name: 'Save as', exact: true })).toBeHidden()
+  await expect(page.locator('main.app-shell')).not.toHaveAttribute('aria-hidden', 'true')
   await expect(page.getByTestId('editor-host')).toContainText('session survives save as')
   await page.getByTestId('editor-host').click()
   await page.keyboard.press('End')

@@ -222,6 +222,17 @@ describe('appExitDecisions', () => {
       cloudNameSheetOpen: true,
       draftExitPromptOpen: true,
     })).toBe('cancel-cloud-name')
+
+    // Editor-layer state left open underneath (the read-only exit prompt,
+    // the menu, the toolbar) is inert behind the destination page: ONE
+    // Back cancels the save instead of closing invisible layers first.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'save-locations',
+      androidExitPromptOpen: true,
+      editorMenuOpen: true,
+      editorToolbarExpanded: true,
+    })).toBe('cancel-save-destination')
   })
 
   it('backs the save-as OneDrive folder pick out folder by folder, then cancels', () => {
@@ -254,6 +265,17 @@ describe('appExitDecisions', () => {
       cloudBrowserAtRoot: true,
       cloudSaveInProgress: true,
     })).toBe('ignore-cloud-save')
+
+    // Stale editor-layer state does not outrank the save-mode browser
+    // either — the editor behind it is inert.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'cloud-browser',
+      cloudBrowserSaveModeActive: true,
+      cloudBrowserAtRoot: true,
+      androidExitPromptOpen: true,
+      editorToolbarExpanded: true,
+    })).toBe('cancel-onedrive-folder-pick')
   })
 
   it('clears an active home selection before leaving the app', () => {

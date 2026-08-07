@@ -130,6 +130,19 @@ export function getAppBackButtonAction({
     return 'cancel-google-folder-pick'
   }
 
+  // The save-as screens are the only reachable layer while they are up —
+  // the editor behind them is inert — so their Back rules outrank every
+  // editor-layer prompt and panel state left open underneath.
+  if (currentScreen === 'save-locations') {
+    return 'cancel-save-destination'
+  }
+
+  if (currentScreen === 'cloud-browser' && cloudBrowserSaveModeActive) {
+    // Folder by folder, then cancel: the browser was entered from the
+    // save flow, not the Open page.
+    return cloudBrowserAtRoot === false ? 'cloud-browser-up' : 'cancel-onedrive-folder-pick'
+  }
+
   // The blocked-preservation prompt guards unsaved work; Back keeps editing.
   if (incomingOpenPromptOpen) {
     return 'close-incoming-open-prompt'
@@ -177,20 +190,10 @@ export function getAppBackButtonAction({
     return 'show-home'
   }
 
-  // The save-as destination page cancels the whole save on Back — it was
-  // entered from the editor, not from home.
-  if (currentScreen === 'save-locations') {
-    return 'cancel-save-destination'
-  }
-
-  // The cloud browser backs out folder by folder, then to the Open page —
-  // or, at the root of a save-as folder pick, cancels the pick (the
-  // browser was entered from the save flow, not the Open page).
+  // The open-flow cloud browser backs out folder by folder, then to the
+  // Open page (the save-mode browser is handled above the editor layers).
   if (currentScreen === 'cloud-browser') {
-    if (cloudBrowserAtRoot === false) {
-      return 'cloud-browser-up'
-    }
-    return cloudBrowserSaveModeActive ? 'cancel-onedrive-folder-pick' : 'show-open-locations'
+    return cloudBrowserAtRoot === false ? 'cloud-browser-up' : 'show-open-locations'
   }
 
   if (currentScreen === 'open-locations') {

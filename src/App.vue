@@ -1894,6 +1894,22 @@ const cloudSaveInProgress = ref<'onedrive' | 'googledrive' | null>(null)
 const cloudSaveOverlay = ref<HTMLElement | null>(null)
 const { onModalKeydown: onCloudSaveOverlayKeydown } = useModalFocus({ root: cloudSaveOverlay })
 
+// The save-as screens cover the still-mounted editor; each takes the
+// modal focus scope so the editor leaves the accessibility tree and the
+// Tab order (inert + aria-hidden) and focus enters the page. Separate
+// instances per screen keep the background-isolation counters balanced
+// across the destination-page → folder-browser hop.
+const saveDestinationScreen = ref<HTMLElement | null>(null)
+const { onModalKeydown: onSaveDestinationScreenKeydown } = useModalFocus({
+  root: saveDestinationScreen,
+  initialFocus: () => saveDestinationScreen.value,
+})
+const oneDriveSaveScreen = ref<HTMLElement | null>(null)
+const { onModalKeydown: onOneDriveSaveScreenKeydown } = useModalFocus({
+  root: oneDriveSaveScreen,
+  initialFocus: () => oneDriveSaveScreen.value,
+})
+
 /**
  * The create function injected into the persistence workflows: same
  * contract as the SAF creator, with the destination chosen first on a
@@ -2964,7 +2980,13 @@ onBeforeUnmount(() => {
 
   <!-- The save-as screens overlay the still-mounted editor: unmounting it
        would tear down the Muya session mid-save (#198 review). -->
-  <div v-if="currentScreen === 'save-locations'" class="save-flow-screen">
+  <div
+    v-if="currentScreen === 'save-locations'"
+    ref="saveDestinationScreen"
+    class="save-flow-screen"
+    tabindex="-1"
+    @keydown="onSaveDestinationScreenKeydown"
+  >
     <OpenLocationsScreen
       mode="save"
       :one-drive-state="oneDriveAccountState"
@@ -2980,7 +3002,10 @@ onBeforeUnmount(() => {
 
   <div
     v-else-if="currentScreen === 'cloud-browser' && cloudBrowserSaveModeActive"
+    ref="oneDriveSaveScreen"
     class="save-flow-screen"
+    tabindex="-1"
+    @keydown="onOneDriveSaveScreenKeydown"
   >
     <CloudBrowserScreen
       :account-state="oneDriveAccountState"

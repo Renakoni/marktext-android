@@ -1531,6 +1531,11 @@ textarea {
   background: var(--app-bg);
 }
 
+/* The screen root is a programmatic focus sink on entry, not a control. */
+.save-flow-screen:focus {
+  outline: none;
+}
+
 /* The flow's own sheets and progress overlays stack above its screens. */
 .save-flow-modal {
   z-index: 60;
