@@ -76,6 +76,7 @@ import {
   ImportedImageCleanupBlockedError,
   cleanupUnusedImportedImages,
 } from './features/android-documents/importedImageMaintenance'
+import { createDocumentGrantSync } from './features/android-documents/documentGrantMaintenance'
 import {
   protectImportedImagesInAndroidDocument,
   registerImportedImageCopy,
@@ -1353,6 +1354,26 @@ function persistAndroidRecentDocuments(nextDocuments: RecentDocumentRecord[]) {
     pinnedDocumentIds.value,
   )
   androidRecentDocuments.value = filteredDocuments
+  requestAndroidDocumentGrantCleanup()
+}
+
+const syncAndroidDocumentGrants = createDocumentGrantSync()
+
+// Fire-and-forget: grant cleanup is background maintenance and must never
+// block or fail the recents mutation that triggered it.
+function requestAndroidDocumentGrantCleanup() {
+  syncAndroidDocumentGrants({
+    currentDocument: { sourceUri: documentState.value.sourceUri },
+    recentDocuments: androidRecentDocuments.value,
+  })
+    .then(result => {
+      if (result && (result.releasedGrantCount > 0 || result.failedReleaseCount > 0)) {
+        androidDocumentLog.info('document grant cleanup', result)
+      }
+    })
+    .catch(error => {
+      androidDocumentLog.warn('document grant cleanup failed', { error })
+    })
 }
 
 function persistPinnedDocuments(nextPins: PinnedDocumentRecord[]) {
@@ -2142,6 +2163,10 @@ onMounted(() => {
     restoredAndroidDocuments: androidRecentDocuments.value.length,
     characters: characterCount.value,
   })
+
+  // Releases grants left pending by a previous session (for example the app
+  // was killed between a recents mutation and its cleanup call).
+  requestAndroidDocumentGrantCleanup()
 
   incomingDocuments.installListeners()
   startupActionTimer = window.setTimeout(() => {
