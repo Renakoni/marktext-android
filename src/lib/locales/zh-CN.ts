@@ -354,6 +354,7 @@ export const zhCN = {
   'settings.markdown.footnotes': '脚注',
   'settings.markdown.superSub': '上标/下标',
   'settings.markdown.gitlab': 'GitLab',
+  'settings.markdown.softBreakAsSpace': '软换行显示为空格',
   'settings.markdown.sequenceTheme': '时序图主题',
   'settings.markdown.plantumlServer': 'PlantUML 服务器',
 

@@ -163,6 +163,7 @@ export const CLASS_NAMES = genUpper2LowerKeyHash([
     'MU_RUBY_RENDER',
     'MU_SELECTED',
     'MU_SOFT_LINE_BREAK',
+    'MU_SOFT_BREAK_AS_SPACE',
     'MU_MATH_ERROR',
     'MU_MATH_MARKER',
     'MU_MATH_RENDER',
@@ -331,6 +332,7 @@ export const MUYA_DEFAULT_OPTIONS = {
     plantumlServer: 'https://www.plantuml.com/plantuml',
     sequenceTheme: 'hand' as 'hand' | 'simple', // hand / simple
     hideQuickInsertHint: false,
+    renderSoftBreakAsSpace: false,
     hideLinkPopup: false,
     autoCheck: false,
     // Whether we should set spellcheck attribute on our container to highlight misspelled words.

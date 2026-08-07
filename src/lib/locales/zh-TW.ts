@@ -361,6 +361,7 @@ export const zhTW = {
   'settings.markdown.footnotes': '註腳',
   'settings.markdown.superSub': '上標/下標',
   'settings.markdown.gitlab': 'GitLab',
+  'settings.markdown.softBreakAsSpace': '軟換行顯示為空格',
   'settings.markdown.sequenceTheme': '循序圖主題',
   'settings.markdown.plantumlServer': 'PlantUML 伺服器',
 

@@ -361,6 +361,7 @@ export const pt = {
   'settings.markdown.footnotes': 'Notas de rodapé',
   'settings.markdown.superSub': 'Sobrescrito/subscrito',
   'settings.markdown.gitlab': 'GitLab',
+  'settings.markdown.softBreakAsSpace': 'Quebras suaves como espaços',
   'settings.markdown.sequenceTheme': 'Tema de sequência',
   'settings.markdown.plantumlServer': 'Servidor PlantUML',
 

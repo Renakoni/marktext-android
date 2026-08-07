@@ -95,6 +95,7 @@ const RUNTIME_SETTING_DEFAULTS = new Map<string, SettingsValue>([
   ['frontmatterType', DEFAULT_EDITING_SETTINGS.frontmatterType],
   ['footnote', DEFAULT_EDITING_SETTINGS.footnote],
   ['superSubScript', DEFAULT_EDITING_SETTINGS.superSubScript],
+  ['renderSoftBreakAsSpace', DEFAULT_EDITING_SETTINGS.renderSoftBreakAsSpace],
   ['isHtmlEnabled', DEFAULT_EDITING_SETTINGS.isHtmlEnabled],
   ['isGitlabCompatibilityEnabled', DEFAULT_EDITING_SETTINGS.isGitlabCompatibilityEnabled],
   ['sequenceTheme', DEFAULT_EDITING_SETTINGS.sequenceTheme],

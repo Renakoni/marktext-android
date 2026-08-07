@@ -333,6 +333,45 @@ describe('the sentinel cannot weaken sanitization or leak', () => {
     });
 });
 
+describe('renderSoftBreakAsSpace preference (#142) collapses instead of <br>', () => {
+    const MUYA_SOFT_BREAK_AS_SPACE = {
+        options: { renderSoftBreakAsSpace: true },
+    } as unknown as ConstructorParameters<typeof MarkdownToHtml>[1];
+
+    async function exportAsSpace(markdown: string) {
+        const html = await new MarkdownToHtml(PAD + markdown, MUYA_SOFT_BREAK_AS_SPACE).renderHtml();
+        expect(html).not.toContain(SENTINEL_PREFIX);
+        return html;
+    }
+
+    it('keeps a paragraph soft break as a bare newline (renders as a space), never <br>', async () => {
+        const html = await exportAsSpace('line one\nline two\n');
+        expect(html).toContain('line one\nline two');
+        expect(html).not.toContain('line one<br>');
+    });
+
+    it('keeps a tight-item soft break as a bare newline, never <br>', async () => {
+        const html = await exportAsSpace('- line A\n  line B\n');
+        expect(html).toContain('line A\nline B');
+        expect(html).not.toContain('line A<br>');
+    });
+
+    it('reaches the final document through generate() without <br>', async () => {
+        const doc = await new MarkdownToHtml(
+            `${PAD}alpha\nbeta\n`,
+            MUYA_SOFT_BREAK_AS_SPACE,
+        ).generate({ title: 't', inlineStyles: false });
+        expect(doc).toContain('alpha\nbeta');
+        expect(doc).not.toContain('alpha<br>');
+    });
+
+    it('still collapses a real hard break to <br> (the preference is soft-only)', async () => {
+        expect(await exportAsSpace('line one  \nline two\n')).toMatch(
+            /line one<br\s*\/?>\s*line two/,
+        );
+    });
+});
+
 describe('conversion cost stays linear', () => {
     it('converts a very long single paragraph without quadratic blowup', async () => {
         // Per-boundary prefix/suffix array copies made this quadratic
