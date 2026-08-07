@@ -2,7 +2,7 @@ import { HOME_TABS, type HomeTab } from '../features/home/homeNavigation'
 import { SETTINGS_PAGES, type SettingsPage } from '../features/settings/settingsNavigation'
 import type { AutosaveTarget } from './documentState'
 
-export type AppScreen = 'home' | 'editor' | 'open-locations' | 'cloud-browser'
+export type AppScreen = 'home' | 'editor' | 'open-locations' | 'cloud-browser' | 'save-locations'
 
 export type ShowHomeDocumentSaveAction = 'save-android-document' | 'save-local-draft'
 
@@ -30,6 +30,14 @@ export interface AppBackButtonState {
   homeSheetOpen: boolean
   /** True when the cloud browser sits at its root folder. */
   cloudBrowserAtRoot?: boolean
+  /** True while the cloud browser hosts a save-as folder pick. */
+  cloudBrowserSaveModeActive?: boolean
+  /** True while the save-as name sheet is open. */
+  cloudNameSheetOpen?: boolean
+  /** True while the save-as Drive folder pick waits on the browser trip. */
+  googleDriveFolderPickActive?: boolean
+  /** True while a cloud create is in flight; Back must not interrupt it. */
+  cloudSaveInProgress?: boolean
 }
 
 export type AppBackButtonAction =
@@ -48,6 +56,11 @@ export type AppBackButtonAction =
   | 'show-home'
   | 'show-open-locations'
   | 'cloud-browser-up'
+  | 'cancel-save-destination'
+  | 'cancel-cloud-name'
+  | 'cancel-google-folder-pick'
+  | 'cancel-onedrive-folder-pick'
+  | 'ignore-cloud-save'
   | 'show-settings-index'
   | 'show-documents-tab'
   | 'exit-app'
@@ -97,7 +110,39 @@ export function getAppBackButtonAction({
   homeSelectionActive,
   homeSheetOpen,
   cloudBrowserAtRoot,
+  cloudBrowserSaveModeActive,
+  cloudNameSheetOpen,
+  googleDriveFolderPickActive,
+  cloudSaveInProgress,
 }: AppBackButtonState): AppBackButtonAction {
+  // The save-as flow renders above every editor layer, so its overlays
+  // unwind first, top-most first. An in-flight cloud create cannot be
+  // interrupted: the document may already exist remotely.
+  if (cloudSaveInProgress) {
+    return 'ignore-cloud-save'
+  }
+
+  if (cloudNameSheetOpen) {
+    return 'cancel-cloud-name'
+  }
+
+  if (googleDriveFolderPickActive) {
+    return 'cancel-google-folder-pick'
+  }
+
+  // The save-as screens are the only reachable layer while they are up —
+  // the editor behind them is inert — so their Back rules outrank every
+  // editor-layer prompt and panel state left open underneath.
+  if (currentScreen === 'save-locations') {
+    return 'cancel-save-destination'
+  }
+
+  if (currentScreen === 'cloud-browser' && cloudBrowserSaveModeActive) {
+    // Folder by folder, then cancel: the browser was entered from the
+    // save flow, not the Open page.
+    return cloudBrowserAtRoot === false ? 'cloud-browser-up' : 'cancel-onedrive-folder-pick'
+  }
+
   // The blocked-preservation prompt guards unsaved work; Back keeps editing.
   if (incomingOpenPromptOpen) {
     return 'close-incoming-open-prompt'
@@ -145,8 +190,8 @@ export function getAppBackButtonAction({
     return 'show-home'
   }
 
-  // The cloud browser backs out folder by folder, then to the Open page;
-  // the Open page backs out to home.
+  // The open-flow cloud browser backs out folder by folder, then to the
+  // Open page (the save-mode browser is handled above the editor layers).
   if (currentScreen === 'cloud-browser') {
     return cloudBrowserAtRoot === false ? 'cloud-browser-up' : 'show-open-locations'
   }

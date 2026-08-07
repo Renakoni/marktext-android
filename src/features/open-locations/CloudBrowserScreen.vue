@@ -11,6 +11,8 @@ defineProps<{
   entries: CloudFolderEntry[]
   folderName: string | null
   openingFileId: string | null
+  /** Save-as destination mode: folders navigate, files are inert, a save bar appears. */
+  saveMode?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +21,7 @@ const emit = defineEmits<{
   disconnect: []
   openEntry: [entry: CloudFolderEntry]
   retry: []
+  saveHere: []
 }>()
 
 const { t } = useI18n()
@@ -44,9 +47,9 @@ const { t } = useI18n()
           />
         </svg>
       </button>
-      <h1 class="cloud-browser-title">{{ folderName ?? 'OneDrive' }}</h1>
+      <h1 id="cloud-browser-title" class="cloud-browser-title">{{ folderName ?? 'OneDrive' }}</h1>
       <button
-        v-if="accountState?.connected"
+        v-if="accountState?.connected && !saveMode"
         type="button"
         class="cloud-browser-disconnect"
         @click="emit('disconnect')"
@@ -99,7 +102,7 @@ const { t } = useI18n()
           <button
             type="button"
             class="cloud-browser-entry"
-            :disabled="openingFileId !== null"
+            :disabled="openingFileId !== null || (saveMode && !entry.isFolder)"
             @click="emit('openEntry', entry)"
           >
             <span class="cloud-browser-entry-icon" aria-hidden="true">
@@ -129,6 +132,12 @@ const { t } = useI18n()
           </button>
         </li>
       </ul>
+    </div>
+
+    <div v-if="saveMode && accountState?.connected" class="cloud-browser-save-bar">
+      <button type="button" class="cloud-browser-primary" @click="emit('saveHere')">
+        {{ t('cloudBrowser.saveHere') }}
+      </button>
     </div>
   </div>
 </template>
@@ -198,6 +207,11 @@ const { t } = useI18n()
   flex: 1;
   overflow-y: auto;
   padding: 4px 12px 24px;
+}
+
+.cloud-browser-save-bar {
+  padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border, rgba(128, 128, 128, 0.25));
 }
 
 .cloud-browser-hint {

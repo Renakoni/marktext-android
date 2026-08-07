@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { App } from '@capacitor/app'
 import HomeScreen from './features/home/HomeScreen.vue'
 import EditorScreen from './features/editor/EditorScreen.vue'
@@ -31,12 +31,14 @@ import {
 import { createGoogleDrivePickFlow } from './features/open-locations/googleDrivePickFlow'
 import { isCloudSourceUri } from './lib/cloudDocumentUris'
 import {
+  createRoutedCloudDocument,
   readRoutedMarkdownDocument,
   toOpenedDocumentFromCloud,
   writeRoutedMarkdownDocument,
 } from './features/cloud-documents/cloudDocumentBridge'
 import OpenLocationsScreen from './features/open-locations/OpenLocationsScreen.vue'
 import CloudBrowserScreen from './features/open-locations/CloudBrowserScreen.vue'
+import CloudNameSheet from './features/open-locations/CloudNameSheet.vue'
 import {
   ensureAndroidImageResolver,
   formatImportedImageStorageBytes,
@@ -88,6 +90,7 @@ import {
   getShowHomeDocumentSaveAction,
   type AppScreen,
 } from './lib/appExitDecisions'
+import { useModalFocus } from './lib/modalFocus'
 import { isAndroidRecoveryDraftId } from './features/android-documents/androidRecoveryDrafts'
 import { rememberAndroidRecentDocument } from './features/android-documents/androidRecentDocuments'
 import { getImageSharingSettings } from './features/android-documents/imageSharingSettings'
@@ -208,6 +211,7 @@ import {
   getAndroidMarkdownSettings,
   getMarkdownSaveSettings,
   type AdvancedMaintenanceActionId,
+  type MarkdownEncoding,
 } from './features/settings/advancedSettings'
 import { createMuyaMobileEditorCommandTarget } from './lib/muyaMobileAdapter'
 import {
@@ -1460,7 +1464,9 @@ const {
   // Routed: cloud: source URIs save through the cloud plugin, content://
   // URIs through SAF — the whole autosave pipeline stays target-agnostic.
   writeAndroidMarkdownDocument: writeRoutedMarkdownDocument,
-  createAndroidMarkdownDocument,
+  // Creates prompt for a destination first (device / OneDrive / Drive);
+  // the workflows only ever see the shared create contract.
+  createAndroidMarkdownDocument: createMarkdownDocumentAtChosenDestination,
   shareAndroidMarkdownDocument,
   // The live editor instance carries the user's rendering settings
   // (footnotes, super/subscript, GitLab compatibility, diagram options), so
@@ -1585,6 +1591,7 @@ async function loadCloudFolder() {
   const folderId = cloudBrowserPath.value.at(-1)?.id
   cloudBrowserLoading.value = true
   cloudBrowserError.value = null
+  refocusOneDriveSaveDialog()
   try {
     const entries = await listCloudFolder('onedrive', folderId)
     if (generation !== cloudBrowserRequestGeneration) {
@@ -1626,6 +1633,8 @@ async function connectOneDrive() {
   }
   cloudConnecting.value = 'browser'
   cloudBrowserError.value = null
+  // The sign-in button disables itself, dropping any focus it held.
+  refocusOneDriveSaveDialog()
   try {
     await connectCloudAccount('onedrive')
     // Completion arrives through the cloudAuthCompleted listener once the
@@ -1653,6 +1662,10 @@ async function handleCloudEntryOpen(entry: CloudFolderEntry) {
   if (entry.isFolder) {
     cloudBrowserPath.value = [...cloudBrowserPath.value, { id: entry.id, name: entry.name }]
     await loadCloudFolder()
+    return
+  }
+  if (cloudBrowserSaveModeActive.value) {
+    // Files are inert while choosing a save-as destination folder.
     return
   }
 
@@ -1772,6 +1785,190 @@ async function disconnectGoogleDrive() {
   await refreshGoogleDriveAccountState()
 }
 
+// --- Save-as destinations (#185): the draft save and save-copy flows get
+// their create function from here — a full-screen destination page (the
+// Open page in save mode) routes to the SAF creator, an in-app OneDrive
+// folder pick, or a Drive folder browser trip.
+
+let saveDestinationResolver:
+  | ((choice: 'device' | 'onedrive' | 'googledrive' | null) => void)
+  | null = null
+
+function promptSaveDestination(): Promise<'device' | 'onedrive' | 'googledrive' | null> {
+  return new Promise(resolve => {
+    saveDestinationResolver = choice => {
+      saveDestinationResolver = null
+      resolve(choice)
+    }
+    currentScreen.value = 'save-locations'
+    void refreshOneDriveAccountState()
+    void refreshGoogleDriveAccountState()
+  })
+}
+
+function chooseSaveDestination(choice: 'device' | 'onedrive' | 'googledrive' | null) {
+  saveDestinationResolver?.(choice)
+}
+
+const cloudNameSheetOpen = ref(false)
+const cloudNameSuggested = ref('')
+let cloudNameResolver: ((name: string | null) => void) | null = null
+
+function promptCloudDocumentName(suggestedName: string): Promise<string | null> {
+  return new Promise(resolve => {
+    cloudNameResolver = name => {
+      cloudNameResolver = null
+      cloudNameSheetOpen.value = false
+      resolve(name)
+    }
+    cloudNameSuggested.value = suggestedName
+    cloudNameSheetOpen.value = true
+  })
+}
+
+function resolveCloudDocumentName(name: string | null) {
+  cloudNameResolver?.(name)
+}
+
+const cloudBrowserSaveModeActive = ref(false)
+let oneDriveSaveFolderResolver: ((folderId: string | null) => void) | null = null
+
+function pickOneDriveSaveFolder(): Promise<string | null> {
+  return new Promise(resolve => {
+    oneDriveSaveFolderResolver = folderId => {
+      oneDriveSaveFolderResolver = null
+      // Save mode stays on through the create that follows — dropping it
+      // here would hand the browser back its file rows and sign-out while
+      // the upload still runs. The orchestrator's finally clears it and
+      // restores the screen.
+      resolve(folderId)
+    }
+    cloudBrowserSaveModeActive.value = true
+    cloudBrowserPath.value = []
+    cloudBrowserEntries.value = []
+    cloudBrowserError.value = null
+    currentScreen.value = 'cloud-browser'
+    void loadCloudFolder()
+  })
+}
+
+function handleCloudSaveHere() {
+  // Empty id = the drive root.
+  oneDriveSaveFolderResolver?.(cloudBrowserPath.value.at(-1)?.id ?? '')
+}
+
+function cancelOneDriveSaveFolderPick() {
+  oneDriveSaveFolderResolver?.(null)
+}
+
+const googleDrivePickingFolder = ref(false)
+let googleDriveSaveFolderResolver: ((folderId: string | null) => void) | null = null
+
+function pickGoogleDriveSaveFolder(): Promise<string | null> {
+  return new Promise((resolve, reject) => {
+    googleDriveSaveFolderResolver = folderId => {
+      googleDriveSaveFolderResolver = null
+      googleDrivePickingFolder.value = false
+      resolve(folderId)
+    }
+    googleDrivePickingFolder.value = true
+    connectCloudAccount('googledrive', { pickMode: 'folder' }).catch(error => {
+      if (googleDriveSaveFolderResolver !== null) {
+        googleDriveSaveFolderResolver = null
+        googleDrivePickingFolder.value = false
+        reject(error)
+      }
+    })
+  })
+}
+
+function cancelGoogleDriveSaveFolderPick() {
+  googleDriveSaveFolderResolver?.(null)
+}
+
+const googleDrivePickOverlay = ref<HTMLElement | null>(null)
+const { onModalKeydown: onGoogleDrivePickOverlayKeydown } = useModalFocus({
+  root: googleDrivePickOverlay,
+  onEscape: cancelGoogleDriveSaveFolderPick,
+})
+
+/** Set while the routed cloud create is in flight; locks the whole UI. */
+const cloudSaveInProgress = ref<'onedrive' | 'googledrive' | null>(null)
+const cloudSaveOverlay = ref<HTMLElement | null>(null)
+const { onModalKeydown: onCloudSaveOverlayKeydown } = useModalFocus({ root: cloudSaveOverlay })
+
+// The save-as screens cover the still-mounted editor; each takes the
+// modal focus scope so the editor leaves the accessibility tree and the
+// Tab order (inert + aria-hidden) and focus enters the page. Separate
+// instances per screen keep the background-isolation counters balanced
+// across the destination-page → folder-browser hop.
+const saveDestinationScreen = ref<HTMLElement | null>(null)
+const { onModalKeydown: onSaveDestinationScreenKeydown } = useModalFocus({
+  root: saveDestinationScreen,
+  initialFocus: () => saveDestinationScreen.value,
+})
+const oneDriveSaveScreen = ref<HTMLElement | null>(null)
+const { onModalKeydown: onOneDriveSaveScreenKeydown } = useModalFocus({
+  root: oneDriveSaveScreen,
+  initialFocus: () => oneDriveSaveScreen.value,
+})
+
+/**
+ * Re-anchor focus on the OneDrive save dialog after a re-render removes
+ * the control that held it — folder navigation and retry swap the entry
+ * list for the loading state, and starting a sign-in disables its button.
+ * Focus falling to body would leave the aria-modal dialog, and anchoring
+ * on the labelled root makes the new folder title the announced name.
+ */
+function refocusOneDriveSaveDialog() {
+  if (!cloudBrowserSaveModeActive.value) {
+    return
+  }
+  void nextTick(() => {
+    oneDriveSaveScreen.value?.focus({ preventScroll: true })
+  })
+}
+
+/**
+ * The create function injected into the persistence workflows: same
+ * contract as the SAF creator, with the destination chosen first on a
+ * full-screen page (the Open page in save mode). Backing out at any step
+ * reads as a cancel, which the workflows already handle; the editor
+ * screen is restored whichever way the flow ends.
+ */
+async function createMarkdownDocumentAtChosenDestination(
+  markdown: string,
+  suggestedName: string,
+  options: { encoding: MarkdownEncoding; writeBom: boolean },
+) {
+  try {
+    const destination = await promptSaveDestination()
+    if (destination === null) {
+      return { canceled: true as const }
+    }
+    if (destination === 'device') {
+      return await createAndroidMarkdownDocument(markdown, suggestedName, options)
+    }
+    const name = await promptCloudDocumentName(suggestedName)
+    if (name === null) {
+      return { canceled: true as const }
+    }
+    const folderId =
+      destination === 'onedrive'
+        ? await pickOneDriveSaveFolder()
+        : await pickGoogleDriveSaveFolder()
+    if (folderId === null) {
+      return { canceled: true as const }
+    }
+    cloudSaveInProgress.value = destination
+    return await createRoutedCloudDocument(destination, folderId, name, markdown, options)
+  } finally {
+    cloudSaveInProgress.value = null
+    cloudBrowserSaveModeActive.value = false
+    currentScreen.value = 'editor'
+  }
+}
+
 function installCloudAuthListener() {
   if (!isCloudDocumentAccessAvailable()) {
     return
@@ -1802,6 +1999,11 @@ function installCloudAuthListener() {
   // controls until the completed event reports the outcome.
   void addCloudAuthPendingListener(event => {
     if (event.provider === 'googledrive') {
+      // A save-folder trip has its own modal overlay; the Open-page row
+      // state machine only tracks document-pick trips.
+      if (googleDriveSaveFolderResolver !== null) {
+        return
+      }
       if (googleDriveBusy.value === null || googleDriveBusy.value === 'connecting') {
         googleDriveBusy.value = 'completing'
       }
@@ -1813,6 +2015,21 @@ function installCloudAuthListener() {
   })
   void addCloudAuthListener(event => {
     if (event.provider === 'googledrive') {
+      // Save-as folder trips resolve their own promise; nothing here may
+      // fall through to the document-open handling below.
+      if (googleDriveSaveFolderResolver !== null) {
+        const resolveFolder = googleDriveSaveFolderResolver
+        if (event.connected) {
+          void refreshGoogleDriveAccountState()
+          resolveFolder(event.pickedFileIds?.[0] ?? null)
+        } else {
+          androidDocumentLog.warn('Google Drive folder pick did not complete', {
+            errorCode: event.errorCode,
+          })
+          resolveFolder(null)
+        }
+        return
+      }
       if (event.connected) {
         const pickedFileId = event.pickedFileIds?.[0]
         if (pickedFileId && ownsGoogleDrivePickCompletion()) {
@@ -2229,6 +2446,10 @@ async function handleAppBackButton() {
     homeSelectionActive: homeSelection.isActive.value,
     homeSheetOpen: homeDeleteSheetOpen.value || homeRenameSheetOpen.value,
     cloudBrowserAtRoot: cloudBrowserPath.value.length === 0,
+    cloudBrowserSaveModeActive: cloudBrowserSaveModeActive.value,
+    cloudNameSheetOpen: cloudNameSheetOpen.value,
+    googleDriveFolderPickActive: googleDrivePickingFolder.value,
+    cloudSaveInProgress: cloudSaveInProgress.value !== null,
   })
 
   switch (action) {
@@ -2278,6 +2499,21 @@ async function handleAppBackButton() {
       return
     case 'show-open-locations':
       currentScreen.value = 'open-locations'
+      return
+    case 'cancel-save-destination':
+      chooseSaveDestination(null)
+      return
+    case 'cancel-cloud-name':
+      resolveCloudDocumentName(null)
+      return
+    case 'cancel-google-folder-pick':
+      cancelGoogleDriveSaveFolderPick()
+      return
+    case 'cancel-onedrive-folder-pick':
+      cancelOneDriveSaveFolderPick()
+      return
+    case 'ignore-cloud-save':
+      // A cloud create is in flight; Back settles after it does.
       return
     case 'cloud-browser-up':
       await cloudBrowserNavigateUp()
@@ -2629,7 +2865,7 @@ onBeforeUnmount(() => {
   />
 
   <CloudBrowserScreen
-    v-else-if="currentScreen === 'cloud-browser'"
+    v-else-if="currentScreen === 'cloud-browser' && !cloudBrowserSaveModeActive"
     :account-state="oneDriveAccountState"
     :connecting="cloudConnecting"
     :loading="cloudBrowserLoading"
@@ -2637,7 +2873,9 @@ onBeforeUnmount(() => {
     :entries="cloudBrowserEntries"
     :folder-name="cloudBrowserPath.at(-1)?.name ?? null"
     :opening-file-id="cloudOpeningFileId"
-    @back="cloudBrowserPath.length > 0 ? cloudBrowserNavigateUp() : (currentScreen = 'open-locations')"
+    @back="
+      cloudBrowserPath.length > 0 ? cloudBrowserNavigateUp() : (currentScreen = 'open-locations')
+    "
     @connect="connectOneDrive"
     @disconnect="disconnectOneDrive"
     @open-entry="handleCloudEntryOpen"
@@ -2758,4 +2996,101 @@ onBeforeUnmount(() => {
     @discard-incoming="discardCurrentAndOpenIncoming"
     @editor-host-change="setEditorElement"
   />
+
+  <!-- The save-as screens overlay the still-mounted editor: unmounting it
+       would tear down the Muya session mid-save (#198 review). -->
+  <div
+    v-if="currentScreen === 'save-locations'"
+    ref="saveDestinationScreen"
+    class="save-flow-screen"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="open-locations-title"
+    tabindex="-1"
+    @keydown="onSaveDestinationScreenKeydown"
+  >
+    <OpenLocationsScreen
+      mode="save"
+      :one-drive-state="oneDriveAccountState"
+      :google-drive-state="googleDriveAccountState"
+      :google-drive-busy="null"
+      :notice="openLocationsNotice"
+      @back="chooseSaveDestination(null)"
+      @open-this-phone="chooseSaveDestination('device')"
+      @open-one-drive="chooseSaveDestination('onedrive')"
+      @open-google-drive="chooseSaveDestination('googledrive')"
+    />
+  </div>
+
+  <div
+    v-else-if="currentScreen === 'cloud-browser' && cloudBrowserSaveModeActive"
+    ref="oneDriveSaveScreen"
+    class="save-flow-screen"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="cloud-browser-title"
+    tabindex="-1"
+    @keydown="onOneDriveSaveScreenKeydown"
+  >
+    <CloudBrowserScreen
+      :account-state="oneDriveAccountState"
+      :connecting="cloudConnecting"
+      :loading="cloudBrowserLoading"
+      :error-message="cloudBrowserError"
+      :entries="cloudBrowserEntries"
+      :folder-name="cloudBrowserPath.at(-1)?.name ?? null"
+      :opening-file-id="cloudOpeningFileId"
+      :save-mode="true"
+      @back="
+        cloudBrowserPath.length > 0 ? cloudBrowserNavigateUp() : cancelOneDriveSaveFolderPick()
+      "
+      @connect="connectOneDrive"
+      @open-entry="handleCloudEntryOpen"
+      @retry="loadCloudFolder"
+      @save-here="handleCloudSaveHere"
+    />
+  </div>
+
+  <CloudNameSheet
+    v-if="cloudNameSheetOpen"
+    :suggested-name="cloudNameSuggested"
+    @confirm="name => resolveCloudDocumentName(name)"
+    @cancel="resolveCloudDocumentName(null)"
+  />
+
+  <section
+    v-if="googleDrivePickingFolder"
+    ref="googleDrivePickOverlay"
+    class="draft-save-sheet save-flow-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="drive-folder-pick-title"
+    tabindex="-1"
+    @keydown="onGoogleDrivePickOverlayKeydown"
+  >
+    <div class="draft-save-panel">
+      <h2 id="drive-folder-pick-title">{{ t('saveAs.drivePickingFolder') }}</h2>
+      <div class="draft-save-actions">
+        <button type="button" @click="cancelGoogleDriveSaveFolderPick">
+          {{ t('saveAs.cancel') }}
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section
+    v-if="cloudSaveInProgress !== null"
+    ref="cloudSaveOverlay"
+    class="draft-save-sheet save-flow-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="cloud-save-progress-title"
+    tabindex="-1"
+    data-testid="cloud-save-progress"
+    @keydown="onCloudSaveOverlayKeydown"
+  >
+    <div class="draft-save-panel">
+      <h2 id="cloud-save-progress-title">{{ t('saveAs.saving') }}</h2>
+    </div>
+  </section>
 </template>

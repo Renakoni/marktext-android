@@ -221,6 +221,71 @@ public class OneDriveGraphClientTest {
     }
 
     @Test
+    public void createUploadsToThePathBasedEndpointWithConflictFail() throws Exception {
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(201, "{\"id\":\"new-1\",\"name\":\"my notes.md\",\"eTag\":\"etag-1\","
+            + "\"lastModifiedDateTime\":\"2026-08-08T01:00:00Z\"}");
+
+        OneDriveGraphClient.CreateResult result = new OneDriveGraphClient(transport)
+            .createFile("AT", "folder-1", "my notes.md", "# hi".getBytes(StandardCharsets.UTF_8));
+
+        assertEquals("new-1", result.id);
+        assertEquals("etag-1", result.eTag);
+        HttpTransport.Request request = transport.requests.get(0);
+        assertEquals("PUT", request.method);
+        // Path segments use percent encoding — URLEncoder's '+' is form
+        // encoding and would create a file literally named "my+notes.md".
+        assertEquals(
+            OneDriveGraphClient.GRAPH
+                + "/me/drive/items/folder-1:/my%20notes.md:/content?@microsoft.graph.conflictBehavior=fail",
+            request.url
+        );
+        assertEquals("# hi", new String(request.body, StandardCharsets.UTF_8));
+    }
+
+    @Test
+    public void createWithoutAFolderTargetsTheDriveRoot() throws Exception {
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(201, "{\"id\":\"new-1\",\"name\":\"a.md\",\"eTag\":\"e\"}");
+
+        new OneDriveGraphClient(transport).createFile("AT", null, "a.md", new byte[] {65});
+
+        assertTrue(transport.requests.get(0).url.startsWith(
+            OneDriveGraphClient.GRAPH + "/me/drive/root:/a.md:/content"));
+    }
+
+    @Test
+    public void createNameConflictMapsToCloudNameExists() {
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(409, "{\"error\":{\"code\":\"nameAlreadyExists\"}}");
+
+        try {
+            new OneDriveGraphClient(transport).createFile("AT", null, "a.md", new byte[] {65});
+            fail("expected CloudProviderException");
+        } catch (CloudProviderException ex) {
+            assertEquals("CLOUD_NAME_EXISTS", ex.code);
+        } catch (Exception ex) {
+            fail("unexpected " + ex);
+        }
+    }
+
+    @Test
+    public void createRejectsFilesOverTheSimpleUploadCap() {
+        FakeTransport transport = new FakeTransport();
+
+        try {
+            new OneDriveGraphClient(transport)
+                .createFile("AT", null, "big.md", new byte[OneDriveGraphClient.MAX_SIMPLE_UPLOAD_BYTES + 1]);
+            fail("expected CloudProviderException");
+        } catch (CloudProviderException ex) {
+            assertEquals("DOCUMENT_TOO_LARGE", ex.code);
+            assertEquals(0, transport.requests.size());
+        } catch (Exception ex) {
+            fail("unexpected " + ex);
+        }
+    }
+
+    @Test
     public void writeConflictMapsToDocumentConflict() {
         FakeTransport transport = new FakeTransport();
         transport.enqueue(412, "{\"error\":{\"code\":\"resourceModified\"}}");

@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -85,6 +86,9 @@ final class GoogleDriveClient {
     static final String PICKER_MIME_TYPES =
         "text/markdown,text/x-markdown,text/plain,application/octet-stream";
 
+    /** Drive's folder MIME type, for folder-only picks. */
+    static final String FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
+
     /**
      * The authorization URL doubles as the file picker: with
      * {@code trigger_onepick} the Google Picker runs INSIDE the OAuth flow
@@ -95,6 +99,18 @@ final class GoogleDriveClient {
      * every pick is one browser round trip.
      */
     static String buildPickerAuthorizeUrl(String clientId, String redirectUri, String state, String codeChallenge) {
+        return buildAuthorizeUrlBase(clientId, redirectUri, state, codeChallenge)
+            + "&mimetypes=" + urlEncode(PICKER_MIME_TYPES);
+    }
+
+    /** Same in-flow picker, restricted to folders: the save-as destination pick. */
+    static String buildFolderPickerAuthorizeUrl(String clientId, String redirectUri, String state, String codeChallenge) {
+        return buildAuthorizeUrlBase(clientId, redirectUri, state, codeChallenge)
+            + "&mimetypes=" + urlEncode(FOLDER_MIME_TYPE)
+            + "&allow_folder_selection=true";
+    }
+
+    private static String buildAuthorizeUrlBase(String clientId, String redirectUri, String state, String codeChallenge) {
         return AUTH_ENDPOINT
             + "?client_id=" + urlEncode(clientId)
             + "&response_type=code"
@@ -106,8 +122,7 @@ final class GoogleDriveClient {
             + "&access_type=offline"
             // Both are required for the in-flow picker.
             + "&prompt=consent"
-            + "&trigger_onepick=true"
-            + "&mimetypes=" + urlEncode(PICKER_MIME_TYPES);
+            + "&trigger_onepick=true";
     }
 
     TokenResult exchangeCode(String clientId, String redirectUri, String code, String codeVerifier, long nowMillis)
@@ -331,6 +346,93 @@ final class GoogleDriveClient {
             json.optString("headRevisionId", ""),
             json.optString("modifiedTime", "")
         );
+    }
+
+    static final class CreateResult {
+
+        final String id;
+        final String name;
+        final String headRevisionId;
+        final String lastModified;
+
+        CreateResult(String id, String name, String headRevisionId, String lastModified) {
+            this.id = id;
+            this.name = name;
+            this.headRevisionId = headRevisionId;
+            this.lastModified = lastModified;
+        }
+    }
+
+    /**
+     * Creates a new document ({@code null} parentId = My Drive root) via a
+     * multipart upload; files the app creates are automatically inside the
+     * drive.file grant. Drive allows duplicate names, so there is no
+     * conflict case here.
+     */
+    CreateResult createFile(String accessToken, String parentId, String name, byte[] bytes)
+        throws IOException, CloudProviderException {
+        JSONObject metadata = new JSONObject();
+        try {
+            metadata.put("name", name);
+            metadata.put("mimeType", "text/markdown");
+            if (parentId != null && parentId.length() > 0) {
+                metadata.put("parents", new org.json.JSONArray().put(parentId));
+            }
+        } catch (JSONException ex) {
+            throw new CloudProviderException("CLOUD_WRITE_FAILED", "Could not describe the new Google Drive document");
+        }
+
+        String boundary = newMultipartBoundary(bytes);
+        byte[] head = ("--" + boundary + "\r\n"
+            + "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+            + metadata + "\r\n"
+            + "--" + boundary + "\r\n"
+            + "Content-Type: text/markdown\r\n\r\n").getBytes(StandardCharsets.UTF_8);
+        byte[] tail = ("\r\n--" + boundary + "--").getBytes(StandardCharsets.UTF_8);
+        byte[] body = new byte[head.length + bytes.length + tail.length];
+        System.arraycopy(head, 0, body, 0, head.length);
+        System.arraycopy(bytes, 0, body, head.length, bytes.length);
+        System.arraycopy(tail, 0, body, head.length + bytes.length, tail.length);
+
+        Map<String, String> headers = bearerHeaders(accessToken);
+        headers.put("Content-Type", "multipart/related; boundary=" + boundary);
+
+        HttpTransport.Response response = transport.execute(new HttpTransport.Request(
+            "POST",
+            UPLOAD + "/files?uploadType=multipart&fields=id,name,headRevisionId,modifiedTime",
+            headers,
+            body
+        ));
+        if (response.status != 200) {
+            throw statusException(response, "CLOUD_WRITE_FAILED", "Google Drive save failed");
+        }
+
+        JSONObject json = parseJson(response.body);
+        if (json == null) {
+            throw new CloudProviderException("CLOUD_WRITE_FAILED", "Google Drive save returned an unreadable response");
+        }
+        return new CreateResult(
+            json.optString("id", ""),
+            json.optString("name", ""),
+            json.optString("headRevisionId", ""),
+            json.optString("modifiedTime", "")
+        );
+    }
+
+    /**
+     * RFC 2046 requires the boundary to appear nowhere inside the parts, and
+     * Markdown is arbitrary text — a fixed marker could legally occur in a
+     * document and split it. A per-request random boundary makes a collision
+     * practically impossible; the containment check makes it certain.
+     */
+    private static String newMultipartBoundary(byte[] content) {
+        String text = new String(content, StandardCharsets.UTF_8);
+        while (true) {
+            String candidate = "marktext-" + UUID.randomUUID();
+            if (!text.contains(candidate)) {
+                return candidate;
+            }
+        }
     }
 
     private JSONObject driveJson(String accessToken, String url) throws IOException, CloudProviderException {
