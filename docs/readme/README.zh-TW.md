@@ -156,9 +156,8 @@ MarkText for Android 將 MarkText 的即時預覽 Markdown 編輯體驗帶到手
 ## 專案狀態
 
 > [!IMPORTANT]
-> 第一個簽署的公開發行版本 **v0.1.0** 已推出。其 APK 由本儲存庫的發行
-> 工作流程建置，鎖定官方發行憑證，並已在 Android 14 上通過全新安裝與
-> 同金鑰升級檢查。
+> 已提供簽署的公開發行版本。每個發行 APK 均由本儲存庫的發行工作流程建置，
+> 鎖定官方發行憑證，並在發佈前通過全新安裝與同金鑰升級檢查。
 
 請從 [Releases](https://github.com/Renakoni/marktext-android/releases/latest)
 頁面下載已簽署的建置版本。

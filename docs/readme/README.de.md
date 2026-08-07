@@ -168,10 +168,10 @@ Oberfläche, die für eine Hand gebaut ist.
 ## Projektstatus
 
 > [!IMPORTANT]
-> Das erste signierte öffentliche Release, **v0.1.0**, ist verfügbar. Sein APK
-> wird vom Release-Workflow des Repositorys gebaut, ist auf das offizielle
-> Release-Zertifikat festgelegt und hat auf Android 14 die Prüfungen für
-> Neuinstallation und Upgrade mit demselben Schlüssel bestanden.
+> Signierte öffentliche Releases sind verfügbar. Jedes Release-APK wird vom
+> Release-Workflow des Repositorys gebaut, ist auf das offizielle
+> Release-Zertifikat festgelegt und besteht vor der Veröffentlichung die
+> Prüfungen für Neuinstallation und Upgrade mit demselben Schlüssel.
 
 Signierte Builds findest du auf der
 [Releases](https://github.com/Renakoni/marktext-android/releases/latest)-Seite.

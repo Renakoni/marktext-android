@@ -167,10 +167,10 @@ a mesma fidelidade do desktop, em uma interface feita para uma mão só.
 ## Status do projeto
 
 > [!IMPORTANT]
-> A primeira versão pública assinada, **v0.1.0**, está disponível. Seu APK é
+> Versões públicas assinadas estão disponíveis. Cada APK de release é
 > compilado pelo fluxo de release do repositório, atrelado ao certificado oficial
-> de release, e passou por verificações de instalação limpa e de atualização com
-> a mesma chave no Android 14.
+> de release, e passa antes da publicação por verificações de instalação limpa e
+> de atualização com a mesma chave.
 
 Baixe as compilações assinadas na página de
 [Releases](https://github.com/Renakoni/marktext-android/releases/latest).

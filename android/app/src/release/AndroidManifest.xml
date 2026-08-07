@@ -4,17 +4,17 @@
     <application>
         <activity android:name=".MainActivity">
 
-            <!-- Google OAuth redirect for the DEBUG client: the scheme is
+            <!-- Google OAuth redirect for the RELEASE client: the scheme is
                  the reversed client id (must stay in sync with the
                  googledrive_client_id resValue in build.gradle). Google
                  binds Android OAuth clients to package + signing cert, so
-                 the release client has its own filter in src/release. -->
+                 the debug client has its own filter in src/debug. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data android:scheme="com.googleusercontent.apps.432194989716-i513ggpqg5mt3853s584b9o6s4cp159l" />
+                <data android:scheme="com.googleusercontent.apps.432194989716-e1051mgo6dg9j57mcaa7tt1qpo862k1q" />
             </intent-filter>
 
         </activity>
