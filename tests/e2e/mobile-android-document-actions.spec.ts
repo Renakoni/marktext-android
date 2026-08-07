@@ -279,7 +279,12 @@ test('keeps the Android open-file action nonfatal in the browser shell', async (
   await page.evaluate(() => localStorage.clear())
   await page.reload()
 
+  // Open now leads to the Open page first; picking a device location in the
+  // browser shell degrades to the nonfatal notice back on the home screen.
   await page.getByTestId('open-file-button').click()
+  await expect(page.getByRole('heading', { name: 'Open', exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: /This phone/ }).click()
 
   await expect(page.getByText('Open Markdown files from the Android app build.')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
