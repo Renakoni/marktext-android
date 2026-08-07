@@ -177,6 +177,13 @@ interface AndroidDocumentsPlugin {
     removedBytes: number
     failedFileCount: number
   }>
+  cleanupDocumentGrants(options: {
+    referencedUris: string[]
+  }): Promise<{
+    grantCount: number
+    releasedGrantCount: number
+    failedReleaseCount: number
+  }>
   pickImageDocument(options?: { copyImage?: boolean }): Promise<{
     canceled?: false
     sourceUri: string
@@ -303,6 +310,26 @@ export async function renameAndroidMarkdownDocument(sourceUri: string, newName: 
   return normalizeRenamedDocument(
     await AndroidDocuments.renameMarkdownDocument({ sourceUri, newName }),
   )
+}
+
+export interface AndroidDocumentGrantCleanupResult {
+  grantCount: number
+  releasedGrantCount: number
+  failedReleaseCount: number
+}
+
+export async function cleanupAndroidDocumentGrants(
+  referencedUris: readonly string[],
+): Promise<AndroidDocumentGrantCleanupResult> {
+  ensureAndroidDocumentsAvailable()
+  const result = await AndroidDocuments.cleanupDocumentGrants({
+    referencedUris: [...new Set(referencedUris)],
+  })
+  return {
+    grantCount: result.grantCount,
+    releasedGrantCount: result.releasedGrantCount,
+    failedReleaseCount: result.failedReleaseCount,
+  }
 }
 
 export async function addAndroidOpenWithDocumentListener(

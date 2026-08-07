@@ -58,6 +58,10 @@ public class AndroidDocumentsPlugin extends Plugin {
     private static final String MARKDOWN_SETTINGS_PREFS = "markdown_settings";
     private static final String PREF_DEFAULT_ENCODING = "defaultEncoding";
     private static final String PREF_AUTO_DETECT_ENCODING = "autoDetectEncoding";
+    // Ledger of persisted SAF grants this plugin took, by kind — the proof
+    // cleanupDocumentGrants needs before it may release one (#153).
+    private static final String DOCUMENT_GRANTS_PREFS = "document_grants";
+    private static final String PREF_GRANT_LEDGER = "ledger";
     private String lastHandledIncomingIntentId = "";
     private String defaultMarkdownEncoding = "utf8";
     private boolean autoDetectMarkdownEncoding = true;
@@ -482,6 +486,7 @@ public class AndroidDocumentsPlugin extends Plugin {
                         renamedUri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                     );
+                recordGrantTaken(renamedUri, DocumentGrantPolicy.Kind.DOCUMENT);
             } catch (SecurityException ignored) {
                 // The migrated grant is not persistable on most providers.
             }
@@ -568,6 +573,81 @@ public class AndroidDocumentsPlugin extends Plugin {
         result.put("removedFileCount", cleanup.removedFileCount);
         result.put("removedBytes", cleanup.removedBytes);
         result.put("failedFileCount", cleanup.failedFileCount);
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void cleanupDocumentGrants(PluginCall call) {
+        JSArray referencedValues = call.getArray("referencedUris");
+        if (referencedValues == null) {
+            call.reject("Document grant references are required", "INVALID_GRANT_REFERENCES");
+            return;
+        }
+        Set<String> referencedUris = new java.util.HashSet<>();
+        for (int index = 0; index < referencedValues.length(); index++) {
+            String uri = referencedValues.optString(index, "").trim();
+            if (uri.length() > 0) {
+                referencedUris.add(uri);
+            }
+        }
+
+        int releasedGrantCount = 0;
+        int failedReleaseCount = 0;
+        int remainingGrantCount;
+        synchronized (this) {
+            ContentResolver resolver = getContext().getContentResolver();
+            Map<String, UriPermission> persistedGrants = new LinkedHashMap<>();
+            for (UriPermission permission : resolver.getPersistedUriPermissions()) {
+                persistedGrants.put(permission.getUri().toString(), permission);
+            }
+
+            SharedPreferences prefs = getContext()
+                .getSharedPreferences(DOCUMENT_GRANTS_PREFS, Context.MODE_PRIVATE);
+            Map<String, DocumentGrantPolicy.Entry> ledger =
+                DocumentGrantPolicy.parseLedger(prefs.getString(PREF_GRANT_LEDGER, ""));
+            DocumentGrantPolicy.Decision decision = DocumentGrantPolicy.decide(
+                persistedGrants.keySet(),
+                ledger,
+                referencedUris,
+                System.currentTimeMillis()
+            );
+
+            for (String uri : decision.releaseUris) {
+                UriPermission permission = persistedGrants.get(uri);
+                int grantFlags =
+                    (permission.isReadPermission() ? Intent.FLAG_GRANT_READ_URI_PERMISSION : 0)
+                    | (permission.isWritePermission() ? Intent.FLAG_GRANT_WRITE_URI_PERMISSION : 0);
+                try {
+                    resolver.releasePersistableUriPermission(permission.getUri(), grantFlags);
+                    releasedGrantCount += 1;
+                } catch (SecurityException ex) {
+                    // The grant survived; restore its ledger entry so a later
+                    // cleanup retries instead of orphaning it as unmanaged.
+                    decision.nextLedger.put(uri, ledger.get(uri));
+                    failedReleaseCount += 1;
+                    Log.w(TAG, "Could not release Android document URI permission", ex);
+                }
+            }
+
+            prefs
+                .edit()
+                .putString(PREF_GRANT_LEDGER, DocumentGrantPolicy.serializeLedger(decision.nextLedger))
+                .apply();
+            remainingGrantCount = persistedGrants.size() - releasedGrantCount;
+        }
+
+        if (releasedGrantCount > 0 || failedReleaseCount > 0) {
+            Log.i(
+                TAG,
+                "Document grant cleanup released " + releasedGrantCount
+                    + " grant(s), failed " + failedReleaseCount
+                    + ", remaining " + remainingGrantCount
+            );
+        }
+        JSObject result = new JSObject();
+        result.put("grantCount", remainingGrantCount);
+        result.put("releasedGrantCount", releasedGrantCount);
+        result.put("failedReleaseCount", failedReleaseCount);
         call.resolve(result);
     }
 
@@ -703,7 +783,7 @@ public class AndroidDocumentsPlugin extends Plugin {
         try {
             JSObject document = buildOpenWithDocumentResult(uri, intent);
             if ((intent.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
-                persistUriPermission(uri, intent);
+                persistUriPermission(uri, intent, DocumentGrantPolicy.Kind.DOCUMENT);
             }
             document.put("persisted", hasPersistedReadPermission(uri));
             document.put("canWrite", canWrite(uri, intent));
@@ -730,7 +810,7 @@ public class AndroidDocumentsPlugin extends Plugin {
         try {
             JSObject document = buildSharedStreamDocumentResult(uri, intent);
             if ((intent.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
-                persistUriPermission(uri, intent);
+                persistUriPermission(uri, intent, DocumentGrantPolicy.Kind.DOCUMENT);
             }
             document.put("persisted", hasPersistedReadPermission(uri));
             document.put("canWrite", canWrite(uri, intent));
@@ -806,7 +886,7 @@ public class AndroidDocumentsPlugin extends Plugin {
 
         try {
             JSObject document = createDocumentResult(uri, data, markdown, getMarkdownWriteOptions(call));
-            persistUriPermission(uri, data);
+            persistUriPermission(uri, data, DocumentGrantPolicy.Kind.DOCUMENT);
             document.put("persisted", hasPersistedReadPermission(uri));
             document.put("canWrite", canWrite(uri, data));
             Log.i(TAG, "Created Android document: " + safeForLog(document.getString("displayName")));
@@ -846,7 +926,7 @@ public class AndroidDocumentsPlugin extends Plugin {
 
         try {
             JSObject document = buildDocumentResult(uri, data);
-            persistUriPermission(uri, data);
+            persistUriPermission(uri, data, DocumentGrantPolicy.Kind.DOCUMENT);
             document.put("persisted", hasPersistedReadPermission(uri));
             document.put("canWrite", canWrite(uri, data));
             Log.i(TAG, "Opened Android document: " + safeForLog(document.getString("displayName")));
@@ -970,7 +1050,7 @@ public class AndroidDocumentsPlugin extends Plugin {
             );
         }
 
-        persistUriPermission(uri, grantIntent);
+        persistUriPermission(uri, grantIntent, DocumentGrantPolicy.Kind.IMAGE);
 
         JSObject result = new JSObject();
         result.put("canceled", false);
@@ -1157,7 +1237,7 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
     }
 
-    private void persistUriPermission(Uri uri, Intent data) {
+    private void persistUriPermission(Uri uri, Intent data, DocumentGrantPolicy.Kind grantKind) {
         if (data == null) {
             return;
         }
@@ -1179,9 +1259,25 @@ public class AndroidDocumentsPlugin extends Plugin {
 
         try {
             getContext().getContentResolver().takePersistableUriPermission(uri, grantFlags);
+            recordGrantTaken(uri, grantKind);
         } catch (SecurityException ex) {
             Log.w(TAG, "Could not persist Android document URI permission", ex);
         }
+    }
+
+    private synchronized void recordGrantTaken(Uri uri, DocumentGrantPolicy.Kind grantKind) {
+        SharedPreferences prefs = getContext()
+            .getSharedPreferences(DOCUMENT_GRANTS_PREFS, Context.MODE_PRIVATE);
+        Map<String, DocumentGrantPolicy.Entry> ledger =
+            DocumentGrantPolicy.parseLedger(prefs.getString(PREF_GRANT_LEDGER, ""));
+        ledger.put(
+            uri.toString(),
+            new DocumentGrantPolicy.Entry(grantKind, System.currentTimeMillis())
+        );
+        prefs
+            .edit()
+            .putString(PREF_GRANT_LEDGER, DocumentGrantPolicy.serializeLedger(ledger))
+            .apply();
     }
 
     // Atomic-intent write: never leave the user's real file truncated on a
