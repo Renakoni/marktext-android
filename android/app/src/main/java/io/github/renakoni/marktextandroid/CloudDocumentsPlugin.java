@@ -93,7 +93,8 @@ public class CloudDocumentsPlugin extends Plugin {
 
         abstract boolean matchesRedirect(Uri data);
 
-        abstract String authorizeUrl(String state, String codeChallenge);
+        /** pickMode: "document" (default) or "folder" (save-as destination). */
+        abstract String authorizeUrl(String state, String codeChallenge, String pickMode);
 
         abstract CloudTokenStore exchangeCode(String code, String verifier, long nowMillis)
             throws IOException, CloudProviderException;
@@ -131,7 +132,9 @@ public class CloudDocumentsPlugin extends Plugin {
         }
 
         @Override
-        String authorizeUrl(String state, String codeChallenge) {
+        String authorizeUrl(String state, String codeChallenge, String pickMode) {
+            // OneDrive folders are picked in the in-app browser; the OAuth
+            // trip is a plain sign-in regardless of mode.
             return OneDriveGraphClient.buildAuthorizeUrl(clientId(), redirectUri(), state, codeChallenge);
         }
 
@@ -183,10 +186,13 @@ public class CloudDocumentsPlugin extends Plugin {
         }
 
         @Override
-        String authorizeUrl(String state, String codeChallenge) {
-            // The authorization page hosts the file picker itself
+        String authorizeUrl(String state, String codeChallenge, String pickMode) {
+            // The authorization page hosts the picker itself
             // (trigger_onepick); the redirect returns picked_file_ids.
-            return GoogleDriveClient.buildPickerAuthorizeUrl(clientId(), redirectUri(), state, codeChallenge);
+            // "folder" restricts it to folders for save-as destinations.
+            return "folder".equals(pickMode)
+                ? GoogleDriveClient.buildFolderPickerAuthorizeUrl(clientId(), redirectUri(), state, codeChallenge)
+                : GoogleDriveClient.buildPickerAuthorizeUrl(clientId(), redirectUri(), state, codeChallenge);
         }
 
         @Override
@@ -313,7 +319,11 @@ public class CloudDocumentsPlugin extends Plugin {
             return;
         }
 
-        String authorizeUrl = auth.authorizeUrl(state, PkceUtil.challengeFor(verifier));
+        String authorizeUrl = auth.authorizeUrl(
+            state,
+            PkceUtil.challengeFor(verifier),
+            call.getString("pickMode", "document")
+        );
         try {
             // A Custom Tab keeps the browser trip visually inside the app
             // (slides over it, returns on redirect) while still being the
@@ -491,6 +501,76 @@ public class CloudDocumentsPlugin extends Plugin {
                 call.reject(ex.getMessage(), ex.code, ex);
             } catch (IOException ex) {
                 Log.w(TAG, auth.label + " document read failed", ex);
+                call.reject("Could not reach " + auth.label, "CLOUD_NETWORK_FAILED", ex);
+            }
+        });
+    }
+
+    /** Save-as: creates a new document in the chosen provider folder. */
+    @PluginMethod
+    public void createCloudDocument(PluginCall call) {
+        String provider = call.getString("provider", "");
+        String parentId = call.getString("parentId", "");
+        String name = call.getString("name", "");
+        String markdown = call.getString("markdown", null);
+        String encoding = MarkdownCodec.normalizeEncoding(call.getString("encoding", "utf8"));
+        boolean writeBom = call.getBoolean("writeBom", false);
+        ProviderAuth auth = requireDocumentProvider(call, provider);
+        if (auth == null) {
+            return;
+        }
+        if (name.trim().length() == 0) {
+            call.reject("A document name is required", "INVALID_CLOUD_FILE_NAME");
+            return;
+        }
+        if (markdown == null) {
+            call.reject("Markdown content is required", "INVALID_MARKDOWN");
+            return;
+        }
+
+        String documentName = name.trim();
+        cloudExecutor.execute(() -> {
+            try {
+                byte[] bytes = MarkdownCodec.validateBytes(
+                    markdown,
+                    new MarkdownWriteOptions(encoding, writeBom)
+                );
+                CloudTokenStore tokens = requireFreshTokens(auth);
+                String fileId;
+                String displayName;
+                String versionTag;
+                String lastModified;
+                if (auth == googleDriveAuth) {
+                    GoogleDriveClient.CreateResult created =
+                        driveClient.createFile(tokens.accessToken, parentId, documentName, bytes);
+                    fileId = created.id;
+                    displayName = created.name;
+                    versionTag = created.headRevisionId;
+                    lastModified = created.lastModified;
+                } else {
+                    OneDriveGraphClient.CreateResult created =
+                        graphClient.createFile(tokens.accessToken, parentId, documentName, bytes);
+                    fileId = created.id;
+                    displayName = created.name;
+                    versionTag = created.eTag;
+                    lastModified = created.lastModified;
+                }
+
+                JSObject result = new JSObject();
+                result.put("fileId", fileId);
+                result.put("displayName", displayName);
+                result.put("eTag", versionTag);
+                result.put("lastModified", lastModified);
+                Log.i(TAG, "Created " + auth.label + " document: " + safeForLog(displayName));
+                call.resolve(result);
+            } catch (CloudProviderException ex) {
+                Log.w(TAG, auth.label + " document create failed: " + ex.getMessage());
+                call.reject(ex.getMessage(), ex.code, ex);
+            } catch (DocumentReadException ex) {
+                Log.w(TAG, auth.label + " document create rejected: " + ex.getMessage());
+                call.reject(ex.getMessage(), ex.code, ex);
+            } catch (IOException ex) {
+                Log.w(TAG, auth.label + " document create failed", ex);
                 call.reject("Could not reach " + auth.label, "CLOUD_NETWORK_FAILED", ex);
             }
         });

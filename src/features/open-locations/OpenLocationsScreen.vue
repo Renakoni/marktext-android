@@ -2,13 +2,18 @@
 import { useI18n } from '../../lib/i18n'
 import type { CloudAccountState } from '../../lib/cloudDocuments'
 
-defineProps<{
-  oneDriveState: CloudAccountState | null
-  googleDriveState: CloudAccountState | null
-  /** Google flow feedback: browser trip / exchanging tokens / opening the pick. */
-  googleDriveBusy: 'connecting' | 'completing' | 'opening' | null
-  notice: string | null
-}>()
+withDefaults(
+  defineProps<{
+    oneDriveState: CloudAccountState | null
+    googleDriveState: CloudAccountState | null
+    /** Google flow feedback: browser trip / exchanging tokens / opening the pick. */
+    googleDriveBusy: 'connecting' | 'completing' | 'opening' | null
+    notice: string | null
+    /** 'save' turns the page into the save-as destination chooser. */
+    mode?: 'open' | 'save'
+  }>(),
+  { mode: 'open' },
+)
 
 const emit = defineEmits<{
   back: []
@@ -43,7 +48,9 @@ const { t } = useI18n()
           />
         </svg>
       </button>
-      <h1 class="open-locations-title">{{ t('openLocations.title') }}</h1>
+      <h1 class="open-locations-title">
+        {{ mode === 'save' ? t('saveAs.title') : t('openLocations.title') }}
+      </h1>
     </header>
 
     <div class="open-locations-list">
@@ -92,7 +99,7 @@ const { t } = useI18n()
           </span>
         </button>
         <button
-          v-if="oneDriveState?.connected"
+          v-if="oneDriveState?.connected && mode !== 'save'"
           type="button"
           class="open-location-signout"
           :aria-label="t('cloudBrowser.disconnect')"
@@ -148,7 +155,7 @@ const { t } = useI18n()
         <!-- Drive has no in-app browser screen to host a sign-out control,
              so it lives on the row itself. -->
         <button
-          v-if="googleDriveState?.connected && googleDriveBusy === null"
+          v-if="googleDriveState?.connected && googleDriveBusy === null && mode !== 'save'"
           type="button"
           class="open-location-signout"
           :aria-label="t('cloudBrowser.disconnect')"
@@ -167,7 +174,12 @@ const { t } = useI18n()
         </button>
       </div>
 
-      <button type="button" class="open-location-row" @click="emit('browseAll')">
+      <button
+        v-if="mode !== 'save'"
+        type="button"
+        class="open-location-row"
+        @click="emit('browseAll')"
+      >
         <span class="open-location-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path

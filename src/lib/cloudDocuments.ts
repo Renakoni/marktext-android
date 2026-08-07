@@ -38,6 +38,9 @@ export interface CloudDocumentWriteResult {
   lastModified: string
 }
 
+/** 'document' opens the file picker; 'folder' picks a save-as destination. */
+export type CloudPickMode = 'document' | 'folder'
+
 export interface CloudAuthEvent {
   provider: CloudProviderId
   connected: boolean
@@ -70,7 +73,10 @@ interface CloudDocumentsPlugin {
     listenerFunc: (event: CloudAuthPendingEvent) => void,
   ): Promise<PluginListenerHandle>
   getCloudAccountState(options: { provider: CloudProviderId }): Promise<CloudAccountState>
-  connectCloudAccount(options: { provider: CloudProviderId }): Promise<{ started: boolean }>
+  connectCloudAccount(options: {
+    provider: CloudProviderId
+    pickMode?: CloudPickMode
+  }): Promise<{ started: boolean }>
   disconnectCloudAccount(options: { provider: CloudProviderId }): Promise<void>
   listCloudFolder(options: {
     provider: CloudProviderId
@@ -89,6 +95,14 @@ interface CloudDocumentsPlugin {
     encoding?: string
     writeBom?: boolean
     eTag?: string
+  }): Promise<CloudDocumentWriteResult>
+  createCloudDocument(options: {
+    provider: CloudProviderId
+    parentId?: string
+    name: string
+    markdown: string
+    encoding?: string
+    writeBom?: boolean
   }): Promise<CloudDocumentWriteResult>
 }
 
@@ -118,8 +132,13 @@ export async function getCloudAccountState(provider: CloudProviderId) {
   return wrapCloudErrors(() => CloudDocuments.getCloudAccountState({ provider }))
 }
 
-export async function connectCloudAccount(provider: CloudProviderId) {
-  return wrapCloudErrors(() => CloudDocuments.connectCloudAccount({ provider }))
+export async function connectCloudAccount(
+  provider: CloudProviderId,
+  options: { pickMode?: CloudPickMode } = {},
+) {
+  return wrapCloudErrors(() =>
+    CloudDocuments.connectCloudAccount({ provider, pickMode: options.pickMode }),
+  )
 }
 
 export async function disconnectCloudAccount(provider: CloudProviderId) {
@@ -162,6 +181,28 @@ export async function writeCloudDocument(
       encoding: options.encoding,
       writeBom: options.writeBom,
       eTag: options.eTag,
+    }),
+  )
+}
+
+export async function createCloudDocument(
+  provider: CloudProviderId,
+  options: {
+    parentId?: string
+    name: string
+    markdown: string
+    encoding?: string
+    writeBom?: boolean
+  },
+) {
+  return wrapCloudErrors(() =>
+    CloudDocuments.createCloudDocument({
+      provider,
+      parentId: options.parentId,
+      name: options.name,
+      markdown: options.markdown,
+      encoding: options.encoding,
+      writeBom: options.writeBom,
     }),
   )
 }

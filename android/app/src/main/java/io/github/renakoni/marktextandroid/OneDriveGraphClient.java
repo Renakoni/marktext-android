@@ -89,6 +89,24 @@ final class OneDriveGraphClient {
         }
     }
 
+    static final class CreateResult {
+
+        final String id;
+        final String name;
+        final String eTag;
+        final String lastModified;
+
+        CreateResult(String id, String name, String eTag, String lastModified) {
+            this.id = id;
+            this.name = name;
+            this.eTag = eTag;
+            this.lastModified = lastModified;
+        }
+    }
+
+    /** Simple (non-session) uploads cap at 4 MB on Microsoft Graph. */
+    static final int MAX_SIMPLE_UPLOAD_BYTES = 4 * 1024 * 1024;
+
     private final HttpTransport transport;
 
     OneDriveGraphClient(HttpTransport transport) {
@@ -318,6 +336,62 @@ final class OneDriveGraphClient {
             json.optString("eTag", ""),
             json.optString("lastModifiedDateTime", "")
         );
+    }
+
+    /**
+     * Creates a new document in the given folder ({@code null} = drive
+     * root). The path-based upload with {@code conflictBehavior=fail}
+     * refuses to silently overwrite an existing name — a save-as must
+     * never eat another document.
+     */
+    CreateResult createFile(String accessToken, String parentId, String name, byte[] bytes)
+        throws IOException, CloudProviderException {
+        if (bytes.length > MAX_SIMPLE_UPLOAD_BYTES) {
+            // Brand-new documents above the simple-upload cap are rejected
+            // honestly; upload sessions are the follow-up if it ever matters.
+            throw new CloudProviderException(
+                "DOCUMENT_TOO_LARGE",
+                "New OneDrive documents are limited to 4 MB"
+            );
+        }
+
+        String base = parentId == null || parentId.length() == 0
+            ? GRAPH + "/me/drive/root:/"
+            : GRAPH + "/me/drive/items/" + urlEncode(parentId) + ":/";
+        Map<String, String> headers = bearerHeaders(accessToken);
+        headers.put("Content-Type", "application/octet-stream");
+
+        HttpTransport.Response response = transport.execute(new HttpTransport.Request(
+            "PUT",
+            base + encodePathSegment(name) + ":/content?@microsoft.graph.conflictBehavior=fail",
+            headers,
+            bytes
+        ));
+        if (response.status == 409) {
+            throw new CloudProviderException(
+                "CLOUD_NAME_EXISTS",
+                "A document with this name already exists in the chosen OneDrive folder"
+            );
+        }
+        if (response.status != 200 && response.status != 201) {
+            throw statusException(response, "CLOUD_WRITE_FAILED", "OneDrive save failed");
+        }
+
+        JSONObject json = parseJson(response.body);
+        if (json == null) {
+            throw new CloudProviderException("CLOUD_WRITE_FAILED", "OneDrive save returned an unreadable response");
+        }
+        return new CreateResult(
+            json.optString("id", ""),
+            json.optString("name", ""),
+            json.optString("eTag", ""),
+            json.optString("lastModifiedDateTime", "")
+        );
+    }
+
+    /** Percent-encodes a Graph path segment (URLEncoder's '+' is form encoding, not path). */
+    static String encodePathSegment(String name) {
+        return urlEncode(name).replace("+", "%20");
     }
 
     /**

@@ -414,6 +414,10 @@ export function getAndroidDocumentUserMessage(error: unknown) {
     return 'Could not save this document to the cloud.'
   }
 
+  if (code === 'CLOUD_NAME_EXISTS') {
+    return 'A document with this name already exists there. Choose another name.'
+  }
+
   if (code === 'UNSUPPORTED_DOCUMENT') {
     return 'Choose a Markdown or plain text file.'
   }

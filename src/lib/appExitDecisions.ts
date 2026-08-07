@@ -2,7 +2,7 @@ import { HOME_TABS, type HomeTab } from '../features/home/homeNavigation'
 import { SETTINGS_PAGES, type SettingsPage } from '../features/settings/settingsNavigation'
 import type { AutosaveTarget } from './documentState'
 
-export type AppScreen = 'home' | 'editor' | 'open-locations' | 'cloud-browser'
+export type AppScreen = 'home' | 'editor' | 'open-locations' | 'cloud-browser' | 'save-locations'
 
 export type ShowHomeDocumentSaveAction = 'save-android-document' | 'save-local-draft'
 
@@ -48,6 +48,7 @@ export type AppBackButtonAction =
   | 'show-home'
   | 'show-open-locations'
   | 'cloud-browser-up'
+  | 'cancel-save-destination'
   | 'show-settings-index'
   | 'show-documents-tab'
   | 'exit-app'
@@ -143,6 +144,12 @@ export function getAppBackButtonAction({
 
   if (currentScreen === 'editor') {
     return 'show-home'
+  }
+
+  // The save-as destination page cancels the whole save on Back — it was
+  // entered from the editor, not from home.
+  if (currentScreen === 'save-locations') {
+    return 'cancel-save-destination'
   }
 
   // The cloud browser backs out folder by folder, then to the Open page;

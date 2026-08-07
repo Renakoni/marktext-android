@@ -66,6 +66,55 @@ public class GoogleDriveClientTest {
     }
 
     @Test
+    public void folderPickerAuthorizeUrlRestrictsToFoldersAndAllowsSelectingThem() {
+        String url = GoogleDriveClient.buildFolderPickerAuthorizeUrl(
+            "client-123.apps.googleusercontent.com",
+            "com.googleusercontent.apps.client-123:/oauth2redirect",
+            "state-x",
+            "challenge-y");
+
+        assertTrue(url.contains("trigger_onepick=true"));
+        assertTrue(url.contains("prompt=consent"));
+        assertTrue(url.contains("allow_folder_selection=true"));
+        assertTrue(url.contains(
+            "mimetypes=application%2Fvnd.google-apps.folder"));
+        assertFalse(url.contains("text%2Fmarkdown"));
+    }
+
+    @Test
+    public void createBuildsAMultipartUploadInsideTheChosenFolder() throws Exception {
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(200, "{\"id\":\"new-1\",\"name\":\"notes.md\",\"headRevisionId\":\"rev-1\","
+            + "\"modifiedTime\":\"2026-08-08T01:00:00.000Z\"}");
+
+        GoogleDriveClient.CreateResult result = new GoogleDriveClient(transport)
+            .createFile("AT", "folder-1", "notes.md", "# hi".getBytes(StandardCharsets.UTF_8));
+
+        assertEquals("new-1", result.id);
+        assertEquals("rev-1", result.headRevisionId);
+        HttpTransport.Request request = transport.requests.get(0);
+        assertEquals("POST", request.method);
+        assertTrue(request.url.startsWith(GoogleDriveClient.UPLOAD + "/files?uploadType=multipart"));
+        assertTrue(request.headers.get("Content-Type").startsWith("multipart/related; boundary="));
+        String body = new String(request.body, StandardCharsets.UTF_8);
+        assertTrue(body.contains("\"name\":\"notes.md\""));
+        assertTrue(body.contains("\"mimeType\":\"text/markdown\""));
+        assertTrue(body.contains("\"parents\":[\"folder-1\"]"));
+        assertTrue(body.contains("# hi"));
+    }
+
+    @Test
+    public void createWithoutAFolderOmitsParentsAndLandsInMyDrive() throws Exception {
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(200, "{\"id\":\"new-1\",\"name\":\"a.md\",\"headRevisionId\":\"r\"}");
+
+        new GoogleDriveClient(transport).createFile("AT", null, "a.md", new byte[] {65});
+
+        String body = new String(transport.requests.get(0).body, StandardCharsets.UTF_8);
+        assertFalse(body.contains("parents"));
+    }
+
+    @Test
     public void redirectSchemeIsTheReversedClientId() {
         assertEquals(
             "com.googleusercontent.apps.432-abc",

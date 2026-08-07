@@ -8,6 +8,7 @@ import {
   type SavedAndroidDocument,
 } from '../../lib/androidDocuments'
 import {
+  createCloudDocument,
   readCloudDocument,
   writeCloudDocument,
   type CloudDocumentContent,
@@ -48,6 +49,43 @@ export function toOpenedDocumentFromCloud(
     canWrite: content.canWrite,
     // Token-backed access survives restarts the way a persisted SAF grant
     // does, which is what downstream `persisted` consumers actually gate on.
+    persisted: true,
+  }
+}
+
+/**
+ * Save-as: creates a new provider document and adopts it into the
+ * opened-document shape. The returned document's version tag is seeded
+ * into this module's map, so the very first autosave writes with the
+ * created ETag instead of failing closed.
+ */
+export async function createRoutedCloudDocument(
+  provider: CloudProviderId,
+  parentId: string | null,
+  name: string,
+  markdown: string,
+  options: { encoding: OpenedAndroidDocument['encoding']; writeBom: boolean },
+): Promise<OpenedAndroidDocument> {
+  const created = await createCloudDocument(provider, {
+    parentId: parentId ?? undefined,
+    name,
+    markdown,
+    encoding: options.encoding,
+    writeBom: options.writeBom,
+  })
+  const sourceUri = buildCloudSourceUri(provider, created.fileId)
+  cloudDocumentETags.set(sourceUri, created.eTag)
+  return {
+    canceled: false,
+    sourceUri,
+    displayName: created.displayName,
+    providerName: CLOUD_PROVIDER_LABELS[provider],
+    pathHint: created.displayName,
+    mimeType: 'text/markdown',
+    markdown,
+    encoding: options.encoding,
+    hasEncodingBom: options.writeBom,
+    canWrite: true,
     persisted: true,
   }
 }

@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const readCloudDocument = vi.fn()
 const writeCloudDocument = vi.fn()
+const createCloudDocument = vi.fn()
 const readAndroidMarkdownDocument = vi.fn()
 const writeAndroidMarkdownDocument = vi.fn()
 
 vi.mock('../../lib/cloudDocuments', () => ({
   readCloudDocument: (...args: unknown[]) => readCloudDocument(...args),
   writeCloudDocument: (...args: unknown[]) => writeCloudDocument(...args),
+  createCloudDocument: (...args: unknown[]) => createCloudDocument(...args),
 }))
 
 vi.mock('../../lib/androidDocuments', () => ({
@@ -23,6 +25,7 @@ vi.mock('../../lib/androidDocuments', () => ({
 }))
 
 import {
+  createRoutedCloudDocument,
   readRoutedMarkdownDocument,
   toOpenedDocumentFromCloud,
   writeRoutedMarkdownDocument,
@@ -137,6 +140,46 @@ describe('cloudDocumentBridge', () => {
       writeRoutedMarkdownDocument('cloud:onedrive:item-orphan', 'text', { encoding: 'utf8' }),
     ).rejects.toMatchObject({ code: 'CLOUD_DOCUMENT_CONFLICT' })
     expect(writeCloudDocument).not.toHaveBeenCalled()
+  })
+
+  it('save-as adopts the created document and seeds its ETag for autosave', async () => {
+    createCloudDocument.mockResolvedValue({
+      fileId: 'new-1',
+      displayName: 'fresh.md',
+      eTag: 'etag-created',
+      lastModified: '2026-08-08T02:00:00Z',
+    })
+    writeCloudDocument.mockResolvedValue({
+      fileId: 'new-1',
+      displayName: 'fresh.md',
+      eTag: 'etag-2',
+      lastModified: '2026-08-08T02:01:00Z',
+    })
+
+    const created = await createRoutedCloudDocument('googledrive', 'folder-1', 'fresh.md', '# new', {
+      encoding: 'utf8',
+      writeBom: false,
+    })
+
+    expect(createCloudDocument).toHaveBeenCalledWith('googledrive', {
+      parentId: 'folder-1',
+      name: 'fresh.md',
+      markdown: '# new',
+      encoding: 'utf8',
+      writeBom: false,
+    })
+    expect(created.sourceUri).toBe('cloud:googledrive:new-1')
+    expect(created.providerName).toBe('Google Drive')
+    expect(created.persisted).toBe(true)
+
+    // The very first autosave must carry the created ETag — without the
+    // seed it would fail closed and demand a reopen of a brand-new file.
+    await writeRoutedMarkdownDocument('cloud:googledrive:new-1', '# new!', { encoding: 'utf8' })
+    expect(writeCloudDocument).toHaveBeenCalledWith('googledrive', 'new-1', '# new!', {
+      encoding: 'utf8',
+      writeBom: undefined,
+      eTag: 'etag-created',
+    })
   })
 
   it('passes non-cloud writes through to the SAF writer', async () => {
