@@ -1464,8 +1464,8 @@ packages:
     engines: {node: '>= 20'}
     hasBin: true
 
-  mermaid@11.15.0:
-    resolution: {integrity: sha512-pTMbcf3rWdtLiYGpmoTjHEpeY8seiy6sR+9nD7LOs8KfUbHE4lOUAprTRqRAcWSQ6MQpdX+YEsxShtGsINtPtw==}
+  mermaid@11.16.1:
+    resolution: {integrity: sha512-TQsq6u22fAn3rek5VOubrhKPo1g5hwC3FXUN9hiyupTckcYiGuuKGkNQrKYwGJkXUxZdojwRG46gsSCFZMDp4g==}
 
   micromatch@4.0.8:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
@@ -2404,7 +2404,7 @@ snapshots:
       katex: 0.17.0
       marked: 18.0.5
       marked-highlight: 2.2.4(marked@18.0.5)
-      mermaid: 11.15.0
+      mermaid: 11.16.1
       ot-json1: 1.0.2
       ot-text-unicode: 4.0.0
       plantuml-encoder: 1.4.0
@@ -3581,7 +3581,7 @@ snapshots:
 
   marked@18.0.5: {}
 
-  mermaid@11.15.0:
+  mermaid@11.16.1:
     dependencies:
       '@braintree/sanitize-url': 7.1.2
       '@iconify/utils': 3.1.3
