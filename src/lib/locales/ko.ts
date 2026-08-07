@@ -640,6 +640,7 @@ export const ko = {
   'cloudBrowser.signInHint': 'Microsoft 계정으로 로그인하면 OneDrive의 Markdown 문서를 열 수 있습니다.',
   'cloudBrowser.connect': 'OneDrive에 로그인',
   'cloudBrowser.connecting': '브라우저 로그인을 기다리는 중…',
+  'cloudBrowser.completing': '로그인을 완료하는 중…',
   'cloudBrowser.disconnect': '로그아웃',
   'cloudBrowser.loading': '불러오는 중…',
   'cloudBrowser.empty': '여기에는 Markdown 문서가 없습니다',

@@ -640,6 +640,7 @@ export const tr = {
   'cloudBrowser.signInHint': 'OneDrive\'daki Markdown belgelerini açmak için Microsoft hesabınızla oturum açın.',
   'cloudBrowser.connect': 'OneDrive\'da oturum aç',
   'cloudBrowser.connecting': 'Tarayıcıda oturum açma bekleniyor…',
+  'cloudBrowser.completing': 'Oturum açma tamamlanıyor…',
   'cloudBrowser.disconnect': 'Oturumu kapat',
   'cloudBrowser.loading': 'Yükleniyor…',
   'cloudBrowser.empty': 'Burada Markdown belgesi yok',

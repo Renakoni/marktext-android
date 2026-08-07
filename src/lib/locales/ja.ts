@@ -640,6 +640,7 @@ export const ja = {
   'cloudBrowser.signInHint': 'Microsoft アカウントでサインインすると、OneDrive の Markdown ドキュメントを開けます。',
   'cloudBrowser.connect': 'OneDrive にサインイン',
   'cloudBrowser.connecting': 'ブラウザーでのサインインを待っています…',
+  'cloudBrowser.completing': 'サインインを完了しています…',
   'cloudBrowser.disconnect': 'サインアウト',
   'cloudBrowser.loading': '読み込み中…',
   'cloudBrowser.empty': 'ここに Markdown ドキュメントはありません',

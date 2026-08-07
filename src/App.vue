@@ -18,6 +18,7 @@ import {
 } from './lib/androidDocuments'
 import {
   addCloudAuthListener,
+  addCloudAuthPendingListener,
   connectCloudAccount,
   disconnectCloudAccount,
   getCloudAccountState,
@@ -1533,7 +1534,11 @@ async function openFileFromAndroid() {
 // --- Open locations + cloud providers (#185) ---
 
 const oneDriveAccountState = ref<CloudAccountState | null>(null)
-const cloudConnecting = ref(false)
+// 'browser' = waiting for the sign-in browser (clearable when the app
+// merely becomes visible again — the user backed out); 'completing' = the
+// redirect landed and the token exchange is running (only the auth event
+// may clear it, or the sign-in button revives mid-exchange).
+const cloudConnecting = ref<'browser' | 'completing' | null>(null)
 const cloudBrowserLoading = ref(false)
 const cloudBrowserError = ref<string | null>(null)
 const cloudBrowserEntries = ref<CloudFolderEntry[]>([])
@@ -1615,14 +1620,17 @@ async function showCloudBrowser() {
 }
 
 async function connectOneDrive() {
-  cloudConnecting.value = true
+  if (cloudConnecting.value !== null) {
+    return
+  }
+  cloudConnecting.value = 'browser'
   cloudBrowserError.value = null
   try {
     await connectCloudAccount('onedrive')
     // Completion arrives through the cloudAuthCompleted listener once the
     // browser redirects back.
   } catch (error) {
-    cloudConnecting.value = false
+    cloudConnecting.value = null
     cloudBrowserError.value = getAndroidDocumentUserMessage(error)
     androidDocumentLog.warn('OneDrive connect failed to start', { error })
   }
@@ -1669,7 +1677,10 @@ async function cloudBrowserNavigateUp() {
 // the Picker cannot run in a session-less WebView) ---
 
 const googleDriveAccountState = ref<CloudAccountState | null>(null)
-const googleDriveBusy = ref<'connecting' | 'opening' | null>(null)
+// 'connecting' = browser trip (visibility-clearable, see above);
+// 'completing' = redirect landed, exchange running; 'opening' = reading
+// the picked document.
+const googleDriveBusy = ref<'connecting' | 'completing' | 'opening' | null>(null)
 const openLocationsNotice = ref<string | null>(null)
 
 async function refreshGoogleDriveAccountState() {
@@ -1691,15 +1702,19 @@ async function handleOpenGoogleDrive() {
   if (googleDriveBusy.value !== null) {
     return
   }
-  openLocationsNotice.value = null
-  if (googleDriveAccountState.value === null) {
-    await refreshGoogleDriveAccountState()
-  }
-  if (!googleDriveAccountState.value?.available) {
-    return
-  }
+  // Lock BEFORE the first await: a second tap during the account-state
+  // refresh would otherwise start a competing browser flow whose fresh
+  // OAuth state clobbers the first one's pending record.
   googleDriveBusy.value = 'connecting'
+  openLocationsNotice.value = null
   try {
+    if (googleDriveAccountState.value === null) {
+      await refreshGoogleDriveAccountState()
+    }
+    if (!googleDriveAccountState.value?.available) {
+      googleDriveBusy.value = null
+      return
+    }
     await connectCloudAccount('googledrive')
     // Completion arrives through the cloudAuthCompleted listener once the
     // browser redirects back, carrying the picked file ids.
@@ -1745,21 +1760,36 @@ function installCloudAuthListener() {
     if (document.visibilityState !== 'visible') {
       return
     }
-    if (cloudConnecting.value) {
-      cloudConnecting.value = false
+    // Only the browser-wait phase may be cleared here: with no redirect
+    // there will never be an auth event, so visibility is the only signal
+    // the user backed out. The 'completing' phase belongs to the pending/
+    // completed events below — a landed redirect flips visibility too, and
+    // clearing it would revive the sign-in mid-exchange (Codex round 2).
+    if (cloudConnecting.value === 'browser') {
+      cloudConnecting.value = null
       void refreshOneDriveAccountState()
     }
     if (googleDriveBusy.value === 'connecting') {
-      // A redirect that DID land still delivers its auth event (with the
-      // picked files) after this visibility flip; this only unsticks the
-      // row when the user backed out of the browser without picking.
       googleDriveBusy.value = null
       void refreshGoogleDriveAccountState()
     }
   })
+  // The redirect landed and the token exchange started: lock the sign-in
+  // controls until the completed event reports the outcome.
+  void addCloudAuthPendingListener(event => {
+    if (event.provider === 'googledrive') {
+      if (googleDriveBusy.value === null || googleDriveBusy.value === 'connecting') {
+        googleDriveBusy.value = 'completing'
+      }
+      return
+    }
+    if (event.provider === 'onedrive') {
+      cloudConnecting.value = 'completing'
+    }
+  })
   void addCloudAuthListener(event => {
     if (event.provider === 'googledrive') {
-      if (googleDriveBusy.value === 'connecting') {
+      if (googleDriveBusy.value === 'connecting' || googleDriveBusy.value === 'completing') {
         googleDriveBusy.value = null
       }
       if (event.connected) {
@@ -1779,7 +1809,7 @@ function installCloudAuthListener() {
       })
       return
     }
-    cloudConnecting.value = false
+    cloudConnecting.value = null
     if (event.connected) {
       void refreshOneDriveAccountState().then(() => {
         if (currentScreen.value === 'cloud-browser') {

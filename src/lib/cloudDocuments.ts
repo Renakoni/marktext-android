@@ -51,10 +51,23 @@ export interface CloudAuthEvent {
   message?: string
 }
 
+/**
+ * Fired the moment a valid OAuth redirect is consumed, before the (slow)
+ * token exchange: the UI locks into a "completing" state that a mere
+ * app-visibility flip must not clear.
+ */
+export interface CloudAuthPendingEvent {
+  provider: CloudProviderId
+}
+
 interface CloudDocumentsPlugin {
   addListener(
     eventName: 'cloudAuthCompleted',
     listenerFunc: (event: CloudAuthEvent) => void,
+  ): Promise<PluginListenerHandle>
+  addListener(
+    eventName: 'cloudAuthPending',
+    listenerFunc: (event: CloudAuthPendingEvent) => void,
   ): Promise<PluginListenerHandle>
   getCloudAccountState(options: { provider: CloudProviderId }): Promise<CloudAccountState>
   connectCloudAccount(options: { provider: CloudProviderId }): Promise<{ started: boolean }>
@@ -155,4 +168,10 @@ export async function writeCloudDocument(
 
 export async function addCloudAuthListener(listener: (event: CloudAuthEvent) => void) {
   return CloudDocuments.addListener('cloudAuthCompleted', listener)
+}
+
+export async function addCloudAuthPendingListener(
+  listener: (event: CloudAuthPendingEvent) => void,
+) {
+  return CloudDocuments.addListener('cloudAuthPending', listener)
 }

@@ -5,8 +5,8 @@ import type { CloudAccountState } from '../../lib/cloudDocuments'
 defineProps<{
   oneDriveState: CloudAccountState | null
   googleDriveState: CloudAccountState | null
-  /** Google flow feedback: browser pick trip / opening the picked file. */
-  googleDriveBusy: 'connecting' | 'opening' | null
+  /** Google flow feedback: browser trip / exchanging tokens / opening the pick. */
+  googleDriveBusy: 'connecting' | 'completing' | 'opening' | null
   notice: string | null
 }>()
 
@@ -133,6 +133,7 @@ const { t } = useI18n()
             <span class="open-location-label">Google Drive</span>
             <span class="open-location-subtitle">
               <template v-if="googleDriveBusy === 'connecting'">{{ t('openLocations.cloudConnecting') }}</template>
+              <template v-else-if="googleDriveBusy === 'completing'">{{ t('cloudBrowser.completing') }}</template>
               <template v-else-if="googleDriveBusy === 'opening'">{{ t('openLocations.cloudOpening') }}</template>
               <template v-else-if="googleDriveState === null">…</template>
               <template v-else-if="!googleDriveState.available">{{ t('openLocations.cloudUnavailable') }}</template>

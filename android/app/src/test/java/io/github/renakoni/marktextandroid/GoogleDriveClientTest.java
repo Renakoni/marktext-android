@@ -144,7 +144,7 @@ public class GoogleDriveClientTest {
         FakeTransport transport = new FakeTransport();
         // Drive v3 serializes size as a string.
         transport.enqueue(200, "{\"name\":\"notes.md\",\"mimeType\":\"text/markdown\","
-            + "\"headRevisionId\":\"rev-1\",\"size\":\"5\",\"capabilities\":{\"canEdit\":true}}");
+            + "\"headRevisionId\":\"rev-1\",\"size\":\"5\",\"capabilities\":{\"canModifyContent\":true}}");
         transport.enqueue(200, "hello");
 
         GoogleDriveClient.FileContent file =
@@ -157,7 +157,7 @@ public class GoogleDriveClientTest {
 
         HttpTransport.Request metadata = transport.requests.get(0);
         assertTrue(metadata.url.startsWith(GoogleDriveClient.DRIVE + "/files/file-1?fields="));
-        assertTrue(metadata.url.contains("capabilities/canEdit"));
+        assertTrue(metadata.url.contains("capabilities/canModifyContent"));
         HttpTransport.Request download = transport.requests.get(1);
         assertEquals(GoogleDriveClient.DRIVE + "/files/file-1?alt=media", download.url);
         assertEquals("Bearer AT", download.headers.get("Authorization"));
@@ -166,9 +166,25 @@ public class GoogleDriveClientTest {
 
     @Test
     public void readReportsReadOnlySharedFilesAsNotWritable() throws Exception {
+        // canEdit=true does NOT imply content writes are allowed (content
+        // restrictions); only canModifyContent governs the media upload.
         FakeTransport transport = new FakeTransport();
         transport.enqueue(200, "{\"name\":\"shared.md\",\"mimeType\":\"text/markdown\","
-            + "\"headRevisionId\":\"rev-1\",\"size\":\"5\",\"capabilities\":{\"canEdit\":false}}");
+            + "\"headRevisionId\":\"rev-1\",\"size\":\"5\","
+            + "\"capabilities\":{\"canEdit\":true,\"canModifyContent\":false}}");
+        transport.enqueue(200, "hello");
+
+        GoogleDriveClient.FileContent file =
+            new GoogleDriveClient(transport).readFile("AT", "file-1", 1024);
+
+        assertFalse(file.canWrite);
+    }
+
+    @Test
+    public void readFailsClosedToReadOnlyWhenCapabilitiesAreMissing() throws Exception {
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(200, "{\"name\":\"odd.md\",\"mimeType\":\"text/markdown\","
+            + "\"headRevisionId\":\"rev-1\",\"size\":\"5\"}");
         transport.enqueue(200, "hello");
 
         GoogleDriveClient.FileContent file =

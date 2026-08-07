@@ -631,6 +631,7 @@ export const zhCN = {
   'cloudBrowser.signInHint': '使用你的 Microsoft 账户登录,即可打开 OneDrive 中的 Markdown 文档。',
   'cloudBrowser.connect': '登录 OneDrive',
   'cloudBrowser.connecting': '正在等待浏览器登录…',
+  'cloudBrowser.completing': '正在完成登录…',
   'cloudBrowser.disconnect': '退出登录',
   'cloudBrowser.loading': '正在加载…',
   'cloudBrowser.empty': '这里没有 Markdown 文档',

@@ -49,6 +49,7 @@ public class CloudDocumentsPlugin extends Plugin {
     private static final String PREF_GOOGLEDRIVE_TOKENS = "googledrive_tokens";
     private static final String PREF_GOOGLEDRIVE_PENDING_AUTH = "googledrive_pending_auth";
     private static final String EVENT_AUTH_COMPLETED = "cloudAuthCompleted";
+    private static final String EVENT_AUTH_PENDING = "cloudAuthPending";
     private static final String OAUTH_HOST = "oauth";
     private static final String OAUTH_ONEDRIVE_PATH = "/onedrive";
     private static final String OAUTH_GOOGLEDRIVE_PATH = "/oauth2redirect";
@@ -71,6 +72,13 @@ public class CloudDocumentsPlugin extends Plugin {
         final String label;
         final String pendingPrefKey;
         final String tokensPrefKey;
+        /**
+         * True from the moment a valid redirect is consumed until its token
+         * exchange emitted a result. connect/disconnect reject while set, so
+         * a user cannot interleave a second sign-in (or a sign-out) with an
+         * exchange that will still save tokens when it lands.
+         */
+        volatile boolean exchangeInFlight = false;
 
         ProviderAuth(String id, String label, String pendingPrefKey, String tokensPrefKey) {
             this.id = id;
@@ -280,6 +288,13 @@ public class CloudDocumentsPlugin extends Plugin {
             );
             return;
         }
+        if (auth.exchangeInFlight) {
+            call.reject(
+                "The " + auth.label + " sign-in is still completing",
+                "CLOUD_AUTH_IN_PROGRESS"
+            );
+            return;
+        }
         Activity activity = getActivity();
         if (activity == null) {
             call.reject("No Android activity is available", "CLOUD_AUTH_FAILED");
@@ -332,6 +347,15 @@ public class CloudDocumentsPlugin extends Plugin {
         ProviderAuth auth = providerAuthFor(provider);
         if (auth == null) {
             call.reject("Unknown cloud provider", "CLOUD_PROVIDER_UNKNOWN");
+            return;
+        }
+        if (auth.exchangeInFlight) {
+            // A disconnect racing the exchange would be undone the moment
+            // the exchange saves its tokens; keep the lifecycle linear.
+            call.reject(
+                "The " + auth.label + " sign-in is still completing",
+                "CLOUD_AUTH_IN_PROGRESS"
+            );
             return;
         }
         CloudTokenStore tokens = readTokens(auth);
@@ -641,6 +665,16 @@ public class CloudDocumentsPlugin extends Plugin {
             }
         }
 
+        // The redirect is real and its token exchange is about to run in the
+        // background: tell the web layer NOW, so the sign-in button locks
+        // into a "completing" state instead of reviving when the app merely
+        // becomes visible again (the visibility signal cannot distinguish
+        // "backed out of the browser" from "redirect landed, exchanging").
+        auth.exchangeInFlight = true;
+        JSObject pendingEvent = new JSObject();
+        pendingEvent.put("provider", auth.id);
+        notifyListeners(EVENT_AUTH_PENDING, pendingEvent, true);
+
         cloudExecutor.execute(() -> {
             try {
                 CloudTokenStore exchanged = auth.exchangeCode(code, verifier, System.currentTimeMillis());
@@ -674,6 +708,10 @@ public class CloudDocumentsPlugin extends Plugin {
         String message,
         JSArray pickedFileIds
     ) {
+        // Every exchange outcome flows through here; releasing the gate
+        // before the event keeps connect/disconnect available the moment
+        // the web layer learns the result.
+        auth.exchangeInFlight = false;
         JSObject event = new JSObject();
         event.put("provider", auth.id);
         event.put("connected", connected);

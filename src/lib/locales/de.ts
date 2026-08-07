@@ -641,6 +641,7 @@ export const de = {
   'cloudBrowser.signInHint': 'Melde dich mit deinem Microsoft-Konto an, um Markdown-Dokumente aus OneDrive zu öffnen.',
   'cloudBrowser.connect': 'Bei OneDrive anmelden',
   'cloudBrowser.connecting': 'Warten auf die Browser-Anmeldung …',
+  'cloudBrowser.completing': 'Anmeldung wird abgeschlossen …',
   'cloudBrowser.disconnect': 'Abmelden',
   'cloudBrowser.loading': 'Wird geladen …',
   'cloudBrowser.empty': 'Keine Markdown-Dokumente hier',

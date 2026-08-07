@@ -378,6 +378,10 @@ export function getAndroidDocumentUserMessage(error: unknown) {
     return 'The cloud sign-in was not completed.'
   }
 
+  if (code === 'CLOUD_AUTH_IN_PROGRESS') {
+    return 'The cloud sign-in is still completing. Try again in a moment.'
+  }
+
   if (code === 'CLOUD_CLIENT_ID_MISSING') {
     return 'This cloud provider is not configured in this build.'
   }

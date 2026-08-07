@@ -216,7 +216,7 @@ final class GoogleDriveClient {
         JSONObject metadata = driveJson(
             accessToken,
             DRIVE + "/files/" + urlEncode(fileId)
-                + "?fields=name,mimeType,headRevisionId,size,trashed,capabilities/canEdit"
+                + "?fields=name,mimeType,headRevisionId,size,trashed,capabilities/canModifyContent"
         );
         if (metadata.optBoolean("trashed", false)) {
             throw new CloudProviderException(
@@ -266,8 +266,11 @@ final class GoogleDriveClient {
         }
         // The picker offers read-only shared files too; canWrite must be
         // the file's real capability or autosave runs into 403s.
+        // canModifyContent is the capability that governs media uploads
+        // (canEdit can be true while content is restricted), and a missing
+        // answer fails closed to a read-only open.
         JSONObject capabilities = metadata.optJSONObject("capabilities");
-        boolean canWrite = capabilities == null || capabilities.optBoolean("canEdit", true);
+        boolean canWrite = capabilities != null && capabilities.optBoolean("canModifyContent", false);
         return new FileContent(
             name,
             metadata.optString("headRevisionId", ""),
