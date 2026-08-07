@@ -55,6 +55,24 @@ high-entropy password. Clear the clipboard after each secret is entered.
    creates a draft GitHub Release containing the APK and SHA-256 checksum.
 8. Inspect the draft notes and assets, then publish the Release manually.
 
+## v0.2.0 release record
+
+`v0.2.0` was published on August 7, 2026 (UTC) from commit `1c89555`. The tag
+workflow produced `marktext-android-v0.2.0.apk` and its SHA-256 file. The
+published APK:
+
+- is 8,082,926 bytes;
+- has SHA-256 `fcbb19856cd762a22e97dc1db4f921ef84a80e7128ea32f4b0c2de828acb0ccf`;
+- passed the pinned release-certificate verification in the tag workflow; and
+- passed same-key upgrade over an installed v0.1.0 (versionCode 1 → 2) with
+  draft retention, About-version, update-checker, and save-as flow checks on
+  an API 35 emulator using the release-signed candidate APK.
+
+Deliberately deferred to post-release testing: the release-client Google
+Drive sign-in and a physical-device pass (the owner chose to publish first
+and verify the real in-app update path — About → Check updates — on the
+v0.1.0 phone install). API 24 runtime coverage remains outstanding as below.
+
 ## First release record
 
 `v0.1.0` was published on July 15, 2026 from commit `0cca3ed`. The tag workflow
