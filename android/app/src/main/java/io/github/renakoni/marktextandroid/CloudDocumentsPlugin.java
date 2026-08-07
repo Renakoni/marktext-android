@@ -338,10 +338,7 @@ public class CloudDocumentsPlugin extends Plugin {
             return;
         }
 
-        // Clearing the pending record first also deduplicates delivery: the
-        // launch intent can be observed again after handleOnNewIntent ran.
         String pendingSerialized = cloudPrefs().getString(PREF_ONEDRIVE_PENDING_AUTH, "");
-        cloudPrefs().edit().remove(PREF_ONEDRIVE_PENDING_AUTH).apply();
         if (pendingSerialized.length() == 0) {
             return;
         }
@@ -353,9 +350,24 @@ public class CloudDocumentsPlugin extends Plugin {
             expectedState = pending.optString("state", "");
             verifier = pending.optString("verifier", "");
         } catch (JSONException ex) {
+            cloudPrefs().edit().remove(PREF_ONEDRIVE_PENDING_AUTH).apply();
             emitAuthResult(false, null, "CLOUD_AUTH_FAILED", "The OneDrive sign-in state was unreadable");
             return;
         }
+
+        // The state parameter must match BEFORE the pending record is
+        // consumed, on error responses too: the scheme is public, so any
+        // app could fire a forged redirect (e.g. error=access_denied) to
+        // wipe the in-flight verifier and deny the real sign-in. Redirects
+        // that cannot prove they belong to our request are ignored.
+        String state = data.getQueryParameter("state");
+        if (expectedState.length() == 0 || !expectedState.equals(state)) {
+            Log.w(TAG, "Ignored an OneDrive redirect with a mismatched state");
+            return;
+        }
+        // Consuming the record here also deduplicates delivery: the launch
+        // intent can be observed again after handleOnNewIntent ran.
+        cloudPrefs().edit().remove(PREF_ONEDRIVE_PENDING_AUTH).apply();
 
         String error = data.getQueryParameter("error");
         if (error != null && error.length() > 0) {
@@ -371,8 +383,7 @@ public class CloudDocumentsPlugin extends Plugin {
         }
 
         String code = data.getQueryParameter("code");
-        String state = data.getQueryParameter("state");
-        if (code == null || code.length() == 0 || !expectedState.equals(state)) {
+        if (code == null || code.length() == 0) {
             emitAuthResult(false, null, "CLOUD_AUTH_FAILED", "The OneDrive sign-in response was invalid");
             return;
         }
@@ -512,10 +523,17 @@ public class CloudDocumentsPlugin extends Plugin {
                     : connection.getInputStream();
                 ByteArrayOutputStream body = new ByteArrayOutputStream();
                 if (stream != null) {
+                    // Bounded read: deliver at most maxResponseBytes + 1 so
+                    // the caller sees the overflow without this transport
+                    // ever buffering an arbitrarily large response.
+                    int limit = request.maxResponseBytes > 0
+                        ? request.maxResponseBytes + 1
+                        : Integer.MAX_VALUE;
                     byte[] buffer = new byte[8192];
                     int read;
-                    while ((read = stream.read(buffer)) != -1) {
-                        body.write(buffer, 0, read);
+                    while (body.size() < limit && (read = stream.read(buffer)) != -1) {
+                        int keep = Math.min(read, limit - body.size());
+                        body.write(buffer, 0, keep);
                     }
                     stream.close();
                 }

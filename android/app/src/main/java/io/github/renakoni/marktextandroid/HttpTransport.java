@@ -15,12 +15,25 @@ interface HttpTransport {
         final String url;
         final Map<String, String> headers;
         final byte[] body;
+        /**
+         * Stop reading the response body once it exceeds this many bytes
+         * (0 = unbounded). The transport delivers at most maxResponseBytes+1
+         * bytes so callers can detect the overflow without the full body
+         * ever being buffered — a swapped-in huge file must not be able to
+         * allocate hundreds of MB before the size check runs.
+         */
+        final int maxResponseBytes;
 
         Request(String method, String url, Map<String, String> headers, byte[] body) {
+            this(method, url, headers, body, 0);
+        }
+
+        Request(String method, String url, Map<String, String> headers, byte[] body, int maxResponseBytes) {
             this.method = method;
             this.url = url;
             this.headers = headers;
             this.body = body;
+            this.maxResponseBytes = maxResponseBytes;
         }
     }
 

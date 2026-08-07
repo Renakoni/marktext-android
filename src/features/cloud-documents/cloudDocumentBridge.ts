@@ -1,4 +1,5 @@
 import {
+  AndroidDocumentError,
   readAndroidMarkdownDocument,
   writeAndroidMarkdownDocument,
   type AndroidReadOptions,
@@ -69,10 +70,23 @@ export async function writeRoutedMarkdownDocument(
     return writeAndroidMarkdownDocument(sourceUri, markdown, options)
   }
 
+  // Fail closed without a baseline ETag (for example after a recovery
+  // reload dropped this module's state): an ETag-less PUT would silently
+  // overwrite whatever changed remotely in the meantime. The save-failed
+  // path keeps the content in a recovery draft; reopening re-reads the
+  // document and re-establishes the ETag.
+  const eTag = cloudDocumentETags.get(sourceUri)
+  if (!eTag) {
+    throw new AndroidDocumentError(
+      'CLOUD_DOCUMENT_CONFLICT',
+      'This document must be reopened before it can be saved to OneDrive',
+    )
+  }
+
   const written = await writeCloudDocument(cloud.provider, cloud.fileId, markdown, {
     encoding: options.encoding,
     writeBom: options.writeBom,
-    eTag: cloudDocumentETags.get(sourceUri),
+    eTag,
   })
   cloudDocumentETags.set(sourceUri, written.eTag)
   return {

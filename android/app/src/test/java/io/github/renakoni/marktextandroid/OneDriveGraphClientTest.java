@@ -154,6 +154,41 @@ public class OneDriveGraphClientTest {
     }
 
     @Test
+    public void downloadRequestsCarryTheByteCapForBoundedTransportReads() throws Exception {
+        // Codex round 1: the cap must ride the download requests so the
+        // transport can stop reading a swapped-in huge file early, instead
+        // of buffering it fully before the length check.
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(200, "{\"id\":\"d1\",\"name\":\"a.md\",\"eTag\":\"e\",\"size\":5}");
+        Map<String, String> redirectHeaders = new LinkedHashMap<>();
+        redirectHeaders.put("Location", "https://download.example/a");
+        transport.enqueue(302, redirectHeaders, "");
+        transport.enqueue(200, "hello");
+
+        new OneDriveGraphClient(transport).readFile("AT", "d1", 1024);
+
+        assertEquals(1024, transport.requests.get(1).maxResponseBytes);
+        assertEquals(1024, transport.requests.get(2).maxResponseBytes);
+    }
+
+    @Test
+    public void readRejectsAnOversizedDownloadEvenWhenMetadataLied() {
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(200, "{\"id\":\"d1\",\"name\":\"a.md\",\"eTag\":\"e\",\"size\":5}");
+        byte[] oversized = new byte[1025];
+        transport.enqueue(200, new LinkedHashMap<>(), new String(oversized, StandardCharsets.ISO_8859_1));
+
+        try {
+            new OneDriveGraphClient(transport).readFile("AT", "d1", 1024);
+            fail("expected CloudProviderException");
+        } catch (CloudProviderException ex) {
+            assertEquals("DOCUMENT_TOO_LARGE", ex.code);
+        } catch (Exception ex) {
+            fail("unexpected " + ex);
+        }
+    }
+
+    @Test
     public void readRejectsOversizedFilesBeforeDownloading() {
         FakeTransport transport = new FakeTransport();
         transport.enqueue(200, "{\"id\":\"d1\",\"name\":\"big.md\",\"eTag\":\"e\",\"size\":9999}");

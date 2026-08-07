@@ -243,7 +243,8 @@ final class OneDriveGraphClient {
             "GET",
             GRAPH + "/me/drive/items/" + urlEncode(itemId) + "/content",
             bearerHeaders(accessToken),
-            null
+            null,
+            maxBytes
         ));
         byte[] bytes;
         if (redirect.status == 302 || redirect.status == 301 || redirect.status == 307) {
@@ -255,7 +256,8 @@ final class OneDriveGraphClient {
                 "GET",
                 location,
                 new LinkedHashMap<>(),
-                null
+                null,
+                maxBytes
             ));
             if (download.status != 200) {
                 throw statusException(download, "CLOUD_READ_FAILED", "OneDrive download failed");

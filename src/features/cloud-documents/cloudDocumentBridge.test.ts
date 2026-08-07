@@ -11,6 +11,13 @@ vi.mock('../../lib/cloudDocuments', () => ({
 }))
 
 vi.mock('../../lib/androidDocuments', () => ({
+  AndroidDocumentError: class AndroidDocumentError extends Error {
+    code: string
+    constructor(code: string, message: string) {
+      super(message)
+      this.code = code
+    }
+  },
   readAndroidMarkdownDocument: (...args: unknown[]) => readAndroidMarkdownDocument(...args),
   writeAndroidMarkdownDocument: (...args: unknown[]) => writeAndroidMarkdownDocument(...args),
 }))
@@ -101,6 +108,15 @@ describe('cloudDocumentBridge', () => {
       eTag: 'etag-2',
     })
     expect(writeAndroidMarkdownDocument).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when no baseline ETag is known for a cloud write', async () => {
+    // Codex round 1 P1: after a recovery reload this module's ETag map is
+    // empty; an ETag-less PUT would silently overwrite remote changes.
+    await expect(
+      writeRoutedMarkdownDocument('cloud:onedrive:item-orphan', 'text', { encoding: 'utf8' }),
+    ).rejects.toMatchObject({ code: 'CLOUD_DOCUMENT_CONFLICT' })
+    expect(writeCloudDocument).not.toHaveBeenCalled()
   })
 
   it('passes non-cloud writes through to the SAF writer', async () => {

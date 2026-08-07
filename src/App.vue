@@ -1567,26 +1567,46 @@ async function openFileFromLocations() {
   }
 }
 
+// Guards stale async listings: only the newest request may touch the UI
+// (Back during a slow folder load fires a competing root request, and the
+// two can complete in either order).
+let cloudBrowserRequestGeneration = 0
+
 async function loadCloudFolder() {
+  const generation = ++cloudBrowserRequestGeneration
   const folderId = cloudBrowserPath.value.at(-1)?.id
   cloudBrowserLoading.value = true
   cloudBrowserError.value = null
   try {
-    cloudBrowserEntries.value = await listCloudFolder('onedrive', folderId)
+    const entries = await listCloudFolder('onedrive', folderId)
+    if (generation !== cloudBrowserRequestGeneration) {
+      return
+    }
+    cloudBrowserEntries.value = entries
   } catch (error) {
+    if (generation !== cloudBrowserRequestGeneration) {
+      return
+    }
     cloudBrowserEntries.value = []
     cloudBrowserError.value = getAndroidDocumentUserMessage(error)
     androidDocumentLog.warn('OneDrive folder listing failed', { error })
   } finally {
-    cloudBrowserLoading.value = false
+    if (generation === cloudBrowserRequestGeneration) {
+      cloudBrowserLoading.value = false
+    }
   }
 }
 
-function showCloudBrowser() {
+async function showCloudBrowser() {
   currentScreen.value = 'cloud-browser'
   cloudBrowserPath.value = []
   cloudBrowserEntries.value = []
   cloudBrowserError.value = null
+  // Wait for the account state when it has not resolved yet, so a signed-in
+  // user entering quickly is not stranded on an empty, never-loaded list.
+  if (oneDriveAccountState.value === null) {
+    await refreshOneDriveAccountState()
+  }
   if (oneDriveAccountState.value?.connected) {
     void loadCloudFolder()
   }
@@ -1646,6 +1666,16 @@ function installCloudAuthListener() {
   if (!isCloudDocumentAccessAvailable()) {
     return
   }
+  // Backing out of the sign-in browser produces no redirect and therefore
+  // no auth event; returning to a visible app with `connecting` still set
+  // means exactly that. Reset so the button recovers — a redirect that DID
+  // land completes asynchronously and wins via the auth event below.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && cloudConnecting.value) {
+      cloudConnecting.value = false
+      void refreshOneDriveAccountState()
+    }
+  })
   void addCloudAuthListener(event => {
     cloudConnecting.value = false
     if (event.connected) {
