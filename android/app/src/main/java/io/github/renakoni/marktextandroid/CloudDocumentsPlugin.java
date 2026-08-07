@@ -166,8 +166,8 @@ public class CloudDocumentsPlugin extends Plugin {
         String clientId() {
             // Per-variant resource: Google binds Android clients to the
             // package name + signing certificate, so the debug and release
-            // builds cannot share one id. Empty (release, until a release
-            // client is registered) reads as provider-unavailable.
+            // builds cannot share one id and each carries its own. An empty
+            // id reads as provider-unavailable.
             return getContext().getString(R.string.googledrive_client_id).trim();
         }
 

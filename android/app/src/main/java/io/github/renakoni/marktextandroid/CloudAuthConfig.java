@@ -15,11 +15,11 @@ package io.github.renakoni.marktextandroid;
  * The Google Drive client id is NOT here: Google binds Android OAuth
  * clients to the package name AND signing-certificate SHA-1, so the id is
  * a per-variant resource (`googledrive_client_id` resValue in
- * app/build.gradle — debug carries the registered debug client, release
- * stays empty until a release client is registered at ship time). The
- * redirect scheme is derived from the id
- * ({@link GoogleDriveClient#redirectSchemeFor}) and its intent-filter
- * lives in the debug manifest overlay for the same reason.
+ * app/build.gradle — debug and release each carry their own registered
+ * client). The redirect scheme is derived from the id
+ * ({@link GoogleDriveClient#redirectSchemeFor}) and each variant's
+ * intent-filter lives in its own manifest overlay (src/debug,
+ * src/release) for the same reason.
  *
  * While an id is empty, the provider reads unavailable and connecting
  * rejects with CLOUD_CLIENT_ID_MISSING.
