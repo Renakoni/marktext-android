@@ -28,6 +28,7 @@ import {
   type CloudAccountState,
   type CloudFolderEntry,
 } from './lib/cloudDocuments'
+import { createGoogleDrivePickFlow } from './features/open-locations/googleDrivePickFlow'
 import { isCloudSourceUri } from './lib/cloudDocumentUris'
 import {
   readRoutedMarkdownDocument,
@@ -1681,6 +1682,20 @@ const googleDriveAccountState = ref<CloudAccountState | null>(null)
 // 'completing' = redirect landed, exchange running; 'opening' = reading
 // the picked document.
 const googleDriveBusy = ref<'connecting' | 'completing' | 'opening' | null>(null)
+
+// "Still on the Open page" is not "still in the flow that started this
+// pick": leaving and returning mid-exchange/mid-download must not let the
+// abandoned completion through (Codex round 4).
+const googleDrivePickFlow = createGoogleDrivePickFlow()
+watch(currentScreen, (next, previous) => {
+  if (previous === 'open-locations' && next !== 'open-locations') {
+    googleDrivePickFlow.noteLeftOpenPage()
+  }
+})
+
+function ownsGoogleDrivePickCompletion() {
+  return googleDrivePickFlow.ownsCompletion() && currentScreen.value === 'open-locations'
+}
 const openLocationsNotice = ref<string | null>(null)
 
 async function refreshGoogleDriveAccountState() {
@@ -1706,6 +1721,7 @@ async function handleOpenGoogleDrive() {
   // refresh would otherwise start a competing browser flow whose fresh
   // OAuth state clobbers the first one's pending record.
   googleDriveBusy.value = 'connecting'
+  googleDrivePickFlow.beginFlow()
   openLocationsNotice.value = null
   try {
     if (googleDriveAccountState.value === null) {
@@ -1729,7 +1745,7 @@ async function openPickedGoogleDriveDocument(fileId: string) {
   googleDriveBusy.value = 'opening'
   try {
     const content = await readCloudDocument('googledrive', fileId, androidMarkdownSettings.value)
-    if (currentScreen.value !== 'open-locations') {
+    if (!ownsGoogleDrivePickCompletion()) {
       // The user moved on while the document was downloading; opening it
       // now would replace their current work without consent.
       androidDocumentLog.info('discarded a picked document open: the user left the Open page', {
@@ -1799,7 +1815,7 @@ function installCloudAuthListener() {
     if (event.provider === 'googledrive') {
       if (event.connected) {
         const pickedFileId = event.pickedFileIds?.[0]
-        if (pickedFileId && currentScreen.value === 'open-locations') {
+        if (pickedFileId && ownsGoogleDrivePickCompletion()) {
           // Atomic completing → opening: no unlocked gap in which a second
           // flow could start before the picked document begins loading.
           googleDriveBusy.value = 'opening'
