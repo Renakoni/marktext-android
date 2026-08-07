@@ -59,6 +59,17 @@
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
 
+            <!-- Cloud OAuth redirect (system browser flow). The scheme is
+                 the applicationId, so debug and release installs each catch
+                 only their own redirect. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="${applicationId}" android:host="oauth" />
+            </intent-filter>
+
         </activity>
 
         <provider

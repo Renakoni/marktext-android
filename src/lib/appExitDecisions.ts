@@ -2,7 +2,7 @@ import { HOME_TABS, type HomeTab } from '../features/home/homeNavigation'
 import { SETTINGS_PAGES, type SettingsPage } from '../features/settings/settingsNavigation'
 import type { AutosaveTarget } from './documentState'
 
-export type AppScreen = 'home' | 'editor'
+export type AppScreen = 'home' | 'editor' | 'open-locations' | 'cloud-browser'
 
 export type ShowHomeDocumentSaveAction = 'save-android-document' | 'save-local-draft'
 
@@ -28,6 +28,8 @@ export interface AppBackButtonState {
   editorSourceModeActive: boolean
   homeSelectionActive: boolean
   homeSheetOpen: boolean
+  /** True when the cloud browser sits at its root folder. */
+  cloudBrowserAtRoot?: boolean
 }
 
 export type AppBackButtonAction =
@@ -44,6 +46,8 @@ export type AppBackButtonAction =
   | 'close-home-sheet'
   | 'clear-home-selection'
   | 'show-home'
+  | 'show-open-locations'
+  | 'cloud-browser-up'
   | 'show-settings-index'
   | 'show-documents-tab'
   | 'exit-app'
@@ -92,6 +96,7 @@ export function getAppBackButtonAction({
   editorSourceModeActive,
   homeSelectionActive,
   homeSheetOpen,
+  cloudBrowserAtRoot,
 }: AppBackButtonState): AppBackButtonAction {
   // The blocked-preservation prompt guards unsaved work; Back keeps editing.
   if (incomingOpenPromptOpen) {
@@ -137,6 +142,16 @@ export function getAppBackButtonAction({
   }
 
   if (currentScreen === 'editor') {
+    return 'show-home'
+  }
+
+  // The cloud browser backs out folder by folder, then to the Open page;
+  // the Open page backs out to home.
+  if (currentScreen === 'cloud-browser') {
+    return cloudBrowserAtRoot === false ? 'cloud-browser-up' : 'show-open-locations'
+  }
+
+  if (currentScreen === 'open-locations') {
     return 'show-home'
   }
 

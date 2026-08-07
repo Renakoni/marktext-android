@@ -11,13 +11,30 @@ import {
   getAndroidDocumentUserMessage,
   isAndroidDocumentAccessAvailable,
   openAndroidMarkdownDocument,
-  readAndroidMarkdownDocument,
   renameAndroidMarkdownDocument,
   shareAndroidMarkdownDocument,
   shareAndroidMarkdownDocuments,
-  writeAndroidMarkdownDocument,
   type OpenedAndroidDocument,
 } from './lib/androidDocuments'
+import {
+  addCloudAuthListener,
+  connectCloudAccount,
+  disconnectCloudAccount,
+  getCloudAccountState,
+  isCloudDocumentAccessAvailable,
+  listCloudFolder,
+  readCloudDocument,
+  type CloudAccountState,
+  type CloudFolderEntry,
+} from './lib/cloudDocuments'
+import { isCloudSourceUri } from './lib/cloudDocumentUris'
+import {
+  readRoutedMarkdownDocument,
+  toOpenedDocumentFromCloud,
+  writeRoutedMarkdownDocument,
+} from './features/cloud-documents/cloudDocumentBridge'
+import OpenLocationsScreen from './features/open-locations/OpenLocationsScreen.vue'
+import CloudBrowserScreen from './features/open-locations/CloudBrowserScreen.vue'
 import {
   ensureAndroidImageResolver,
   formatImportedImageStorageBytes,
@@ -1363,8 +1380,16 @@ const syncAndroidDocumentGrants = createDocumentGrantSync()
 // block or fail the recents mutation that triggered it.
 function requestAndroidDocumentGrantCleanup() {
   syncAndroidDocumentGrants({
-    currentDocument: { sourceUri: documentState.value.sourceUri },
-    recentDocuments: androidRecentDocuments.value,
+    currentDocument: {
+      sourceUri: isCloudSourceUri(documentState.value.sourceUri)
+        ? null
+        : documentState.value.sourceUri,
+    },
+    // cloud: source URIs have no SAF grant; keep the referenced set to
+    // real content:// URIs.
+    recentDocuments: androidRecentDocuments.value.filter(
+      record => !isCloudSourceUri(record.sourceUri),
+    ),
   })
     .then(result => {
       if (result && (result.releasedGrantCount > 0 || result.failedReleaseCount > 0)) {
@@ -1430,7 +1455,9 @@ const {
   clearDraftSaveTimer,
   clearAndroidDocumentSaveTimer,
   scheduleAndroidDocumentSave,
-  writeAndroidMarkdownDocument,
+  // Routed: cloud: source URIs save through the cloud plugin, content://
+  // URIs through SAF — the whole autosave pipeline stays target-agnostic.
+  writeAndroidMarkdownDocument: writeRoutedMarkdownDocument,
   createAndroidMarkdownDocument,
   shareAndroidMarkdownDocument,
   // The live editor instance carries the user's rendering settings
@@ -1503,6 +1530,141 @@ async function openFileFromAndroid() {
   }
 }
 
+// --- Open locations + OneDrive browser (#185) ---
+
+const oneDriveAccountState = ref<CloudAccountState | null>(null)
+const cloudConnecting = ref(false)
+const cloudBrowserLoading = ref(false)
+const cloudBrowserError = ref<string | null>(null)
+const cloudBrowserEntries = ref<CloudFolderEntry[]>([])
+const cloudBrowserPath = ref<{ id: string; name: string }[]>([])
+const cloudOpeningFileId = ref<string | null>(null)
+
+async function refreshOneDriveAccountState() {
+  if (!isCloudDocumentAccessAvailable()) {
+    oneDriveAccountState.value = { connected: false, available: false, accountName: null }
+    return
+  }
+  try {
+    oneDriveAccountState.value = await getCloudAccountState('onedrive')
+  } catch (error) {
+    androidDocumentLog.warn('OneDrive account state unavailable', { error })
+    oneDriveAccountState.value = { connected: false, available: false, accountName: null }
+  }
+}
+
+function showOpenLocations() {
+  homeNotice.value = null
+  currentScreen.value = 'open-locations'
+  void refreshOneDriveAccountState()
+}
+
+async function openFileFromLocations() {
+  await openFileFromAndroid()
+  // A failure notice renders on the home screen; a cancel stays here.
+  if (homeNotice.value) {
+    currentScreen.value = 'home'
+  }
+}
+
+async function loadCloudFolder() {
+  const folderId = cloudBrowserPath.value.at(-1)?.id
+  cloudBrowserLoading.value = true
+  cloudBrowserError.value = null
+  try {
+    cloudBrowserEntries.value = await listCloudFolder('onedrive', folderId)
+  } catch (error) {
+    cloudBrowserEntries.value = []
+    cloudBrowserError.value = getAndroidDocumentUserMessage(error)
+    androidDocumentLog.warn('OneDrive folder listing failed', { error })
+  } finally {
+    cloudBrowserLoading.value = false
+  }
+}
+
+function showCloudBrowser() {
+  currentScreen.value = 'cloud-browser'
+  cloudBrowserPath.value = []
+  cloudBrowserEntries.value = []
+  cloudBrowserError.value = null
+  if (oneDriveAccountState.value?.connected) {
+    void loadCloudFolder()
+  }
+}
+
+async function connectOneDrive() {
+  cloudConnecting.value = true
+  cloudBrowserError.value = null
+  try {
+    await connectCloudAccount('onedrive')
+    // Completion arrives through the cloudAuthCompleted listener once the
+    // browser redirects back.
+  } catch (error) {
+    cloudConnecting.value = false
+    cloudBrowserError.value = getAndroidDocumentUserMessage(error)
+    androidDocumentLog.warn('OneDrive connect failed to start', { error })
+  }
+}
+
+async function disconnectOneDrive() {
+  try {
+    await disconnectCloudAccount('onedrive')
+  } catch (error) {
+    androidDocumentLog.warn('OneDrive disconnect failed', { error })
+  }
+  cloudBrowserEntries.value = []
+  cloudBrowserPath.value = []
+  cloudBrowserError.value = null
+  await refreshOneDriveAccountState()
+}
+
+async function handleCloudEntryOpen(entry: CloudFolderEntry) {
+  if (entry.isFolder) {
+    cloudBrowserPath.value = [...cloudBrowserPath.value, { id: entry.id, name: entry.name }]
+    await loadCloudFolder()
+    return
+  }
+
+  cloudOpeningFileId.value = entry.id
+  try {
+    const content = await readCloudDocument('onedrive', entry.id, androidMarkdownSettings.value)
+    await openAndroidDocumentResult(toOpenedDocumentFromCloud(content))
+  } catch (error) {
+    cloudBrowserError.value = getAndroidDocumentUserMessage(error)
+    androidDocumentLog.error('open OneDrive document failed', { fileId: entry.id, error })
+  } finally {
+    cloudOpeningFileId.value = null
+  }
+}
+
+async function cloudBrowserNavigateUp() {
+  cloudBrowserPath.value = cloudBrowserPath.value.slice(0, -1)
+  await loadCloudFolder()
+}
+
+function installCloudAuthListener() {
+  if (!isCloudDocumentAccessAvailable()) {
+    return
+  }
+  void addCloudAuthListener(event => {
+    cloudConnecting.value = false
+    if (event.connected) {
+      void refreshOneDriveAccountState().then(() => {
+        if (currentScreen.value === 'cloud-browser') {
+          void loadCloudFolder()
+        }
+      })
+      return
+    }
+    if (event.errorCode !== 'CLOUD_AUTH_CANCELED') {
+      cloudBrowserError.value = event.message ?? 'OneDrive sign-in failed'
+    }
+    androidDocumentLog.warn('OneDrive sign-in did not complete', {
+      errorCode: event.errorCode,
+    })
+  })
+}
+
 const {
   pinSelectedDocuments,
   deleteSelectedDocuments,
@@ -1521,7 +1683,7 @@ const {
   documentState,
   currentAndroidDocumentCanWrite,
   readAndroidMarkdownDocument: sourceUri =>
-    readAndroidMarkdownDocument(sourceUri, androidMarkdownSettings.value),
+    readRoutedMarkdownDocument(sourceUri, androidMarkdownSettings.value),
   shareAndroidMarkdownDocument,
   shareAndroidMarkdownDocuments,
   renameAndroidMarkdownDocument,
@@ -1561,7 +1723,7 @@ async function openDocument(id: string) {
     homeNotice.value = null
     androidExitPromptOpen.value = false
     try {
-      const document = await readAndroidMarkdownDocument(
+      const document = await readRoutedMarkdownDocument(
         recentDocument.sourceUri,
         androidMarkdownSettings.value,
       )
@@ -1864,6 +2026,7 @@ async function handleAppBackButton() {
     editorSourceModeActive: sourceModeActive.value,
     homeSelectionActive: homeSelection.isActive.value,
     homeSheetOpen: homeDeleteSheetOpen.value || homeRenameSheetOpen.value,
+    cloudBrowserAtRoot: cloudBrowserPath.value.length === 0,
   })
 
   switch (action) {
@@ -1910,6 +2073,12 @@ async function handleAppBackButton() {
       return
     case 'show-home':
       await showHome()
+      return
+    case 'show-open-locations':
+      currentScreen.value = 'open-locations'
+      return
+    case 'cloud-browser-up':
+      await cloudBrowserNavigateUp()
       return
     case 'show-settings-index':
       settingsPage.value = SETTINGS_PAGES.INDEX
@@ -2030,7 +2199,7 @@ async function cleanImportedImagesMaintenanceState() {
       localDrafts: localDrafts.value,
       recentDocuments: androidRecentDocuments.value,
       readRecentMarkdown: sourceUri =>
-        readAndroidMarkdownDocument(sourceUri, androidMarkdownSettings.value),
+        readRoutedMarkdownDocument(sourceUri, androidMarkdownSettings.value),
     })
   } catch (error) {
     if (error instanceof ImportedImageCleanupBlockedError) {
@@ -2169,6 +2338,7 @@ onMounted(() => {
   requestAndroidDocumentGrantCleanup()
 
   incomingDocuments.installListeners()
+  installCloudAuthListener()
   startupActionTimer = window.setTimeout(() => {
     startupActionTimer = null
     applyDocumentStartupAction()
@@ -2226,7 +2396,7 @@ onBeforeUnmount(() => {
     :run-maintenance-action="runAdvancedMaintenanceAction"
     @new-document="newDocument"
     @open-document="openDocument"
-    @open-file="openFileFromAndroid"
+    @open-file="showOpenLocations"
     @show-all-documents="homeListExpanded = true"
     @set-tab="setHomeTab"
     @set-settings-page="setSettingsPage"
@@ -2239,6 +2409,31 @@ onBeforeUnmount(() => {
     @rename-selected="renameSelectedDocument"
     @update:delete-sheet-open="open => (homeDeleteSheetOpen = open)"
     @update:rename-sheet-open="open => (homeRenameSheetOpen = open)"
+  />
+
+  <OpenLocationsScreen
+    v-else-if="currentScreen === 'open-locations'"
+    :one-drive-state="oneDriveAccountState"
+    @back="currentScreen = 'home'"
+    @open-this-phone="openFileFromLocations"
+    @browse-all="openFileFromLocations"
+    @open-one-drive="showCloudBrowser"
+  />
+
+  <CloudBrowserScreen
+    v-else-if="currentScreen === 'cloud-browser'"
+    :account-state="oneDriveAccountState"
+    :connecting="cloudConnecting"
+    :loading="cloudBrowserLoading"
+    :error-message="cloudBrowserError"
+    :entries="cloudBrowserEntries"
+    :folder-name="cloudBrowserPath.at(-1)?.name ?? null"
+    :opening-file-id="cloudOpeningFileId"
+    @back="cloudBrowserPath.length > 0 ? cloudBrowserNavigateUp() : (currentScreen = 'open-locations')"
+    @connect="connectOneDrive"
+    @disconnect="disconnectOneDrive"
+    @open-entry="handleCloudEntryOpen"
+    @retry="loadCloudFolder"
   />
 
   <EditorScreen

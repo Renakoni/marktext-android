@@ -1,0 +1,51 @@
+package io.github.renakoni.marktextandroid;
+
+import java.io.IOException;
+import java.util.Map;
+
+/**
+ * Minimal HTTP seam so cloud clients stay pure JVM: the plugin binds a real
+ * HttpsURLConnection executor, tests bind canned responses.
+ */
+interface HttpTransport {
+
+    final class Request {
+
+        final String method;
+        final String url;
+        final Map<String, String> headers;
+        final byte[] body;
+
+        Request(String method, String url, Map<String, String> headers, byte[] body) {
+            this.method = method;
+            this.url = url;
+            this.headers = headers;
+            this.body = body;
+        }
+    }
+
+    final class Response {
+
+        final int status;
+        final Map<String, String> headers;
+        final byte[] body;
+
+        Response(int status, Map<String, String> headers, byte[] body) {
+            this.status = status;
+            this.headers = headers;
+            this.body = body;
+        }
+
+        String header(String name) {
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(name)) {
+                    return entry.getValue();
+                }
+            }
+            return null;
+        }
+    }
+
+    /** Executes without following redirects; redirect handling is client policy. */
+    Response execute(Request request) throws IOException;
+}

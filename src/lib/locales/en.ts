@@ -620,6 +620,22 @@ export const en = {
   'about.update.badRelease': 'Latest release did not include a version number',
   'about.update.unavailable': 'Could not reach GitHub releases',
   'about.update.openRelease': 'Open GitHub release',
+  'openLocations.title': 'Open',
+  'openLocations.back': 'Back',
+  'openLocations.thisPhone': 'This phone',
+  'openLocations.thisPhoneSubtitle': 'Internal storage and SD card',
+  'openLocations.onedriveSignIn': 'Sign in to open your documents',
+  'openLocations.onedriveConnected': 'Connected',
+  'openLocations.onedriveUnavailable': 'Not configured in this build',
+  'openLocations.browseAll': 'Browse all locations',
+  'openLocations.browseAllSubtitle': 'System file picker and installed providers',
+  'cloudBrowser.signInHint': 'Sign in with your Microsoft account to open Markdown documents from OneDrive.',
+  'cloudBrowser.connect': 'Sign in to OneDrive',
+  'cloudBrowser.connecting': 'Waiting for the browser sign-in…',
+  'cloudBrowser.disconnect': 'Sign out',
+  'cloudBrowser.loading': 'Loading…',
+  'cloudBrowser.empty': 'No Markdown documents here',
+  'cloudBrowser.retry': 'Try again',
 }
 
 export type I18nKey = keyof typeof en

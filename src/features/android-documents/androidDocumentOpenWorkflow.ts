@@ -1,4 +1,5 @@
 import { createUntitledDocument, type AutosaveTarget } from '../../lib/documentState'
+import type { AppScreen } from '../../lib/appExitDecisions'
 import {
   createDocumentStateFromAndroidDocument,
   createDocumentStateFromLocalDraft,
@@ -136,7 +137,7 @@ export type IncomingDocumentPreservationAction =
     }
 
 interface IncomingDocumentPreservationActionOptions {
-  currentScreen: 'home' | 'editor'
+  currentScreen: AppScreen
   hasEditor: boolean
   autosaveTarget: AutosaveTarget
 }
