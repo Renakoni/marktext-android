@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { App } from '@capacitor/app'
 import HomeScreen from './features/home/HomeScreen.vue'
 import EditorScreen from './features/editor/EditorScreen.vue'
@@ -1591,6 +1591,7 @@ async function loadCloudFolder() {
   const folderId = cloudBrowserPath.value.at(-1)?.id
   cloudBrowserLoading.value = true
   cloudBrowserError.value = null
+  refocusOneDriveSaveDialog()
   try {
     const entries = await listCloudFolder('onedrive', folderId)
     if (generation !== cloudBrowserRequestGeneration) {
@@ -1632,6 +1633,8 @@ async function connectOneDrive() {
   }
   cloudConnecting.value = 'browser'
   cloudBrowserError.value = null
+  // The sign-in button disables itself, dropping any focus it held.
+  refocusOneDriveSaveDialog()
   try {
     await connectCloudAccount('onedrive')
     // Completion arrives through the cloudAuthCompleted listener once the
@@ -1909,6 +1912,22 @@ const { onModalKeydown: onOneDriveSaveScreenKeydown } = useModalFocus({
   root: oneDriveSaveScreen,
   initialFocus: () => oneDriveSaveScreen.value,
 })
+
+/**
+ * Re-anchor focus on the OneDrive save dialog after a re-render removes
+ * the control that held it — folder navigation and retry swap the entry
+ * list for the loading state, and starting a sign-in disables its button.
+ * Focus falling to body would leave the aria-modal dialog, and anchoring
+ * on the labelled root makes the new folder title the announced name.
+ */
+function refocusOneDriveSaveDialog() {
+  if (!cloudBrowserSaveModeActive.value) {
+    return
+  }
+  void nextTick(() => {
+    oneDriveSaveScreen.value?.focus({ preventScroll: true })
+  })
+}
 
 /**
  * The create function injected into the persistence workflows: same

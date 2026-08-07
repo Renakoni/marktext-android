@@ -75,8 +75,16 @@ export interface MockAndroidDocument {
   }
 }
 
+export interface MockOneDriveCloud {
+  accountName: string
+  /** Folder listings keyed by folder id; '' is the drive root. */
+  folders: Record<string, Array<{ id: string; name: string; isFolder: boolean }>>
+}
+
 interface MockAndroidAppOptions {
   pendingOpenWithEvent?: MockAndroidOpenWithEvent
+  /** Presence installs a connected CloudDocuments mock for OneDrive. */
+  oneDriveCloud?: MockOneDriveCloud
 }
 
 export async function longPress(page: Page, target: Locator) {
@@ -269,6 +277,24 @@ export async function installAndroidAppMock(
             { name: 'writeClipboardText', rtype: 'promise' },
           ],
         },
+        ...(mockOptions.oneDriveCloud
+          ? [
+              {
+                name: 'CloudDocuments',
+                methods: [
+                  { name: 'addListener', rtype: 'callback' },
+                  { name: 'removeListener', rtype: 'promise' },
+                  { name: 'getCloudAccountState', rtype: 'promise' },
+                  { name: 'connectCloudAccount', rtype: 'promise' },
+                  { name: 'disconnectCloudAccount', rtype: 'promise' },
+                  { name: 'listCloudFolder', rtype: 'promise' },
+                  { name: 'readCloudDocument', rtype: 'promise' },
+                  { name: 'writeCloudDocument', rtype: 'promise' },
+                  { name: 'createCloudDocument', rtype: 'promise' },
+                ],
+              },
+            ]
+          : []),
       ],
       nativeCallback(pluginName, methodName, options, callback) {
         if (pluginName === 'App' && methodName === 'addListener') {
@@ -304,6 +330,10 @@ export async function installAndroidAppMock(
             }
           }
           return Promise.resolve(`android-documents-listener-${String(options.eventName)}`)
+        }
+
+        if (mockOptions.oneDriveCloud && pluginName === 'CloudDocuments' && methodName === 'addListener') {
+          return Promise.resolve(`cloud-documents-listener-${String(options.eventName)}`)
         }
 
         return Promise.reject({
@@ -365,6 +395,33 @@ export async function installAndroidAppMock(
               () => ({ written: true }),
               () => ({ written: false }),
             )
+          }
+        }
+
+        const oneDriveCloud = mockOptions.oneDriveCloud
+        if (oneDriveCloud && pluginName === 'CloudDocuments') {
+          if (methodName === 'removeListener') {
+            return Promise.resolve()
+          }
+
+          if (methodName === 'getCloudAccountState') {
+            return options.provider === 'onedrive'
+              ? Promise.resolve({
+                  connected: true,
+                  available: true,
+                  accountName: oneDriveCloud.accountName,
+                })
+              : Promise.resolve({ connected: false, available: false, accountName: null })
+          }
+
+          if (methodName === 'listCloudFolder' && options.provider === 'onedrive') {
+            const folderId = typeof options.folderId === 'string' ? options.folderId : ''
+            const entries = (oneDriveCloud.folders[folderId] ?? []).map(entry => ({
+              ...entry,
+              size: 0,
+              lastModified: '2026-08-08T00:00:00Z',
+            }))
+            return Promise.resolve({ entries })
           }
         }
 

@@ -329,6 +329,81 @@ test('keeps the live editor session across a canceled and a completed save-as', 
   )
 })
 
+test('keeps focus inside the OneDrive folder dialog across navigation', async ({ page }) => {
+  const now = '2026-08-07T07:00:00.000Z'
+  const document = {
+    sourceUri: 'content://test/onedrive-focus',
+    displayName: 'OneDrive Focus.md',
+    markdown: '# OneDrive Focus\n\nInitial text.',
+  }
+
+  await installAndroidAppMock(page, document, {
+    oneDriveCloud: {
+      accountName: 'user@example.com',
+      folders: {
+        '': [
+          { id: 'folder-notes', name: 'Notes', isFolder: true },
+          { id: 'file-readme', name: 'readme.md', isFolder: false },
+        ],
+        'folder-notes': [{ id: 'folder-drafts', name: 'Drafts', isFolder: true }],
+      },
+    },
+  })
+  await page.goto('/')
+  await page.evaluate(({ now, document }) => {
+    localStorage.clear()
+    localStorage.setItem(
+      'marktext-for-android:recent-documents',
+      JSON.stringify([
+        {
+          id: `android-document:${document.sourceUri}`,
+          kind: 'android-document',
+          displayName: document.displayName,
+          title: 'OneDrive Focus',
+          sourceUri: document.sourceUri,
+          providerName: 'Test Documents',
+          pathHint: document.displayName,
+          markdownPreview: null,
+          updatedAt: now,
+          lastOpenedAt: now,
+          lastSavedAt: null,
+          autosaveState: 'clean',
+          canWrite: true,
+        },
+      ]),
+    )
+  }, { now, document })
+  await page.reload()
+
+  await page.getByRole('button', { name: /OneDrive Focus/ }).click()
+  await expectEditorReady(page)
+
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('save-copy-button').click()
+  await expect(page.getByRole('dialog', { name: 'Save as', exact: true })).toBeFocused()
+
+  await page.locator('.save-flow-screen').getByRole('button', { name: /OneDrive/ }).click()
+  await page.getByTestId('cloud-name-confirm').click()
+
+  // Root folder: the dialog is named for the drive and holds focus.
+  await expect(page.getByRole('dialog', { name: 'OneDrive', exact: true })).toBeFocused()
+
+  // Entering a folder swaps the list for the loading state, removing the
+  // focused row; focus must stay anchored in the dialog, which is now
+  // named for the folder (codex round 4).
+  await page.getByRole('button', { name: 'Notes', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Notes', exact: true })).toBeFocused()
+
+  // Navigating back up re-anchors the same way.
+  await page.locator('.save-flow-screen').getByRole('button', { name: 'Back' }).click()
+  await expect(page.getByRole('dialog', { name: 'OneDrive', exact: true })).toBeFocused()
+
+  // Backing out at the root cancels the pick and returns to the live editor.
+  await page.locator('.save-flow-screen').getByRole('button', { name: 'Back' }).click()
+  await expect(page.getByTestId('editor-host')).toContainText('Initial text.')
+  await expect(page.locator('main.app-shell')).not.toHaveAttribute('aria-hidden', 'true')
+})
+
 test('keeps the local draft when Android document access is not persisted', async ({ page }) => {
   await installTransientAndroidCreateMock(page)
   await page.goto('/')
