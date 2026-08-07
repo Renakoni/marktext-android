@@ -1517,6 +1517,25 @@ textarea {
   background: var(--scrim);
 }
 
+/* ---------------------------------------------------------- save-as flow */
+
+/* Destination screens overlay the still-mounted editor, above every piece
+   of editor chrome (the menu sheet is the tallest at 40). */
+.save-flow-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--app-bg);
+}
+
+/* The flow's own sheets and progress overlays stack above its screens. */
+.save-flow-modal {
+  z-index: 60;
+}
+
 .draft-save-panel {
   width: min(100%, 520px);
   margin: 0 auto;

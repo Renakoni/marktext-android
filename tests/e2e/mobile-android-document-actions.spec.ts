@@ -5,6 +5,7 @@ import {
   type MockCapacitorWindow,
 } from './helpers/androidAppMock'
 import { expectEditorReady } from './helpers/editor'
+import { chooseThisPhoneSaveDestination } from './helpers/saveAs'
 
 test.describe.configure({ timeout: 60000 })
 
@@ -87,6 +88,7 @@ test('saves a writable Android document as a copy and switches to the new docume
   expect(panelBox!.y).toBeGreaterThan(viewport!.height / 2)
   expect(panelBox!.y + panelBox!.height).toBeGreaterThanOrEqual(viewport!.height - 2)
   await page.getByTestId('save-copy-button').click()
+  await chooseThisPhoneSaveDestination(page)
 
   await expect(page.getByText('Saved', { exact: true })).toBeVisible()
   const createOptions = await page.evaluate(() => {
@@ -165,6 +167,7 @@ test('increments the save-copy name when the current Android document is already
 
   await page.getByTestId('editor-menu-button').click()
   await page.getByTestId('save-copy-button').click()
+  await chooseThisPhoneSaveDestination(page)
 
   await expect(page.getByText('Saved', { exact: true })).toBeVisible()
   const createOptions = await page.evaluate(() => {
@@ -225,6 +228,7 @@ test('saves a read-only Android document as a writable copy', async ({ page }) =
 
   await page.getByTestId('editor-menu-button').click()
   await page.getByTestId('save-copy-button').click()
+  await chooseThisPhoneSaveDestination(page)
 
   await expect(page.getByText('Saved', { exact: true })).toBeVisible()
   await page.getByTestId('back-button').click()
@@ -238,6 +242,82 @@ test('saves a read-only Android document as a writable copy', async ({ page }) =
   expect(recentDocuments).toContain('content://test/read-only-copy')
   expect(recentDocuments).toContain('Read Only Copy.md')
   expect(recentDocuments).toContain('"canWrite":true')
+})
+
+test('keeps the live editor session across a canceled and a completed save-as', async ({
+  page,
+}) => {
+  const now = '2026-08-07T06:30:00.000Z'
+  const document = {
+    sourceUri: 'content://test/save-as-session',
+    displayName: 'Save As Session.md',
+    markdown: '# Save As Session\n\nInitial text.',
+    createResult: {
+      sourceUri: 'content://test/save-as-session-copy',
+      displayName: 'Save As Session copy.md',
+    },
+  }
+
+  await installAndroidAppMock(page, document)
+  await page.goto('/')
+  await page.evaluate(({ now, document }) => {
+    localStorage.clear()
+    localStorage.setItem(
+      'marktext-for-android:recent-documents',
+      JSON.stringify([
+        {
+          id: `android-document:${document.sourceUri}`,
+          kind: 'android-document',
+          displayName: document.displayName,
+          title: 'Save As Session',
+          sourceUri: document.sourceUri,
+          providerName: 'Test Documents',
+          pathHint: document.displayName,
+          markdownPreview: null,
+          updatedAt: now,
+          lastOpenedAt: now,
+          lastSavedAt: null,
+          autosaveState: 'clean',
+          canWrite: true,
+        },
+      ]),
+    )
+  }, { now, document })
+  await page.reload()
+
+  await page.getByRole('button', { name: /Save As Session/ }).click()
+  await expectEditorReady(page)
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('session survives save as')
+
+  // Backing out of the destination page must return to the same live
+  // editor: the document body stays rendered and stays editable (#198
+  // review: the flow used to unmount the editor and come back blank).
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('save-copy-button').click()
+  await expect(page.getByRole('heading', { name: 'Save as', exact: true })).toBeVisible()
+  await page.locator('.save-flow-screen').getByRole('button', { name: 'Back' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Save as', exact: true })).toBeHidden()
+  await expect(page.getByTestId('editor-host')).toContainText('session survives save as')
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' and typing still works')
+  await expect(page.getByTestId('editor-host')).toContainText(
+    'session survives save as and typing still works',
+  )
+
+  // Completing the save must land back in the same live editor too.
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('save-copy-button').click()
+  await chooseThisPhoneSaveDestination(page)
+
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  await expect(page.getByTestId('editor-host')).toContainText(
+    'session survives save as and typing still works',
+  )
 })
 
 test('keeps the local draft when Android document access is not persisted', async ({ page }) => {
@@ -259,6 +339,7 @@ test('keeps the local draft when Android document access is not persisted', asyn
   await expect(page.getByTestId('draft-save-prompt')).toBeVisible()
   await expect(page.getByTestId('prompt-save-to-device-button')).toBeVisible()
   await page.getByTestId('prompt-save-to-device-button').click()
+  await chooseThisPhoneSaveDestination(page)
 
   await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
   await expect(

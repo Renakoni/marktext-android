@@ -90,6 +90,7 @@ import {
   getShowHomeDocumentSaveAction,
   type AppScreen,
 } from './lib/appExitDecisions'
+import { useModalFocus } from './lib/modalFocus'
 import { isAndroidRecoveryDraftId } from './features/android-documents/androidRecoveryDrafts'
 import { rememberAndroidRecentDocument } from './features/android-documents/androidRecentDocuments'
 import { getImageSharingSettings } from './features/android-documents/imageSharingSettings'
@@ -1833,8 +1834,10 @@ function pickOneDriveSaveFolder(): Promise<string | null> {
   return new Promise(resolve => {
     oneDriveSaveFolderResolver = folderId => {
       oneDriveSaveFolderResolver = null
-      cloudBrowserSaveModeActive.value = false
-      // The orchestrator's finally restores the screen.
+      // Save mode stays on through the create that follows — dropping it
+      // here would hand the browser back its file rows and sign-out while
+      // the upload still runs. The orchestrator's finally clears it and
+      // restores the screen.
       resolve(folderId)
     }
     cloudBrowserSaveModeActive.value = true
@@ -1880,6 +1883,17 @@ function cancelGoogleDriveSaveFolderPick() {
   googleDriveSaveFolderResolver?.(null)
 }
 
+const googleDrivePickOverlay = ref<HTMLElement | null>(null)
+const { onModalKeydown: onGoogleDrivePickOverlayKeydown } = useModalFocus({
+  root: googleDrivePickOverlay,
+  onEscape: cancelGoogleDriveSaveFolderPick,
+})
+
+/** Set while the routed cloud create is in flight; locks the whole UI. */
+const cloudSaveInProgress = ref<'onedrive' | 'googledrive' | null>(null)
+const cloudSaveOverlay = ref<HTMLElement | null>(null)
+const { onModalKeydown: onCloudSaveOverlayKeydown } = useModalFocus({ root: cloudSaveOverlay })
+
 /**
  * The create function injected into the persistence workflows: same
  * contract as the SAF creator, with the destination chosen first on a
@@ -1911,8 +1925,11 @@ async function createMarkdownDocumentAtChosenDestination(
     if (folderId === null) {
       return { canceled: true as const }
     }
+    cloudSaveInProgress.value = destination
     return await createRoutedCloudDocument(destination, folderId, name, markdown, options)
   } finally {
+    cloudSaveInProgress.value = null
+    cloudBrowserSaveModeActive.value = false
     currentScreen.value = 'editor'
   }
 }
@@ -2394,6 +2411,10 @@ async function handleAppBackButton() {
     homeSelectionActive: homeSelection.isActive.value,
     homeSheetOpen: homeDeleteSheetOpen.value || homeRenameSheetOpen.value,
     cloudBrowserAtRoot: cloudBrowserPath.value.length === 0,
+    cloudBrowserSaveModeActive: cloudBrowserSaveModeActive.value,
+    cloudNameSheetOpen: cloudNameSheetOpen.value,
+    googleDriveFolderPickActive: googleDrivePickingFolder.value,
+    cloudSaveInProgress: cloudSaveInProgress.value !== null,
   })
 
   switch (action) {
@@ -2442,17 +2463,22 @@ async function handleAppBackButton() {
       await showHome()
       return
     case 'show-open-locations':
-      if (cloudBrowserSaveModeActive.value) {
-        // Back at the browser root during a save-as folder pick cancels
-        // the pick (the browser was entered from the save flow, not the
-        // Open page).
-        cancelOneDriveSaveFolderPick()
-        return
-      }
       currentScreen.value = 'open-locations'
       return
     case 'cancel-save-destination':
       chooseSaveDestination(null)
+      return
+    case 'cancel-cloud-name':
+      resolveCloudDocumentName(null)
+      return
+    case 'cancel-google-folder-pick':
+      cancelGoogleDriveSaveFolderPick()
+      return
+    case 'cancel-onedrive-folder-pick':
+      cancelOneDriveSaveFolderPick()
+      return
+    case 'ignore-cloud-save':
+      // A cloud create is in flight; Back settles after it does.
       return
     case 'cloud-browser-up':
       await cloudBrowserNavigateUp()
@@ -2803,21 +2829,8 @@ onBeforeUnmount(() => {
     @disconnect-google-drive="disconnectGoogleDrive"
   />
 
-  <OpenLocationsScreen
-    v-else-if="currentScreen === 'save-locations'"
-    mode="save"
-    :one-drive-state="oneDriveAccountState"
-    :google-drive-state="googleDriveAccountState"
-    :google-drive-busy="null"
-    :notice="openLocationsNotice"
-    @back="chooseSaveDestination(null)"
-    @open-this-phone="chooseSaveDestination('device')"
-    @open-one-drive="chooseSaveDestination('onedrive')"
-    @open-google-drive="chooseSaveDestination('googledrive')"
-  />
-
   <CloudBrowserScreen
-    v-else-if="currentScreen === 'cloud-browser'"
+    v-else-if="currentScreen === 'cloud-browser' && !cloudBrowserSaveModeActive"
     :account-state="oneDriveAccountState"
     :connecting="cloudConnecting"
     :loading="cloudBrowserLoading"
@@ -2825,19 +2838,13 @@ onBeforeUnmount(() => {
     :entries="cloudBrowserEntries"
     :folder-name="cloudBrowserPath.at(-1)?.name ?? null"
     :opening-file-id="cloudOpeningFileId"
-    :save-mode="cloudBrowserSaveModeActive"
     @back="
-      cloudBrowserPath.length > 0
-        ? cloudBrowserNavigateUp()
-        : cloudBrowserSaveModeActive
-          ? cancelOneDriveSaveFolderPick()
-          : (currentScreen = 'open-locations')
+      cloudBrowserPath.length > 0 ? cloudBrowserNavigateUp() : (currentScreen = 'open-locations')
     "
     @connect="connectOneDrive"
     @disconnect="disconnectOneDrive"
     @open-entry="handleCloudEntryOpen"
     @retry="loadCloudFolder"
-    @save-here="handleCloudSaveHere"
   />
 
   <EditorScreen
@@ -2955,6 +2962,45 @@ onBeforeUnmount(() => {
     @editor-host-change="setEditorElement"
   />
 
+  <!-- The save-as screens overlay the still-mounted editor: unmounting it
+       would tear down the Muya session mid-save (#198 review). -->
+  <div v-if="currentScreen === 'save-locations'" class="save-flow-screen">
+    <OpenLocationsScreen
+      mode="save"
+      :one-drive-state="oneDriveAccountState"
+      :google-drive-state="googleDriveAccountState"
+      :google-drive-busy="null"
+      :notice="openLocationsNotice"
+      @back="chooseSaveDestination(null)"
+      @open-this-phone="chooseSaveDestination('device')"
+      @open-one-drive="chooseSaveDestination('onedrive')"
+      @open-google-drive="chooseSaveDestination('googledrive')"
+    />
+  </div>
+
+  <div
+    v-else-if="currentScreen === 'cloud-browser' && cloudBrowserSaveModeActive"
+    class="save-flow-screen"
+  >
+    <CloudBrowserScreen
+      :account-state="oneDriveAccountState"
+      :connecting="cloudConnecting"
+      :loading="cloudBrowserLoading"
+      :error-message="cloudBrowserError"
+      :entries="cloudBrowserEntries"
+      :folder-name="cloudBrowserPath.at(-1)?.name ?? null"
+      :opening-file-id="cloudOpeningFileId"
+      :save-mode="true"
+      @back="
+        cloudBrowserPath.length > 0 ? cloudBrowserNavigateUp() : cancelOneDriveSaveFolderPick()
+      "
+      @connect="connectOneDrive"
+      @open-entry="handleCloudEntryOpen"
+      @retry="loadCloudFolder"
+      @save-here="handleCloudSaveHere"
+    />
+  </div>
+
   <CloudNameSheet
     v-if="cloudNameSheetOpen"
     :suggested-name="cloudNameSuggested"
@@ -2964,10 +3010,13 @@ onBeforeUnmount(() => {
 
   <section
     v-if="googleDrivePickingFolder"
-    class="draft-save-sheet"
+    ref="googleDrivePickOverlay"
+    class="draft-save-sheet save-flow-modal"
     role="dialog"
     aria-modal="true"
     aria-labelledby="drive-folder-pick-title"
+    tabindex="-1"
+    @keydown="onGoogleDrivePickOverlayKeydown"
   >
     <div class="draft-save-panel">
       <h2 id="drive-folder-pick-title">{{ t('saveAs.drivePickingFolder') }}</h2>
@@ -2976,6 +3025,22 @@ onBeforeUnmount(() => {
           {{ t('saveAs.cancel') }}
         </button>
       </div>
+    </div>
+  </section>
+
+  <section
+    v-if="cloudSaveInProgress !== null"
+    ref="cloudSaveOverlay"
+    class="draft-save-sheet save-flow-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="cloud-save-progress-title"
+    tabindex="-1"
+    data-testid="cloud-save-progress"
+    @keydown="onCloudSaveOverlayKeydown"
+  >
+    <div class="draft-save-panel">
+      <h2 id="cloud-save-progress-title">{{ t('saveAs.saving') }}</h2>
     </div>
   </section>
 </template>

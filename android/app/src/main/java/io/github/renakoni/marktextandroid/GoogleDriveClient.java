@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -381,7 +382,7 @@ final class GoogleDriveClient {
             throw new CloudProviderException("CLOUD_WRITE_FAILED", "Could not describe the new Google Drive document");
         }
 
-        String boundary = "marktext-multipart-boundary";
+        String boundary = newMultipartBoundary(bytes);
         byte[] head = ("--" + boundary + "\r\n"
             + "Content-Type: application/json; charset=UTF-8\r\n\r\n"
             + metadata + "\r\n"
@@ -416,6 +417,22 @@ final class GoogleDriveClient {
             json.optString("headRevisionId", ""),
             json.optString("modifiedTime", "")
         );
+    }
+
+    /**
+     * RFC 2046 requires the boundary to appear nowhere inside the parts, and
+     * Markdown is arbitrary text — a fixed marker could legally occur in a
+     * document and split it. A per-request random boundary makes a collision
+     * practically impossible; the containment check makes it certain.
+     */
+    private static String newMultipartBoundary(byte[] content) {
+        String text = new String(content, StandardCharsets.UTF_8);
+        while (true) {
+            String candidate = "marktext-" + UUID.randomUUID();
+            if (!text.contains(candidate)) {
+                return candidate;
+            }
+        }
     }
 
     private JSONObject driveJson(String accessToken, String url) throws IOException, CloudProviderException {

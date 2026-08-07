@@ -647,6 +647,7 @@ export const zhTW = {
   'saveAs.nameConfirm': '儲存',
   'saveAs.cancel': '取消',
   'saveAs.drivePickingFolder': '正在瀏覽器中選擇資料夾…',
+  'saveAs.saving': '正在儲存…',
   'cloudBrowser.disconnect': '登出',
   'cloudBrowser.loading': '正在載入…',
   'cloudBrowser.empty': '這裡沒有 Markdown 文件',

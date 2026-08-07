@@ -115,6 +115,38 @@ public class GoogleDriveClientTest {
     }
 
     @Test
+    public void createSurvivesContentThatEmbedsABoundaryStyleLine() throws Exception {
+        // RFC 2046: the boundary must not occur inside any encapsulated part.
+        // A document that literally contains the old fixed marker must still
+        // upload intact, so the boundary is random per request.
+        String markdown = "# notes\n\n--marktext-multipart-boundary\n\nstill one document\n";
+        FakeTransport transport = new FakeTransport();
+        transport.enqueue(200, "{\"id\":\"new-1\",\"name\":\"a.md\",\"headRevisionId\":\"r\"}");
+        transport.enqueue(200, "{\"id\":\"new-2\",\"name\":\"b.md\",\"headRevisionId\":\"r\"}");
+
+        GoogleDriveClient client = new GoogleDriveClient(transport);
+        client.createFile("AT", null, "a.md", markdown.getBytes(StandardCharsets.UTF_8));
+        client.createFile("AT", null, "b.md", markdown.getBytes(StandardCharsets.UTF_8));
+
+        String firstBoundary = boundaryOf(transport.requests.get(0));
+        String secondBoundary = boundaryOf(transport.requests.get(1));
+        assertFalse(firstBoundary.equals(secondBoundary));
+
+        String body = new String(transport.requests.get(0).body, StandardCharsets.UTF_8);
+        // The content rides through untouched, and the real boundary never
+        // collides with it: exactly two opening delimiters plus the closer.
+        assertTrue(body.contains("--marktext-multipart-boundary\n"));
+        assertFalse(markdown.contains(firstBoundary));
+        assertEquals(3, body.split("--" + firstBoundary, -1).length - 1);
+        assertTrue(body.endsWith("--" + firstBoundary + "--"));
+    }
+
+    private static String boundaryOf(HttpTransport.Request request) {
+        String contentType = request.headers.get("Content-Type");
+        return contentType.substring(contentType.indexOf("boundary=") + "boundary=".length());
+    }
+
+    @Test
     public void redirectSchemeIsTheReversedClientId() {
         assertEquals(
             "com.googleusercontent.apps.432-abc",

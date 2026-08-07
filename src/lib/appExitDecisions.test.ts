@@ -183,6 +183,79 @@ describe('appExitDecisions', () => {
     expect(getAppBackButtonAction(baseBackState)).toBe('exit-app')
   })
 
+  it('unwinds the save-as flow layers top-most first', () => {
+    // Bare destination page: Back cancels the whole save.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'save-locations',
+    })).toBe('cancel-save-destination')
+
+    // The name sheet sits above the destination page.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'save-locations',
+      cloudNameSheetOpen: true,
+    })).toBe('cancel-cloud-name')
+
+    // The Drive folder-pick overlay likewise dismisses before the page.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'save-locations',
+      googleDriveFolderPickActive: true,
+    })).toBe('cancel-google-folder-pick')
+
+    // An in-flight cloud create outranks every other layer: the document
+    // may already exist remotely, so Back is a no-op until it settles.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'save-locations',
+      cloudSaveInProgress: true,
+      cloudNameSheetOpen: true,
+      googleDriveFolderPickActive: true,
+    })).toBe('ignore-cloud-save')
+
+    // The save-as overlays outrank editor-layer prompts too — they render
+    // above the still-mounted editor.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'save-locations',
+      cloudNameSheetOpen: true,
+      draftExitPromptOpen: true,
+    })).toBe('cancel-cloud-name')
+  })
+
+  it('backs the save-as OneDrive folder pick out folder by folder, then cancels', () => {
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'cloud-browser',
+      cloudBrowserSaveModeActive: true,
+      cloudBrowserAtRoot: false,
+    })).toBe('cloud-browser-up')
+
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'cloud-browser',
+      cloudBrowserSaveModeActive: true,
+      cloudBrowserAtRoot: true,
+    })).toBe('cancel-onedrive-folder-pick')
+
+    // The open-flow browser keeps its Open-page exit.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'cloud-browser',
+      cloudBrowserAtRoot: true,
+    })).toBe('show-open-locations')
+
+    // A slow OneDrive create locks the browser: Back must not race it.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'cloud-browser',
+      cloudBrowserSaveModeActive: true,
+      cloudBrowserAtRoot: true,
+      cloudSaveInProgress: true,
+    })).toBe('ignore-cloud-save')
+  })
+
   it('clears an active home selection before leaving the app', () => {
     expect(getAppBackButtonAction({
       ...baseBackState,

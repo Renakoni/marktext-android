@@ -647,6 +647,7 @@ export const es = {
   'saveAs.nameConfirm': 'Guardar',
   'saveAs.cancel': 'Cancelar',
   'saveAs.drivePickingFolder': 'Elige una carpeta en el navegador…',
+  'saveAs.saving': 'Guardando…',
   'cloudBrowser.disconnect': 'Cerrar sesión',
   'cloudBrowser.loading': 'Cargando…',
   'cloudBrowser.empty': 'No hay documentos Markdown aquí',

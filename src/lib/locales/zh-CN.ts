@@ -638,6 +638,7 @@ export const zhCN = {
   'saveAs.nameConfirm': '保存',
   'saveAs.cancel': '取消',
   'saveAs.drivePickingFolder': '正在浏览器中选择文件夹…',
+  'saveAs.saving': '正在保存…',
   'cloudBrowser.disconnect': '退出登录',
   'cloudBrowser.loading': '正在加载…',
   'cloudBrowser.empty': '这里没有 Markdown 文档',

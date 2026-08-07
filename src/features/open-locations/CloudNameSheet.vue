@@ -35,7 +35,7 @@ function confirm() {
 <template>
   <section
     ref="modalRoot"
-    class="draft-save-sheet"
+    class="draft-save-sheet save-flow-modal"
     role="dialog"
     aria-modal="true"
     aria-labelledby="cloud-name-title"
@@ -51,6 +51,7 @@ function confirm() {
         class="cloud-name-input"
         type="text"
         enterkeyhint="done"
+        aria-labelledby="cloud-name-title"
         data-testid="cloud-name-input"
         @keydown.enter.prevent="confirm"
       >

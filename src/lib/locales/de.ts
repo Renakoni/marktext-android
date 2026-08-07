@@ -648,6 +648,7 @@ export const de = {
   'saveAs.nameConfirm': 'Speichern',
   'saveAs.cancel': 'Abbrechen',
   'saveAs.drivePickingFolder': 'Ordner im Browser wählen …',
+  'saveAs.saving': 'Wird gespeichert …',
   'cloudBrowser.disconnect': 'Abmelden',
   'cloudBrowser.loading': 'Wird geladen …',
   'cloudBrowser.empty': 'Keine Markdown-Dokumente hier',

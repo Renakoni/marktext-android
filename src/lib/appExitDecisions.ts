@@ -30,6 +30,14 @@ export interface AppBackButtonState {
   homeSheetOpen: boolean
   /** True when the cloud browser sits at its root folder. */
   cloudBrowserAtRoot?: boolean
+  /** True while the cloud browser hosts a save-as folder pick. */
+  cloudBrowserSaveModeActive?: boolean
+  /** True while the save-as name sheet is open. */
+  cloudNameSheetOpen?: boolean
+  /** True while the save-as Drive folder pick waits on the browser trip. */
+  googleDriveFolderPickActive?: boolean
+  /** True while a cloud create is in flight; Back must not interrupt it. */
+  cloudSaveInProgress?: boolean
 }
 
 export type AppBackButtonAction =
@@ -49,6 +57,10 @@ export type AppBackButtonAction =
   | 'show-open-locations'
   | 'cloud-browser-up'
   | 'cancel-save-destination'
+  | 'cancel-cloud-name'
+  | 'cancel-google-folder-pick'
+  | 'cancel-onedrive-folder-pick'
+  | 'ignore-cloud-save'
   | 'show-settings-index'
   | 'show-documents-tab'
   | 'exit-app'
@@ -98,7 +110,26 @@ export function getAppBackButtonAction({
   homeSelectionActive,
   homeSheetOpen,
   cloudBrowserAtRoot,
+  cloudBrowserSaveModeActive,
+  cloudNameSheetOpen,
+  googleDriveFolderPickActive,
+  cloudSaveInProgress,
 }: AppBackButtonState): AppBackButtonAction {
+  // The save-as flow renders above every editor layer, so its overlays
+  // unwind first, top-most first. An in-flight cloud create cannot be
+  // interrupted: the document may already exist remotely.
+  if (cloudSaveInProgress) {
+    return 'ignore-cloud-save'
+  }
+
+  if (cloudNameSheetOpen) {
+    return 'cancel-cloud-name'
+  }
+
+  if (googleDriveFolderPickActive) {
+    return 'cancel-google-folder-pick'
+  }
+
   // The blocked-preservation prompt guards unsaved work; Back keeps editing.
   if (incomingOpenPromptOpen) {
     return 'close-incoming-open-prompt'
@@ -152,10 +183,14 @@ export function getAppBackButtonAction({
     return 'cancel-save-destination'
   }
 
-  // The cloud browser backs out folder by folder, then to the Open page;
-  // the Open page backs out to home.
+  // The cloud browser backs out folder by folder, then to the Open page —
+  // or, at the root of a save-as folder pick, cancels the pick (the
+  // browser was entered from the save flow, not the Open page).
   if (currentScreen === 'cloud-browser') {
-    return cloudBrowserAtRoot === false ? 'cloud-browser-up' : 'show-open-locations'
+    if (cloudBrowserAtRoot === false) {
+      return 'cloud-browser-up'
+    }
+    return cloudBrowserSaveModeActive ? 'cancel-onedrive-folder-pick' : 'show-open-locations'
   }
 
   if (currentScreen === 'open-locations') {

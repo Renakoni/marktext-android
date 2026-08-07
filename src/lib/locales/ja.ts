@@ -647,6 +647,7 @@ export const ja = {
   'saveAs.nameConfirm': '保存',
   'saveAs.cancel': 'キャンセル',
   'saveAs.drivePickingFolder': 'ブラウザーでフォルダーを選択してください…',
+  'saveAs.saving': '保存しています…',
   'cloudBrowser.disconnect': 'サインアウト',
   'cloudBrowser.loading': '読み込み中…',
   'cloudBrowser.empty': 'ここに Markdown ドキュメントはありません',

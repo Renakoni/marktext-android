@@ -647,6 +647,7 @@ export const ko = {
   'saveAs.nameConfirm': '저장',
   'saveAs.cancel': '취소',
   'saveAs.drivePickingFolder': '브라우저에서 폴더를 선택하세요…',
+  'saveAs.saving': '저장하는 중…',
   'cloudBrowser.disconnect': '로그아웃',
   'cloudBrowser.loading': '불러오는 중…',
   'cloudBrowser.empty': '여기에는 Markdown 문서가 없습니다',

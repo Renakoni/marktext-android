@@ -647,6 +647,7 @@ export const tr = {
   'saveAs.nameConfirm': 'Kaydet',
   'saveAs.cancel': 'İptal',
   'saveAs.drivePickingFolder': 'Tarayıcıda bir klasör seçin…',
+  'saveAs.saving': 'Kaydediliyor…',
   'cloudBrowser.disconnect': 'Oturumu kapat',
   'cloudBrowser.loading': 'Yükleniyor…',
   'cloudBrowser.empty': 'Burada Markdown belgesi yok',

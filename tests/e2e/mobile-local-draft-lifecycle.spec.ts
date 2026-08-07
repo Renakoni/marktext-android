@@ -38,7 +38,7 @@ test('creates a local draft from real editor input and returns it to the recent 
   await page.getByTestId('back-button').click()
 
   await expect(page.getByTestId('draft-save-prompt')).toBeVisible()
-  await expect(page.getByText('Save this draft to your device?')).toBeVisible()
+  await expect(page.getByText('Save this draft?')).toBeVisible()
   await expect(page.getByTestId('prompt-save-to-device-button')).toBeHidden()
   await page.getByTestId('prompt-keep-draft-button').click()
 
@@ -308,7 +308,7 @@ test('opens the draft exit prompt from the Android back button', async ({ page }
   })
 
   await expect(page.getByTestId('draft-save-prompt')).toBeVisible()
-  await expect(page.getByText('Save this draft to your device?')).toBeVisible()
+  await expect(page.getByText('Save this draft?')).toBeVisible()
 
   const drafts = await page.evaluate(() => localStorage.getItem('marktext-for-android:drafts') ?? '')
   expect(drafts).toContain('Android back note')

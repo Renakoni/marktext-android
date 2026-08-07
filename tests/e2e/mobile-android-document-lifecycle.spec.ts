@@ -4,6 +4,7 @@ import {
   type MockCapacitorWindow,
 } from './helpers/androidAppMock'
 import { expectEditorReady } from './helpers/editor'
+import { chooseThisPhoneSaveDestination } from './helpers/saveAs'
 
 test.describe.configure({ timeout: 60000 })
 
@@ -327,6 +328,7 @@ test('offers save-copy when leaving a dirty read-only Android document', async (
   await expect(page.getByTestId('android-exit-prompt')).toBeVisible()
   await expect(page.getByText('This file cannot be saved directly.')).toBeVisible()
   await page.getByTestId('prompt-save-copy-button').click()
+  await chooseThisPhoneSaveDestination(page)
 
   await expect(page.getByRole('heading', { name: 'MarkText' })).toBeVisible()
   await expect(page.getByText('Read Only Exit').first()).toBeVisible()
