@@ -2,6 +2,7 @@ package io.github.renakoni.marktextandroid;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,11 +28,30 @@ import java.util.Set;
  *    ago. A cleanup call carries a reference snapshot the web computed
  *    before a concurrent open could add its URI, so fresh grants are
  *    skipped and picked up by the next cleanup instead.
+ *
+ * One bounded exception: condition 3 yields to the hard quota bound. When
+ * the grant table would still exceed {@link #SAFETY_VALVE_GRANT_COUNT}
+ * after the settled releases, unsettled grants meeting conditions 1 and 2
+ * are released too — oldest take first, only down to the valve. Without
+ * this, a burst of opens inside one settle window would sail past the
+ * 128-grant OS cap (Android 10 and below), where the SYSTEM silently drops
+ * the oldest grants, possibly a pinned document's. Conditions 1 and 2 are
+ * never waived.
  */
 final class DocumentGrantPolicy {
 
     /** Skip releasing grants younger than this; see class contract point 3. */
     static final long SETTLE_WINDOW_MILLIS = 5 * 60 * 1000;
+
+    /**
+     * Hard quota guard, deliberately under the 128-grant OS floor. Above it
+     * the settle window's race insurance is the smaller risk: releases go
+     * oldest-first and stop at the valve, so an in-flight open — always the
+     * newest take, and referenced by the very cleanup its recents write
+     * triggers next — is touched only if the referenced set plus concurrent
+     * takes alone exceed the valve.
+     */
+    static final int SAFETY_VALVE_GRANT_COUNT = 120;
 
     enum Kind {
         DOCUMENT,
@@ -86,6 +106,7 @@ final class DocumentGrantPolicy {
     ) {
         List<String> releaseUris = new ArrayList<>();
         Map<String, Entry> nextLedger = new HashMap<>();
+        List<String> unsettledUnreferenced = new ArrayList<>();
 
         for (String uri : persistedUris) {
             Entry entry = ledger.get(uri);
@@ -95,13 +116,33 @@ final class DocumentGrantPolicy {
                 continue;
             }
 
-            boolean releasable = entry.kind == Kind.DOCUMENT
-                && !referencedUris.contains(uri)
-                && nowMillis - entry.takenAtMillis > SETTLE_WINDOW_MILLIS;
-            if (releasable) {
+            boolean provenOrphan = entry.kind == Kind.DOCUMENT
+                && !referencedUris.contains(uri);
+            if (provenOrphan && nowMillis - entry.takenAtMillis > SETTLE_WINDOW_MILLIS) {
                 releaseUris.add(uri);
             } else {
+                if (provenOrphan) {
+                    unsettledUnreferenced.add(uri);
+                }
                 nextLedger.put(uri, entry);
+            }
+        }
+
+        // Safety valve: see the class contract. Oldest takes go first and
+        // the release stops at the valve, so the youngest grants keep their
+        // settle protection whenever the count allows it.
+        int remaining = persistedUris.size() - releaseUris.size();
+        if (remaining > SAFETY_VALVE_GRANT_COUNT) {
+            unsettledUnreferenced.sort(
+                Comparator.comparingLong(uri -> ledger.get(uri).takenAtMillis)
+            );
+            for (String uri : unsettledUnreferenced) {
+                if (remaining <= SAFETY_VALVE_GRANT_COUNT) {
+                    break;
+                }
+                releaseUris.add(uri);
+                nextLedger.remove(uri);
+                remaining -= 1;
             }
         }
 

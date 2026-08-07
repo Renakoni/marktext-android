@@ -105,4 +105,25 @@ describe('createDocumentGrantSync', () => {
     await expect(sync(options)).resolves.toEqual(CLEAN_RESULT)
     expect(cleanup).toHaveBeenCalledTimes(2)
   })
+
+  it('retries a resolved cleanup that reported failed releases', async () => {
+    // The native side resolves (not rejects) when a provider refuses a
+    // release, restoring the ledger entry and reporting the count — the
+    // memo must not swallow the retry.
+    const failedResult = { grantCount: 3, releasedGrantCount: 0, failedReleaseCount: 1 }
+    const cleanup = vi
+      .fn()
+      .mockResolvedValueOnce(failedResult)
+      .mockResolvedValue(CLEAN_RESULT)
+    const sync = createDocumentGrantSync({ cleanup, isAvailable: () => true })
+    const options = {
+      currentDocument: { sourceUri: null },
+      recentDocuments: [{ sourceUri: 'content://docs/a' }],
+    }
+
+    await expect(sync(options)).resolves.toEqual(failedResult)
+    await expect(sync(options)).resolves.toEqual(CLEAN_RESULT)
+    await expect(sync(options)).resolves.toBeNull()
+    expect(cleanup).toHaveBeenCalledTimes(2)
+  })
 })

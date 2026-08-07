@@ -44,8 +44,10 @@ interface DocumentGrantSyncDependencies {
  * conservative (it releases only settled, unreferenced document grants it
  * itself recorded), so the memo here is purely traffic suppression: recents
  * persist on every autosave tick, but the URI set only changes when a
- * document is opened, saved-as, or removed. A failed cleanup keeps the memo
- * unset so the next recents mutation retries it.
+ * document is opened, saved-as, or removed. A cleanup that failed — the
+ * call rejected, OR it resolved with failedReleaseCount > 0 (the native
+ * side restores those ledger entries and resolves) — must leave the memo
+ * unset so the next invocation retries even with an unchanged set.
  */
 export function createDocumentGrantSync(dependencies: DocumentGrantSyncDependencies = {}) {
   const cleanup = dependencies.cleanup ?? cleanupAndroidDocumentGrants
@@ -66,7 +68,7 @@ export function createDocumentGrantSync(dependencies: DocumentGrantSyncDependenc
     }
 
     const result = await cleanup(referencedUris)
-    lastSyncedKey = key
+    lastSyncedKey = result.failedReleaseCount === 0 ? key : null
     return result
   }
 }

@@ -225,6 +225,134 @@ public class DocumentGrantPolicyTest {
     }
 
     @Test
+    public void aBurstOfOpensStaysUnderTheOsQuotaViaTheSafetyValve() {
+        // Codex round-1 finding: opening 129+ documents inside one settle
+        // window used to pile up unsettled evictions past the 128-grant OS
+        // cap with nothing releasable. Model the burst: 200 documents two
+        // seconds apart, recents keeping the newest 100, cleanup after every
+        // open — the wiring's cadence.
+        final int quota = 128;
+        final int recentsCap = 100;
+        long clock = NOW;
+
+        Map<String, DocumentGrantPolicy.Entry> entries = new HashMap<>();
+        Set<String> persisted = new LinkedHashSet<>();
+        Deque<String> recents = new ArrayDeque<>();
+
+        for (int index = 0; index < 200; index++) {
+            clock += 2_000;
+            String uri = "content://docs/burst-" + index;
+            persisted.add(uri);
+            entries.put(uri, document(clock));
+            recents.addFirst(uri);
+            while (recents.size() > recentsCap) {
+                recents.removeLast();
+            }
+
+            // Peak between cleanups is one un-cleaned take past the valve.
+            assertTrue(
+                "pre-cleanup grants at open " + index + ": " + persisted.size(),
+                persisted.size() <= DocumentGrantPolicy.SAFETY_VALVE_GRANT_COUNT + 1
+            );
+            assertTrue(persisted.size() < quota);
+
+            DocumentGrantPolicy.Decision decision = DocumentGrantPolicy.decide(
+                new ArrayList<>(persisted),
+                entries,
+                new HashSet<>(recents),
+                clock
+            );
+            decision.releaseUris.forEach(persisted::remove);
+            entries = decision.nextLedger;
+
+            assertTrue(
+                "post-cleanup grants at open " + index + ": " + persisted.size(),
+                persisted.size() <= DocumentGrantPolicy.SAFETY_VALVE_GRANT_COUNT
+            );
+        }
+
+        // Every referenced document kept its grant through the burst.
+        assertTrue(persisted.containsAll(recents));
+    }
+
+    @Test
+    public void safetyValveReleasesOldestFirstAndOnlyDownToTheValve() {
+        // 1 referenced + 124 unsettled unreferenced documents: five over the
+        // valve. Exactly the five oldest takes go; the rest keep their
+        // settle protection and their ledger entries.
+        Map<String, DocumentGrantPolicy.Entry> entries = new HashMap<>();
+        List<String> persisted = new ArrayList<>();
+        persisted.add("content://docs/referenced");
+        entries.put("content://docs/referenced", document(NOW - 10_000));
+        for (int index = 0; index < 124; index++) {
+            String uri = "content://docs/orphan-" + index;
+            persisted.add(uri);
+            entries.put(uri, document(NOW - 100_000 + index * 100L));
+        }
+
+        DocumentGrantPolicy.Decision decision = DocumentGrantPolicy.decide(
+            persisted,
+            entries,
+            Collections.singleton("content://docs/referenced"),
+            NOW
+        );
+
+        assertEquals(
+            persisted.size() - DocumentGrantPolicy.SAFETY_VALVE_GRANT_COUNT,
+            decision.releaseUris.size()
+        );
+        for (int index = 0; index < decision.releaseUris.size(); index++) {
+            assertEquals("content://docs/orphan-" + index, decision.releaseUris.get(index));
+        }
+        assertTrue(decision.nextLedger.containsKey("content://docs/referenced"));
+        assertTrue(decision.nextLedger.containsKey("content://docs/orphan-123"));
+        assertFalse(decision.nextLedger.containsKey("content://docs/orphan-0"));
+    }
+
+    @Test
+    public void safetyValveNeverWaivesTheKindOrReferenceConditions() {
+        // Over the valve with almost nothing releasable: 60 legacy grants
+        // (no ledger entry), 40 image grants, 25 referenced documents, and 5
+        // unsettled unreferenced documents. Only those 5 may go, even though
+        // the table stays over the valve afterwards.
+        Map<String, DocumentGrantPolicy.Entry> entries = new HashMap<>();
+        List<String> persisted = new ArrayList<>();
+        Set<String> referenced = new HashSet<>();
+        for (int index = 0; index < 60; index++) {
+            persisted.add("content://docs/legacy-" + index);
+        }
+        for (int index = 0; index < 40; index++) {
+            String uri = "content://media/image-" + index;
+            persisted.add(uri);
+            entries.put(uri, image(NOW - 1_000_000));
+        }
+        for (int index = 0; index < 25; index++) {
+            String uri = "content://docs/referenced-" + index;
+            persisted.add(uri);
+            entries.put(uri, document(NOW - 1_000_000));
+            referenced.add(uri);
+        }
+        for (int index = 0; index < 5; index++) {
+            String uri = "content://docs/orphan-" + index;
+            persisted.add(uri);
+            entries.put(uri, document(NOW - 1_000));
+        }
+
+        DocumentGrantPolicy.Decision decision = DocumentGrantPolicy.decide(
+            persisted,
+            entries,
+            referenced,
+            NOW
+        );
+
+        assertEquals(5, decision.releaseUris.size());
+        for (String uri : decision.releaseUris) {
+            assertTrue(uri.startsWith("content://docs/orphan-"));
+        }
+        assertEquals(40 + 25, decision.nextLedger.size());
+    }
+
+    @Test
     public void pinnedStyleReferencesSurviveIndefinitely() {
         // A pinned document's URI stays in the referenced set forever even
         // as hundreds of newer documents come and go; its grant must too.
