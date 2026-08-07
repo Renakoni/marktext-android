@@ -356,6 +356,7 @@ export const en = {
   'settings.markdown.footnotes': 'Footnotes',
   'settings.markdown.superSub': 'Super/subscript',
   'settings.markdown.gitlab': 'GitLab',
+  'settings.markdown.softBreakAsSpace': 'Soft breaks as spaces',
   'settings.markdown.sequenceTheme': 'Sequence theme',
   'settings.markdown.plantumlServer': 'PlantUML server',
 

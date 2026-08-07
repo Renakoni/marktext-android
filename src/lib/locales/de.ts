@@ -362,6 +362,7 @@ export const de = {
   'settings.markdown.footnotes': 'Fußnoten',
   'settings.markdown.superSub': 'Hoch-/Tiefgestellt',
   'settings.markdown.gitlab': 'GitLab',
+  'settings.markdown.softBreakAsSpace': 'Weiche Umbrüche als Leerzeichen',
   'settings.markdown.sequenceTheme': 'Sequenz-Design',
   'settings.markdown.plantumlServer': 'PlantUML-Server',
 

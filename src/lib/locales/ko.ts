@@ -361,6 +361,7 @@ export const ko = {
   'settings.markdown.footnotes': '각주',
   'settings.markdown.superSub': '위/아래 첨자',
   'settings.markdown.gitlab': 'GitLab',
+  'settings.markdown.softBreakAsSpace': '소프트 줄바꿈을 공백으로',
   'settings.markdown.sequenceTheme': '시퀀스 테마',
   'settings.markdown.plantumlServer': 'PlantUML 서버',
 

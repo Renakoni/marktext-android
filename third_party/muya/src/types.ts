@@ -31,6 +31,10 @@ export interface IMuyaOptions {
     spellcheckHideMarks: boolean;
     superSubScript: boolean;
     footnote: boolean;
+    // When true, an authored soft line break (a bare `\n` inside a block)
+    // renders as a space (CommonMark/GitHub behavior) instead of MarkText's
+    // default visual line break, in both the editor and on export (#142).
+    renderSoftBreakAsSpace?: boolean;
     math: boolean;
     isGitlabCompatibilityEnabled: boolean;
     autoMoveCheckedToEnd: boolean;

@@ -23,6 +23,7 @@ export type EditingSettingKey =
   | 'frontmatterType'
   | 'footnote'
   | 'superSubScript'
+  | 'renderSoftBreakAsSpace'
   | 'isHtmlEnabled'
   | 'isGitlabCompatibilityEnabled'
   | 'sequenceTheme'
@@ -52,6 +53,7 @@ export interface EditingSettings {
   frontmatterType: FrontmatterType
   footnote: boolean
   superSubScript: boolean
+  renderSoftBreakAsSpace: boolean
   isHtmlEnabled: boolean
   isGitlabCompatibilityEnabled: boolean
   sequenceTheme: SequenceTheme
@@ -99,6 +101,7 @@ export const EDITING_SETTING_KEYS = [
   'frontmatterType',
   'footnote',
   'superSubScript',
+  'renderSoftBreakAsSpace',
   'isHtmlEnabled',
   'isGitlabCompatibilityEnabled',
   'sequenceTheme',
@@ -129,6 +132,7 @@ export const DEFAULT_EDITING_SETTINGS = {
   frontmatterType: '-',
   footnote: false,
   superSubScript: false,
+  renderSoftBreakAsSpace: false,
   isHtmlEnabled: true,
   isGitlabCompatibilityEnabled: false,
   sequenceTheme: 'hand',
@@ -252,6 +256,7 @@ export function normalizeEditingSettingValue(key: EditingSettingKey, value: Sett
     case 'preferLooseListItem':
     case 'footnote':
     case 'superSubScript':
+    case 'renderSoftBreakAsSpace':
     case 'isHtmlEnabled':
     case 'isGitlabCompatibilityEnabled':
     case 'codeBlockLineNumbers':
@@ -356,6 +361,10 @@ export function getEditingSettings(
       getValue('superSubScript', DEFAULT_EDITING_SETTINGS.superSubScript),
       DEFAULT_EDITING_SETTINGS.superSubScript,
     ),
+    renderSoftBreakAsSpace: normalizeBoolean(
+      getValue('renderSoftBreakAsSpace', DEFAULT_EDITING_SETTINGS.renderSoftBreakAsSpace),
+      DEFAULT_EDITING_SETTINGS.renderSoftBreakAsSpace,
+    ),
     isHtmlEnabled: normalizeBoolean(
       getValue('isHtmlEnabled', DEFAULT_EDITING_SETTINGS.isHtmlEnabled),
       DEFAULT_EDITING_SETTINGS.isHtmlEnabled,
@@ -431,6 +440,7 @@ export function getMuyaEditingOptions(settings: EditingSettings): MuyaEditingOpt
     frontmatterType: settings.frontmatterType,
     superSubScript: settings.superSubScript,
     footnote: settings.footnote,
+    renderSoftBreakAsSpace: settings.renderSoftBreakAsSpace,
     disableHtml: !settings.isHtmlEnabled,
     isGitlabCompatibilityEnabled: settings.isGitlabCompatibilityEnabled,
     hideQuickInsertHint: !settings.quickInsert,
@@ -532,6 +542,13 @@ export function getMuyaEditingRuntimeUpdates(
     next.spellcheckerUnderline !== previous.spellcheckerUnderline,
     'spellcheckHideMarks',
     !next.spellcheckerUnderline,
+  )
+  // A pure presentation re-style: muya toggles a root class, no re-parse (#142),
+  // so this stays out of the forceRender group below.
+  setOption(
+    next.renderSoftBreakAsSpace !== previous.renderSoftBreakAsSpace,
+    'renderSoftBreakAsSpace',
+    next.renderSoftBreakAsSpace,
   )
 
   setOption(next.footnote !== previous.footnote, 'footnote', next.footnote, true)
