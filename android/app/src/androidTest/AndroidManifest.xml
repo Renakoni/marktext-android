@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Registers the in-test content provider (see TestDocumentProvider) into the
+      instrumentation APK only — it never ships in the app. exported="true" is
+      required because the test APK and the .debug app run under different UIDs,
+      so the app process must be allowed to reach the provider through the real
+      ContentResolver. This is test-only surface with no production exposure.
+    -->
+    <application>
+        <provider
+            android:name="io.github.renakoni.marktextandroid.TestDocumentProvider"
+            android:authorities="io.github.renakoni.marktextandroid.test.documents"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+    </application>
+</manifest>
