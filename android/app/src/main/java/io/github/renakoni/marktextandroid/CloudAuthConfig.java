@@ -17,7 +17,7 @@ package io.github.renakoni.marktextandroid;
  */
 final class CloudAuthConfig {
 
-    static final String ONEDRIVE_CLIENT_ID = "";
+    static final String ONEDRIVE_CLIENT_ID = "12cb7287-50f6-494b-9abc-b2879a200d39";
 
     private CloudAuthConfig() {}
 }
