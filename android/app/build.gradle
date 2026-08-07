@@ -40,6 +40,13 @@ android {
             }
         }
     }
+    sourceSets {
+        main {
+            // Vendored ICU charset detector (see third_party/icu4j-charset-detector):
+            // the platform's android.icu.text.CharsetDetector is not public SDK.
+            java.srcDirs += '../../third_party/icu4j-charset-detector/java'
+        }
+    }
     buildTypes {
         release {
             if (releaseSigningConfigured) {

@@ -6,17 +6,31 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 /**
  * Markdown byte codec: encoding-name normalization, charset lookup, BOM
- * detection and emission, strict encode/decode, and the document byte-size
- * validation. Pure JVM logic — no Capacitor, URI, ContentResolver, or
- * Activity concerns.
+ * detection and emission, conservative non-BOM charset detection, strict
+ * encode/decode, and the document byte-size validation. Pure JVM logic — no
+ * Capacitor, URI, ContentResolver, or Activity concerns.
  */
 final class MarkdownCodec {
 
     static final int MAX_MARKDOWN_BYTES = 5 * 1024 * 1024;
+
+    // Statistical guesses below this confidence are ignored; the decode then
+    // falls back to the user-selected default and its explicit failure.
+    private static final int DETECTION_CONFIDENCE_THRESHOLD = 50;
+
+    // When the user-selected default encoding itself strictly round-trips the
+    // bytes, it is a viable reading and overriding it needs strong evidence.
+    // The bar sits between two ICU landmarks: a lone UTF-8 multi-byte
+    // sequence (a "©" that is equally plausible cp1252 "Â©") scores 80, while
+    // real UTF-8/UTF-16/UTF-32 documents score 100. Below the bar the user's
+    // explicit choice wins.
+    private static final int VIABLE_DEFAULT_OVERRIDE_CONFIDENCE = 85;
 
     private static final byte[] UTF8_BOM = new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
     private static final byte[] UTF16BE_BOM = new byte[] { (byte) 0xFE, (byte) 0xFF };
@@ -75,29 +89,214 @@ final class MarkdownCodec {
         String defaultEncoding,
         boolean autoDetectEncoding
     ) throws DocumentReadException {
+        return decode(bytes, defaultEncoding, autoDetectEncoding, null);
+    }
+
+    /**
+     * Decodes Markdown bytes. For bytes without a BOM and auto-detect on, the
+     * sniffer's top candidate is accepted only when it maps into the
+     * supported encoding set, clears the confidence bar, and survives a full
+     * decode/re-encode byte round trip. The bar depends on the user's
+     * default: {@link #DETECTION_CONFIDENCE_THRESHOLD} when the default
+     * cannot round-trip the bytes, {@link #VIABLE_DEFAULT_OVERRIDE_CONFIDENCE}
+     * when it can — byte reversibility alone never proves character
+     * semantics, so a viable explicit default is only overridden on strong
+     * statistical evidence. Anything less confident falls back to the
+     * default; if the bytes contain NUL and the default is not a UTF-16/32
+     * family encoding, that fallback fails explicitly instead of silently
+     * embedding NULs (the signature of BOM-less UTF-16/32 read as an
+     * ASCII-compatible charset).
+     */
+    static DecodedMarkdown decode(
+        byte[] bytes,
+        String defaultEncoding,
+        boolean autoDetectEncoding,
+        CharsetSniffer sniffer
+    ) throws DocumentReadException {
         Bom bom = detectBom(bytes, defaultEncoding);
+        if (!bom.hasBom && autoDetectEncoding) {
+            String detected = detectEncodingWithoutBom(bytes, defaultEncoding, sniffer);
+            if (detected != null) {
+                return new DecodedMarkdown(strictDecode(bytes, 0, detected), detected, false);
+            }
+            if (containsNul(bytes) && !isNulTolerantEncoding(normalizeEncoding(defaultEncoding))) {
+                throw new DocumentReadException(
+                    "DOCUMENT_ENCODING_FAILED",
+                    "Could not decode Markdown with the selected encoding"
+                );
+            }
+        }
         boolean useBom = bom.hasBom && (
             autoDetectEncoding ||
             normalizeEncoding(defaultEncoding).equals(bom.encoding)
         );
         String encoding = useBom ? bom.encoding : normalizeEncoding(defaultEncoding);
         int offset = useBom ? bom.offset : 0;
-        Charset charset = getCharset(encoding);
+        return new DecodedMarkdown(strictDecode(bytes, offset, encoding), encoding, useBom);
+    }
 
+    private static String strictDecode(
+        byte[] bytes,
+        int offset,
+        String encoding
+    ) throws DocumentReadException {
+        Charset charset = getCharset(encoding);
         try {
-            String markdown = charset
+            return charset
                 .newDecoder()
                 .onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT)
                 .decode(ByteBuffer.wrap(bytes, offset, bytes.length - offset))
                 .toString();
-            // TODO: Add full non-BOM charset detection for Advanced > Encoding.
-            return new DecodedMarkdown(markdown, encoding, useBom);
         } catch (CharacterCodingException | IndexOutOfBoundsException ex) {
             throw new DocumentReadException(
                 "DOCUMENT_ENCODING_FAILED",
                 "Could not decode Markdown with the selected encoding"
             );
+        }
+    }
+
+    private static String detectEncodingWithoutBom(
+        byte[] bytes,
+        String defaultEncoding,
+        CharsetSniffer sniffer
+    ) {
+        if (bytes.length == 0 || isAscii(bytes)) {
+            // NUL-free ASCII bytes decode identically under every
+            // ASCII-compatible encoding, so the user-selected default stays
+            // authoritative. NUL is deliberately NOT ASCII here: it is the
+            // signature of BOM-less UTF-16/32 and must reach the sniffer.
+            return null;
+        }
+        if (sniffer == null) {
+            return null;
+        }
+        List<CharsetSniffer.Guess> guesses;
+        try {
+            guesses = sniffer.sniff(bytes);
+        } catch (RuntimeException ex) {
+            return null;
+        }
+        if (guesses == null || guesses.isEmpty()) {
+            return null;
+        }
+        // Only the top candidate is considered: accepting a weaker candidate
+        // because a stronger one is unsupported would trade the fail-closed
+        // contract for a statistically worse guess.
+        CharsetSniffer.Guess top = guesses.get(0);
+        int requiredConfidence = roundTrips(bytes, normalizeEncoding(defaultEncoding))
+            ? VIABLE_DEFAULT_OVERRIDE_CONFIDENCE
+            : DETECTION_CONFIDENCE_THRESHOLD;
+        if (top.confidence < requiredConfidence) {
+            return null;
+        }
+        String encoding = supportedEncodingForCharsetName(top.charsetName);
+        if (encoding == null || !roundTrips(bytes, encoding)) {
+            return null;
+        }
+        return encoding;
+    }
+
+    private static boolean isAscii(byte[] bytes) {
+        for (byte value : bytes) {
+            // Positive means 0x01-0x7F: negative is a high byte, zero is NUL.
+            if (value <= 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean containsNul(byte[] bytes) {
+        for (byte value : bytes) {
+            if (value == 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isNulTolerantEncoding(String encoding) {
+        switch (encoding) {
+            case "utf16be":
+            case "utf16le":
+            case "utf32be":
+            case "utf32le":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static boolean roundTrips(byte[] bytes, String encoding) {
+        try {
+            String text = strictDecode(bytes, 0, encoding);
+            return Arrays.equals(bytes, encode(text, new MarkdownWriteOptions(encoding, false)));
+        } catch (DocumentReadException ex) {
+            return false;
+        }
+    }
+
+    private static String supportedEncodingForCharsetName(String charsetName) {
+        String normalized = charsetName == null ? "" : charsetName.trim().toLowerCase(Locale.US);
+        switch (normalized) {
+            case "utf-8":
+                return "utf8";
+            case "utf-16be":
+                return "utf16be";
+            case "utf-16le":
+                return "utf16le";
+            case "utf-32be":
+                return "utf32be";
+            case "utf-32le":
+                return "utf32le";
+            case "gb18030":
+                return "gb18030";
+            case "big5":
+                return "big5";
+            case "shift_jis":
+                return "shiftjis";
+            case "euc-jp":
+                return "eucjp";
+            case "euc-kr":
+                return "euckr";
+            // ISO-8859-1 reports map onto cp1252, the Latin-1-family
+            // superset the app already exposes; the two only disagree inside
+            // the 0x80-0x9F control range, which real text does not use.
+            case "iso-8859-1":
+            case "windows-1252":
+                return "cp1252";
+            case "iso-8859-2":
+                return "iso88592";
+            case "windows-1250":
+                return "windows1250";
+            case "iso-8859-5":
+                return "iso88595";
+            case "windows-1251":
+                return "cp1251";
+            case "koi8-r":
+                return "koi8r";
+            case "ibm866":
+                return "cp866";
+            case "iso-8859-6":
+                return "arabic";
+            case "windows-1256":
+                return "cp1256";
+            case "iso-8859-7":
+                return "greek";
+            case "windows-1253":
+                return "cp1253";
+            case "iso-8859-8":
+            case "iso-8859-8-i":
+                return "hebrew";
+            case "windows-1255":
+                return "cp1255";
+            case "iso-8859-9":
+                return "latin5";
+            case "windows-1254":
+                return "cp1254";
+            default:
+                return null;
         }
     }
 
