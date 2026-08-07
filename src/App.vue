@@ -1729,6 +1729,14 @@ async function openPickedGoogleDriveDocument(fileId: string) {
   googleDriveBusy.value = 'opening'
   try {
     const content = await readCloudDocument('googledrive', fileId, androidMarkdownSettings.value)
+    if (currentScreen.value !== 'open-locations') {
+      // The user moved on while the document was downloading; opening it
+      // now would replace their current work without consent.
+      androidDocumentLog.info('discarded a picked document open: the user left the Open page', {
+        fileId,
+      })
+      return
+    }
     await openAndroidDocumentResult(toOpenedDocumentFromCloud('googledrive', content))
   } catch (error) {
     openLocationsNotice.value = getAndroidDocumentUserMessage(error)
@@ -1789,17 +1797,29 @@ function installCloudAuthListener() {
   })
   void addCloudAuthListener(event => {
     if (event.provider === 'googledrive') {
-      if (googleDriveBusy.value === 'connecting' || googleDriveBusy.value === 'completing') {
-        googleDriveBusy.value = null
-      }
       if (event.connected) {
         const pickedFileId = event.pickedFileIds?.[0]
-        void refreshGoogleDriveAccountState().then(() => {
+        if (pickedFileId && currentScreen.value === 'open-locations') {
+          // Atomic completing → opening: no unlocked gap in which a second
+          // flow could start before the picked document begins loading.
+          googleDriveBusy.value = 'opening'
+          void refreshGoogleDriveAccountState()
+          void openPickedGoogleDriveDocument(pickedFileId)
+        } else {
+          // The user left the Open page while the exchange ran (Back is
+          // never blocked); a late event must not clobber whatever they
+          // are working on now — the pick is dropped, the account stays
+          // connected, and picking again is one tap.
           if (pickedFileId) {
-            void openPickedGoogleDriveDocument(pickedFileId)
+            androidDocumentLog.info('discarded a picked document: the user left the Open page')
           }
-        })
+          googleDriveBusy.value = null
+          void refreshGoogleDriveAccountState()
+        }
         return
+      }
+      if (googleDriveBusy.value === 'connecting' || googleDriveBusy.value === 'completing') {
+        googleDriveBusy.value = null
       }
       if (event.errorCode !== 'CLOUD_AUTH_CANCELED') {
         openLocationsNotice.value = event.message ?? 'The Google Drive sign-in failed'
@@ -1809,15 +1829,19 @@ function installCloudAuthListener() {
       })
       return
     }
-    cloudConnecting.value = null
     if (event.connected) {
+      // Unlock only after the account state reflects the connection: the
+      // native exchange gate is already released, so an early unlock would
+      // let a second sign-in start in the refresh window.
       void refreshOneDriveAccountState().then(() => {
+        cloudConnecting.value = null
         if (currentScreen.value === 'cloud-browser') {
           void loadCloudFolder()
         }
       })
       return
     }
+    cloudConnecting.value = null
     if (event.errorCode !== 'CLOUD_AUTH_CANCELED') {
       cloudBrowserError.value = event.message ?? 'OneDrive sign-in failed'
     }
