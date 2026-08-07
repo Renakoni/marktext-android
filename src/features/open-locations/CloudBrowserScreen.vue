@@ -47,7 +47,7 @@ const { t } = useI18n()
           />
         </svg>
       </button>
-      <h1 class="cloud-browser-title">{{ folderName ?? 'OneDrive' }}</h1>
+      <h1 id="cloud-browser-title" class="cloud-browser-title">{{ folderName ?? 'OneDrive' }}</h1>
       <button
         v-if="accountState?.connected && !saveMode"
         type="button"

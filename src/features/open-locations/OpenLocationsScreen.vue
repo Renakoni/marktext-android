@@ -48,7 +48,7 @@ const { t } = useI18n()
           />
         </svg>
       </button>
-      <h1 class="open-locations-title">
+      <h1 id="open-locations-title" class="open-locations-title">
         {{ mode === 'save' ? t('saveAs.title') : t('openLocations.title') }}
       </h1>
     </header>

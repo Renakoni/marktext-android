@@ -300,14 +300,11 @@ test('keeps the live editor session across a canceled and a completed save-as', 
   await expect(page.getByRole('heading', { name: 'Save as', exact: true })).toBeVisible()
 
   // The editor behind the page leaves the accessibility tree and the Tab
-  // order, and focus lands inside the destination page.
+  // order, and focus lands on the page itself — a dialog whose accessible
+  // name is the page title, not text concatenated from its rows.
   await expect(page.locator('main.app-shell')).toHaveAttribute('aria-hidden', 'true')
   await expect(page.locator('main.app-shell')).toHaveAttribute('inert', '')
-  await expect
-    .poll(async () =>
-      page.evaluate(() => document.activeElement?.closest('.save-flow-screen') !== null),
-    )
-    .toBe(true)
+  await expect(page.getByRole('dialog', { name: 'Save as', exact: true })).toBeFocused()
 
   await page.locator('.save-flow-screen').getByRole('button', { name: 'Back' }).click()
 

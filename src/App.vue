@@ -2984,6 +2984,9 @@ onBeforeUnmount(() => {
     v-if="currentScreen === 'save-locations'"
     ref="saveDestinationScreen"
     class="save-flow-screen"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="open-locations-title"
     tabindex="-1"
     @keydown="onSaveDestinationScreenKeydown"
   >
@@ -3004,6 +3007,9 @@ onBeforeUnmount(() => {
     v-else-if="currentScreen === 'cloud-browser' && cloudBrowserSaveModeActive"
     ref="oneDriveSaveScreen"
     class="save-flow-screen"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="cloud-browser-title"
     tabindex="-1"
     @keydown="onOneDriveSaveScreenKeydown"
   >
