@@ -12,8 +12,17 @@ package io.github.renakoni.marktextandroid;
  * (the scheme follows the applicationId, so debug and release installs
  * never race for the same redirect).
  *
- * A public-client id is not a secret; committing it is standard practice.
- * While it is empty, connecting rejects with CLOUD_CLIENT_ID_MISSING.
+ * The Google Drive client id is NOT here: Google binds Android OAuth
+ * clients to the package name AND signing-certificate SHA-1, so the id is
+ * a per-variant resource (`googledrive_client_id` resValue in
+ * app/build.gradle — debug carries the registered debug client, release
+ * stays empty until a release client is registered at ship time). The
+ * redirect scheme is derived from the id
+ * ({@link GoogleDriveClient#redirectSchemeFor}) and its intent-filter
+ * lives in the debug manifest overlay for the same reason.
+ *
+ * While an id is empty, the provider reads unavailable and connecting
+ * rejects with CLOUD_CLIENT_ID_MISSING.
  */
 final class CloudAuthConfig {
 

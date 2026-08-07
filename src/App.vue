@@ -18,6 +18,7 @@ import {
 } from './lib/androidDocuments'
 import {
   addCloudAuthListener,
+  addCloudAuthPendingListener,
   connectCloudAccount,
   disconnectCloudAccount,
   getCloudAccountState,
@@ -27,6 +28,7 @@ import {
   type CloudAccountState,
   type CloudFolderEntry,
 } from './lib/cloudDocuments'
+import { createGoogleDrivePickFlow } from './features/open-locations/googleDrivePickFlow'
 import { isCloudSourceUri } from './lib/cloudDocumentUris'
 import {
   readRoutedMarkdownDocument,
@@ -1530,10 +1532,14 @@ async function openFileFromAndroid() {
   }
 }
 
-// --- Open locations + OneDrive browser (#185) ---
+// --- Open locations + cloud providers (#185) ---
 
 const oneDriveAccountState = ref<CloudAccountState | null>(null)
-const cloudConnecting = ref(false)
+// 'browser' = waiting for the sign-in browser (clearable when the app
+// merely becomes visible again — the user backed out); 'completing' = the
+// redirect landed and the token exchange is running (only the auth event
+// may clear it, or the sign-in button revives mid-exchange).
+const cloudConnecting = ref<'browser' | 'completing' | null>(null)
 const cloudBrowserLoading = ref(false)
 const cloudBrowserError = ref<string | null>(null)
 const cloudBrowserEntries = ref<CloudFolderEntry[]>([])
@@ -1555,8 +1561,10 @@ async function refreshOneDriveAccountState() {
 
 function showOpenLocations() {
   homeNotice.value = null
+  openLocationsNotice.value = null
   currentScreen.value = 'open-locations'
   void refreshOneDriveAccountState()
+  void refreshGoogleDriveAccountState()
 }
 
 async function openFileFromLocations() {
@@ -1613,14 +1621,17 @@ async function showCloudBrowser() {
 }
 
 async function connectOneDrive() {
-  cloudConnecting.value = true
+  if (cloudConnecting.value !== null) {
+    return
+  }
+  cloudConnecting.value = 'browser'
   cloudBrowserError.value = null
   try {
     await connectCloudAccount('onedrive')
     // Completion arrives through the cloudAuthCompleted listener once the
     // browser redirects back.
   } catch (error) {
-    cloudConnecting.value = false
+    cloudConnecting.value = null
     cloudBrowserError.value = getAndroidDocumentUserMessage(error)
     androidDocumentLog.warn('OneDrive connect failed to start', { error })
   }
@@ -1648,7 +1659,7 @@ async function handleCloudEntryOpen(entry: CloudFolderEntry) {
   cloudOpeningFileId.value = entry.id
   try {
     const content = await readCloudDocument('onedrive', entry.id, androidMarkdownSettings.value)
-    await openAndroidDocumentResult(toOpenedDocumentFromCloud(content))
+    await openAndroidDocumentResult(toOpenedDocumentFromCloud('onedrive', content))
   } catch (error) {
     cloudBrowserError.value = getAndroidDocumentUserMessage(error)
     androidDocumentLog.error('open OneDrive document failed', { fileId: entry.id, error })
@@ -1662,6 +1673,105 @@ async function cloudBrowserNavigateUp() {
   await loadCloudFolder()
 }
 
+// --- Google Drive (in-flow picker: the OAuth page hosts the file picker,
+// picked_file_ids ride the redirect — drive.file cannot browse folders and
+// the Picker cannot run in a session-less WebView) ---
+
+const googleDriveAccountState = ref<CloudAccountState | null>(null)
+// 'connecting' = browser trip (visibility-clearable, see above);
+// 'completing' = redirect landed, exchange running; 'opening' = reading
+// the picked document.
+const googleDriveBusy = ref<'connecting' | 'completing' | 'opening' | null>(null)
+
+// "Still on the Open page" is not "still in the flow that started this
+// pick": leaving and returning mid-exchange/mid-download must not let the
+// abandoned completion through (Codex round 4).
+const googleDrivePickFlow = createGoogleDrivePickFlow()
+watch(currentScreen, (next, previous) => {
+  if (previous === 'open-locations' && next !== 'open-locations') {
+    googleDrivePickFlow.noteLeftOpenPage()
+  }
+})
+
+function ownsGoogleDrivePickCompletion() {
+  return googleDrivePickFlow.ownsCompletion() && currentScreen.value === 'open-locations'
+}
+const openLocationsNotice = ref<string | null>(null)
+
+async function refreshGoogleDriveAccountState() {
+  if (!isCloudDocumentAccessAvailable()) {
+    googleDriveAccountState.value = { connected: false, available: false, accountName: null }
+    return
+  }
+  try {
+    googleDriveAccountState.value = await getCloudAccountState('googledrive')
+  } catch (error) {
+    androidDocumentLog.warn('Google Drive account state unavailable', { error })
+    googleDriveAccountState.value = { connected: false, available: false, accountName: null }
+  }
+}
+
+// Every pick is one browser round trip (sign-in and picking are the same
+// authorization flow), so connected or not, the row starts the same trip.
+async function handleOpenGoogleDrive() {
+  if (googleDriveBusy.value !== null) {
+    return
+  }
+  // Lock BEFORE the first await: a second tap during the account-state
+  // refresh would otherwise start a competing browser flow whose fresh
+  // OAuth state clobbers the first one's pending record.
+  googleDriveBusy.value = 'connecting'
+  googleDrivePickFlow.beginFlow()
+  openLocationsNotice.value = null
+  try {
+    if (googleDriveAccountState.value === null) {
+      await refreshGoogleDriveAccountState()
+    }
+    if (!googleDriveAccountState.value?.available) {
+      googleDriveBusy.value = null
+      return
+    }
+    await connectCloudAccount('googledrive')
+    // Completion arrives through the cloudAuthCompleted listener once the
+    // browser redirects back, carrying the picked file ids.
+  } catch (error) {
+    googleDriveBusy.value = null
+    openLocationsNotice.value = getAndroidDocumentUserMessage(error)
+    androidDocumentLog.warn('Google Drive pick failed to start', { error })
+  }
+}
+
+async function openPickedGoogleDriveDocument(fileId: string) {
+  googleDriveBusy.value = 'opening'
+  try {
+    const content = await readCloudDocument('googledrive', fileId, androidMarkdownSettings.value)
+    if (!ownsGoogleDrivePickCompletion()) {
+      // The user moved on while the document was downloading; opening it
+      // now would replace their current work without consent.
+      androidDocumentLog.info('discarded a picked document open: the user left the Open page', {
+        fileId,
+      })
+      return
+    }
+    await openAndroidDocumentResult(toOpenedDocumentFromCloud('googledrive', content))
+  } catch (error) {
+    openLocationsNotice.value = getAndroidDocumentUserMessage(error)
+    androidDocumentLog.error('open Google Drive document failed', { fileId, error })
+  } finally {
+    googleDriveBusy.value = null
+  }
+}
+
+async function disconnectGoogleDrive() {
+  try {
+    await disconnectCloudAccount('googledrive')
+  } catch (error) {
+    androidDocumentLog.warn('Google Drive disconnect failed', { error })
+  }
+  openLocationsNotice.value = null
+  await refreshGoogleDriveAccountState()
+}
+
 function installCloudAuthListener() {
   if (!isCloudDocumentAccessAvailable()) {
     return
@@ -1671,21 +1781,83 @@ function installCloudAuthListener() {
   // means exactly that. Reset so the button recovers — a redirect that DID
   // land completes asynchronously and wins via the auth event below.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && cloudConnecting.value) {
-      cloudConnecting.value = false
+    if (document.visibilityState !== 'visible') {
+      return
+    }
+    // Only the browser-wait phase may be cleared here: with no redirect
+    // there will never be an auth event, so visibility is the only signal
+    // the user backed out. The 'completing' phase belongs to the pending/
+    // completed events below — a landed redirect flips visibility too, and
+    // clearing it would revive the sign-in mid-exchange (Codex round 2).
+    if (cloudConnecting.value === 'browser') {
+      cloudConnecting.value = null
       void refreshOneDriveAccountState()
+    }
+    if (googleDriveBusy.value === 'connecting') {
+      googleDriveBusy.value = null
+      void refreshGoogleDriveAccountState()
+    }
+  })
+  // The redirect landed and the token exchange started: lock the sign-in
+  // controls until the completed event reports the outcome.
+  void addCloudAuthPendingListener(event => {
+    if (event.provider === 'googledrive') {
+      if (googleDriveBusy.value === null || googleDriveBusy.value === 'connecting') {
+        googleDriveBusy.value = 'completing'
+      }
+      return
+    }
+    if (event.provider === 'onedrive') {
+      cloudConnecting.value = 'completing'
     }
   })
   void addCloudAuthListener(event => {
-    cloudConnecting.value = false
+    if (event.provider === 'googledrive') {
+      if (event.connected) {
+        const pickedFileId = event.pickedFileIds?.[0]
+        if (pickedFileId && ownsGoogleDrivePickCompletion()) {
+          // Atomic completing → opening: no unlocked gap in which a second
+          // flow could start before the picked document begins loading.
+          googleDriveBusy.value = 'opening'
+          void refreshGoogleDriveAccountState()
+          void openPickedGoogleDriveDocument(pickedFileId)
+        } else {
+          // The user left the Open page while the exchange ran (Back is
+          // never blocked); a late event must not clobber whatever they
+          // are working on now — the pick is dropped, the account stays
+          // connected, and picking again is one tap.
+          if (pickedFileId) {
+            androidDocumentLog.info('discarded a picked document: the user left the Open page')
+          }
+          googleDriveBusy.value = null
+          void refreshGoogleDriveAccountState()
+        }
+        return
+      }
+      if (googleDriveBusy.value === 'connecting' || googleDriveBusy.value === 'completing') {
+        googleDriveBusy.value = null
+      }
+      if (event.errorCode !== 'CLOUD_AUTH_CANCELED') {
+        openLocationsNotice.value = event.message ?? 'The Google Drive sign-in failed'
+      }
+      androidDocumentLog.warn('Google Drive sign-in did not complete', {
+        errorCode: event.errorCode,
+      })
+      return
+    }
     if (event.connected) {
+      // Unlock only after the account state reflects the connection: the
+      // native exchange gate is already released, so an early unlock would
+      // let a second sign-in start in the refresh window.
       void refreshOneDriveAccountState().then(() => {
+        cloudConnecting.value = null
         if (currentScreen.value === 'cloud-browser') {
           void loadCloudFolder()
         }
       })
       return
     }
+    cloudConnecting.value = null
     if (event.errorCode !== 'CLOUD_AUTH_CANCELED') {
       cloudBrowserError.value = event.message ?? 'OneDrive sign-in failed'
     }
@@ -2444,10 +2616,16 @@ onBeforeUnmount(() => {
   <OpenLocationsScreen
     v-else-if="currentScreen === 'open-locations'"
     :one-drive-state="oneDriveAccountState"
+    :google-drive-state="googleDriveAccountState"
+    :google-drive-busy="googleDriveBusy"
+    :notice="openLocationsNotice"
     @back="currentScreen = 'home'"
     @open-this-phone="openFileFromLocations"
     @browse-all="openFileFromLocations"
     @open-one-drive="showCloudBrowser"
+    @open-google-drive="handleOpenGoogleDrive"
+    @disconnect-one-drive="disconnectOneDrive"
+    @disconnect-google-drive="disconnectGoogleDrive"
   />
 
   <CloudBrowserScreen

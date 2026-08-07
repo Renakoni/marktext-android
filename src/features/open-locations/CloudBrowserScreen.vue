@@ -4,7 +4,8 @@ import type { CloudAccountState, CloudFolderEntry } from '../../lib/cloudDocumen
 
 defineProps<{
   accountState: CloudAccountState | null
-  connecting: boolean
+  /** 'browser' = waiting for the sign-in browser; 'completing' = redirect landed, exchanging tokens. */
+  connecting: 'browser' | 'completing' | null
   loading: boolean
   errorMessage: string | null
   entries: CloudFolderEntry[]
@@ -64,13 +65,19 @@ const { t } = useI18n()
         <button
           type="button"
           class="cloud-browser-primary"
-          :disabled="connecting || !accountState.available"
+          :disabled="connecting !== null || !accountState.available"
           @click="emit('connect')"
         >
-          {{ connecting ? t('cloudBrowser.connecting') : t('cloudBrowser.connect') }}
+          {{
+            connecting === 'completing'
+              ? t('cloudBrowser.completing')
+              : connecting === 'browser'
+                ? t('cloudBrowser.connecting')
+                : t('cloudBrowser.connect')
+          }}
         </button>
         <p v-if="!accountState.available" class="cloud-browser-hint">
-          {{ t('openLocations.onedriveUnavailable') }}
+          {{ t('openLocations.cloudUnavailable') }}
         </p>
       </template>
 

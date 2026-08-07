@@ -15,6 +15,13 @@ describe('cloudDocumentUris', () => {
     expect(parseCloudSourceUri(uri)).toEqual({ provider: 'onedrive', fileId: 'ABC!123:xyz' })
   })
 
+  it('round-trips a Google Drive identity', () => {
+    const uri = buildCloudSourceUri('googledrive', '1AbC_dEf-9')
+
+    expect(uri).toBe('cloud:googledrive:1AbC_dEf-9')
+    expect(parseCloudSourceUri(uri)).toEqual({ provider: 'googledrive', fileId: '1AbC_dEf-9' })
+  })
+
   it('rejects non-cloud and malformed URIs', () => {
     expect(isCloudSourceUri('content://provider/doc/1')).toBe(false)
     expect(isCloudSourceUri(null)).toBe(false)

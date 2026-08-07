@@ -11,18 +11,29 @@ import {
   readCloudDocument,
   writeCloudDocument,
   type CloudDocumentContent,
+  type CloudProviderId,
 } from '../../lib/cloudDocuments'
 import { buildCloudSourceUri, parseCloudSourceUri } from '../../lib/cloudDocumentUris'
 
 /**
- * Last-seen ETag per cloud source URI, for conflict-checked writes
- * (If-Match). Process-lifetime is enough: a document is always read before
- * it can be saved, and a fresh read refreshes the entry.
+ * Last-seen version tag (OneDrive ETag / Drive headRevisionId) per cloud
+ * source URI, for conflict-checked writes. Process-lifetime is enough: a
+ * document is always read before it can be saved, and a fresh read
+ * refreshes the entry.
  */
 const cloudDocumentETags = new Map<string, string>()
 
-export function toOpenedDocumentFromCloud(content: CloudDocumentContent): OpenedAndroidDocument {
-  const sourceUri = buildCloudSourceUri('onedrive', content.fileId)
+const CLOUD_PROVIDER_LABELS: Record<CloudProviderId, string> = {
+  onedrive: 'OneDrive',
+  googledrive: 'Google Drive',
+  webdav: 'WebDAV',
+}
+
+export function toOpenedDocumentFromCloud(
+  provider: CloudProviderId,
+  content: CloudDocumentContent,
+): OpenedAndroidDocument {
+  const sourceUri = buildCloudSourceUri(provider, content.fileId)
   cloudDocumentETags.set(sourceUri, content.eTag)
   return {
     canceled: false,
@@ -57,7 +68,7 @@ export async function readRoutedMarkdownDocument(
   }
 
   const content = await readCloudDocument(cloud.provider, cloud.fileId, options)
-  return toOpenedDocumentFromCloud(content)
+  return toOpenedDocumentFromCloud(cloud.provider, content)
 }
 
 export async function writeRoutedMarkdownDocument(
@@ -79,7 +90,7 @@ export async function writeRoutedMarkdownDocument(
   if (!eTag) {
     throw new AndroidDocumentError(
       'CLOUD_DOCUMENT_CONFLICT',
-      'This document must be reopened before it can be saved to OneDrive',
+      'This document must be reopened before it can be saved to the cloud',
     )
   }
 
@@ -92,7 +103,7 @@ export async function writeRoutedMarkdownDocument(
   return {
     sourceUri,
     displayName: written.displayName,
-    providerName: 'OneDrive',
+    providerName: CLOUD_PROVIDER_LABELS[cloud.provider],
     pathHint: written.displayName,
     mimeType: 'text/markdown',
     encoding: options.encoding,

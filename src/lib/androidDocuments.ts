@@ -369,44 +369,49 @@ export function getAndroidDocumentUserMessage(error: unknown) {
     return 'Open Markdown files from the Android app build.'
   }
 
+  // Provider-neutral: the same codes flow from OneDrive and Google Drive.
   if (code === 'CLOUD_NOT_CONNECTED' || code === 'CLOUD_AUTH_EXPIRED') {
-    return 'Sign in to OneDrive to open this document.'
+    return 'Sign in to the cloud account to open this document.'
   }
 
   if (code === 'CLOUD_AUTH_FAILED' || code === 'CLOUD_AUTH_CANCELED') {
-    return 'The OneDrive sign-in was not completed.'
+    return 'The cloud sign-in was not completed.'
+  }
+
+  if (code === 'CLOUD_AUTH_IN_PROGRESS') {
+    return 'The cloud sign-in is still completing. Try again in a moment.'
   }
 
   if (code === 'CLOUD_CLIENT_ID_MISSING') {
-    return 'OneDrive is not configured in this build.'
+    return 'This cloud provider is not configured in this build.'
   }
 
   if (code === 'CLOUD_BROWSER_UNAVAILABLE') {
-    return 'No browser is available for the OneDrive sign-in.'
+    return 'No browser is available for the cloud sign-in.'
   }
 
   if (code === 'CLOUD_DOCUMENT_CONFLICT') {
-    return 'This document changed on OneDrive since it was opened.'
+    return 'This document changed in the cloud since it was opened.'
   }
 
   if (code === 'CLOUD_DOCUMENT_NOT_FOUND') {
-    return 'This OneDrive document was moved or deleted.'
+    return 'This cloud document was moved or deleted.'
   }
 
   if (code === 'CLOUD_NETWORK_FAILED' || code === 'CLOUD_UNAVAILABLE') {
-    return 'Could not reach OneDrive. Check the connection and try again.'
+    return 'Could not reach the cloud storage. Check the connection and try again.'
   }
 
-  if (code === 'CLOUD_PROVIDER_UNAVAILABLE') {
+  if (code === 'CLOUD_PROVIDER_UNAVAILABLE' || code === 'CLOUD_OPERATION_UNSUPPORTED') {
     return 'This cloud provider is not available yet.'
   }
 
   if (code === 'CLOUD_READ_FAILED' || code === 'CLOUD_REQUEST_FAILED') {
-    return 'Could not read this document from OneDrive.'
+    return 'Could not read this document from the cloud.'
   }
 
   if (code === 'CLOUD_WRITE_FAILED') {
-    return 'Could not save this document to OneDrive.'
+    return 'Could not save this document to the cloud.'
   }
 
   if (code === 'UNSUPPORTED_DOCUMENT') {
