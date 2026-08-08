@@ -196,14 +196,20 @@ test('a tap outside the panel menu dismisses it like any popup', async ({ page }
 
 test('the open panel menu keeps the editor selection and focus intact', async ({ page }) => {
   await newBlankDocument(page)
+  const viewport = page.viewportSize()!
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('caret anchor')
+
+  // Shrink the window by a keyboard-sized amount: the IME visibility
+  // estimate reads "keyboard up", which is the state this contract was
+  // written for — with the keyboard up, toolbar taps must not disturb
+  // editor focus (a focus move would dismiss the keyboard mid-typing).
+  await page.setViewportSize({ width: viewport.width, height: viewport.height - 300 })
 
   // The native caret handle hides because the selection is RE-APPLIED
   // programmatically on menu open (Chromium only shows touch handles for
   // gesture-made selections). The selection itself and the editor focus
-  // must survive — an empty selection or a focus move would dismiss the
-  // soft keyboard on device.
+  // must survive.
   const editorSelectionState = () =>
     page.evaluate(() => {
       const host = document.querySelector('[data-testid="editor-host"]')
@@ -233,6 +239,18 @@ test('the open panel menu keeps the editor selection and focus intact', async ({
   await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeHidden()
   await expect.poll(editorSelectionState).toEqual({
     focusInEditor: true,
+    selection: 'in-editor',
+  })
+
+  // Growing back reads as "keyboard dismissed". From here the #200 guard
+  // inverts the contract: a toolbar tap DROPS editor focus (so Chromium
+  // cannot resummon the keyboard) while the selection stays for the
+  // stats line and command restore-ranges.
+  await page.setViewportSize(viewport)
+  await page.getByTestId('toolbar-group-switcher').click()
+  await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeVisible()
+  await expect.poll(editorSelectionState).toEqual({
+    focusInEditor: false,
     selection: 'in-editor',
   })
 })
