@@ -637,8 +637,6 @@ export const tr = {
   'openLocations.cloudUnavailable': 'Bu derlemede yapılandırılmamış',
   'openLocations.cloudConnecting': 'Tarayıcıda oturum açma bekleniyor…',
   'openLocations.cloudOpening': 'Seçilen belge açılıyor…',
-  'openLocations.browseAll': 'Tüm konumlara göz at',
-  'openLocations.browseAllSubtitle': 'Sistem dosya seçici ve yüklü sağlayıcılar',
   'cloudBrowser.signInHint': 'OneDrive\'daki Markdown belgelerini açmak için Microsoft hesabınızla oturum açın.',
   'cloudBrowser.connect': 'OneDrive\'da oturum aç',
   'cloudBrowser.connecting': 'Tarayıcıda oturum açma bekleniyor…',

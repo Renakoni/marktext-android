@@ -637,8 +637,6 @@ export const ja = {
   'openLocations.cloudUnavailable': 'このビルドでは未設定',
   'openLocations.cloudConnecting': 'ブラウザーでのサインインを待っています…',
   'openLocations.cloudOpening': '選択したドキュメントを開いています…',
-  'openLocations.browseAll': 'すべての場所を参照',
-  'openLocations.browseAllSubtitle': 'システムのファイルピッカーとインストール済みプロバイダー',
   'cloudBrowser.signInHint': 'Microsoft アカウントでサインインすると、OneDrive の Markdown ドキュメントを開けます。',
   'cloudBrowser.connect': 'OneDrive にサインイン',
   'cloudBrowser.connecting': 'ブラウザーでのサインインを待っています…',
