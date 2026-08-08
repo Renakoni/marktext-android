@@ -163,6 +163,7 @@ export const tr = {
   'toolbar.collapse': 'Araç çubuğunu daralt',
   'toolbar.groups': 'Araç çubuğu grupları',
   'toolbar.stats': '{words} sözcük · {characters} karakter · {lines} satır',
+  'toolbar.statsSelection': '{words} seçili',
   'toolbar.panel.format': 'Biçim',
   'toolbar.panel.formatTitle': 'Vurgu ve metin işaretleri',
   'toolbar.panel.paragraph': 'Paragraf',

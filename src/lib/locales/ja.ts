@@ -163,6 +163,7 @@ export const ja = {
   'toolbar.collapse': 'ツールバーを折りたたむ',
   'toolbar.groups': 'ツールバーのグループ',
   'toolbar.stats': '{words} 語 · {characters} 文字 · {lines} 行',
+  'toolbar.statsSelection': '選択中 {words} 語',
   'toolbar.panel.format': '書式',
   'toolbar.panel.formatTitle': '強調とテキストマーク',
   'toolbar.panel.paragraph': '段落',

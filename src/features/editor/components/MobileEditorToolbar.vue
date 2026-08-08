@@ -13,6 +13,8 @@ import {
 import type { TableCommandId } from '../tableCommands'
 import { useI18n, type I18nKey } from '../../../lib/i18n'
 import { captureNonCollapsedSelectionRange } from '../selectionToolbar'
+import { countWords } from '../../../lib/documentState'
+import { getSelectionTextForStats } from '../selectionStats'
 import ToolbarCommandGlyph from '../../../components/ToolbarCommandGlyph.vue'
 
 const props = defineProps<{
@@ -68,14 +70,44 @@ const activePanelDef = computed(() =>
 const activePanelCommands = computed(() =>
   props.activePanel === 'table' ? [] : getMobileToolbarPanelCommands(props.activePanel),
 )
-const statsText = computed(
-  () =>
-    t('toolbar.stats', {
-      words: props.wordCount,
-      characters: props.characterCount,
-      lines: props.lineCount,
-    }),
-)
+// --- Selection word count (#199, ports upstream marktext#4457): while a
+// selection lives inside the editor host, the stats line appends its
+// word count. Computed here because this component already owns a
+// document-level selectionchange listener; rAF-coalesced so dragging a
+// selection handle pays at most one count per frame.
+
+const selectionWordCount = ref<number | null>(null)
+let selectionCountFrame: number | null = null
+
+const statsText = computed(() => {
+  const stats = t('toolbar.stats', {
+    words: props.wordCount,
+    characters: props.characterCount,
+    lines: props.lineCount,
+  })
+
+  return selectionWordCount.value === null
+    ? stats
+    : `${stats} · ${t('toolbar.statsSelection', { words: selectionWordCount.value })}`
+})
+
+function updateSelectionWordCount() {
+  const selection = document.getSelection()
+  const host = props.host
+  const text = selection && host ? getSelectionTextForStats(selection, host) : ''
+  selectionWordCount.value = text.trim().length > 0 ? countWords(text) : null
+}
+
+function scheduleSelectionWordCount() {
+  if (selectionCountFrame !== null) {
+    return
+  }
+
+  selectionCountFrame = requestAnimationFrame(() => {
+    selectionCountFrame = null
+    updateSelectionWordCount()
+  })
+}
 
 watch(
   () => props.expanded,
@@ -135,19 +167,30 @@ function dismissGroupMenuFromOutsidePointer(event: PointerEvent) {
 
 onMounted(() => {
   document.addEventListener('selectionchange', rememberCurrentEditorSelection)
+  document.addEventListener('selectionchange', scheduleSelectionWordCount)
   document.addEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
   document.addEventListener('pointerdown', dismissGroupMenuFromOutsidePointer, true)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('selectionchange', rememberCurrentEditorSelection)
+  document.removeEventListener('selectionchange', scheduleSelectionWordCount)
   document.removeEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
   document.removeEventListener('pointerdown', dismissGroupMenuFromOutsidePointer, true)
+  if (selectionCountFrame !== null) {
+    cancelAnimationFrame(selectionCountFrame)
+    selectionCountFrame = null
+  }
 })
 
 watch(
   () => props.host,
-  () => rememberCurrentEditorSelection(),
+  // Host swaps and editor teardown re-derive the count (a null host
+  // clears it), so a stale selection tally never outlives its editor.
+  () => {
+    rememberCurrentEditorSelection()
+    scheduleSelectionWordCount()
+  },
 )
 
 function rememberCurrentEditorSelection() {

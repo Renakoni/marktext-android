@@ -163,6 +163,7 @@ export const pt = {
   'toolbar.collapse': 'Recolher barra de ferramentas',
   'toolbar.groups': 'Grupos da barra de ferramentas',
   'toolbar.stats': '{words} palavras · {characters} caracteres · {lines} linhas',
+  'toolbar.statsSelection': '{words} selecionadas',
   'toolbar.panel.format': 'Formato',
   'toolbar.panel.formatTitle': 'Ênfase e marcas de texto',
   'toolbar.panel.paragraph': 'Parágrafo',

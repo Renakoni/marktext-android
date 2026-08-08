@@ -166,6 +166,49 @@ describe('documentState', () => {
     expect(getDocumentStats('Hello MarkText\n你好').words).toBe(4)
   })
 
+  it('counts only non-blank lines, ignoring block separators and the trailing newline', () => {
+    expect(getDocumentStats('').lines).toBe(0)
+    expect(getDocumentStats('one').lines).toBe(1)
+    // Muya-style serialization: heading, blank separator, two paragraphs,
+    // trailing newline — the user sees three content lines.
+    expect(getDocumentStats('# Title\n\npara one\n\npara two\n').lines).toBe(3)
+    expect(getDocumentStats('a\r\n\r\nb\r\n').lines).toBe(2)
+    expect(getDocumentStats('\n\n  \n').lines).toBe(0)
+  })
+
+  it('counts fenced code interiors verbatim and fence markers as syntax', () => {
+    // The user sees three lines in the block: alpha, a blank, beta. The
+    // interior blank is real content; the fences are not (#204 review).
+    expect(getDocumentStats('```js\nalpha\n\nbeta\n```\n').lines).toBe(3)
+    // A lone blank interior line is still one visible line.
+    expect(getDocumentStats('~~~\n\n~~~\n').lines).toBe(1)
+    // Tildes do not close a backtick fence: they are content inside it.
+    expect(getDocumentStats('```\n~~~\ncode\n```\n').lines).toBe(2)
+    // A longer run of the same marker does close (CommonMark).
+    expect(getDocumentStats('```\ncode\n````\n').lines).toBe(1)
+    // Fenced blocks between paragraphs compose with separator filtering.
+    expect(getDocumentStats('# T\n\n```\ncode\n```\n\npara\n').lines).toBe(3)
+  })
+
+  it('applies CommonMark delimiter rules to fence detection', () => {
+    // Four columns of indentation make the backticks indented-code
+    // CONTENT, not delimiters: all three lines are visible.
+    expect(getDocumentStats('    ```\n    alpha\n    ```\n').lines).toBe(3)
+    expect(getDocumentStats('\t```\n').lines).toBe(1)
+    // A 4-space-indented marker run cannot close a real fence either.
+    expect(getDocumentStats('```\ncode\n    ```\nstill code\n```\n').lines).toBe(3)
+    // Trailing text keeps a would-be closer inside the block.
+    expect(getDocumentStats('```\nalpha\n```not-a-closing-fence\nbeta\n```\n').lines).toBe(3)
+    // A backtick info string may not contain backticks: this is a
+    // paragraph with inline code, not a fence opener.
+    expect(getDocumentStats('```foo``` bar\n').lines).toBe(1)
+    // Tilde info strings are unrestricted.
+    expect(getDocumentStats('~~~ info `x`\ncode\n~~~\n').lines).toBe(1)
+    // Up to three spaces of indentation still delimit, and a closer may
+    // carry trailing whitespace.
+    expect(getDocumentStats('   ```\ncode\n```  \n').lines).toBe(1)
+  })
+
   it('normalizes CRLF documents to LF internally while preserving save intent', () => {
     const normalized = normalizeMarkdownForEditor('one\r\ntwo\r\n')
 

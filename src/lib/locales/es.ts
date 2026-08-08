@@ -163,6 +163,7 @@ export const es = {
   'toolbar.collapse': 'Contraer barra de herramientas',
   'toolbar.groups': 'Grupos de la barra de herramientas',
   'toolbar.stats': '{words} palabras · {characters} caracteres · {lines} líneas',
+  'toolbar.statsSelection': '{words} seleccionadas',
   'toolbar.panel.format': 'Formato',
   'toolbar.panel.formatTitle': 'Énfasis y marcas de texto',
   'toolbar.panel.paragraph': 'Párrafo',

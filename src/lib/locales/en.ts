@@ -158,6 +158,7 @@ export const en = {
   'toolbar.collapse': 'Collapse toolbar',
   'toolbar.groups': 'Toolbar groups',
   'toolbar.stats': '{words} words · {characters} chars · {lines} lines',
+  'toolbar.statsSelection': '{words} selected',
   'toolbar.panel.format': 'Format',
   'toolbar.panel.formatTitle': 'Emphasis and text marks',
   'toolbar.panel.paragraph': 'Paragraph',

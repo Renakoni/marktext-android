@@ -163,6 +163,7 @@ export const fr = {
   'toolbar.collapse': 'Réduire la barre d’outils',
   'toolbar.groups': 'Groupes de la barre d’outils',
   'toolbar.stats': '{words} mots · {characters} caractères · {lines} lignes',
+  'toolbar.statsSelection': '{words} sélectionnés',
   'toolbar.panel.format': 'Format',
   'toolbar.panel.formatTitle': 'Emphase et marques de texte',
   'toolbar.panel.paragraph': 'Paragraphe',

@@ -160,6 +160,7 @@ export const zhCN = {
   'toolbar.collapse': '收起工具栏',
   'toolbar.groups': '工具栏分组',
   'toolbar.stats': '{words} 字 · {characters} 字符 · {lines} 行',
+  'toolbar.statsSelection': '选中 {words} 字',
   'toolbar.panel.format': '格式',
   'toolbar.panel.formatTitle': '强调与文本标记',
   'toolbar.panel.paragraph': '段落',
