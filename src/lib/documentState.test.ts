@@ -176,6 +176,20 @@ describe('documentState', () => {
     expect(getDocumentStats('\n\n  \n').lines).toBe(0)
   })
 
+  it('counts fenced code interiors verbatim and fence markers as syntax', () => {
+    // The user sees three lines in the block: alpha, a blank, beta. The
+    // interior blank is real content; the fences are not (#204 review).
+    expect(getDocumentStats('```js\nalpha\n\nbeta\n```\n').lines).toBe(3)
+    // A lone blank interior line is still one visible line.
+    expect(getDocumentStats('~~~\n\n~~~\n').lines).toBe(1)
+    // Tildes do not close a backtick fence: they are content inside it.
+    expect(getDocumentStats('```\n~~~\ncode\n```\n').lines).toBe(2)
+    // A longer run of the same marker does close (CommonMark).
+    expect(getDocumentStats('```\ncode\n````\n').lines).toBe(1)
+    // Fenced blocks between paragraphs compose with separator filtering.
+    expect(getDocumentStats('# T\n\n```\ncode\n```\n\npara\n').lines).toBe(3)
+  })
+
   it('normalizes CRLF documents to LF internally while preserving save intent', () => {
     const normalized = normalizeMarkdownForEditor('one\r\ntwo\r\n')
 

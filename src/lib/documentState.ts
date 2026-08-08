@@ -259,17 +259,52 @@ export function countWords(markdown: string) {
   return latinWords + cjkCharacters
 }
 
+/**
+ * Lines the user sees as content. Blank lines between blocks are
+ * serialization artifacts (Muya's paragraph separators, the trailing
+ * newline) and do not count — but inside a fenced code block every line
+ * is visible content, blank ones included, while the fence markers
+ * themselves are syntax (#199, #204 review).
+ */
+function countContentLines(markdown: string): number {
+  let count = 0
+  let fence: { marker: string; length: number } | null = null
+
+  for (const line of markdown.split(/\r\n|\r|\n/)) {
+    const trimmed = line.trim()
+
+    if (fence) {
+      const marker = fence.marker
+      const closes =
+        trimmed.length >= fence.length
+        && Array.from(trimmed).every(character => character === marker)
+      if (closes) {
+        fence = null
+      } else {
+        count += 1
+      }
+      continue
+    }
+
+    const opened = /^(`{3,}|~{3,})/.exec(trimmed)
+    if (opened) {
+      fence = { marker: opened[1][0], length: opened[1].length }
+      continue
+    }
+
+    if (trimmed.length > 0) {
+      count += 1
+    }
+  }
+
+  return count
+}
+
 export function getDocumentStats(markdown: string): DocumentStats {
   return {
     words: countWords(markdown),
     characters: markdown.length,
-    // Non-blank lines only: Muya serializes blank separator lines between
-    // blocks and a trailing newline yields a phantom segment — neither is
-    // a line the user sees, and counting them overstated short documents
-    // ("10 lines" for a handful of visible ones, #199).
-    lines: markdown
-      ? markdown.split(/\r\n|\r|\n/).filter(line => line.trim().length > 0).length
-      : 0,
+    lines: countContentLines(markdown),
   }
 }
 

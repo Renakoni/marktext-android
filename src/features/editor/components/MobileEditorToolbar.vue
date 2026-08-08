@@ -14,6 +14,7 @@ import type { TableCommandId } from '../tableCommands'
 import { useI18n, type I18nKey } from '../../../lib/i18n'
 import { captureNonCollapsedSelectionRange } from '../selectionToolbar'
 import { countWords } from '../../../lib/documentState'
+import { getSelectionTextForStats } from '../selectionStats'
 import ToolbarCommandGlyph from '../../../components/ToolbarCommandGlyph.vue'
 
 const props = defineProps<{
@@ -90,40 +91,10 @@ const statsText = computed(() => {
     : `${stats} · ${t('toolbar.statsSelection', { words: selectionWordCount.value })}`
 })
 
-function readEditorSelectionText() {
+function updateSelectionWordCount() {
   const selection = document.getSelection()
   const host = props.host
-  if (!selection || selection.isCollapsed || selection.rangeCount === 0 || !host) {
-    return ''
-  }
-
-  const { anchorNode, focusNode } = selection
-  if (!anchorNode || !focusNode || !host.contains(anchorNode) || !host.contains(focusNode)) {
-    return ''
-  }
-
-  // Rendered math/ruby previews duplicate their source text in the DOM;
-  // a selection spanning one would count the formula twice. Only ranges
-  // that actually contain a preview pay for fragment cloning — plain
-  // selections keep the toString() fast path and its cleaner block-break
-  // whitespace.
-  let fragmentText = ''
-  let hasRenderedPreviews = false
-  for (let index = 0; index < selection.rangeCount; index += 1) {
-    const fragment = selection.getRangeAt(index).cloneContents()
-    const rendered = fragment.querySelectorAll('.mu-math-render, .mu-ruby-render')
-    if (rendered.length > 0) {
-      hasRenderedPreviews = true
-      rendered.forEach(node => node.remove())
-    }
-    fragmentText += fragment.textContent ?? ''
-  }
-
-  return hasRenderedPreviews ? fragmentText : selection.toString()
-}
-
-function updateSelectionWordCount() {
-  const text = readEditorSelectionText()
+  const text = selection && host ? getSelectionTextForStats(selection, host) : ''
   selectionWordCount.value = text.trim().length > 0 ? countWords(text) : null
 }
 
