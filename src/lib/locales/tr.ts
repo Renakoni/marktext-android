@@ -625,6 +625,7 @@ export const tr = {
   'about.update.noReleases': 'Henüz yayımlanmış sürüm yok',
   'about.update.badRelease': 'En son sürümde sürüm numarası belirtilmemiş',
   'about.update.unavailable': 'GitHub sürümlerine ulaşılamadı',
+  'about.update.rateLimited': 'GitHub şu anda bu ağdan gelen istekleri sınırlıyor — daha sonra yeniden deneyin veya sürüm sayfasını açın',
   'about.update.openRelease': 'GitHub sürümünü aç',
   'openLocations.title': 'Aç',
   'openLocations.back': 'Geri',

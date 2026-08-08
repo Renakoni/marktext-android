@@ -16,12 +16,21 @@ const updateStatus = computed(() => {
   return updateResult.value ? getUpdateStatus(updateResult.value) : undefined
 })
 
-const availableReleaseUrl = computed(() => {
-  if (checkingUpdates.value || updateResult.value?.status !== 'available') {
+// The release link doubles as the manual fallback: it shows when an
+// update is available AND when the check itself failed (rate limit,
+// network) — the releases page usually loads fine even while the API
+// is rate-limiting this IP. Only "no releases exist" leaves it hidden.
+const releaseLinkUrl = computed(() => {
+  if (checkingUpdates.value || !updateResult.value) {
     return null
   }
 
-  return updateResult.value.releaseUrl ?? APP_INFO.releasesUrl
+  const result = updateResult.value
+  if (result.status === 'current' || result.message === 'No published releases yet') {
+    return null
+  }
+
+  return result.releaseUrl ?? APP_INFO.releasesUrl
 })
 
 function getUpdateStatus(result: AppUpdateCheckResult) {
@@ -35,6 +44,10 @@ function getUpdateStatus(result: AppUpdateCheckResult) {
 
   if (result.message === 'No published releases yet') {
     return t('about.update.noReleases')
+  }
+
+  if (result.message === 'GitHub rate limited the update check') {
+    return t('about.update.rateLimited')
   }
 
   if (result.message === 'Latest release did not include a version') {
@@ -105,9 +118,9 @@ async function checkUpdates() {
       </button>
 
       <a
-        v-if="availableReleaseUrl"
+        v-if="releaseLinkUrl"
         class="about-row is-link"
-        :href="availableReleaseUrl"
+        :href="releaseLinkUrl"
         target="_blank"
         rel="noreferrer"
         data-testid="settings-open-release"
@@ -124,9 +137,9 @@ async function checkUpdates() {
         </span>
         <span class="about-row-trailing" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M8 8h8v8" />
-            <path d="M16 8l-9 9" />
-            <path d="M7 7h-1a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-1" />
+            <path d="M15 3h6v6" />
+            <path d="M10 14L21 3" />
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
           </svg>
         </span>
       </a>
@@ -150,9 +163,9 @@ async function checkUpdates() {
         </span>
         <span class="about-row-trailing" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M8 8h8v8" />
-            <path d="M16 8l-9 9" />
-            <path d="M7 7h-1a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-1" />
+            <path d="M15 3h6v6" />
+            <path d="M10 14L21 3" />
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
           </svg>
         </span>
       </a>

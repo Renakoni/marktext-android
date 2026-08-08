@@ -625,6 +625,7 @@ export const fr = {
   'about.update.noReleases': 'Aucune version publiée pour l’instant',
   'about.update.badRelease': 'La dernière version ne comportait pas de numéro de version',
   'about.update.unavailable': 'Impossible d’accéder aux versions GitHub',
+  'about.update.rateLimited': 'GitHub limite actuellement les requêtes de ce réseau — réessayez plus tard ou ouvrez la page des versions',
   'about.update.openRelease': 'Ouvrir la version sur GitHub',
   'openLocations.title': 'Ouvrir',
   'openLocations.back': 'Retour',

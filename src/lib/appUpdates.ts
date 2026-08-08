@@ -82,6 +82,19 @@ export async function checkForAppUpdates(fetchRelease: ReleaseFetch = fetch) {
       } satisfies AppUpdateCheckResult
     }
 
+    // GitHub's unauthenticated API allows 60 requests/hour PER IP; on a
+    // shared egress (VPN, CGNAT) the pool is routinely exhausted by other
+    // clients, and GitHub answers 403 (or 429). Not a client bug — name
+    // it, and leave the releases page as the manual path.
+    if (response.status === 403 || response.status === 429) {
+      return {
+        status: 'unavailable',
+        message: 'GitHub rate limited the update check',
+        latestVersion: null,
+        releaseUrl: APP_INFO.releasesUrl,
+      } satisfies AppUpdateCheckResult
+    }
+
     if (!response.ok) {
       return {
         status: 'unavailable',

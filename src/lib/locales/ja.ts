@@ -625,6 +625,7 @@ export const ja = {
   'about.update.noReleases': 'まだ公開されたリリースはありません',
   'about.update.badRelease': '最新リリースにバージョン情報が含まれていません',
   'about.update.unavailable': 'GitHub のリリース情報を取得できませんでした',
+  'about.update.rateLimited': '現在このネットワークは GitHub のレート制限を受けています。しばらくしてから再試行するか、リリースページを開いてください',
   'about.update.openRelease': 'GitHub のリリースを開く',
   'openLocations.title': '開く',
   'openLocations.back': '戻る',

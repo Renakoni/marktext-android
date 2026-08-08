@@ -626,6 +626,7 @@ export const de = {
   'about.update.noReleases': 'Noch keine veröffentlichten Releases',
   'about.update.badRelease': 'Das neueste Release enthält keine Versionsangabe',
   'about.update.unavailable': 'GitHub-Releases konnten nicht erreicht werden',
+  'about.update.rateLimited': 'GitHub begrenzt Anfragen aus diesem Netzwerk gerade – später erneut versuchen oder die Release-Seite öffnen',
   'about.update.openRelease': 'GitHub-Release öffnen',
   'openLocations.title': 'Öffnen',
   'openLocations.back': 'Zurück',

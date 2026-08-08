@@ -619,6 +619,7 @@ export const en = {
   'about.update.noReleases': 'No published releases yet',
   'about.update.badRelease': 'Latest release did not include a version number',
   'about.update.unavailable': 'Could not reach GitHub releases',
+  'about.update.rateLimited': 'GitHub is rate limiting this network right now — try again later or open the releases page',
   'about.update.openRelease': 'Open GitHub release',
   'openLocations.title': 'Open',
   'openLocations.back': 'Back',

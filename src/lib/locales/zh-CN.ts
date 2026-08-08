@@ -616,6 +616,7 @@ export const zhCN = {
   'about.update.noReleases': '暂无发布版本',
   'about.update.badRelease': '最新发布未包含版本号',
   'about.update.unavailable': '无法连接 GitHub Releases',
+  'about.update.rateLimited': '当前网络暂被 GitHub 限流，请稍后再试，或直接打开发布页',
   'about.update.openRelease': '打开 GitHub 发布页',
   'openLocations.title': '打开',
   'openLocations.back': '返回',
