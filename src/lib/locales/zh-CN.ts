@@ -628,8 +628,6 @@ export const zhCN = {
   'openLocations.cloudUnavailable': '此构建未配置',
   'openLocations.cloudConnecting': '正在等待浏览器登录…',
   'openLocations.cloudOpening': '正在打开所选文档…',
-  'openLocations.browseAll': '浏览全部位置',
-  'openLocations.browseAllSubtitle': '系统文件选择器与已安装的存储',
   'cloudBrowser.signInHint': '使用你的 Microsoft 账户登录,即可打开 OneDrive 中的 Markdown 文档。',
   'cloudBrowser.connect': '登录 OneDrive',
   'cloudBrowser.connecting': '正在等待浏览器登录…',

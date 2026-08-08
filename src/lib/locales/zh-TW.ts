@@ -637,8 +637,6 @@ export const zhTW = {
   'openLocations.cloudUnavailable': '此版本未設定',
   'openLocations.cloudConnecting': '正在等待瀏覽器登入…',
   'openLocations.cloudOpening': '正在開啟所選文件…',
-  'openLocations.browseAll': '瀏覽全部位置',
-  'openLocations.browseAllSubtitle': '系統檔案選擇器與已安裝的儲存',
   'cloudBrowser.signInHint': '使用你的 Microsoft 帳戶登入,即可開啟 OneDrive 中的 Markdown 文件。',
   'cloudBrowser.connect': '登入 OneDrive',
   'cloudBrowser.connecting': '正在等待瀏覽器登入…',
