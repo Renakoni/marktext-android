@@ -41,4 +41,19 @@ describe('checkForAppUpdates', () => {
       releaseUrl: APP_INFO.releasesUrl,
     })
   })
+
+  test('names the IP rate limit behind 403/429 and keeps the releases page reachable', async () => {
+    for (const status of [403, 429]) {
+      const result = await checkForAppUpdates(() =>
+        Promise.resolve(new Response('', { status })),
+      )
+
+      expect(result).toEqual({
+        status: 'unavailable',
+        message: 'GitHub rate limited the update check',
+        latestVersion: null,
+        releaseUrl: APP_INFO.releasesUrl,
+      })
+    }
+  })
 })

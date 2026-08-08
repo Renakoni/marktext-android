@@ -625,6 +625,7 @@ export const ko = {
   'about.update.noReleases': '아직 게시된 릴리스가 없습니다',
   'about.update.badRelease': '최신 릴리스에 버전 정보가 없습니다',
   'about.update.unavailable': 'GitHub 릴리스에 연결할 수 없습니다',
+  'about.update.rateLimited': '현재 네트워크가 GitHub 요청 제한을 받고 있습니다. 잠시 후 다시 시도하거나 릴리스 페이지를 여세요',
   'about.update.openRelease': 'GitHub 릴리스 열기',
   'openLocations.title': '열기',
   'openLocations.back': '뒤로',

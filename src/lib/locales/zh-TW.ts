@@ -625,6 +625,7 @@ export const zhTW = {
   'about.update.noReleases': '尚無發行版本',
   'about.update.badRelease': '最新發行版本未包含版本號',
   'about.update.unavailable': '無法取得 GitHub 發行資訊',
+  'about.update.rateLimited': '目前網路暫被 GitHub 限流，請稍後再試，或直接開啟發行頁',
   'about.update.openRelease': '開啟 GitHub 發行頁',
   'openLocations.title': '打開',
   'openLocations.back': '返回',

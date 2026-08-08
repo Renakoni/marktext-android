@@ -1,4 +1,5 @@
 import { APP_INFO } from './appInfo'
+import { AndroidAppInfo, isAndroidAppInfoAvailable } from './androidAppInfo'
 
 interface GitHubReleaseResponse {
   tag_name?: unknown
@@ -64,7 +65,62 @@ export function compareVersionTags(left: string, right: string) {
   return 0
 }
 
+function resolveAgainstCurrentVersion(
+  latestVersion: string,
+  releaseUrl: string,
+): AppUpdateCheckResult {
+  if (compareVersionTags(latestVersion, APP_INFO.version) > 0) {
+    return {
+      status: 'available',
+      message: `Update available: v${latestVersion}`,
+      latestVersion,
+      releaseUrl,
+    }
+  }
+
+  return {
+    status: 'current',
+    message: 'You are on the latest version',
+    latestVersion,
+    releaseUrl,
+  }
+}
+
+/**
+ * Native-first check: the releases/latest redirect on github.com carries
+ * the tag and sits outside the GitHub API's 60-requests/hour-per-IP
+ * quota, so it keeps working on shared-egress networks (VPN, CGNAT)
+ * where the unauthenticated API answers 403. Browser shells — and any
+ * native failure — fall through to the API fetch.
+ */
+async function checkViaNativeRedirect(): Promise<AppUpdateCheckResult | null> {
+  if (!isAndroidAppInfoAvailable()) {
+    return null
+  }
+
+  try {
+    const latest = await AndroidAppInfo.getLatestRelease()
+    const latestVersion = normalizeVersionTag(latest.tagName)
+    if (!latestVersion) {
+      return null
+    }
+
+    const releaseUrl =
+      typeof latest.releaseUrl === 'string' && latest.releaseUrl.length > 0
+        ? latest.releaseUrl
+        : APP_INFO.releasesUrl
+    return resolveAgainstCurrentVersion(latestVersion, releaseUrl)
+  } catch {
+    return null
+  }
+}
+
 export async function checkForAppUpdates(fetchRelease: ReleaseFetch = fetch) {
+  const nativeResult = await checkViaNativeRedirect()
+  if (nativeResult) {
+    return nativeResult
+  }
+
   try {
     const response = await fetchRelease(APP_INFO.latestReleaseApiUrl, {
       headers: {
@@ -77,6 +133,19 @@ export async function checkForAppUpdates(fetchRelease: ReleaseFetch = fetch) {
       return {
         status: 'unavailable',
         message: 'No published releases yet',
+        latestVersion: null,
+        releaseUrl: APP_INFO.releasesUrl,
+      } satisfies AppUpdateCheckResult
+    }
+
+    // GitHub's unauthenticated API allows 60 requests/hour PER IP; on a
+    // shared egress (VPN, CGNAT) the pool is routinely exhausted by other
+    // clients, and GitHub answers 403 (or 429). Not a client bug — name
+    // it, and leave the releases page as the manual path.
+    if (response.status === 403 || response.status === 429) {
+      return {
+        status: 'unavailable',
+        message: 'GitHub rate limited the update check',
         latestVersion: null,
         releaseUrl: APP_INFO.releasesUrl,
       } satisfies AppUpdateCheckResult
@@ -104,21 +173,7 @@ export async function checkForAppUpdates(fetchRelease: ReleaseFetch = fetch) {
       } satisfies AppUpdateCheckResult
     }
 
-    if (compareVersionTags(latestVersion, APP_INFO.version) > 0) {
-      return {
-        status: 'available',
-        message: `Update available: v${latestVersion}`,
-        latestVersion,
-        releaseUrl,
-      } satisfies AppUpdateCheckResult
-    }
-
-    return {
-      status: 'current',
-      message: 'You are on the latest version',
-      latestVersion,
-      releaseUrl,
-    } satisfies AppUpdateCheckResult
+    return resolveAgainstCurrentVersion(latestVersion, releaseUrl)
   } catch {
     return {
       status: 'unavailable',

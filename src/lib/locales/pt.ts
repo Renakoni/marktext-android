@@ -625,6 +625,7 @@ export const pt = {
   'about.update.noReleases': 'Ainda não há lançamentos publicados',
   'about.update.badRelease': 'O lançamento mais recente não informou a versão',
   'about.update.unavailable': 'Não foi possível acessar os lançamentos no GitHub',
+  'about.update.rateLimited': 'O GitHub está limitando as solicitações desta rede — tente mais tarde ou abra a página de lançamentos',
   'about.update.openRelease': 'Abrir lançamento no GitHub',
   'openLocations.title': 'Abrir',
   'openLocations.back': 'Voltar',
