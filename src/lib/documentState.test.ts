@@ -190,6 +190,25 @@ describe('documentState', () => {
     expect(getDocumentStats('# T\n\n```\ncode\n```\n\npara\n').lines).toBe(3)
   })
 
+  it('applies CommonMark delimiter rules to fence detection', () => {
+    // Four columns of indentation make the backticks indented-code
+    // CONTENT, not delimiters: all three lines are visible.
+    expect(getDocumentStats('    ```\n    alpha\n    ```\n').lines).toBe(3)
+    expect(getDocumentStats('\t```\n').lines).toBe(1)
+    // A 4-space-indented marker run cannot close a real fence either.
+    expect(getDocumentStats('```\ncode\n    ```\nstill code\n```\n').lines).toBe(3)
+    // Trailing text keeps a would-be closer inside the block.
+    expect(getDocumentStats('```\nalpha\n```not-a-closing-fence\nbeta\n```\n').lines).toBe(3)
+    // A backtick info string may not contain backticks: this is a
+    // paragraph with inline code, not a fence opener.
+    expect(getDocumentStats('```foo``` bar\n').lines).toBe(1)
+    // Tilde info strings are unrestricted.
+    expect(getDocumentStats('~~~ info `x`\ncode\n~~~\n').lines).toBe(1)
+    // Up to three spaces of indentation still delimit, and a closer may
+    // carry trailing whitespace.
+    expect(getDocumentStats('   ```\ncode\n```  \n').lines).toBe(1)
+  })
+
   it('normalizes CRLF documents to LF internally while preserving save intent', () => {
     const normalized = normalizeMarkdownForEditor('one\r\ntwo\r\n')
 

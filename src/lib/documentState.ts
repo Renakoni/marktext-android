@@ -259,26 +259,88 @@ export function countWords(markdown: string) {
   return latinWords + cjkCharacters
 }
 
+interface FenceDelimiter {
+  marker: '`' | '~'
+  length: number
+}
+
+/**
+ * CommonMark allows fence delimiters at most 3 columns of indentation;
+ * at 4 the line is indented-code content instead. Tabs advance to the
+ * next 4-column stop, so any leading tab already disqualifies.
+ */
+function fenceIndentDisqualifies(line: string): boolean {
+  let width = 0
+  for (const character of line) {
+    if (character === ' ') {
+      width += 1
+    } else if (character === '\t') {
+      width += 4 - (width % 4)
+    } else {
+      break
+    }
+    if (width >= 4) {
+      return true
+    }
+  }
+  return false
+}
+
+function parseFenceOpen(line: string): FenceDelimiter | null {
+  if (fenceIndentDisqualifies(line)) {
+    return null
+  }
+
+  const match = /^(`{3,}|~{3,})(.*)$/.exec(line.trim())
+  if (!match) {
+    return null
+  }
+
+  const marker = match[1][0] as FenceDelimiter['marker']
+  // A backtick fence's info string may not contain backticks (CommonMark):
+  // such a line is a paragraph with inline code, not a delimiter. Tilde
+  // info strings are unrestricted.
+  if (marker === '`' && match[2].includes('`')) {
+    return null
+  }
+
+  return { marker, length: match[1].length }
+}
+
+function isFenceClose(line: string, fence: FenceDelimiter): boolean {
+  if (fenceIndentDisqualifies(line)) {
+    return false
+  }
+
+  // A closing fence is a run of the opener's marker, at least as long,
+  // with nothing but whitespace around it — trailing text keeps the line
+  // inside the block.
+  const content = line.trim()
+  if (content.length < fence.length) {
+    return false
+  }
+  for (const character of content) {
+    if (character !== fence.marker) {
+      return false
+    }
+  }
+  return true
+}
+
 /**
  * Lines the user sees as content. Blank lines between blocks are
  * serialization artifacts (Muya's paragraph separators, the trailing
  * newline) and do not count — but inside a fenced code block every line
- * is visible content, blank ones included, while the fence markers
- * themselves are syntax (#199, #204 review).
+ * is visible content, blank ones included, while the fence delimiters
+ * themselves are syntax (#199, #204 review rounds 1–2).
  */
 function countContentLines(markdown: string): number {
   let count = 0
-  let fence: { marker: string; length: number } | null = null
+  let fence: FenceDelimiter | null = null
 
   for (const line of markdown.split(/\r\n|\r|\n/)) {
-    const trimmed = line.trim()
-
     if (fence) {
-      const marker = fence.marker
-      const closes =
-        trimmed.length >= fence.length
-        && Array.from(trimmed).every(character => character === marker)
-      if (closes) {
+      if (isFenceClose(line, fence)) {
         fence = null
       } else {
         count += 1
@@ -286,13 +348,13 @@ function countContentLines(markdown: string): number {
       continue
     }
 
-    const opened = /^(`{3,}|~{3,})/.exec(trimmed)
+    const opened = parseFenceOpen(line)
     if (opened) {
-      fence = { marker: opened[1][0], length: opened[1].length }
+      fence = opened
       continue
     }
 
-    if (trimmed.length > 0) {
+    if (line.trim().length > 0) {
       count += 1
     }
   }

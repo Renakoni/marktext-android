@@ -21,9 +21,15 @@ export interface SelectionLike {
  * Rendered math/ruby previews duplicate their source text in the DOM, so
  * a selection crossing one must be re-read from cloned fragments with
  * the previews removed. Cloning is proportional to the selection, so the
- * probe below decides WITHOUT cloning — ancestor and scoped-query checks
- * only — and plain selections (the overwhelming case, every frame of a
- * handle drag) stay on the toString() fast path (#204 review).
+ * probe below decides WITHOUT cloning, keeping plain selections (every
+ * frame of a handle drag) on the toString() fast path.
+ *
+ * Honest cost model (#204 review round 2): the probe is not free — it is
+ * an engine-level selector test over the range's common-ancestor
+ * subtree. On the no-preview path that is one querySelector() scan,
+ * which early-exits on a match and materializes no NodeList; fragment
+ * clones and NodeList allocations only happen once a preview is actually
+ * present under the ancestor.
  */
 export function getSelectionTextForStats(selection: SelectionLike, host: HTMLElement): string {
   if (selection.isCollapsed || selection.rangeCount === 0) {
@@ -71,9 +77,19 @@ function probeRenderedPreviews(selection: SelectionLike): 'none' | 'inside' | 'c
       return 'inside'
     }
 
-    // …or span across previews below its common ancestor. Selector
-    // matching plus intersectsNode never allocates; preview counts are
-    // small in real documents.
+    // …or span across previews below its common ancestor. Existence
+    // first: querySelector early-exits on the first match and allocates
+    // no NodeList, so the common no-preview case pays exactly one native
+    // scan. Only when a preview exists does the full list materialize
+    // for the intersection walk (preview counts are small in practice).
+    const firstPreview = scope.querySelector(RENDERED_PREVIEW_SELECTOR)
+    if (!firstPreview) {
+      continue
+    }
+    if (range.intersectsNode(firstPreview)) {
+      crosses = true
+      continue
+    }
     for (const preview of scope.querySelectorAll(RENDERED_PREVIEW_SELECTOR)) {
       if (range.intersectsNode(preview)) {
         crosses = true

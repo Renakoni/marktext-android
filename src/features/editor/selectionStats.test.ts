@@ -1,6 +1,10 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getSelectionTextForStats, type SelectionLike } from './selectionStats'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 function buildHost(html: string) {
   const host = document.createElement('div')
@@ -55,6 +59,22 @@ describe('getSelectionTextForStats', () => {
     // The fake range throws on cloneContents, so this passing IS the
     // proof that plain selections never pay for a fragment copy.
     expect(getSelectionTextForStats(selection, host)).toBe('alpha beta')
+  })
+
+  it('never materializes a NodeList on the no-preview path', () => {
+    const host = buildHost('<p>alpha beta gamma</p>')
+    const textNode = host.querySelector('p')!.firstChild!
+    const queryAllSpy = vi.spyOn(Element.prototype, 'querySelectorAll')
+
+    const selection = fakeSelection('alpha beta', textNode, textNode, [
+      { commonAncestorContainer: host.querySelector('p')! },
+    ])
+
+    expect(getSelectionTextForStats(selection, host)).toBe('alpha beta')
+    // The probe may run querySelector (early-exit, no list); the full
+    // querySelectorAll walk is reserved for documents that actually
+    // contain previews under the range's ancestor.
+    expect(queryAllSpy).not.toHaveBeenCalled()
   })
 
   it('stays on the fast path when previews exist elsewhere in the block', () => {
