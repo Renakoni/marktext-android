@@ -164,6 +164,7 @@ export const de = {
   'toolbar.collapse': 'Symbolleiste einklappen',
   'toolbar.groups': 'Symbolleisten-Gruppen',
   'toolbar.stats': '{words} Wörter · {characters} Zeichen · {lines} Zeilen',
+  'toolbar.statsSelection': '{words} ausgewählt',
   'toolbar.panel.format': 'Format',
   'toolbar.panel.formatTitle': 'Hervorhebung und Textmarkierungen',
   'toolbar.panel.paragraph': 'Absatz',

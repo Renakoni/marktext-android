@@ -163,6 +163,7 @@ export const ko = {
   'toolbar.collapse': '도구 모음 접기',
   'toolbar.groups': '도구 모음 그룹',
   'toolbar.stats': '단어 {words}개 · {characters}자 · {lines}줄',
+  'toolbar.statsSelection': '선택 {words}개',
   'toolbar.panel.format': '서식',
   'toolbar.panel.formatTitle': '강조 및 텍스트 표시',
   'toolbar.panel.paragraph': '단락',

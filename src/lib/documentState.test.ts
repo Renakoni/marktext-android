@@ -166,6 +166,16 @@ describe('documentState', () => {
     expect(getDocumentStats('Hello MarkText\n你好').words).toBe(4)
   })
 
+  it('counts only non-blank lines, ignoring block separators and the trailing newline', () => {
+    expect(getDocumentStats('').lines).toBe(0)
+    expect(getDocumentStats('one').lines).toBe(1)
+    // Muya-style serialization: heading, blank separator, two paragraphs,
+    // trailing newline — the user sees three content lines.
+    expect(getDocumentStats('# Title\n\npara one\n\npara two\n').lines).toBe(3)
+    expect(getDocumentStats('a\r\n\r\nb\r\n').lines).toBe(2)
+    expect(getDocumentStats('\n\n  \n').lines).toBe(0)
+  })
+
   it('normalizes CRLF documents to LF internally while preserving save intent', () => {
     const normalized = normalizeMarkdownForEditor('one\r\ntwo\r\n')
 

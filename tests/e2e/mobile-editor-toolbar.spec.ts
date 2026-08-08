@@ -1188,3 +1188,31 @@ test('switches toolbar sections and applies paragraph commands to the current pa
 
   await expect.poll(() => getDraftStorage(page)).toContain('- [ ] next action')
 })
+
+test('counts content lines only and appends the selection word count (#199)', async ({
+  page,
+}) => {
+  await newBlankDocument(page)
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('# Stats note')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('alpha beta gamma')
+
+  // Serialized markdown carries a blank separator line and a trailing
+  // newline; only the two content lines may count (#199 line bug).
+  await page.getByTestId('toolbar-expand-button').click()
+  const stats = page.getByTestId('toolbar-document-stats')
+  await expect(stats).toContainText('5 words')
+  await expect(stats).toContainText('2 lines')
+  await expect(stats).not.toContainText('selected')
+
+  await selectTextInFirstParagraph(page, 'alpha beta')
+  await expect(stats).toContainText('2 selected')
+
+  // Collapsing the selection clears the tally from the stats line.
+  await page.evaluate(() => {
+    document.getSelection()?.removeAllRanges()
+    document.dispatchEvent(new Event('selectionchange'))
+  })
+  await expect(stats).not.toContainText('selected')
+})

@@ -263,7 +263,13 @@ export function getDocumentStats(markdown: string): DocumentStats {
   return {
     words: countWords(markdown),
     characters: markdown.length,
-    lines: markdown ? markdown.split(/\r\n|\r|\n/).length : 0,
+    // Non-blank lines only: Muya serializes blank separator lines between
+    // blocks and a trailing newline yields a phantom segment — neither is
+    // a line the user sees, and counting them overstated short documents
+    // ("10 lines" for a handful of visible ones, #199).
+    lines: markdown
+      ? markdown.split(/\r\n|\r|\n/).filter(line => line.trim().length > 0).length
+      : 0,
   }
 }
 

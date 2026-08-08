@@ -163,6 +163,7 @@ export const zhTW = {
   'toolbar.collapse': '收合工具列',
   'toolbar.groups': '工具列群組',
   'toolbar.stats': '{words} 字 · {characters} 字元 · {lines} 行',
+  'toolbar.statsSelection': '選取 {words} 字',
   'toolbar.panel.format': '格式',
   'toolbar.panel.formatTitle': '強調與文字標記',
   'toolbar.panel.paragraph': '段落',
