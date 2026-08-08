@@ -1,16 +1,9 @@
-import { Capacitor, registerPlugin } from '@capacitor/core'
-
-interface NativeAdvancedDiagnostics {
-  deviceInfo: string
-  webViewInfo: string
-  manufacturer?: string
-}
-
-interface AndroidAppInfoPlugin {
-  getDiagnostics(): Promise<NativeAdvancedDiagnostics>
-}
-
-const AndroidAppInfo = registerPlugin<AndroidAppInfoPlugin>('AndroidAppInfo')
+import { Capacitor } from '@capacitor/core'
+import {
+  AndroidAppInfo,
+  isAndroidAppInfoAvailable,
+  type NativeAdvancedDiagnostics,
+} from '../../lib/androidAppInfo'
 
 function getBrowserDiagnostics(): NativeAdvancedDiagnostics {
   return {
@@ -20,7 +13,7 @@ function getBrowserDiagnostics(): NativeAdvancedDiagnostics {
 }
 
 export async function getAdvancedDiagnostics(): Promise<NativeAdvancedDiagnostics> {
-  if (Capacitor.getPlatform() !== 'android' || !Capacitor.isNativePlatform()) {
+  if (!isAndroidAppInfoAvailable()) {
     return getBrowserDiagnostics()
   }
 

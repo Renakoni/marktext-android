@@ -8,9 +8,34 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @CapacitorPlugin(name = "AndroidAppInfo")
 public class AndroidAppInfoPlugin extends Plugin {
+
+    private final ExecutorService updateExecutor = Executors.newSingleThreadExecutor();
+    private final AppUpdateChecker updateChecker = new AppUpdateChecker(new UrlConnectionTransport());
+
+    /**
+     * Latest published release via the github.com redirect — see
+     * {@link AppUpdateChecker}. The web layer falls back to the GitHub
+     * API when this rejects, so failures stay coarse-grained.
+     */
+    @PluginMethod
+    public void getLatestRelease(PluginCall call) {
+        updateExecutor.execute(() -> {
+            try {
+                AppUpdateChecker.LatestRelease latest = updateChecker.fetchLatestRelease();
+                JSObject result = new JSObject();
+                result.put("tagName", latest.tagName);
+                result.put("releaseUrl", latest.releaseUrl);
+                call.resolve(result);
+            } catch (Exception ex) {
+                call.reject("Could not resolve the latest release", "UPDATE_CHECK_FAILED");
+            }
+        });
+    }
 
     @PluginMethod
     public void getDiagnostics(PluginCall call) {
