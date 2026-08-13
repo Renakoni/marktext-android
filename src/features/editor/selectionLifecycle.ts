@@ -61,6 +61,7 @@ export function createEditorSelectionLifecycle(
 ): EditorSelectionLifecycle {
   let nativeSelectionTapCleanup: (() => Promise<void>) | null = null
   let nativeSelectionContextCleanup: (() => Promise<void>) | null = null
+  let outsideTapGeneration = 0
 
   function captureEditorSelection() {
     return captureSelectionWithin(
@@ -121,6 +122,29 @@ export function createEditorSelectionLifecycle(
     } catch {
       return null
     }
+  }
+
+  function liveSelectionMatchesRange(expected: Range) {
+    const selection = document.getSelection()
+    if (!selection || selection.rangeCount !== 1) {
+      return false
+    }
+
+    try {
+      const live = selection.getRangeAt(0)
+      return (
+        live.startContainer === expected.startContainer &&
+        live.startOffset === expected.startOffset &&
+        live.endContainer === expected.endContainer &&
+        live.endOffset === expected.endOffset
+      )
+    } catch {
+      return false
+    }
+  }
+
+  function waitForSelectionGestureToSettle() {
+    return new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()))
   }
 
   function focusEditorDomNode(activeEditor: MuyaEditor) {
@@ -235,23 +259,81 @@ export function createEditorSelectionLifecycle(
   }
 
   function finishSelectionToolbarOutsideTap(caretRange: Range | null) {
+    const generation = ++outsideTapGeneration
     const activeEditor = options.editorReady.value ? options.getEditor() : null
     if (!activeEditor) {
       void finishEditorSelectionActionMode('selection-toolbar-outside-tap')
       return
     }
 
-    if (caretRange) {
-      restoreCollapsedEditorRange(activeEditor, caretRange)
+    if (!caretRange) {
+      void finishEditorSelectionActionMode('selection-toolbar-outside-tap')
+      return
     }
-    void finishEditorSelectionActionModeAndRestoreCaret(
-      'selection-toolbar-outside-tap',
-      activeEditor,
-      caretRange,
-    ).then((finished) => {
-      if (finished) {
+
+    // Give the current touch + synthesized mouse sequence one paint boundary
+    // to settle. A quick third tap can upgrade the caret to Blink's paragraph
+    // selection after touchend; finishing ActionMode before that happens lets
+    // the stale dismissal overwrite the newer selection (#205).
+    restoreCollapsedEditorRange(activeEditor, caretRange)
+    void waitForSelectionGestureToSettle().then(async () => {
+      if (generation !== outsideTapGeneration || !liveSelectionMatchesRange(caretRange)) {
+        options.logger.debug('selection toolbar outside tap superseded before finish', {
+          generation,
+        })
+        return
+      }
+
+      // ActionMode.finish() crosses JNI and can itself clear the DOM range.
+      // Remember any DIFFERENT non-empty selection observed while it is in
+      // flight, so a newer word/paragraph selection cannot be mistaken for
+      // the native clear and replaced with this request's old caret.
+      let ownershipLost = false
+      const watchOwnership = () => {
+        const selection = document.getSelection()
+        if (
+          selection &&
+          selection.rangeCount > 0 &&
+          !selection.isCollapsed &&
+          !liveSelectionMatchesRange(caretRange)
+        ) {
+          ownershipLost = true
+        }
+      }
+      document.addEventListener('selectionchange', watchOwnership)
+
+      let finished: boolean
+      try {
+        finished = await finishEditorSelectionActionMode('selection-toolbar-outside-tap')
+        if (finished) {
+          // The native bridge resolves immediately after ActionMode.finish(),
+          // while Chromium may publish its resulting selectionchange on the
+          // following frame. Keep the ownership watch alive through that
+          // boundary before deciding whether the old caret may be restored.
+          await waitForSelectionGestureToSettle()
+        }
+      } finally {
+        document.removeEventListener('selectionchange', watchOwnership)
+      }
+
+      if (!finished) {
+        return
+      }
+
+      const selection = document.getSelection()
+      const nativeClearedSelection = !selection || selection.rangeCount === 0
+      if (
+        generation === outsideTapGeneration &&
+        !ownershipLost &&
+        (nativeClearedSelection || liveSelectionMatchesRange(caretRange))
+      ) {
+        restoreCollapsedEditorRange(activeEditor, caretRange)
         options.logger.debug('selection toolbar outside tap dismissed', {
-          restoredCaret: Boolean(caretRange),
+          restoredCaret: true,
+        })
+      } else {
+        options.logger.debug('selection toolbar outside tap superseded during finish', {
+          generation,
         })
       }
     })
@@ -440,6 +522,7 @@ export function createEditorSelectionLifecycle(
   }
 
   async function uninstallNativeSelectionTapListener() {
+    outsideTapGeneration += 1
     const cleanup = nativeSelectionTapCleanup
     const contextCleanup = nativeSelectionContextCleanup
     nativeSelectionTapCleanup = null

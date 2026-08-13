@@ -82,6 +82,23 @@ function selectAllOf(root: HTMLElement) {
   return range.cloneRange()
 }
 
+function caretAt(root: HTMLElement, offset: number) {
+  const range = document.createRange()
+  range.setStart(root.firstChild!, offset)
+  range.collapse(true)
+  return range
+}
+
+async function flushSelectionGestureFrame() {
+  await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()))
+  await Promise.resolve()
+}
+
+async function flushOutsideTapDismissal() {
+  await flushSelectionGestureFrame()
+  await flushSelectionGestureFrame()
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(isAndroidSelectionControlAvailable).mockReturnValue(false)
@@ -214,13 +231,82 @@ describe('selectionLifecycle', () => {
     tapHandler({ x: 10, y: 10 })
     expect(finishAndroidEditorSelectionActionMode).not.toHaveBeenCalled()
 
-    // Expanded selection + tap outside the toolbar: dismiss.
+    // Expanded selection + qualified outside tap: dismiss after the gesture
+    // frame confirms that Blink did not upgrade it to a newer selection.
     selectAllOf(root)
-    tapHandler({ x: 10, y: 10 })
-    await Promise.resolve()
+    const caret = caretAt(root, 2)
+    lifecycle.finishSelectionToolbarOutsideTap(caret)
+    await flushOutsideTapDismissal()
     expect(finishAndroidEditorSelectionActionMode).toHaveBeenCalledWith(
       'selection-toolbar-outside-tap',
     )
+    expect(document.getSelection()!.isCollapsed).toBe(true)
+    expect(document.getSelection()!.anchorOffset).toBe(2)
+  })
+
+  it('keeps a paragraph selection that replaces the dismissal caret before finish', async () => {
+    const { lifecycle, root } = createHarness()
+    selectAllOf(root)
+
+    lifecycle.finishSelectionToolbarOutsideTap(caretAt(root, 2))
+    // Blink's synthetic triple-click selection lands later in the same
+    // gesture, after touchend requested dismissal but before the next frame.
+    selectAllOf(root)
+    await flushSelectionGestureFrame()
+
+    expect(finishAndroidEditorSelectionActionMode).not.toHaveBeenCalled()
+    expect(document.getSelection()!.toString()).toBe('selected words here')
+  })
+
+  it('does not restore the old caret when ownership changes while native finish is pending', async () => {
+    let resolveFinish!: (finished: boolean) => void
+    vi.mocked(finishAndroidEditorSelectionActionMode).mockImplementation(
+      () => new Promise(resolve => {
+        resolveFinish = resolve
+      }),
+    )
+    const { lifecycle, root } = createHarness()
+    lifecycle.finishSelectionToolbarOutsideTap(caretAt(root, 2))
+    await flushSelectionGestureFrame()
+
+    selectAllOf(root)
+    document.dispatchEvent(new Event('selectionchange'))
+    document.getSelection()!.removeAllRanges()
+    document.dispatchEvent(new Event('selectionchange'))
+    resolveFinish(true)
+    await flushSelectionGestureFrame()
+
+    expect(document.getSelection()!.rangeCount).toBe(0)
+  })
+
+  it('keeps ownership watching through the frame after native finish resolves', async () => {
+    let resolveFinish!: (finished: boolean) => void
+    vi.mocked(finishAndroidEditorSelectionActionMode).mockImplementation(
+      () => new Promise(resolve => {
+        resolveFinish = resolve
+      }),
+    )
+    const { lifecycle, root } = createHarness()
+    lifecycle.finishSelectionToolbarOutsideTap(caretAt(root, 2))
+    await flushSelectionGestureFrame()
+
+    resolveFinish(true)
+    await Promise.resolve()
+    selectAllOf(root)
+    document.dispatchEvent(new Event('selectionchange'))
+    await flushSelectionGestureFrame()
+
+    expect(document.getSelection()!.toString()).toBe('selected words here')
+  })
+
+  it('lets only the latest outside-tap dismissal finish', async () => {
+    const { lifecycle, root } = createHarness()
+    lifecycle.finishSelectionToolbarOutsideTap(caretAt(root, 2))
+    lifecycle.finishSelectionToolbarOutsideTap(caretAt(root, 5))
+    await flushOutsideTapDismissal()
+
+    expect(finishAndroidEditorSelectionActionMode).toHaveBeenCalledTimes(1)
+    expect(document.getSelection()!.anchorOffset).toBe(5)
   })
 
   it('keeps the selection when the tap lands on a selection-toolbar button', async () => {
