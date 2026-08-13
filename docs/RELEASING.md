@@ -55,6 +55,19 @@ high-entropy password. Clear the clipboard after each secret is entered.
    creates a draft GitHub Release containing the APK and SHA-256 checksum.
 8. Inspect the draft notes and assets, then publish the Release manually.
 
+## v0.2.1 release record
+
+`v0.2.1` was published on August 13, 2026 (UTC) from commit `42335a4`. The tag
+workflow produced `marktext-android-v0.2.1.apk` and its SHA-256 file. The
+published APK:
+
+- is 8,086,250 bytes;
+- has SHA-256 `63b58fc99a486f10f6f7402aadde7f78f4795e5061d0c8a4a45ef164c032e191`;
+- passed APK Signature Scheme v2 and the pinned release-certificate check; and
+- passed a same-key upgrade over an installed v0.2.0 (versionCode 2 → 3) on an
+  API 35 emulator, retaining a pre-existing local draft and opening it in the
+  editor after the upgrade.
+
 ## v0.2.0 release record
 
 `v0.2.0` was published on August 7, 2026 (UTC) from commit `1c89555`. The tag
