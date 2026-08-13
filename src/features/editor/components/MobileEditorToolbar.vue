@@ -15,7 +15,12 @@ import { useI18n, type I18nKey } from '../../../lib/i18n'
 import { captureNonCollapsedSelectionRange } from '../selectionToolbar'
 import { countWords } from '../../../lib/documentState'
 import { getSelectionTextForStats } from '../selectionStats'
-import { createImeVisibilityEstimator } from '../imeVisibility'
+import { createImeVisibilityEstimator, type ImeVisibility } from '../imeVisibility'
+import {
+  addAndroidImeVisibilityListener,
+  getAndroidImeVisibility,
+  isAndroidSelectionControlAvailable,
+} from '../../../lib/androidSelection'
 import ToolbarCommandGlyph from '../../../components/ToolbarCommandGlyph.vue'
 
 const props = defineProps<{
@@ -180,8 +185,12 @@ onMounted(() => {
   document.addEventListener('selectionchange', scheduleSelectionWordCount)
   document.addEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
   document.addEventListener('pointerdown', dismissGroupMenuFromOutsidePointer, true)
-  window.addEventListener('resize', sampleImeVisibility)
-  sampleImeVisibility()
+  if (nativeImeVisibilityAvailable) {
+    void installNativeImeVisibility()
+  } else {
+    window.addEventListener('resize', sampleFallbackImeVisibility)
+    sampleFallbackImeVisibility()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -189,7 +198,13 @@ onBeforeUnmount(() => {
   document.removeEventListener('selectionchange', scheduleSelectionWordCount)
   document.removeEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
   document.removeEventListener('pointerdown', dismissGroupMenuFromOutsidePointer, true)
-  window.removeEventListener('resize', sampleImeVisibility)
+  window.removeEventListener('resize', sampleFallbackImeVisibility)
+  imeListenerGeneration += 1
+  const removeImeListener = nativeImeListenerCleanup
+  nativeImeListenerCleanup = null
+  if (removeImeListener) {
+    void removeImeListener()
+  }
   if (selectionCountFrame !== null) {
     cancelAnimationFrame(selectionCountFrame)
     selectionCountFrame = null
@@ -253,14 +268,46 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
 // search paths rely on the same contract).
 
 const imeEstimator = createImeVisibilityEstimator()
-const imeLikelyVisible = ref(false)
+const nativeImeVisibilityAvailable = isAndroidSelectionControlAvailable()
+const imeVisibility = ref<ImeVisibility>('unknown')
+let nativeImeListenerCleanup: (() => Promise<void>) | null = null
+let imeListenerGeneration = 0
+let nativeImeEventVersion = 0
 
-function sampleImeVisibility() {
-  imeLikelyVisible.value = imeEstimator.update(window.innerWidth, window.innerHeight)
+function sampleFallbackImeVisibility() {
+  imeVisibility.value = imeEstimator.update(window.innerWidth, window.innerHeight)
+}
+
+async function installNativeImeVisibility() {
+  const generation = ++imeListenerGeneration
+  const cleanup = await addAndroidImeVisibilityListener(({ visible }) => {
+    if (generation === imeListenerGeneration) {
+      nativeImeEventVersion += 1
+      imeVisibility.value = visible ? 'visible' : 'hidden'
+    }
+  })
+
+  if (generation !== imeListenerGeneration) {
+    await cleanup?.()
+    return
+  }
+
+  nativeImeListenerCleanup = cleanup
+  const eventVersionBeforeQuery = nativeImeEventVersion
+  const visible = await getAndroidImeVisibility()
+  if (
+    generation === imeListenerGeneration &&
+    nativeImeEventVersion === eventVersionBeforeQuery &&
+    visible !== null
+  ) {
+    imeVisibility.value = visible ? 'visible' : 'hidden'
+  }
 }
 
 function onToolbarPointerDownCapture() {
-  if (imeLikelyVisible.value) {
+  // Unknown is deliberately non-intervention: native insets have not arrived,
+  // or the viewport fallback has not observed a trustworthy full-height base.
+  if (imeVisibility.value !== 'hidden') {
     return
   }
 

@@ -35,6 +35,7 @@ public class MainActivity extends BridgeActivity {
     private final ArrayDeque<String> selectionActionModeEvents = new ArrayDeque<>();
 
     private volatile boolean webContentReady = false;
+    private Boolean imeVisible = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -241,6 +242,27 @@ public class MainActivity extends BridgeActivity {
         if (plugin instanceof AndroidSelectionPlugin) {
             ((AndroidSelectionPlugin) plugin).emitSelectionContextRequest();
         }
+    }
+
+    void updateImeVisibility(boolean visible) {
+        if (imeVisible != null && imeVisible == visible) {
+            return;
+        }
+
+        imeVisible = visible;
+        if (getBridge() == null) {
+            return;
+        }
+
+        PluginHandle handle = getBridge().getPlugin("AndroidSelection");
+        Plugin plugin = handle == null ? null : handle.getInstance();
+        if (plugin instanceof AndroidSelectionPlugin) {
+            ((AndroidSelectionPlugin) plugin).emitImeVisibilityChanged(visible);
+        }
+    }
+
+    Boolean getImeVisibility() {
+        return imeVisible;
     }
 
     void notifySelectionTap(float cssX, float cssY) {
