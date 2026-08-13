@@ -174,29 +174,6 @@ const { t } = useI18n()
         </button>
       </div>
 
-      <button
-        v-if="mode !== 'save'"
-        type="button"
-        class="open-location-row"
-        @click="emit('browseAll')"
-      >
-        <span class="open-location-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="24" height="24">
-            <path
-              d="M3.5 7.5v-2a1 1 0 0 1 1-1h4l2 2h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-11Z"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </span>
-        <span class="open-location-text">
-          <span class="open-location-label">{{ t('openLocations.browseAll') }}</span>
-          <span class="open-location-subtitle">{{ t('openLocations.browseAllSubtitle') }}</span>
-        </span>
-      </button>
-
       <p v-if="notice" class="open-locations-notice" role="alert">{{ notice }}</p>
     </div>
   </div>

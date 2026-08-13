@@ -637,8 +637,6 @@ export const fr = {
   'openLocations.cloudUnavailable': 'Non configuré dans cette version',
   'openLocations.cloudConnecting': 'En attente de la connexion dans le navigateur…',
   'openLocations.cloudOpening': 'Ouverture du document choisi…',
-  'openLocations.browseAll': 'Parcourir tous les emplacements',
-  'openLocations.browseAllSubtitle': 'Sélecteur de fichiers du système et fournisseurs installés',
   'cloudBrowser.signInHint': 'Connectez-vous avec votre compte Microsoft pour ouvrir des documents Markdown depuis OneDrive.',
   'cloudBrowser.connect': 'Se connecter à OneDrive',
   'cloudBrowser.connecting': 'En attente de la connexion dans le navigateur…',

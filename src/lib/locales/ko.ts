@@ -637,8 +637,6 @@ export const ko = {
   'openLocations.cloudUnavailable': '이 빌드에는 설정되지 않음',
   'openLocations.cloudConnecting': '브라우저 로그인을 기다리는 중…',
   'openLocations.cloudOpening': '선택한 문서를 여는 중…',
-  'openLocations.browseAll': '모든 위치 찾아보기',
-  'openLocations.browseAllSubtitle': '시스템 파일 선택기 및 설치된 제공자',
   'cloudBrowser.signInHint': 'Microsoft 계정으로 로그인하면 OneDrive의 Markdown 문서를 열 수 있습니다.',
   'cloudBrowser.connect': 'OneDrive에 로그인',
   'cloudBrowser.connecting': '브라우저 로그인을 기다리는 중…',
