@@ -15,6 +15,12 @@ import { useI18n, type I18nKey } from '../../../lib/i18n'
 import { captureNonCollapsedSelectionRange } from '../selectionToolbar'
 import { countWords } from '../../../lib/documentState'
 import { getSelectionTextForStats } from '../selectionStats'
+import { createImeVisibilityEstimator, type ImeVisibility } from '../imeVisibility'
+import {
+  addAndroidImeVisibilityListener,
+  getAndroidImeVisibility,
+  isAndroidSelectionControlAvailable,
+} from '../../../lib/androidSelection'
 import ToolbarCommandGlyph from '../../../components/ToolbarCommandGlyph.vue'
 
 const props = defineProps<{
@@ -131,6 +137,15 @@ watch(groupMenuOpen, open => {
     return
   }
 
+  // Only while the editor owns focus: the native caret handle this hides
+  // exists only for a focused editable, and re-applying the range via
+  // addRange() would FOCUS the editable (Chromium) — resummoning the
+  // dismissed keyboard the #200 guard just avoided.
+  const active = document.activeElement
+  if (!active || !props.host?.contains(active)) {
+    return
+  }
+
   const selection = document.getSelection()
   if (!selection || selection.rangeCount === 0) {
     return
@@ -170,6 +185,12 @@ onMounted(() => {
   document.addEventListener('selectionchange', scheduleSelectionWordCount)
   document.addEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
   document.addEventListener('pointerdown', dismissGroupMenuFromOutsidePointer, true)
+  if (nativeImeVisibilityAvailable) {
+    void installNativeImeVisibility()
+  } else {
+    window.addEventListener('resize', sampleFallbackImeVisibility)
+    sampleFallbackImeVisibility()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -177,6 +198,13 @@ onBeforeUnmount(() => {
   document.removeEventListener('selectionchange', scheduleSelectionWordCount)
   document.removeEventListener('pointerdown', clearEditorSelectionRangeFromEditorPointer, true)
   document.removeEventListener('pointerdown', dismissGroupMenuFromOutsidePointer, true)
+  window.removeEventListener('resize', sampleFallbackImeVisibility)
+  imeListenerGeneration += 1
+  const removeImeListener = nativeImeListenerCleanup
+  nativeImeListenerCleanup = null
+  if (removeImeListener) {
+    void removeImeListener()
+  }
   if (selectionCountFrame !== null) {
     cancelAnimationFrame(selectionCountFrame)
     selectionCountFrame = null
@@ -226,6 +254,68 @@ function selectPanel(panel: MobileEditorToolbarPanel) {
 function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
   return t(command.titleKey) || command.title
 }
+
+// --- Keyboard resummon guard (#200). Every toolbar control prevents
+// pointerdown/mousedown defaults so taps never steal editor focus — but
+// dismissing the IME with Back leaves the editor FOCUSED, and Android
+// Chromium re-shows the keyboard for any page-consumed tap while an
+// editable holds focus. So: when the IME reads hidden, strip
+// editor-owned focus before the tap completes. Navigational controls
+// (expand/collapse, panel switcher, stats) then leave the keyboard
+// down; edit commands restore focus themselves through the
+// restore-range machinery, so their keyboard behavior is unchanged.
+// Muya's cached internal selection survives the blur (the outline and
+// search paths rely on the same contract).
+
+const imeEstimator = createImeVisibilityEstimator()
+const nativeImeVisibilityAvailable = isAndroidSelectionControlAvailable()
+const imeVisibility = ref<ImeVisibility>('unknown')
+let nativeImeListenerCleanup: (() => Promise<void>) | null = null
+let imeListenerGeneration = 0
+let nativeImeEventVersion = 0
+
+function sampleFallbackImeVisibility() {
+  imeVisibility.value = imeEstimator.update(window.innerWidth, window.innerHeight)
+}
+
+async function installNativeImeVisibility() {
+  const generation = ++imeListenerGeneration
+  const cleanup = await addAndroidImeVisibilityListener(({ visible }) => {
+    if (generation === imeListenerGeneration) {
+      nativeImeEventVersion += 1
+      imeVisibility.value = visible ? 'visible' : 'hidden'
+    }
+  })
+
+  if (generation !== imeListenerGeneration) {
+    await cleanup?.()
+    return
+  }
+
+  nativeImeListenerCleanup = cleanup
+  const eventVersionBeforeQuery = nativeImeEventVersion
+  const visible = await getAndroidImeVisibility()
+  if (
+    generation === imeListenerGeneration &&
+    nativeImeEventVersion === eventVersionBeforeQuery &&
+    visible !== null
+  ) {
+    imeVisibility.value = visible ? 'visible' : 'hidden'
+  }
+}
+
+function onToolbarPointerDownCapture() {
+  // Unknown is deliberately non-intervention: native insets have not arrived,
+  // or the viewport fallback has not observed a trustworthy full-height base.
+  if (imeVisibility.value !== 'hidden') {
+    return
+  }
+
+  const active = document.activeElement
+  if (active instanceof HTMLElement && props.host?.contains(active)) {
+    active.blur()
+  }
+}
 </script>
 
 <template>
@@ -234,6 +324,7 @@ function getCommandTitle(command: { title: string; titleKey: I18nKey }) {
     :class="{ 'is-expanded': expanded, 'is-compact': compact }"
     :aria-label="t('toolbar.markdownTools')"
     data-testid="mobile-editor-toolbar"
+    @pointerdown.capture="onToolbarPointerDownCapture"
   >
     <!-- collapsed: quick actions + fixed expand handle. While the caret is
          in a table, the strip mirrors the expanded TABLE panel — undo plus
