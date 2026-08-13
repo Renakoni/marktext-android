@@ -24,6 +24,7 @@ interface AndroidSelectionPlugin {
   performNativeSelectAll(options: { reason?: string }): Promise<{ performed?: boolean }>
   readClipboardText(): Promise<{ text?: string; available?: boolean }>
   writeClipboardText(options: { text: string; label?: string }): Promise<{ written?: boolean }>
+  getImeVisibility(): Promise<AndroidImeVisibilityResult>
   addListener(
     eventName: 'selectionTap',
     listener: (event: AndroidSelectionTapEvent) => void,
@@ -32,11 +33,23 @@ interface AndroidSelectionPlugin {
     eventName: 'selectionContextRequest',
     listener: () => void,
   ): Promise<{ remove: () => Promise<void> }>
+  addListener(
+    eventName: 'imeVisibilityChanged',
+    listener: (event: AndroidImeVisibilityEvent) => void,
+  ): Promise<{ remove: () => Promise<void> }>
 }
 
 export interface AndroidSelectionTapEvent {
   x: number
   y: number
+}
+
+export interface AndroidImeVisibilityEvent {
+  visible: boolean
+}
+
+interface AndroidImeVisibilityResult extends AndroidImeVisibilityEvent {
+  known: boolean
 }
 
 export interface AndroidSelectionControlResult extends AndroidSelectionState {
@@ -134,6 +147,19 @@ export async function writeAndroidClipboardText(text: string): Promise<boolean> 
   }
 }
 
+export async function getAndroidImeVisibility(): Promise<boolean | null> {
+  if (!isAndroidSelectionControlAvailable()) {
+    return null
+  }
+
+  try {
+    const result = await AndroidSelection.getImeVisibility()
+    return result.known ? Boolean(result.visible) : null
+  } catch {
+    return null
+  }
+}
+
 function createUnavailableState(): AndroidSelectionControlResult {
   return {
     native: false,
@@ -181,6 +207,21 @@ export async function addAndroidSelectionContextListener(
 
   try {
     const handle = await AndroidSelection.addListener('selectionContextRequest', listener)
+    return () => handle.remove()
+  } catch {
+    return null
+  }
+}
+
+export async function addAndroidImeVisibilityListener(
+  listener: (event: AndroidImeVisibilityEvent) => void,
+): Promise<(() => Promise<void>) | null> {
+  if (!isAndroidSelectionControlAvailable()) {
+    return null
+  }
+
+  try {
+    const handle = await AndroidSelection.addListener('imeVisibilityChanged', listener)
     return () => handle.remove()
   } catch {
     return null

@@ -73,6 +73,31 @@ public class AndroidSelectionPlugin extends Plugin {
         notifyListeners("selectionContextRequest", new JSObject());
     }
 
+    void emitImeVisibilityChanged(boolean visible) {
+        JSObject data = new JSObject();
+        data.put("visible", visible);
+        notifyListeners("imeVisibilityChanged", data, true);
+    }
+
+    @PluginMethod
+    public void getImeVisibility(PluginCall call) {
+        Activity activity = getActivity();
+
+        if (!(activity instanceof MainActivity)) {
+            call.reject("AndroidSelection requires MainActivity", "ACTIVITY_UNAVAILABLE");
+            return;
+        }
+
+        MainActivity mainActivity = (MainActivity) activity;
+        mainActivity.runOnUiThread(() -> {
+            Boolean visible = mainActivity.getImeVisibility();
+            JSObject result = new JSObject();
+            result.put("known", visible != null);
+            result.put("visible", Boolean.TRUE.equals(visible));
+            call.resolve(result);
+        });
+    }
+
     @PluginMethod
     public void performNativeSelectAll(PluginCall call) {
         String reason = call.getString("reason", "unspecified");

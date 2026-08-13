@@ -6,12 +6,13 @@ import {
   openLocalDraft,
 } from './helpers/drafts'
 import { expectEditorReady } from './helpers/editor'
+import { installAndroidAppMock, type MockCapacitorWindow } from './helpers/androidAppMock'
 
 test.describe.configure({ timeout: 60000 })
 
 const SETTINGS_STORAGE_KEY = 'marktext-for-android:settings-ui'
 
-interface MockCapacitorWindow {
+interface ImagePickerMockCapacitorWindow {
   androidBridge?: unknown
   __lastAndroidImagePickOptions?: Record<string, unknown>
   Capacitor?: {
@@ -98,9 +99,46 @@ async function selectToolbarPanel(page: Page, panelId: string) {
   await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeHidden()
 }
 
+async function waitForNativeImeListener(page: Page) {
+  await expect.poll(() =>
+    page.evaluate(() =>
+      (window as unknown as MockCapacitorWindow)
+        .__androidSelectionListenerCount?.('imeVisibilityChanged') ?? 0,
+    ),
+  ).toBe(1)
+}
+
+async function editorOwnsFocus(page: Page) {
+  return page.evaluate(() => {
+    const host = document.querySelector('[data-testid="editor-host"]')
+    return Boolean(document.activeElement && host?.contains(document.activeElement))
+  })
+}
+
+async function emitNativeImeVisibility(page: Page, visible: boolean) {
+  await page.evaluate(nextVisible =>
+    (window as unknown as MockCapacitorWindow).__emitAndroidImeVisibility?.(nextVisible),
+  visible)
+}
+
+async function recordEditorFocusOuts(page: Page) {
+  await page.evaluate(() => {
+    const host = document.querySelector('[data-testid="editor-host"]')
+    document.body.dataset.editorFocusOuts = '0'
+    host?.addEventListener('focusout', () => {
+      const count = Number(document.body.dataset.editorFocusOuts ?? '0')
+      document.body.dataset.editorFocusOuts = String(count + 1)
+    })
+  })
+}
+
+async function editorFocusOutCount(page: Page) {
+  return page.evaluate(() => Number(document.body.dataset.editorFocusOuts ?? '0'))
+}
+
 async function installAndroidImagePickerMock(page: Page) {
   await page.addInitScript(() => {
-    const win = window as unknown as MockCapacitorWindow
+    const win = window as unknown as ImagePickerMockCapacitorWindow
 
     win.androidBridge = {}
     win.Capacitor = {
@@ -196,14 +234,20 @@ test('a tap outside the panel menu dismisses it like any popup', async ({ page }
 
 test('the open panel menu keeps the editor selection and focus intact', async ({ page }) => {
   await newBlankDocument(page)
+  const viewport = page.viewportSize()!
   await page.getByTestId('editor-host').click()
   await page.keyboard.type('caret anchor')
+
+  // Shrink the window by a keyboard-sized amount: the IME visibility
+  // estimate reads "keyboard up", which is the state this contract was
+  // written for — with the keyboard up, toolbar taps must not disturb
+  // editor focus (a focus move would dismiss the keyboard mid-typing).
+  await page.setViewportSize({ width: viewport.width, height: viewport.height - 300 })
 
   // The native caret handle hides because the selection is RE-APPLIED
   // programmatically on menu open (Chromium only shows touch handles for
   // gesture-made selections). The selection itself and the editor focus
-  // must survive — an empty selection or a focus move would dismiss the
-  // soft keyboard on device.
+  // must survive.
   const editorSelectionState = () =>
     page.evaluate(() => {
       const host = document.querySelector('[data-testid="editor-host"]')
@@ -235,6 +279,78 @@ test('the open panel menu keeps the editor selection and focus intact', async ({
     focusInEditor: true,
     selection: 'in-editor',
   })
+
+  // Growing back reads as "keyboard dismissed". From here the #200 guard
+  // inverts the contract: a toolbar tap DROPS editor focus (so Chromium
+  // cannot resummon the keyboard) while the selection stays for the
+  // stats line and command restore-ranges.
+  await page.setViewportSize(viewport)
+  await page.getByTestId('toolbar-group-switcher').click()
+  await expect(page.getByTestId('mobile-editor-toolbar-panel')).toBeVisible()
+  await expect.poll(editorSelectionState).toEqual({
+    focusInEditor: false,
+    selection: 'in-editor',
+  })
+})
+
+test('native IME visibility keeps focus for a no-resize floating keyboard', async ({ page }) => {
+  await installAndroidAppMock(page, undefined, { imeVisible: true })
+  await newBlankDocument(page)
+  await waitForNativeImeListener(page)
+  await emitNativeImeVisibility(page, true)
+
+  await page.getByTestId('editor-host').click()
+  await page.keyboard.type('floating keyboard')
+  await page.getByTestId('toolbar-expand-button').click()
+
+  await expect(page.getByTestId('mobile-editor-toolbar-body')).toBeVisible()
+  await expect.poll(() => editorOwnsFocus(page)).toBe(true)
+})
+
+test('hidden native IME lets collapsed-caret edit commands restore editor focus', async ({ page }) => {
+  await installAndroidAppMock(page, undefined, { imeVisible: false })
+  await newBlankDocument(page)
+  await waitForNativeImeListener(page)
+  await emitNativeImeVisibility(page, false)
+
+  const editor = page.getByTestId('editor-host')
+  await editor.click()
+  await page.keyboard.type('collapsed command')
+  await recordEditorFocusOuts(page)
+
+  await page.getByTestId('toolbar-command-format.strong').click()
+  await expect.poll(() => editorFocusOutCount(page)).toBe(1)
+  await expect.poll(() => editorOwnsFocus(page)).toBe(true)
+
+  await page.getByTestId('toolbar-command-edit.undo').click()
+  await expect.poll(() => editorFocusOutCount(page)).toBe(2)
+  await expect.poll(() => editorOwnsFocus(page)).toBe(true)
+  await page.getByTestId('toolbar-expand-button').click()
+  await page.getByTestId('toolbar-command-edit.redo').click()
+  await expect.poll(() => editorFocusOutCount(page)).toBe(3)
+  await expect.poll(() => editorOwnsFocus(page)).toBe(true)
+})
+
+test('hidden native IME lets a table structure command restore editor focus', async ({ page }) => {
+  await installAndroidAppMock(page, undefined, { imeVisible: false })
+  await newBlankDocument(page)
+  await waitForNativeImeListener(page)
+  await emitNativeImeVisibility(page, false)
+
+  await page.getByTestId('editor-host').click()
+  await selectToolbarPanel(page, 'insert')
+  await page.getByTestId('toolbar-command-paragraph.table').click()
+  await page.getByTestId('table-insert-button').click()
+  const table = page.getByTestId('editor-host').locator('figure.mu-table')
+  await expect(table).toHaveCount(1)
+  await table.locator('.mu-content').first().click()
+  await expect.poll(() => editorOwnsFocus(page)).toBe(true)
+  await recordEditorFocusOuts(page)
+
+  await page.getByTestId('toolbar-table-table-insert-row-below').click()
+  await expect(table.locator('tr')).toHaveCount(4)
+  await expect.poll(() => editorFocusOutCount(page)).toBe(1)
+  await expect.poll(() => editorOwnsFocus(page)).toBe(true)
 })
 
 test('applies quick toolbar inline formatting to selected editor text', async ({ page }) => {

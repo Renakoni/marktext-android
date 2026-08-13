@@ -5,6 +5,8 @@ import android.content.ContextWrapper;
 import android.util.AttributeSet;
 import android.view.ActionMode;
 import android.view.MotionEvent;
+import android.view.WindowInsets;
+import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.CapacitorWebView;
 import java.util.Locale;
 
@@ -22,6 +24,18 @@ public class MarkTextWebView extends CapacitorWebView {
 
     public MarkTextWebView(Context context, AttributeSet attrs) {
         super(context, attrs);
+    }
+
+    @Override
+    public WindowInsets onApplyWindowInsets(WindowInsets insets) {
+        WindowInsetsCompat compatInsets = WindowInsetsCompat.toWindowInsetsCompat(insets, this);
+        MainActivity activity = findMainActivity(getContext());
+        if (activity != null) {
+            activity.updateImeVisibility(
+                compatInsets.isVisible(WindowInsetsCompat.Type.ime())
+            );
+        }
+        return super.onApplyWindowInsets(insets);
     }
 
     @Override

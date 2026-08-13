@@ -7,8 +7,10 @@ export interface MockCapacitorWindow {
   __emitCapacitorAppStateChange?: (isActive: boolean) => void
   __emitAndroidOpenWithDocument?: (event: MockAndroidOpenWithEvent) => void
   __emitAndroidSelectionContextRequest?: () => void
+  __emitAndroidImeVisibility?: (visible: boolean) => void
   __appListenerCount?: (eventName: string) => number
   __androidDocumentListenerCount?: (eventName: string) => number
+  __androidSelectionListenerCount?: (eventName: string) => number
   __lastAndroidCreateOptions?: Record<string, unknown>
   Capacitor?: {
     PluginHeaders?: Array<{
@@ -85,6 +87,8 @@ interface MockAndroidAppOptions {
   pendingOpenWithEvent?: MockAndroidOpenWithEvent
   /** Presence installs a connected CloudDocuments mock for OneDrive. */
   oneDriveCloud?: MockOneDriveCloud
+  /** Initial authoritative WindowInsets IME state; null means not known yet. */
+  imeVisible?: boolean | null
 }
 
 export async function longPress(page: Page, target: Locator) {
@@ -237,9 +241,14 @@ export async function installAndroidAppMock(
     win.__emitAndroidSelectionContextRequest = () => {
       emitAndroidSelectionEvent('selectionContextRequest', {})
     }
+    win.__emitAndroidImeVisibility = (visible: boolean) => {
+      emitAndroidSelectionEvent('imeVisibilityChanged', { visible })
+    }
     win.__appListenerCount = (eventName: string) => appListeners.get(eventName)?.length ?? 0
     win.__androidDocumentListenerCount = (eventName: string) =>
       androidDocumentListeners.get(eventName)?.length ?? 0
+    win.__androidSelectionListenerCount = (eventName: string) =>
+      androidSelectionListeners.get(eventName)?.length ?? 0
     win.Capacitor = {
       ...(win.Capacitor ?? {}),
       PluginHeaders: [
@@ -275,6 +284,7 @@ export async function installAndroidAppMock(
             { name: 'performNativeSelectAll', rtype: 'promise' },
             { name: 'readClipboardText', rtype: 'promise' },
             { name: 'writeClipboardText', rtype: 'promise' },
+            { name: 'getImeVisibility', rtype: 'promise' },
           ],
         },
         ...(mockOptions.oneDriveCloud
@@ -373,6 +383,13 @@ export async function installAndroidAppMock(
 
           if (methodName === 'finishEditorSelectionActionMode') {
             return Promise.resolve({ finished: false })
+          }
+
+          if (methodName === 'getImeVisibility') {
+            return Promise.resolve({
+              known: mockOptions.imeVisible !== null && mockOptions.imeVisible !== undefined,
+              visible: mockOptions.imeVisible === true,
+            })
           }
 
           // Fall through to Muya's JS select-all: no native ActionMode exists.
