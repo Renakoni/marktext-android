@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { computeCaretFollowScrollDelta, createCaretFollow } from './caretFollow'
 
 describe('computeCaretFollowScrollDelta', () => {
@@ -82,6 +82,10 @@ function buildEditorDom() {
   container.getBoundingClientRect = () =>
     ({ top: 0, bottom: 400, left: 0, right: 360, width: 360, height: 400 }) as DOMRect
   Object.defineProperty(container, 'clientHeight', { value: 400 })
+  container.scrollBy = vi.fn(options => {
+    const top = typeof options === 'object' ? options.top ?? 0 : 0
+    container.scrollTop += top
+  })
 
   return { container, editorRoot, focusable }
 }
@@ -98,6 +102,38 @@ describe('createCaretFollow', () => {
     })
 
     expect(container.scrollTop).toBe(96)
+    container.remove()
+  })
+
+  it('does not move a pointer-placed caret that is already visible near an edge', () => {
+    const { container, editorRoot, focusable } = buildEditorDom()
+    focusable.focus()
+
+    const follow = createCaretFollow({ getEditor: () => ({ domNode: editorRoot }) })
+    follow.onEditorSelectionChange({
+      source: 'user-pointer',
+      isCollapsed: true,
+      cursorCoords: { top: 380, bottom: 396 },
+    })
+
+    expect(container.scrollTop).toBe(0)
+    expect(container.scrollBy).not.toHaveBeenCalled()
+    container.remove()
+  })
+
+  it('smoothly reveals only the clipped part of a pointer-placed caret', () => {
+    const { container, editorRoot, focusable } = buildEditorDom()
+    focusable.focus()
+
+    const follow = createCaretFollow({ getEditor: () => ({ domNode: editorRoot }) })
+    follow.onEditorSelectionChange({
+      source: 'user-pointer',
+      isCollapsed: true,
+      cursorCoords: { top: 400, bottom: 420 },
+    })
+
+    expect(container.scrollBy).toHaveBeenCalledWith({ top: 36, behavior: 'smooth' })
+    expect(container.scrollTop).toBe(36)
     container.remove()
   })
 

@@ -12,6 +12,8 @@
 // - collapsed carets only, so native selection-handle drags are untouched;
 // - only while the editor owns focus, so editor init and resume-position
 //   restores never fight over scrollTop;
+// - pointer-placed carets move only when actually clipped, while structural
+//   edits keep the desktop comfort band;
 // - margins clamped for short viewports (landscape plus soft keyboard).
 
 interface CaretFollowEditor {
@@ -29,12 +31,15 @@ export interface CreateCaretFollowOptions {
 
 // Desktop keeps the caret at least 100px clear of the container edges.
 const CARET_FOLLOW_MARGIN_PX = 100
+const POINTER_CARET_MARGIN_PX = 16
 
 export interface CaretFollowInput {
   caretTop: number
   caretBottom: number
   containerTop: number
   containerHeight: number
+  margin?: number
+  activationMargin?: number
 }
 
 /**
@@ -46,6 +51,8 @@ export function computeCaretFollowScrollDelta({
   caretBottom,
   containerTop,
   containerHeight,
+  margin: requestedMargin = CARET_FOLLOW_MARGIN_PX,
+  activationMargin: requestedActivationMargin = requestedMargin,
 }: CaretFollowInput): number {
   if (containerHeight <= 0) {
     return 0
@@ -53,15 +60,19 @@ export function computeCaretFollowScrollDelta({
 
   // On a short visible area (landscape with the soft keyboard up) the fixed
   // desktop margins would overlap; keep the band at least half the viewport.
-  const margin = Math.min(CARET_FOLLOW_MARGIN_PX, Math.floor(containerHeight / 4))
+  const margin = Math.min(requestedMargin, Math.floor(containerHeight / 4))
+  const activationMargin = Math.min(
+    requestedActivationMargin,
+    Math.floor(containerHeight / 4),
+  )
   const top = caretTop - containerTop
   const bottom = caretBottom - containerTop
 
-  if (bottom > containerHeight - margin) {
+  if (bottom > containerHeight - activationMargin) {
     return bottom - (containerHeight - margin)
   }
 
-  if (top < margin) {
+  if (top < activationMargin) {
     return top - margin
   }
 
@@ -94,6 +105,7 @@ function readCaretRect(): { top: number; bottom: number } | null {
 }
 
 interface SelectionChangePayload {
+  source?: 'programmatic' | 'user-pointer'
   isCollapsed?: boolean
   cursorCoords?: { top: number; bottom: number } | null
 }
@@ -121,16 +133,27 @@ export function createCaretFollow(options: CreateCaretFollowOptions) {
       return
     }
 
+    const pointerPlaced = payload.source === 'user-pointer'
     const delta = computeCaretFollowScrollDelta({
       caretTop: rect.top,
       caretBottom: rect.bottom,
       containerTop: container.getBoundingClientRect().top,
       containerHeight: container.clientHeight,
+      margin: pointerPlaced ? POINTER_CARET_MARGIN_PX : CARET_FOLLOW_MARGIN_PX,
+      activationMargin: pointerPlaced ? 0 : CARET_FOLLOW_MARGIN_PX,
     })
 
     if (delta !== 0) {
-      container.scrollTop += delta
-      options.logger?.debug('caret follow scrolled', { delta })
+      const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+      if (pointerPlaced && !reducedMotion) {
+        container.scrollBy({ top: delta, behavior: 'smooth' })
+      } else {
+        container.scrollTop += delta
+      }
+      options.logger?.debug('caret follow scrolled', {
+        delta,
+        source: payload.source ?? 'programmatic',
+      })
     }
   }
 

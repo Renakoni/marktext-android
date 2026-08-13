@@ -138,7 +138,7 @@ describe('clickHandler forwards the backward anchor/focus (not normalized start/
             // anchor.offset (7) -> begin, focus.offset (2) -> end. If the handler
             // had used start/end it would be (2, 7) and the backward drag would be
             // silently flipped to forward.
-            expect(setCursorSpy).toHaveBeenCalledWith(7, 2);
+            expect(setCursorSpy).toHaveBeenCalledWith(7, 2, false, 'user-pointer');
         });
     });
 });

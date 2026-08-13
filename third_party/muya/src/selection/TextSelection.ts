@@ -231,7 +231,11 @@ class TextSelection {
         };
     }
 
-    setSelection(anchor: IAnchorFocusInfo, focus: IAnchorFocusInfo) {
+    setSelection(
+        anchor: IAnchorFocusInfo,
+        focus: IAnchorFocusInfo,
+        source: 'programmatic' | 'user-pointer' = 'programmatic',
+    ) {
         this.anchor = { offset: anchor.offset };
         this.anchorBlock = anchor.block;
         this.anchorPath = anchor.path;
@@ -239,24 +243,28 @@ class TextSelection {
         this.focusBlock = focus.block;
         this.focusPath = focus.path;
         this._updateSelection();
-        this._emitSelectionChange();
+        this._emitSelectionChange(source);
     }
 
     // Record a selection the browser already established without re-applying
     // it to the DOM. Rewriting an identical range looks harmless on desktop,
     // but on Android any programmatic range replacement tears down the
     // touch-selection session and its drag handles.
-    adoptSelection(anchor: IAnchorFocusInfo, focus: IAnchorFocusInfo) {
+    adoptSelection(
+        anchor: IAnchorFocusInfo,
+        focus: IAnchorFocusInfo,
+        source: 'programmatic' | 'user-pointer' = 'programmatic',
+    ) {
         this.anchor = { offset: anchor.offset };
         this.anchorBlock = anchor.block;
         this.anchorPath = anchor.path;
         this.focus = { offset: focus.offset };
         this.focusBlock = focus.block;
         this.focusPath = focus.path;
-        this._emitSelectionChange();
+        this._emitSelectionChange(source);
     }
 
-    private _emitSelectionChange() {
+    private _emitSelectionChange(source: 'programmatic' | 'user-pointer' = 'programmatic') {
         const { _isCollapsed: isCollapsed, isSelectionInSameBlock, _direction: direction, _type: type } = this;
         const anchorBlock = this.anchorBlock ?? null;
         const focusBlock = this.focusBlock ?? null;
@@ -277,6 +285,7 @@ class TextSelection {
         const affiliation = buildSelectionAffiliation(anchorBlock, focusBlock);
 
         this._muya.eventCenter.emit('selection-change', {
+            source,
             anchor: this.anchor,
             focus: this.focus,
             anchorBlock,
