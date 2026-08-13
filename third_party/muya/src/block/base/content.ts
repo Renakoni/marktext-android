@@ -429,9 +429,9 @@ class Content extends TreeNode {
                 return;
 
             if (isTouchDerived)
-                this.adoptCursor(cursor.start.offset, cursor.end.offset);
+                this.adoptCursor(cursor.start.offset, cursor.end.offset, 'user-pointer');
             else
-                this.setCursor(cursor.start.offset, cursor.end.offset);
+                this.setCursor(cursor.start.offset, cursor.end.offset, false, 'user-pointer');
         });
     }
 
@@ -595,7 +595,12 @@ class Content extends TreeNode {
      * @param {number} end
      * @param {boolean} needUpdate
      */
-    setCursor(begin: number, end: number, needUpdate = false) {
+    setCursor(
+        begin: number,
+        end: number,
+        needUpdate = false,
+        source: 'programmatic' | 'user-pointer' = 'programmatic',
+    ) {
         const anchor = { offset: begin, block: this, path: this.path };
         const focus = { offset: end, block: this, path: this.path };
 
@@ -604,19 +609,23 @@ class Content extends TreeNode {
 
         this.muya.editor.activeContentBlock = this;
 
-        this.selection.setSelection(anchor, focus);
+        this.selection.setSelection(anchor, focus, source);
     }
 
     // Record an existing browser selection in the block model without
     // re-applying it to the DOM (see clickHandler: a programmatic range
     // replacement dismisses Android's touch-selection drag handles).
-    adoptCursor(begin: number, end: number) {
+    adoptCursor(
+        begin: number,
+        end: number,
+        source: 'programmatic' | 'user-pointer' = 'programmatic',
+    ) {
         const anchor = { offset: begin, block: this, path: this.path };
         const focus = { offset: end, block: this, path: this.path };
 
         this.muya.editor.activeContentBlock = this;
 
-        this.selection.adoptSelection(anchor, focus);
+        this.selection.adoptSelection(anchor, focus, source);
     }
 
     update(_cursor?: IRenderCursor, _highlights: IHighlight[] = []) {

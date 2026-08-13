@@ -553,13 +553,27 @@ class Format extends Content {
 
             if (needRender) {
                 this.update(cursor);
-                this.setCursor(currentCursor.anchor.offset, currentCursor.focus.offset);
+                this.setCursor(
+                    currentCursor.anchor.offset,
+                    currentCursor.focus.offset,
+                    false,
+                    'user-pointer',
+                );
             }
             else if (isTouchDerived) {
-                this.adoptCursor(currentCursor.anchor.offset, currentCursor.focus.offset);
+                this.adoptCursor(
+                    currentCursor.anchor.offset,
+                    currentCursor.focus.offset,
+                    'user-pointer',
+                );
             }
             else {
-                this.setCursor(currentCursor.anchor.offset, currentCursor.focus.offset);
+                this.setCursor(
+                    currentCursor.anchor.offset,
+                    currentCursor.focus.offset,
+                    false,
+                    'user-pointer',
+                );
             }
 
             // Check and show format picker

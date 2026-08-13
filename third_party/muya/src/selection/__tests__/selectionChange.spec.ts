@@ -40,6 +40,21 @@ function bootMuya(markdown: string): Muya {
 }
 
 describe('selection-change payload', () => {
+    it('reports whether the caret came from a user pointer or a programmatic selection', () => {
+        const muya = bootMuya('hello world\n');
+        const first = muya.editor.scrollPage!.firstContentInDescendant()!;
+        const sources: unknown[] = [];
+        muya.on('selection-change', (payload: unknown) => {
+            sources.push((payload as Record<string, unknown>).source);
+        });
+
+        const point = { offset: 2, block: first, path: first.path };
+        muya.editor.selection.setSelection(point, point);
+        muya.editor.selection.adoptSelection(point, point, 'user-pointer');
+
+        expect(sources).toEqual(['programmatic', 'user-pointer']);
+    });
+
     it('includes cursorCoords and a formats array', () => {
         const muya = bootMuya('hello world\n');
         const first = muya.editor.scrollPage!.firstContentInDescendant()!;

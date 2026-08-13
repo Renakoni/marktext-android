@@ -122,12 +122,20 @@ class Selection {
         return this._text.getSelection();
     }
 
-    setSelection(anchor: IAnchorFocusInfo, focus: IAnchorFocusInfo): void {
-        this._text.setSelection(anchor, focus);
+    setSelection(
+        anchor: IAnchorFocusInfo,
+        focus: IAnchorFocusInfo,
+        source: 'programmatic' | 'user-pointer' = 'programmatic',
+    ): void {
+        this._text.setSelection(anchor, focus, source);
     }
 
-    adoptSelection(anchor: IAnchorFocusInfo, focus: IAnchorFocusInfo): void {
-        this._text.adoptSelection(anchor, focus);
+    adoptSelection(
+        anchor: IAnchorFocusInfo,
+        focus: IAnchorFocusInfo,
+        source: 'programmatic' | 'user-pointer' = 'programmatic',
+    ): void {
+        this._text.adoptSelection(anchor, focus, source);
     }
 
     selectAll(): void {

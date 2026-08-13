@@ -82,3 +82,39 @@ test('keeps the caret visible while Enter appends lines at the bottom', async ({
   const final = await readCaretMetrics(page)
   expect(final!.scrollTop).toBeGreaterThan(initial!.scrollTop)
 })
+
+test('does not recenter visible lines when the user taps near the viewport edges', async ({
+  page,
+}) => {
+  await openLocalDraft(page, {
+    id: 'gentle-caret-follow-draft',
+    markdown: MARKDOWN,
+    title: /Caret Follow/,
+  })
+
+  const shell = page.locator('.editor-host-shell')
+  await shell.evaluate(element => {
+    element.scrollTop = 500
+  })
+
+  const paragraphs = page.locator('.mu-editor p.mu-paragraph')
+  const nearBottomIndex = await paragraphs.evaluateAll(elements => {
+    const shellRect = document.querySelector('.editor-host-shell')!.getBoundingClientRect()
+    let candidate = -1
+    elements.forEach((element, index) => {
+      const rect = element.getBoundingClientRect()
+      if (rect.top >= shellRect.top && rect.bottom <= shellRect.bottom) {
+        candidate = index
+      }
+    })
+    return candidate
+  })
+  expect(nearBottomIndex).toBeGreaterThanOrEqual(0)
+  const nearBottom = paragraphs.nth(nearBottomIndex)
+  const before = await shell.evaluate(element => element.scrollTop)
+  await nearBottom.click({ position: { x: 20, y: 4 } })
+  await page.waitForTimeout(250)
+  const after = await shell.evaluate(element => element.scrollTop)
+
+  expect(after).toBe(before)
+})
