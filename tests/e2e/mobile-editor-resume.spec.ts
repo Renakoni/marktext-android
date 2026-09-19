@@ -476,6 +476,46 @@ test('a revisit without scrolling keeps the stored position', async ({ page }) =
   expect(await getResumeStorage(page)).toBe(storedBefore)
 })
 
+test('a source round trip cancels a restore offer whose hash is still pending', async ({ page }) => {
+  await seedCapturedPosition(page)
+  const hashing = await page.evaluateHandle(() => {
+    const original = crypto.subtle.digest.bind(crypto.subtle)
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const state = {
+      calls: 0,
+      release: () => {
+        crypto.subtle.digest = original
+        release()
+      },
+    }
+    crypto.subtle.digest = async (...args) => {
+      state.calls += 1
+      const result = await original(...args)
+      await gate
+      return result
+    }
+    return state
+  })
+  await reopenDraft(page)
+  await expect.poll(() => hashing.evaluate(state => state.calls)).toBeGreaterThan(0)
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('source-mode-toggle-button').click()
+  await expect(page.getByTestId('source-mode-editor')).toBeVisible()
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('source-mode-toggle-button').click()
+  await expectEditorReady(page)
+  await hashing.evaluate(state => state.release())
+  await hashing.dispose()
+  await page.waitForTimeout(400)
+  await expect(page.getByTestId('resume-card')).toHaveCount(0)
+
+  // Cancellation belongs to this opening, so the next visit still offers it.
+  await exitToHome(page)
+  await reopenDraft(page)
+  await expect(page.getByTestId('resume-card')).toBeVisible()
+})
+
 test('source mode preserves the visible reading position through backgrounding and closing', async ({ page }) => {
   await openResumeDraft(page)
   await scrollEditorTo(page, CAPTURE_SCROLL_TOP)

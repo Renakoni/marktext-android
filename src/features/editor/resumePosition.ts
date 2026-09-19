@@ -234,7 +234,7 @@ export interface ResumePosition {
   activateResume(): void
   /** Hide the card without touching stabilization (tap on close, scroll). */
   dismissCard(reason: string): void
-  /** A competing editor surface takes over: hide the card, stop corrections. */
+  /** A competing surface takes over: cancel the opening offer and corrections. */
   standDown(reason: string): void
   /** Content changed: the offer and any in-flight stabilization are stale. */
   notifyDocumentEdited(): void
@@ -276,6 +276,7 @@ export function createResumePosition({
   // checkpoint or exit write a fresh position; a passive revisit leaves the
   // stored record untouched.
   let positionTouched = false
+  let restoreSuppressed = false
   let pendingTarget: PendingResumeTarget | null = null
   let captureQuietTimer: ReturnType<typeof setTimeout> | null = null
   let captureMaxTimer: ReturnType<typeof setTimeout> | null = null
@@ -386,7 +387,7 @@ export function createResumePosition({
     }
 
     const matches = await matchesResumeDocument(record, markdown)
-    if (generation !== sessionGeneration || getMarkdown() === null) {
+    if (generation !== sessionGeneration || restoreSuppressed || getMarkdown() === null) {
       return
     }
 
@@ -616,7 +617,7 @@ export function createResumePosition({
     // otherwise the distance check can permanently suppress a valid offer or
     // show one whose target ends up near the top.
     await waitForLayoutSettle(blockContainer)
-    if (generation !== sessionGeneration) {
+    if (generation !== sessionGeneration || restoreSuppressed) {
       return
     }
 
@@ -671,6 +672,9 @@ export function createResumePosition({
   }
 
   function standDown(reason: string) {
+    // The opening probe may still be waiting for layout or a hash. A surface
+    // handoff cancels that offer even if WYSIWYG returns before it completes.
+    restoreSuppressed = true
     stopStabilization()
     dismissCard(reason)
   }
@@ -770,6 +774,7 @@ export function createResumePosition({
     generation += 1
     sessionDocKey = null
     positionTouched = false
+    restoreSuppressed = false
     stopStabilization()
     hideCard()
     scrollCleanup?.()
