@@ -159,6 +159,7 @@ function buildEditorDom() {
 interface ControllerHarnessOptions {
   createRecord: (options: CreateResumePositionRecordOptions) => Promise<ResumePositionRecord | null>
   readPosition?: (docKey: string) => ResumePositionRecord | null
+  getMarkdown?: () => string | null
   /** Logical top-level block count (jsonState), independent of mounted DOM. */
   logicalBlockCount?: number
 }
@@ -166,6 +167,7 @@ interface ControllerHarnessOptions {
 function createControllerHarness({
   createRecord,
   readPosition,
+  getMarkdown = () => 'markdown',
   logicalBlockCount = 1,
 }: ControllerHarnessOptions) {
   // No ResizeObserver: the open-settle phase and stabilization resolve
@@ -184,7 +186,7 @@ function createControllerHarness({
       }) as unknown as MuyaEditor,
     isEditorReady: () => true,
     getDocumentKey: () => 'doc',
-    getMarkdown: () => 'markdown',
+    getMarkdown,
     readPosition: readPosition ?? (() => null),
     writePosition: (key, record) => void store.set(key, record),
     removePosition: key => void store.delete(key),
@@ -195,6 +197,7 @@ function createControllerHarness({
 }
 
 afterEach(() => {
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
   document.body.innerHTML = ''
 })
@@ -298,6 +301,26 @@ describe('restore validation versus concurrent writes', () => {
 })
 
 describe('persistNow live capture', () => {
+  it('leaves the saved position untouched while the capture surface is unavailable', async () => {
+    let markdown: string | null = 'markdown'
+    const createRecord = vi.fn(async () => createStoredRecord(3))
+    const { controller, shell, store } = createControllerHarness({
+      createRecord,
+      getMarkdown: () => markdown,
+    })
+    await controller.startForOpenedDocument()
+    shell.dispatchEvent(new Event('scroll'))
+    await controller.persistNow('before source mode')
+    const saved = store.get('doc')
+
+    markdown = null
+    controller.notifyDocumentEdited()
+    await controller.persistNow('source mode backgrounded')
+    expect(createRecord).toHaveBeenCalledTimes(1)
+    expect(store.get('doc')).toBe(saved)
+    controller.resetForNewDocument()
+  })
+
   it('captures the live DOM at persist time — snapshot timestamp included', async () => {
     const captured: CreateResumePositionRecordOptions[] = []
     const { controller, shell } = createControllerHarness({
@@ -356,6 +379,71 @@ describe('restore offer during a progressive mount', () => {
     expect(record).not.toBeNull()
     return record!
   }
+
+  it('does not offer a position if the capture surface disappears during validation', async () => {
+    const record = await makeMatchingRecord(5)
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('markdown'))
+    let finishDigest!: (value: ArrayBuffer) => void
+    const hashing = vi.spyOn(crypto.subtle, 'digest').mockImplementation(
+      () => new Promise(resolve => { finishDigest = resolve }),
+    )
+    let markdown: string | null = 'markdown'
+    const { controller } = createControllerHarness({
+      createRecord: () => Promise.resolve(null),
+      readPosition: () => record,
+      getMarkdown: () => markdown,
+      logicalBlockCount: 10,
+    })
+    const opening = controller.startForOpenedDocument()
+    await Promise.resolve()
+    expect(hashing).toHaveBeenCalledTimes(1)
+    markdown = null
+    finishDigest(digest)
+    await opening
+    expect(controller.resumeCardVisible.value).toBe(false)
+    controller.resetForNewDocument()
+  })
+
+  it.each(['layout', 'hash'] as const)(
+    'keeps a stood-down offer canceled after a source round trip during %s validation',
+    async phase => {
+      const record = await makeMatchingRecord(5)
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('markdown'))
+      let finishDigest: ((value: ArrayBuffer) => void) | undefined
+      const hashing = vi.spyOn(crypto.subtle, 'digest').mockImplementation(
+        () => new Promise(resolve => { finishDigest = resolve }),
+      )
+      let markdown: string | null = 'markdown'
+      const { controller } = createControllerHarness({
+        createRecord: () => Promise.resolve(null),
+        readPosition: () => record,
+        getMarkdown: () => markdown,
+        logicalBlockCount: 10,
+      })
+      const opening = controller.startForOpenedDocument()
+      if (phase === 'hash') {
+        await Promise.resolve()
+        expect(hashing).toHaveBeenCalledTimes(1)
+      } else {
+        expect(hashing).not.toHaveBeenCalled()
+      }
+
+      controller.standDown('entering source mode')
+      markdown = null
+      // No edit or scroll: returning to the same surface must not revive
+      // the opening-time offer that the mode handoff already canceled.
+      markdown = 'markdown'
+      await Promise.resolve()
+      finishDigest?.(digest)
+      await opening
+      expect(controller.resumeCardVisible.value).toBe(false)
+
+      hashing.mockRestore()
+      await controller.startForOpenedDocument()
+      expect(controller.resumeCardVisible.value).toBe(true)
+      controller.resetForNewDocument()
+    },
+  )
 
   it('offers a pending-tail target without materializing anything', async () => {
     const record = await makeMatchingRecord(5)

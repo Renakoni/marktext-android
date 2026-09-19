@@ -419,3 +419,125 @@ test('a revisit without scrolling keeps the stored position', async ({ page }) =
   await page.waitForTimeout(400)
   expect(await getResumeStorage(page)).toBe(storedBefore)
 })
+
+test('a source round trip cancels a restore offer whose hash is still pending', async ({ page }) => {
+  await seedCapturedPosition(page)
+  const hashing = await page.evaluateHandle(() => {
+    const original = crypto.subtle.digest.bind(crypto.subtle)
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const state = {
+      calls: 0,
+      release: () => {
+        crypto.subtle.digest = original
+        release()
+      },
+    }
+    crypto.subtle.digest = async (...args) => {
+      state.calls += 1
+      const result = await original(...args)
+      await gate
+      return result
+    }
+    return state
+  })
+  await reopenDraft(page)
+  await expect.poll(() => hashing.evaluate(state => state.calls)).toBeGreaterThan(0)
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('source-mode-toggle-button').click()
+  await expect(page.getByTestId('source-mode-editor')).toBeVisible()
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('source-mode-toggle-button').click()
+  await expectEditorReady(page)
+  await hashing.evaluate(state => state.release())
+  await hashing.dispose()
+  await page.waitForTimeout(400)
+  await expect(page.getByTestId('resume-card')).toHaveCount(0)
+
+  // Cancellation belongs to this opening, so the next visit still offers it.
+  await exitToHome(page)
+  await reopenDraft(page)
+  await expect(page.getByTestId('resume-card')).toBeVisible()
+})
+
+test('source mode preserves the visible reading position through backgrounding and closing', async ({ page }) => {
+  await openResumeDraft(page)
+  await scrollEditorTo(page, CAPTURE_SCROLL_TOP)
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('source-mode-toggle-button').click()
+  await expect(page.getByTestId('source-mode-editor')).toBeVisible()
+  await expect.poll(() => getResumeStorage(page)).toContain(DOC_KEY)
+  const storedBefore = await getResumeStorage(page)
+
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
+  await page.waitForTimeout(400)
+  expect(await getResumeStorage(page)).toBe(storedBefore)
+  await exitToHome(page)
+  expect(await getResumeStorage(page)).toBe(storedBefore)
+
+  await reopenDraft(page)
+  await expect(page.getByTestId('resume-card')).toBeVisible()
+  await page.getByTestId('resume-card-button').click()
+  await expect.poll(() => getShellScrollTop(page)).toBeGreaterThan(CAPTURE_SCROLL_TOP - 60)
+  expect(await getShellScrollTop(page)).toBeLessThan(CAPTURE_SCROLL_TOP + 60)
+})
+
+test('source edits save content without pairing it with a hidden WYSIWYG anchor', async ({ page }) => {
+  await seedCapturedPosition(page)
+  const storedBefore = await getResumeStorage(page)
+  await reopenDraft(page)
+  await expect(page.getByTestId('resume-card')).toBeVisible()
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('source-mode-toggle-button').click()
+  const source = page.getByTestId('source-mode-editor')
+  await source.fill(`${await source.inputValue()}\nSource-only addition.\n`)
+
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
+  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), DRAFTS_STORAGE_KEY))
+    .toContain('Source-only addition.')
+  await page.waitForTimeout(400)
+  expect(await getResumeStorage(page)).toBe(storedBefore)
+  await exitToHome(page)
+  await reopenDraft(page)
+
+  // The old content fingerprint must reject the source-edited document.
+  await expect.poll(() => getResumeStorage(page)).not.toContain(DOC_KEY)
+  await expect(page.getByTestId('resume-card')).toHaveCount(0)
+})
+
+test('a source-only session creates no WYSIWYG position', async ({ page }) => {
+  await openLocalDraft(page, {
+    id: DRAFT_ID,
+    markdown: LONG_MARKDOWN,
+    title: /Resume Alpha/,
+    settings: { sourceCodeModeEnabled: true },
+    waitFor: 'source-mode',
+  })
+  const source = page.getByTestId('source-mode-editor')
+  await source.fill(`${await source.inputValue()}\nSource-only addition.\n`)
+  await source.evaluate((element: HTMLTextAreaElement) => { element.scrollTop = 2000 })
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
+  await exitToHome(page)
+  await page.waitForTimeout(400)
+  expect(await getResumeStorage(page)).not.toContain(DOC_KEY)
+})
+
+test('returning from source mode captures the new visible WYSIWYG position', async ({ page }) => {
+  await openResumeDraft(page)
+  await scrollEditorTo(page, CAPTURE_SCROLL_TOP)
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('source-mode-toggle-button').click()
+  const source = page.getByTestId('source-mode-editor')
+  await source.fill(`${await source.inputValue()}\nSource-only addition.\n`)
+  await page.getByTestId('editor-menu-button').click()
+  await page.getByTestId('source-mode-toggle-button').click()
+  await expectEditorReady(page)
+  await scrollEditorTo(page, 5000)
+  await exitToHome(page)
+  await reopenDraft(page)
+
+  await expect(page.getByTestId('resume-card')).toBeVisible()
+  await page.getByTestId('resume-card-button').click()
+  await expect.poll(() => getShellScrollTop(page)).toBeGreaterThan(4940)
+  expect(await getShellScrollTop(page)).toBeLessThan(5060)
+})

@@ -667,6 +667,10 @@ function enterSourceMode(options: { focus: boolean } = { focus: true }) {
     return
   }
 
+  // Capture while Muya still owns both the visible layout and the Markdown.
+  void persistResumePosition('entering source mode')
+  standDownResume('entering source mode')
+
   // The mode owns the whole editing surface: panels that act on the muya
   // tree stand down first.
   closeEditorMenu()
@@ -787,8 +791,10 @@ const {
   getEditor,
   isEditorReady: () => editorReady.value,
   getDocumentKey: getResumeDocumentKey,
-  // Flush pending edits so the hash matches what the save paths write.
-  getMarkdown: () => (hasEditor() ? getEditorMarkdownSnapshot(true) : null),
+  // Source mode owns a different surface: its text cannot be paired with
+  // Muya's hidden, potentially stale DOM. Content autosave keeps its override.
+  getMarkdown: () =>
+    (hasEditor() && !sourceModeActive.value ? getEditorMarkdownSnapshot(true) : null),
   readPosition: readStoredResumePosition,
   writePosition: writeStoredResumePosition,
   removePosition: removeStoredResumePosition,
