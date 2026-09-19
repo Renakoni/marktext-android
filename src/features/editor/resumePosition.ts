@@ -283,6 +283,12 @@ export function createResumePosition({
   // Only the current session's last completed fingerprint is retained.
   // Exact Markdown equality lets unchanged-content exits write synchronously.
   let cachedCapture: { markdown: string; record: ResumePositionRecord } | null = null
+  // Consecutive captures of identical content share unfinished hash work, so
+  // a slow digest cannot be perpetually superseded by the checkpoint cadence.
+  let pendingCapture: {
+    markdown: string
+    promise: Promise<ResumePositionRecord | null>
+  } | null = null
 
   // Latest-capture-wins ordering for asynchronous hash-and-write requests.
   // Keyed per document and NEVER reset with the session: a snapshotted
@@ -765,12 +771,26 @@ export function createResumePosition({
       return Promise.resolve()
     }
 
-    return createRecord({ markdown, capturedAt, ...anchor }).then(persistRecord)
+    if (pendingCapture?.markdown === markdown) {
+      return pendingCapture.promise.then(record => {
+        persistRecord(record && { ...record, capturedAt, ...anchor })
+      })
+    }
+
+    const capture = { markdown, promise: createRecord({ markdown, capturedAt, ...anchor }) }
+    pendingCapture = capture
+    return capture.promise.then(record => {
+      if (pendingCapture === capture) {
+        pendingCapture = null
+      }
+      persistRecord(record)
+    })
   }
 
   function resetForNewDocument() {
     clearCaptureTimers()
     cachedCapture = null
+    pendingCapture = null
     generation += 1
     sessionDocKey = null
     positionTouched = false

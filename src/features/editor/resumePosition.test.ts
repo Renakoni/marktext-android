@@ -161,6 +161,7 @@ function buildEditorDom() {
 interface ControllerHarnessOptions {
   createRecord: (options: CreateResumePositionRecordOptions) => Promise<ResumePositionRecord | null>
   readPosition?: (docKey: string) => ResumePositionRecord | null
+  getDocumentKey?: () => string | null
   getMarkdown?: () => string | null
   /** Logical top-level block count (jsonState), independent of mounted DOM. */
   logicalBlockCount?: number
@@ -169,6 +170,7 @@ interface ControllerHarnessOptions {
 function createControllerHarness({
   createRecord,
   readPosition,
+  getDocumentKey = () => 'doc',
   getMarkdown = () => 'markdown',
   logicalBlockCount = 1,
 }: ControllerHarnessOptions) {
@@ -187,7 +189,7 @@ function createControllerHarness({
         editor: { jsonState: { rawState: new Array(logicalBlockCount) } },
       }) as unknown as MuyaEditor,
     isEditorReady: () => true,
-    getDocumentKey: () => 'doc',
+    getDocumentKey,
     getMarkdown,
     readPosition: readPosition ?? (() => null),
     writePosition: (key, record) => void store.set(key, record),
@@ -251,6 +253,42 @@ describe('foreground resume checkpoints', () => {
     controller.notifyDocumentEdited()
     await vi.advanceTimersByTimeAsync(RESUME_CAPTURE_QUIET_MS)
     expect(store.size).toBe(1)
+    controller.resetForNewDocument()
+  })
+
+  it('persists the latest viewport when an unchanged-content hash spans multiple checkpoints', async () => {
+    vi.useFakeTimers()
+    const captures: Array<{
+      options: CreateResumePositionRecordOptions
+      finish: (record: ResumePositionRecord) => void
+    }> = []
+    const createRecord = vi.fn((options: CreateResumePositionRecordOptions) =>
+      new Promise<ResumePositionRecord>(finish => { captures.push({ options, finish }) }),
+    )
+    const { controller, shell, editorRoot, store } = createControllerHarness({ createRecord })
+    await controller.startForOpenedDocument()
+    for (const text of ['Earlier viewport', 'Latest viewport']) {
+      editorRoot.querySelector('p')!.textContent = text
+      for (let elapsed = 0; elapsed < RESUME_CAPTURE_MAX_MS; elapsed += 250) {
+        shell.dispatchEvent(new Event('scroll'))
+        await vi.advanceTimersByTimeAsync(250)
+      }
+    }
+    const latestCapturedAt = new Date().toISOString()
+    expect(store.size).toBe(0)
+    const first = captures[0]
+    first.finish({
+      ...createStoredRecord(0),
+      capturedAt: first.options.capturedAt!,
+      displayText: first.options.displayText,
+    })
+    await vi.advanceTimersByTimeAsync(0)
+
+    // The next checkpoint must join the hash, not invalidate it and start
+    // another digest that can again be superseded before it completes.
+    expect(store.get('doc')?.displayText).toBe('Latest viewport')
+    expect(store.get('doc')?.capturedAt).toBe(latestCapturedAt)
+    expect(createRecord).toHaveBeenCalledTimes(1)
     controller.resetForNewDocument()
   })
 
@@ -357,13 +395,56 @@ describe('foreground resume checkpoints', () => {
     expect(createRecord).toHaveBeenCalledTimes(2)
     controller.resetForNewDocument()
   })
+
+  it('retries the same content after an unsuccessful digest', async () => {
+    const createRecord = vi.fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(createStoredRecord(0))
+    const { controller, shell, store } = createControllerHarness({ createRecord })
+    await controller.startForOpenedDocument()
+    shell.dispatchEvent(new Event('scroll'))
+    await controller.persistNow('unsuccessful hash')
+    expect(store.size).toBe(0)
+    await controller.persistNow('retry')
+    expect(store.has('doc')).toBe(true)
+    expect(createRecord).toHaveBeenCalledTimes(2)
+    controller.resetForNewDocument()
+  })
+
+  it('clears checkpoint timers scheduled reentrantly while pending edits are flushed', async () => {
+    vi.useFakeTimers()
+    let flushPendingEdit = false
+    const getMarkdown = vi.fn(() => {
+      if (flushPendingEdit) {
+        flushPendingEdit = false
+        controller.notifyDocumentEdited()
+      }
+      return 'markdown'
+    })
+    const { controller, shell, store } = createControllerHarness({
+      createRecord: async () => createStoredRecord(0),
+      getMarkdown,
+    })
+    await controller.startForOpenedDocument()
+    shell.dispatchEvent(new Event('scroll'))
+    flushPendingEdit = true
+    await controller.persistNow('flush before exit')
+    const saved = store.get('doc')
+    expect(saved).toBeDefined()
+    await vi.advanceTimersByTimeAsync(RESUME_CAPTURE_MAX_MS * 2)
+    expect(getMarkdown).toHaveBeenCalledTimes(1)
+    expect(store.get('doc')).toBe(saved)
+    controller.resetForNewDocument()
+  })
 })
 
 describe('persistNow write ordering', () => {
   it('keeps the newest capture when an older hash resolves last', async () => {
+    let markdown = 'markdown'
     const deferred: Array<(record: ResumePositionRecord | null) => void> = []
     const { controller, shell, store } = createControllerHarness({
       createRecord: () => new Promise(resolve => deferred.push(resolve)),
+      getMarkdown: () => markdown,
     })
 
     await controller.startForOpenedDocument()
@@ -374,6 +455,7 @@ describe('persistNow write ordering', () => {
 
     shell.dispatchEvent(new Event('scroll'))
     const older = controller.persistNow('older')
+    markdown = 'edited!!'
     const newer = controller.persistNow('newer')
     expect(deferred).toHaveLength(2)
 
@@ -411,6 +493,38 @@ describe('persistNow write ordering', () => {
     deferred[0](createStoredRecord(2))
     await before
     expect(store.get('doc')?.topBlockIndex).toBe(7)
+  })
+
+  it('an outgoing digest cannot warm or clear the next document session hash', async () => {
+    let docKey = 'outgoing'
+    const deferred: Array<(record: ResumePositionRecord) => void> = []
+    const createRecord = vi.fn(() => new Promise<ResumePositionRecord>(resolve => {
+      deferred.push(resolve)
+    }))
+    const { controller, shell, editorRoot, store } = createControllerHarness({
+      createRecord,
+      getDocumentKey: () => docKey,
+    })
+    await controller.startForOpenedDocument()
+    shell.dispatchEvent(new Event('scroll'))
+    const outgoing = controller.persistNow('leaving first document')
+
+    docKey = 'incoming'
+    await controller.startForOpenedDocument()
+    shell.dispatchEvent(new Event('scroll'))
+    const incoming = controller.persistNow('second document')
+    deferred[0](createStoredRecord(0))
+    await outgoing
+    expect(store.has('outgoing')).toBe(true)
+
+    editorRoot.querySelector('p')!.textContent = 'Latest incoming viewport'
+    const latest = controller.persistNow('same content, new viewport')
+    expect(store.has('incoming')).toBe(false)
+    expect(createRecord).toHaveBeenCalledTimes(2)
+    deferred[1](createStoredRecord(0))
+    await Promise.all([incoming, latest])
+    expect(store.get('incoming')?.displayText).toBe('Latest incoming viewport')
+    controller.resetForNewDocument()
   })
 })
 

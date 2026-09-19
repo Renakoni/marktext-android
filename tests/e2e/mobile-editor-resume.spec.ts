@@ -142,6 +142,31 @@ test('a warmed checkpoint lets lifecycle capture write the latest position witho
     .toBeGreaterThan(JSON.parse(checkpoint)[DOC_KEY].topBlockIndex)
 })
 
+test('continuous checkpoints can finish a hash slower than their interval', async ({ page }) => {
+  await openResumeDraft(page)
+  const activity = await page.evaluateHandle(() => {
+    const original = crypto.subtle.digest.bind(crypto.subtle)
+    const state = { hashes: 0, scrolling: 0 }
+    crypto.subtle.digest = async (...args) => {
+      state.hashes += 1
+      const result = await original(...args)
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      return result
+    }
+    const shell = document.querySelector<HTMLElement>('.editor-host-shell')!
+    shell.scrollTop = 1800
+    state.scrolling = window.setInterval(() => { shell.scrollTop += 40 }, 200)
+    return state
+  })
+  try {
+    await expect.poll(() => getResumeStorage(page), { timeout: 10000 }).toContain(DOC_KEY)
+    expect(await activity.evaluate(state => state.hashes)).toBe(1)
+  } finally {
+    await activity.evaluate(state => window.clearInterval(state.scrolling))
+    await activity.dispose()
+  }
+})
+
 test('silently discards the position when the document changed since capture', async ({
   page,
 }) => {
