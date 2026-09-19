@@ -208,7 +208,7 @@ export interface CreateResumePositionOptions {
   isEditorReady: () => boolean
   /** Stable document identity; null means "do not track this document". */
   getDocumentKey: () => string | null
-  /** Normalized editor Markdown snapshot; null when no editor is alive. */
+  /** Normalized Markdown for the capture surface; null when unavailable. */
   getMarkdown: () => string | null
   readPosition: (docKey: string) => ResumePositionRecord | null
   writePosition: (docKey: string, record: ResumePositionRecord) => void
@@ -377,7 +377,7 @@ export function createResumePosition({
     }
 
     const matches = await matchesResumeDocument(record, markdown)
-    if (generation !== sessionGeneration) {
+    if (generation !== sessionGeneration || getMarkdown() === null) {
       return
     }
 
