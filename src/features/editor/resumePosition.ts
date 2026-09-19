@@ -36,6 +36,9 @@ export const RESUME_CARD_SCROLL_DISMISS_PX = 24
 export const RESUME_MIN_DISTANCE_VIEWPORTS = 1.5
 // Bounded lifetime: the card withdraws on its own instead of lingering.
 export const RESUME_CARD_AUTO_DISMISS_MS = 10_000
+// Foreground checkpoints survive shutdown without a final lifecycle callback.
+export const RESUME_CAPTURE_QUIET_MS = 500
+export const RESUME_CAPTURE_MAX_MS = 2_500
 // Initial-layout settle before eligibility is judged: images, fonts, KaTeX,
 // and diagram previews can reflow the document long after editor readiness,
 // and a distance check against that transient layout would suppress or show
@@ -247,8 +250,8 @@ export interface ResumePosition {
 
 /**
  * Session controller for "resume where you left off". Capture reads the live
- * viewport synchronously at each persist point (the existing exit/lifecycle
- * paths), gated by whether the user scrolled or edited this session; restore
+ * viewport synchronously at foreground checkpoints and exit/lifecycle
+ * captures, gated by whether the user scrolled or edited this session; restore
  * waits for the initial layout to settle, is strictly validated (exact
  * SHA-256), never automatic, and every async step is bound to a generation
  * token so document replacement or editor destruction cancels it.
@@ -269,11 +272,16 @@ export function createResumePosition({
 
   let generation = 0
   let sessionDocKey: string | null = null
-  // True once the user scrolled or edited this session. Only then does an
-  // exit write a fresh position; a passive revisit leaves the stored record
-  // untouched.
+  // True once the user scrolled or edited this session. Only then does a
+  // checkpoint or exit write a fresh position; a passive revisit leaves the
+  // stored record untouched.
   let positionTouched = false
   let pendingTarget: PendingResumeTarget | null = null
+  let captureQuietTimer: ReturnType<typeof setTimeout> | null = null
+  let captureMaxTimer: ReturnType<typeof setTimeout> | null = null
+  // Only the current session's last completed fingerprint is retained.
+  // Exact Markdown equality lets unchanged-content exits write synchronously.
+  let cachedCapture: { markdown: string; record: ResumePositionRecord } | null = null
 
   // Latest-capture-wins ordering for asynchronous hash-and-write requests.
   // Keyed per document and NEVER reset with the session: a snapshotted
@@ -351,6 +359,7 @@ export function createResumePosition({
   function installScrollCapture(scrollContainer: HTMLElement) {
     const onScroll = () => {
       positionTouched = true
+      scheduleCapture()
       if (
         resumeCardVisible.value &&
         Math.abs(scrollContainer.scrollTop - cardShownScrollTop) > RESUME_CARD_SCROLL_DISMISS_PX
@@ -668,13 +677,39 @@ export function createResumePosition({
 
   function notifyDocumentEdited() {
     // Edits can change the top-level block structure, so any previously
-    // observed position is stale; the exit-time live capture (gated by this
-    // flag) is the only anchor that may be persisted afterwards.
+    // observed position is stale; checkpoints and exits both capture the
+    // post-edit DOM together with its current Markdown.
     positionTouched = true
     standDown('document edited')
+    scheduleCapture()
+  }
+
+  function clearCaptureTimers() {
+    if (captureQuietTimer !== null) {
+      clearTimeout(captureQuietTimer)
+    }
+    if (captureMaxTimer !== null) {
+      clearTimeout(captureMaxTimer)
+    }
+    captureQuietTimer = null
+    captureMaxTimer = null
+  }
+
+  function scheduleCapture() {
+    if (!sessionDocKey) {
+      return
+    }
+    if (captureQuietTimer !== null) {
+      clearTimeout(captureQuietTimer)
+    }
+    captureQuietTimer = setTimeout(() => void persistNow('activity settled'), RESUME_CAPTURE_QUIET_MS)
+    if (captureMaxTimer === null) {
+      captureMaxTimer = setTimeout(() => void persistNow('continuous activity'), RESUME_CAPTURE_MAX_MS)
+    }
   }
 
   function persistNow(reason: string): Promise<void> {
+    clearCaptureTimers()
     // Nothing moved and nothing changed: keep the stored record so a passive
     // revisit does not erase a deep position with a top-of-document one.
     if (!sessionDocKey || !positionTouched) {
@@ -684,6 +719,8 @@ export function createResumePosition({
     // Flush pending editor content BEFORE reading the DOM, so the anchor and
     // the hashed Markdown describe the same document state.
     const markdown = getMarkdown()
+    // Flushing pending editor operations may itself notifyDocumentEdited.
+    clearCaptureTimers()
     if (markdown === null) {
       return Promise.resolve()
     }
@@ -701,22 +738,35 @@ export function createResumePosition({
     const capturedAt = new Date().toISOString()
     const token = (persistTokens.get(docKey) ?? 0) + 1
     persistTokens.set(docKey, token)
+    const sessionGeneration = generation
 
-    return createRecord({ markdown, capturedAt, ...anchor }).then(record => {
+    const persistRecord = (record: ResumePositionRecord | null) => {
       if (!record || persistTokens.get(docKey) !== token) {
         return
       }
 
+      if (generation === sessionGeneration) {
+        cachedCapture = { markdown, record }
+      }
       writePosition(docKey, record)
       logger?.debug('resume position persisted', {
         docKey,
         reason,
         topBlockIndex: anchor.topBlockIndex,
       })
-    })
+    }
+
+    if (cachedCapture?.markdown === markdown) {
+      persistRecord({ ...cachedCapture.record, capturedAt, ...anchor })
+      return Promise.resolve()
+    }
+
+    return createRecord({ markdown, capturedAt, ...anchor }).then(persistRecord)
   }
 
   function resetForNewDocument() {
+    clearCaptureTimers()
+    cachedCapture = null
     generation += 1
     sessionDocKey = null
     positionTouched = false

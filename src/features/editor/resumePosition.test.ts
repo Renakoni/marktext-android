@@ -6,6 +6,8 @@ import {
   computeResumeAnchorFromRects,
   computeResumeScrollTop,
   createResumePosition,
+  RESUME_CAPTURE_QUIET_MS,
+  RESUME_CAPTURE_MAX_MS,
 } from './resumePosition'
 import {
   createResumePositionRecord,
@@ -197,9 +199,164 @@ function createControllerHarness({
 }
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   document.body.innerHTML = ''
+})
+
+describe('foreground resume checkpoints', () => {
+  it('captures the latest live anchor after scrolling becomes quiet', async () => {
+    vi.useFakeTimers()
+    const createRecord = vi.fn(async (options: CreateResumePositionRecordOptions) => ({
+      ...createStoredRecord(options.topBlockIndex),
+      displayText: options.displayText,
+    }))
+    const { controller, shell, editorRoot, store } = createControllerHarness({ createRecord })
+    await controller.startForOpenedDocument()
+    shell.dispatchEvent(new Event('scroll'))
+    await vi.advanceTimersByTimeAsync(RESUME_CAPTURE_QUIET_MS - 1)
+    expect(store.size).toBe(0)
+    editorRoot.querySelector('p')!.textContent = 'Latest visible block'
+    await vi.advanceTimersByTimeAsync(1)
+    expect(store.get('doc')?.displayText).toBe('Latest visible block')
+    expect(createRecord).toHaveBeenCalledTimes(1)
+    controller.resetForNewDocument()
+  })
+
+  it('bounds the wait during continuous scrolling and schedules the next checkpoint', async () => {
+    vi.useFakeTimers()
+    const writes = vi.fn(async () => createStoredRecord(0))
+    const { controller, shell, store } = createControllerHarness({ createRecord: writes })
+    await controller.startForOpenedDocument()
+    const tick = RESUME_CAPTURE_QUIET_MS / 2
+    for (let elapsed = 0; elapsed < RESUME_CAPTURE_MAX_MS; elapsed += tick) {
+      shell.dispatchEvent(new Event('scroll'))
+      await vi.advanceTimersByTimeAsync(tick)
+    }
+    expect(store.size).toBe(1)
+    const first = store.get('doc')!.capturedAt
+    shell.dispatchEvent(new Event('scroll'))
+    await vi.advanceTimersByTimeAsync(RESUME_CAPTURE_QUIET_MS)
+    expect(store.get('doc')!.capturedAt).not.toBe(first)
+    controller.resetForNewDocument()
+  })
+
+  it('checkpoints edit-only activity without waiting for an exit', async () => {
+    vi.useFakeTimers()
+    const { controller, store } = createControllerHarness({
+      createRecord: async () => createStoredRecord(0),
+    })
+    await controller.startForOpenedDocument()
+    controller.notifyDocumentEdited()
+    await vi.advanceTimersByTimeAsync(RESUME_CAPTURE_QUIET_MS)
+    expect(store.size).toBe(1)
+    controller.resetForNewDocument()
+  })
+
+  it('does not write on a passive revisit and cancels a departing session timer', async () => {
+    vi.useFakeTimers()
+    const createRecord = vi.fn(async () => createStoredRecord(0))
+    const { controller, shell, store } = createControllerHarness({ createRecord })
+    await controller.startForOpenedDocument()
+    await vi.advanceTimersByTimeAsync(RESUME_CAPTURE_MAX_MS * 2)
+    expect(createRecord).not.toHaveBeenCalled()
+    shell.dispatchEvent(new Event('scroll'))
+    controller.resetForNewDocument()
+    await controller.startForOpenedDocument()
+    await vi.advanceTimersByTimeAsync(RESUME_CAPTURE_MAX_MS * 2)
+    expect(store.size).toBe(0)
+    controller.resetForNewDocument()
+  })
+
+  it('an immediate exit captures live geometry and cancels the scheduled write', async () => {
+    vi.useFakeTimers()
+    const createRecord = vi.fn(async () => createStoredRecord(0))
+    const { controller, shell, store } = createControllerHarness({ createRecord })
+    await controller.startForOpenedDocument()
+    shell.dispatchEvent(new Event('scroll'))
+    await controller.persistNow('immediate exit')
+    const saved = store.get('doc')
+    await vi.advanceTimersByTimeAsync(RESUME_CAPTURE_MAX_MS * 2)
+    expect(createRecord).toHaveBeenCalledTimes(1)
+    expect(store.get('doc')).toBe(saved)
+    controller.resetForNewDocument()
+  })
+
+  it('reuses an unchanged fingerprint for a synchronous lifecycle write with a fresh anchor', async () => {
+    vi.useFakeTimers()
+    const createRecord = vi.fn(async (options: CreateResumePositionRecordOptions) => ({
+      ...createStoredRecord(options.topBlockIndex),
+      displayText: options.displayText,
+    }))
+    const { controller, shell, editorRoot, store } = createControllerHarness({ createRecord })
+    await controller.startForOpenedDocument()
+    shell.dispatchEvent(new Event('scroll'))
+    await vi.advanceTimersByTimeAsync(RESUME_CAPTURE_QUIET_MS)
+    const fingerprint = store.get('doc')!.markdownSha256
+    editorRoot.querySelector('p')!.textContent = 'Fresh anchor'
+    shell.dispatchEvent(new Event('scroll'))
+    const exiting = controller.persistNow('app pause')
+    // No await: once warmed, a lifecycle write must precede promise suspension.
+    expect(store.get('doc')?.displayText).toBe('Fresh anchor')
+    expect(store.get('doc')?.markdownSha256).toBe(fingerprint)
+    expect(createRecord).toHaveBeenCalledTimes(1)
+    await exiting
+    controller.resetForNewDocument()
+  })
+
+  it('rehashes changed Markdown and never shares its fingerprint across sessions', async () => {
+    vi.useFakeTimers()
+    let markdown = 'version one'
+    const createRecord = vi.fn(createResumePositionRecord)
+    const { controller, shell, store } = createControllerHarness({
+      createRecord,
+      getMarkdown: () => markdown,
+    })
+    await controller.startForOpenedDocument()
+    shell.dispatchEvent(new Event('scroll'))
+    await controller.persistNow('first checkpoint')
+    const firstHash = store.get('doc')!.markdownSha256
+    markdown = 'version two'
+    controller.notifyDocumentEdited()
+    await controller.persistNow('after edit')
+    expect(store.get('doc')!.markdownSha256).not.toBe(firstHash)
+    expect(createRecord).toHaveBeenCalledTimes(2)
+
+    controller.resetForNewDocument()
+    await controller.startForOpenedDocument()
+    shell.dispatchEvent(new Event('scroll'))
+    await controller.persistNow('new session')
+    expect(createRecord).toHaveBeenCalledTimes(3)
+    controller.resetForNewDocument()
+  })
+
+  it('a cached capture supersedes an older in-flight digest after an undo', async () => {
+    let markdown = 'original'
+    let finishEdited!: (record: ResumePositionRecord) => void
+    const createRecord = vi.fn()
+      .mockResolvedValueOnce(createStoredRecord(1))
+      .mockImplementationOnce(() => new Promise(resolve => { finishEdited = resolve }))
+    const { controller, shell, store } = createControllerHarness({
+      createRecord,
+      getMarkdown: () => markdown,
+    })
+    await controller.startForOpenedDocument()
+    shell.dispatchEvent(new Event('scroll'))
+    await controller.persistNow('original')
+    markdown = 'edited'
+    controller.notifyDocumentEdited()
+    const edited = controller.persistNow('edited')
+    markdown = 'original'
+    controller.notifyDocumentEdited()
+    await controller.persistNow('undo')
+    const newest = store.get('doc')
+    finishEdited(createStoredRecord(9))
+    await edited
+    expect(store.get('doc')).toBe(newest)
+    expect(createRecord).toHaveBeenCalledTimes(2)
+    controller.resetForNewDocument()
+  })
 })
 
 describe('persistNow write ordering', () => {

@@ -30,8 +30,7 @@ async function scrollEditorTo(page: Page, top: number) {
   await page.evaluate(value => {
     document.querySelector<HTMLElement>('.editor-host-shell')!.scrollTop = value
   }, top)
-  // Capture happens live at exit; this wait only keeps position assertions
-  // deterministic (scroll delivery + card dismissal side effects).
+  // Let scroll delivery and card dismissal settle before checking geometry.
   await page.waitForTimeout(500)
 }
 
@@ -84,6 +83,63 @@ test('captures on exit and resumes from the card without auto-scrolling', async 
     Boolean(document.activeElement?.closest('[data-testid="editor-host"]')),
   )
   expect(focusInEditor).toBe(false)
+})
+
+test('a foreground checkpoint survives reload without exit lifecycle handlers', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.addEventListener('pagehide', event => event.stopImmediatePropagation(), true)
+    document.addEventListener('visibilitychange', event => event.stopImmediatePropagation(), true)
+  })
+  await openResumeDraft(page)
+  const draftsBefore = await page.evaluate(key => localStorage.getItem(key), DRAFTS_STORAGE_KEY)
+  await scrollEditorTo(page, CAPTURE_SCROLL_TOP)
+  await expect.poll(() => getResumeStorage(page)).toContain(DOC_KEY)
+  const checkpoint = await getResumeStorage(page)
+  expect(await page.evaluate(key => localStorage.getItem(key), DRAFTS_STORAGE_KEY)).toBe(draftsBefore)
+
+  await page.reload()
+  await reopenDraft(page)
+  await expect(page.getByTestId('resume-card')).toBeVisible()
+  expect(await getResumeStorage(page)).toBe(checkpoint)
+  await page.getByTestId('resume-card-button').click()
+  await expect.poll(() => getShellScrollTop(page)).toBeGreaterThan(CAPTURE_SCROLL_TOP - 60)
+  expect(await getShellScrollTop(page)).toBeLessThan(CAPTURE_SCROLL_TOP + 60)
+})
+
+test('continuous scrolling checkpoints before the reader stops', async ({ page }) => {
+  await openResumeDraft(page)
+  const scrolling = await page.evaluateHandle(() => {
+    const shell = document.querySelector<HTMLElement>('.editor-host-shell')!
+    shell.scrollTop = 1800
+    return window.setInterval(() => { shell.scrollTop += 40 }, 200)
+  })
+  try {
+    await page.waitForTimeout(900)
+    expect(await getResumeStorage(page)).not.toContain(DOC_KEY)
+    await expect.poll(() => getResumeStorage(page), { timeout: 4000 }).toContain(DOC_KEY)
+  } finally {
+    await page.evaluate(timer => window.clearInterval(timer), scrolling)
+    await scrolling.dispose()
+  }
+})
+
+test('a warmed checkpoint lets lifecycle capture write the latest position without another digest', async ({ page }) => {
+  await openResumeDraft(page)
+  await scrollEditorTo(page, 1800)
+  await expect.poll(() => getResumeStorage(page)).toContain(DOC_KEY)
+  const checkpoint = await getResumeStorage(page)
+
+  const after = await page.evaluate(({ key, top }) => {
+    // A lifecycle write must not need this asynchronous operation again for
+    // unchanged content. Capture and storage inspection share one JS turn.
+    crypto.subtle.digest = () => new Promise<ArrayBuffer>(() => {})
+    document.querySelector<HTMLElement>('.editor-host-shell')!.scrollTop = top
+    window.dispatchEvent(new Event('pagehide'))
+    return localStorage.getItem(key)
+  }, { key: RESUME_STORAGE_KEY, top: CAPTURE_SCROLL_TOP })
+  expect(after).not.toBe(checkpoint)
+  expect(JSON.parse(after!)[DOC_KEY].topBlockIndex)
+    .toBeGreaterThan(JSON.parse(checkpoint)[DOC_KEY].topBlockIndex)
 })
 
 test('silently discards the position when the document changed since capture', async ({
