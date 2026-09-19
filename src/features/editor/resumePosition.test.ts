@@ -404,6 +404,47 @@ describe('restore offer during a progressive mount', () => {
     controller.resetForNewDocument()
   })
 
+  it.each(['layout', 'hash'] as const)(
+    'keeps a stood-down offer canceled after a source round trip during %s validation',
+    async phase => {
+      const record = await makeMatchingRecord(5)
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('markdown'))
+      let finishDigest: ((value: ArrayBuffer) => void) | undefined
+      const hashing = vi.spyOn(crypto.subtle, 'digest').mockImplementation(
+        () => new Promise(resolve => { finishDigest = resolve }),
+      )
+      let markdown: string | null = 'markdown'
+      const { controller } = createControllerHarness({
+        createRecord: () => Promise.resolve(null),
+        readPosition: () => record,
+        getMarkdown: () => markdown,
+        logicalBlockCount: 10,
+      })
+      const opening = controller.startForOpenedDocument()
+      if (phase === 'hash') {
+        await Promise.resolve()
+        expect(hashing).toHaveBeenCalledTimes(1)
+      } else {
+        expect(hashing).not.toHaveBeenCalled()
+      }
+
+      controller.standDown('entering source mode')
+      markdown = null
+      // No edit or scroll: returning to the same surface must not revive
+      // the opening-time offer that the mode handoff already canceled.
+      markdown = 'markdown'
+      await Promise.resolve()
+      finishDigest?.(digest)
+      await opening
+      expect(controller.resumeCardVisible.value).toBe(false)
+
+      hashing.mockRestore()
+      await controller.startForOpenedDocument()
+      expect(controller.resumeCardVisible.value).toBe(true)
+      controller.resetForNewDocument()
+    },
+  )
+
   it('offers a pending-tail target without materializing anything', async () => {
     const record = await makeMatchingRecord(5)
     const { controller, ensureMountedThrough } = createControllerHarness({
