@@ -652,4 +652,11 @@ export const es = {
   'cloudBrowser.loading': 'Cargando…',
   'cloudBrowser.empty': 'No hay documentos Markdown aquí',
   'cloudBrowser.retry': 'Reintentar',
+  'editor.localImages.title': '¿Mostrar las imágenes locales?',
+  'editor.localImages.body.one': 'Este documento enlaza 1 imagen guardada en la carpeta «{folder}». Permite a MarkText acceder a esa carpeta para mostrarla.',
+  'editor.localImages.body.other': 'Este documento enlaza {count} imágenes guardadas en la carpeta «{folder}». Permite a MarkText acceder a esa carpeta para mostrarlas.',
+  'editor.localImages.bodyNoFolder.one': 'Este documento enlaza 1 imagen guardada junto a él. Permite a MarkText acceder a la carpeta del documento para mostrarla.',
+  'editor.localImages.bodyNoFolder.other': 'Este documento enlaza {count} imágenes guardadas junto a él. Permite a MarkText acceder a la carpeta del documento para mostrarlas.',
+  'editor.localImages.allow': 'Permitir',
+  'editor.localImages.decline': 'Ahora no',
 } satisfies Record<I18nKey, string>

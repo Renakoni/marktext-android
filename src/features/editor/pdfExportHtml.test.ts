@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   PDF_EXPORT_PRINT_CSS,
   renderMarkdownToPdfExportHtml,
+  rewriteLocalMarkdownImageSourcesForExport,
   rewriteMarkdownImageSourcesForExport,
 } from './pdfExportHtml'
 import type { MuyaEditor } from './editorRuntime'
@@ -38,6 +39,44 @@ describe('pdfExportHtml', () => {
   it('does not touch regular image URLs', () => {
     const markdown = '![web](https://example.com/pic.png) ![rel](./pic.png)'
     expect(rewriteMarkdownImageSourcesForExport(markdown, () => 'file:///nope')).toBe(markdown)
+  })
+
+  it('rewrites relative sibling images to the content URIs the print WebView can open', () => {
+    const markdown = [
+      'before ![alt](images/cover.png) after',
+      '![spaced](<images/with space.png>)',
+      '![remote](https://example.com/pic.png)',
+      '![inserted](marktext-image://local/pic.png)',
+      '',
+      '[ref]: images/ref.png',
+    ].join('\n')
+
+    const rewritten = rewriteLocalMarkdownImageSourcesForExport(markdown, source =>
+      source === 'images/with space.png'
+        ? null
+        : `content://authority/tree/t/document/${source}`,
+    )
+
+    expect(rewritten).toContain(
+      'before ![alt](content://authority/tree/t/document/images/cover.png) after',
+    )
+    // A destination the resolver cannot map stays exactly as written, and the
+    // editor's own schemes and remote URLs are never local siblings.
+    expect(rewritten).toContain('![spaced](<images/with space.png>)')
+    expect(rewritten).toContain('![remote](https://example.com/pic.png)')
+    expect(rewritten).toContain('![inserted](marktext-image://local/pic.png)')
+    expect(rewritten).toContain('[ref]: content://authority/tree/t/document/images/ref.png')
+  })
+
+  it('leaves relative images alone when local resolution is unavailable or throws', () => {
+    const markdown = '![a](images/cover.png)'
+
+    expect(rewriteLocalMarkdownImageSourcesForExport(markdown, () => null)).toBe(markdown)
+    expect(
+      rewriteLocalMarkdownImageSourcesForExport(markdown, () => {
+        throw new Error('no grant')
+      }),
+    ).toBe(markdown)
   })
 
   it('keeps page geometry, background printing, and front-matter hiding in the print stylesheet', () => {

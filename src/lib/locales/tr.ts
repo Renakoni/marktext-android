@@ -652,4 +652,11 @@ export const tr = {
   'cloudBrowser.loading': 'Yükleniyor…',
   'cloudBrowser.empty': 'Burada Markdown belgesi yok',
   'cloudBrowser.retry': 'Yeniden dene',
+  'editor.localImages.title': 'Yerel görseller gösterilsin mi?',
+  'editor.localImages.body.one': 'Bu belge “{folder}” klasöründe saklanan 1 görsele bağlantı veriyor. Göstermek için MarkText’in bu klasöre erişmesine izin verin.',
+  'editor.localImages.body.other': 'Bu belge “{folder}” klasöründe saklanan {count} görsele bağlantı veriyor. Göstermek için MarkText’in bu klasöre erişmesine izin verin.',
+  'editor.localImages.bodyNoFolder.one': 'Bu belge yanında saklanan 1 görsele bağlantı veriyor. Göstermek için MarkText’in belgenin klasörüne erişmesine izin verin.',
+  'editor.localImages.bodyNoFolder.other': 'Bu belge yanında saklanan {count} görsele bağlantı veriyor. Göstermek için MarkText’in belgenin klasörüne erişmesine izin verin.',
+  'editor.localImages.allow': 'İzin ver',
+  'editor.localImages.decline': 'Şimdi değil',
 } satisfies Record<I18nKey, string>

@@ -19,6 +19,8 @@ export interface AppBackButtonState {
   incomingOpenPromptOpen: boolean
   androidExitPromptOpen: boolean
   draftExitPromptOpen: boolean
+  /** True while the local-image folder grant is being offered before an open. */
+  localImagePromptOpen?: boolean
   linkSheetOpen: boolean
   tableSheetOpen: boolean
   editorMenuOpen: boolean
@@ -44,6 +46,7 @@ export type AppBackButtonAction =
   | 'close-incoming-open-prompt'
   | 'close-android-exit-prompt'
   | 'close-local-draft-exit-prompt'
+  | 'close-local-image-prompt'
   | 'close-link-sheet'
   | 'close-table-sheet'
   | 'close-editor-menu'
@@ -100,6 +103,7 @@ export function getAppBackButtonAction({
   incomingOpenPromptOpen,
   androidExitPromptOpen,
   draftExitPromptOpen,
+  localImagePromptOpen,
   linkSheetOpen,
   tableSheetOpen,
   editorMenuOpen,
@@ -146,6 +150,12 @@ export function getAppBackButtonAction({
   // The blocked-preservation prompt guards unsaved work; Back keeps editing.
   if (incomingOpenPromptOpen) {
     return 'close-incoming-open-prompt'
+  }
+
+  // The folder-grant offer is a courtesy before a document opens: Back answers
+  // it with "not now", exactly like the decline button.
+  if (localImagePromptOpen) {
+    return 'close-local-image-prompt'
   }
 
   if (androidExitPromptOpen) {

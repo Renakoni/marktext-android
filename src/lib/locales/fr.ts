@@ -652,4 +652,11 @@ export const fr = {
   'cloudBrowser.loading': 'Chargement…',
   'cloudBrowser.empty': 'Aucun document Markdown ici',
   'cloudBrowser.retry': 'Réessayer',
+  'editor.localImages.title': 'Afficher les images locales ?',
+  'editor.localImages.body.one': 'Ce document lie 1 image stockée dans le dossier « {folder} ». Autorisez MarkText à accéder à ce dossier pour l’afficher.',
+  'editor.localImages.body.other': 'Ce document lie {count} images stockées dans le dossier « {folder} ». Autorisez MarkText à accéder à ce dossier pour les afficher.',
+  'editor.localImages.bodyNoFolder.one': 'Ce document lie 1 image stockée à côté de lui. Autorisez MarkText à accéder au dossier du document pour l’afficher.',
+  'editor.localImages.bodyNoFolder.other': 'Ce document lie {count} images stockées à côté de lui. Autorisez MarkText à accéder au dossier du document pour les afficher.',
+  'editor.localImages.allow': 'Autoriser',
+  'editor.localImages.decline': 'Plus tard',
 } satisfies Record<I18nKey, string>

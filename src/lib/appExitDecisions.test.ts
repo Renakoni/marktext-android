@@ -92,6 +92,17 @@ describe('appExitDecisions', () => {
       editorToolbarExpanded: true,
     })).toBe('close-local-draft-exit-prompt')
 
+    // The folder-grant offer is a courtesy before a document opens, so Back
+    // answers it with "not now" rather than reaching the layers below.
+    expect(getAppBackButtonAction({
+      ...baseBackState,
+      currentScreen: 'editor',
+      localImagePromptOpen: true,
+      linkSheetOpen: true,
+      editorMenuOpen: true,
+      editorToolbarExpanded: true,
+    })).toBe('close-local-image-prompt')
+
     expect(getAppBackButtonAction({
       ...baseBackState,
       currentScreen: 'editor',

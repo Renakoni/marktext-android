@@ -643,4 +643,11 @@ export const zhCN = {
   'cloudBrowser.loading': '正在加载…',
   'cloudBrowser.empty': '这里没有 Markdown 文档',
   'cloudBrowser.retry': '重试',
+  'editor.localImages.title': '显示本地图片？',
+  'editor.localImages.body.one': '本文档链接了「{folder}」文件夹中的 1 张图片。允许 MarkText 访问该文件夹即可显示。',
+  'editor.localImages.body.other': '本文档链接了「{folder}」文件夹中的 {count} 张图片。允许 MarkText 访问该文件夹即可显示。',
+  'editor.localImages.bodyNoFolder.one': '本文档链接了旁边的 1 张图片。允许 MarkText 访问文档所在文件夹即可显示。',
+  'editor.localImages.bodyNoFolder.other': '本文档链接了旁边的 {count} 张图片。允许 MarkText 访问文档所在文件夹即可显示。',
+  'editor.localImages.allow': '允许',
+  'editor.localImages.decline': '暂不',
 } satisfies Record<I18nKey, string>

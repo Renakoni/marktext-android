@@ -652,4 +652,11 @@ export const ko = {
   'cloudBrowser.loading': '불러오는 중…',
   'cloudBrowser.empty': '여기에는 Markdown 문서가 없습니다',
   'cloudBrowser.retry': '다시 시도',
+  'editor.localImages.title': '로컬 이미지를 표시할까요?',
+  'editor.localImages.body.one': '이 문서는 ‘{folder}’ 폴더에 있는 이미지 1개를 연결합니다. 표시하려면 MarkText에 이 폴더 접근을 허용하세요.',
+  'editor.localImages.body.other': '이 문서는 ‘{folder}’ 폴더에 있는 이미지 {count}개를 연결합니다. 표시하려면 MarkText에 이 폴더 접근을 허용하세요.',
+  'editor.localImages.bodyNoFolder.one': '이 문서는 옆에 있는 이미지 1개를 연결합니다. 표시하려면 MarkText에 문서 폴더 접근을 허용하세요.',
+  'editor.localImages.bodyNoFolder.other': '이 문서는 옆에 있는 이미지 {count}개를 연결합니다. 표시하려면 MarkText에 문서 폴더 접근을 허용하세요.',
+  'editor.localImages.allow': '허용',
+  'editor.localImages.decline': '나중에',
 } satisfies Record<I18nKey, string>

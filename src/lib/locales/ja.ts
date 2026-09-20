@@ -652,4 +652,11 @@ export const ja = {
   'cloudBrowser.loading': '読み込み中…',
   'cloudBrowser.empty': 'ここに Markdown ドキュメントはありません',
   'cloudBrowser.retry': '再試行',
+  'editor.localImages.title': 'ローカル画像を表示しますか？',
+  'editor.localImages.body.one': 'この文書は「{folder}」フォルダー内の画像を 1 件参照しています。表示するには MarkText にこのフォルダーへのアクセスを許可してください。',
+  'editor.localImages.body.other': 'この文書は「{folder}」フォルダー内の画像を {count} 件参照しています。表示するには MarkText にこのフォルダーへのアクセスを許可してください。',
+  'editor.localImages.bodyNoFolder.one': 'この文書は隣接する画像を 1 件参照しています。表示するには MarkText に文書のフォルダーへのアクセスを許可してください。',
+  'editor.localImages.bodyNoFolder.other': 'この文書は隣接する画像を {count} 件参照しています。表示するには MarkText に文書のフォルダーへのアクセスを許可してください。',
+  'editor.localImages.allow': '許可',
+  'editor.localImages.decline': '後で',
 } satisfies Record<I18nKey, string>
