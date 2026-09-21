@@ -652,4 +652,11 @@ export const zhTW = {
   'cloudBrowser.loading': '正在載入…',
   'cloudBrowser.empty': '這裡沒有 Markdown 文件',
   'cloudBrowser.retry': '重試',
+  'editor.localImages.title': '顯示本機圖片？',
+  'editor.localImages.body.one': '本文件連結了「{folder}」資料夾中的 1 張圖片。允許 MarkText 存取該資料夾即可顯示。',
+  'editor.localImages.body.other': '本文件連結了「{folder}」資料夾中的 {count} 張圖片。允許 MarkText 存取該資料夾即可顯示。',
+  'editor.localImages.bodyNoFolder.one': '本文件連結了旁邊的 1 張圖片。允許 MarkText 存取文件所在資料夾即可顯示。',
+  'editor.localImages.bodyNoFolder.other': '本文件連結了旁邊的 {count} 張圖片。允許 MarkText 存取文件所在資料夾即可顯示。',
+  'editor.localImages.allow': '允許',
+  'editor.localImages.decline': '暫不',
 } satisfies Record<I18nKey, string>

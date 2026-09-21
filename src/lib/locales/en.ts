@@ -646,6 +646,13 @@ export const en = {
   'cloudBrowser.loading': 'Loading…',
   'cloudBrowser.empty': 'No Markdown documents here',
   'cloudBrowser.retry': 'Try again',
+  'editor.localImages.title': 'Show local images?',
+  'editor.localImages.body.one': 'This document links 1 image stored in the “{folder}” folder. Allow MarkText access to that folder to display it.',
+  'editor.localImages.body.other': 'This document links {count} images stored in the “{folder}” folder. Allow MarkText access to that folder to display them.',
+  'editor.localImages.bodyNoFolder.one': 'This document links 1 image stored next to it. Allow MarkText to access the folder containing the document to display it.',
+  'editor.localImages.bodyNoFolder.other': 'This document links {count} images stored next to it. Allow MarkText to access the folder containing the document to display them.',
+  'editor.localImages.allow': 'Allow',
+  'editor.localImages.decline': 'Not now',
 }
 
 export type I18nKey = keyof typeof en

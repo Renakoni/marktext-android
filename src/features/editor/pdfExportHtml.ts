@@ -1,7 +1,9 @@
 import {
   ensureAndroidImageResolver,
+  getDocumentLocalImageExportSource,
   getMarkTextImageExportFileSource,
   getImportedAndroidImageDirectory,
+  isLocalRelativeImageSource,
 } from '../../lib/androidImages'
 import type { MuyaEditor } from './editorRuntime'
 
@@ -64,6 +66,47 @@ export function rewriteMarkdownImageSourcesForExport(
   })
 }
 
+// An inline image destination and a reference definition, each split so only
+// the destination is replaced. Kept in step with the editor's own local-source
+// test (`isLocalRelativeImageSource`).
+const MARKDOWN_INLINE_IMAGE_DESTINATION_REGEXP = /(!\[[^\]]*\]\(\s*)(<[^>\n]*>|[^\s)]+)/g
+const MARKDOWN_REFERENCE_IMAGE_DESTINATION_REGEXP = /^([ \t]{0,3}\[[^\]\n]+\]:[ \t]*)(<[^>\n]*>|\S+)/gm
+
+// Rewrites relative sibling image destinations to content URIs the native
+// print WebView can open directly. That WebView has no Capacitor local server,
+// so the `http://localhost/...` form the live editor resolves them to would
+// simply not load in the exported PDF.
+export function rewriteLocalMarkdownImageSourcesForExport(
+  markdown: string,
+  resolveLocalSource: (source: string) => string | null,
+) {
+  const rewrite = (prefix: string, destination: string) => {
+    const wrapped = destination.startsWith('<') && destination.endsWith('>')
+    const source = wrapped ? destination.slice(1, -1).trim() : destination
+    if (!isLocalRelativeImageSource(source)) {
+      return `${prefix}${destination}`
+    }
+
+    let resolved: string | null
+    try {
+      resolved = resolveLocalSource(source)
+    } catch {
+      resolved = null
+    }
+    return resolved ? `${prefix}${resolved}` : `${prefix}${destination}`
+  }
+
+  return markdown
+    .replace(
+      MARKDOWN_INLINE_IMAGE_DESTINATION_REGEXP,
+      (_match: string, prefix: string, destination: string) => rewrite(prefix, destination),
+    )
+    .replace(
+      MARKDOWN_REFERENCE_IMAGE_DESTINATION_REGEXP,
+      (_match: string, prefix: string, destination: string) => rewrite(prefix, destination),
+    )
+}
+
 export interface RenderPdfExportHtmlOptions {
   markdown: string
   title: string
@@ -89,9 +132,12 @@ export async function renderMarkdownToPdfExportHtml({
 }: RenderPdfExportHtmlOptions) {
   await ensureAndroidImageResolver()
   const imageDirectory = getImportedAndroidImageDirectory()
-  const exportMarkdown = rewriteMarkdownImageSourcesForExport(
-    markdown,
-    source => getMarkTextImageExportFileSource(source, imageDirectory),
+  const exportMarkdown = rewriteLocalMarkdownImageSourcesForExport(
+    rewriteMarkdownImageSourcesForExport(
+      markdown,
+      source => getMarkTextImageExportFileSource(source, imageDirectory),
+    ),
+    source => getDocumentLocalImageExportSource(source),
   )
 
   const { MarkdownToHtml } = await import('@muyajs/core')

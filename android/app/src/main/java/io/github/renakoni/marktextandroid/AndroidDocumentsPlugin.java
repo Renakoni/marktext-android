@@ -48,6 +48,7 @@ public class AndroidDocumentsPlugin extends Plugin {
     private static final String CALLBACK_OPEN_MARKDOWN_DOCUMENT = "openMarkdownDocumentResult";
     private static final String CALLBACK_CREATE_MARKDOWN_DOCUMENT = "createMarkdownDocumentResult";
     private static final String CALLBACK_PICK_IMAGE_DOCUMENT = "pickImageDocumentResult";
+    private static final String CALLBACK_DOCUMENT_IMAGE_FOLDER = "requestDocumentImageFolderAccessResult";
     private static final String EVENT_OPEN_WITH_DOCUMENT = "openWithDocument";
     private static final String EVENT_SHARE_DOCUMENT = "shareDocument";
     private static final String IMPORTED_IMAGE_DIRECTORY = "images";
@@ -987,6 +988,45 @@ public class AndroidDocumentsPlugin extends Plugin {
         }
     }
 
+    @ActivityCallback
+    private void requestDocumentImageFolderAccessResult(PluginCall call, ActivityResult result) {
+        if (call == null) {
+            Log.w(TAG, "Missing plugin call for Android image folder picker result");
+            return;
+        }
+
+        JSObject value = new JSObject();
+        if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
+            value.put("canceled", true);
+            value.put("granted", false);
+            call.resolve(value);
+            return;
+        }
+
+        Uri treeUri = result.getData().getData();
+        if (treeUri == null) {
+            value.put("canceled", false);
+            value.put("granted", false);
+            call.resolve(value);
+            return;
+        }
+
+        boolean granted = false;
+        try {
+            getContext()
+                .getContentResolver()
+                .takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            granted = true;
+        } catch (SecurityException ex) {
+            Log.w(TAG, "Could not persist the Android document image folder grant", ex);
+        }
+
+        value.put("canceled", false);
+        value.put("granted", granted);
+        value.put("treeUri", treeUri.toString());
+        call.resolve(value);
+    }
+
     private JSObject buildDocumentResult(Uri uri, Intent grantIntent) throws IOException, DocumentReadException {
         String displayName = getDisplayName(uri);
         String mimeType = getMimeType(uri);
@@ -1061,6 +1101,229 @@ public class AndroidDocumentsPlugin extends Plugin {
         result.put("fileUri", uri.toString());
         result.put("bytes", 0);
         return result;
+    }
+
+    /**
+     * Reports whether this document's folder is reachable and resolves the
+     * given relative image sources to content URIs the WebView can load.
+     *
+     * The picker hands the app a grant for the Markdown document alone, so
+     * `![](images/cover.png)` stays unreadable until the user also grants the
+     * containing folder through {@link #requestDocumentImageFolderAccess}.
+     * `supported` is false for providers whose document ids carry no directory
+     * component (cloud drives), where a relative local image could never be
+     * resolved and no permission prompt should be shown.
+     */
+    @PluginMethod
+    public void resolveDocumentImages(PluginCall call) {
+        String sourceUri = call.getString("sourceUri", "");
+        Uri documentUri = parseContentUri(sourceUri);
+        JSObject result = new JSObject();
+        result.put("supported", false);
+        result.put("access", "missing");
+        result.put("resolved", new JSObject());
+        if (documentUri == null) {
+            call.resolve(result);
+            return;
+        }
+
+        String documentId;
+        try {
+            documentId = DocumentsContract.getDocumentId(documentUri);
+        } catch (IllegalArgumentException | UnsupportedOperationException ex) {
+            call.resolve(result);
+            return;
+        }
+
+        if (DocumentImagePathPolicy.documentDirectoryId(documentId) == null) {
+            call.resolve(result);
+            return;
+        }
+
+        result.put("supported", true);
+        String folderName = documentFolderName(documentId);
+        if (folderName.length() > 0) {
+            result.put("folderName", folderName);
+        }
+
+        Uri treeUri = findCoveringImageTree(documentUri, documentId);
+        if (treeUri == null) {
+            call.resolve(result);
+            return;
+        }
+
+        result.put("access", "granted");
+        result.put("treeUri", treeUri.toString());
+        // The web resolver derives sibling URIs from these two synchronously,
+        // so an image typed into the document after it opened still resolves
+        // without another round trip through the bridge.
+        result.put("treeDocumentId", DocumentsContract.getTreeDocumentId(treeUri));
+        result.put("documentDirectoryId", DocumentImagePathPolicy.documentDirectoryId(documentId));
+        JSObject resolved = new JSObject();
+        JSArray sources = call.getArray("sources");
+        if (sources != null) {
+            String treeDocumentId = DocumentsContract.getTreeDocumentId(treeUri);
+            for (int index = 0; index < sources.length(); index += 1) {
+                String source = sources.optString(index, null);
+                if (source == null || source.length() == 0) {
+                    continue;
+                }
+
+                Uri imageUri = resolveDocumentImageUri(
+                    treeUri,
+                    treeDocumentId,
+                    documentId,
+                    source
+                );
+                if (imageUri == null) {
+                    // A destination written as `images/my%20photo.png` names a
+                    // file literally called `my photo.png`, and SAF document ids
+                    // carry the raw display name.
+                    String decoded = Uri.decode(source);
+                    if (!decoded.equals(source)) {
+                        imageUri = resolveDocumentImageUri(
+                            treeUri,
+                            treeDocumentId,
+                            documentId,
+                            decoded
+                        );
+                    }
+                }
+                if (imageUri != null) {
+                    resolved.put(source, imageUri.toString());
+                }
+            }
+        }
+        result.put("resolved", resolved);
+        call.resolve(result);
+    }
+
+    /**
+     * Asks the user to grant read access to a folder holding the document, so
+     * its relative image references become readable. The system picker opens in
+     * the document's own folder, making the common case a single confirmation.
+     */
+    @PluginMethod
+    public void requestDocumentImageFolderAccess(PluginCall call) {
+        String sourceUri = call.getString("sourceUri", "");
+        Uri documentUri = parseContentUri(sourceUri);
+        if (documentUri == null) {
+            call.reject("A valid content URI is required", "INVALID_SOURCE_URI");
+            return;
+        }
+
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+        );
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, documentUri);
+        }
+
+        try {
+            startActivityForResult(call, intent, CALLBACK_DOCUMENT_IMAGE_FOLDER);
+        } catch (ActivityNotFoundException ex) {
+            Log.e(TAG, "No Android folder picker is available", ex);
+            call.reject(
+                "No Android folder picker is available",
+                "IMAGE_FOLDER_PICKER_UNAVAILABLE",
+                ex
+            );
+        }
+    }
+
+    private Uri findCoveringImageTree(Uri documentUri, String documentId) {
+        ContentResolver resolver = getContext().getContentResolver();
+        String authority = documentUri.getAuthority();
+        if (authority == null) {
+            return null;
+        }
+
+        Map<String, Uri> treeDocumentIds = new LinkedHashMap<>();
+        for (UriPermission permission : resolver.getPersistedUriPermissions()) {
+            Uri treeUri = permission.getUri();
+            if (
+                !permission.isReadPermission()
+                || treeUri == null
+                || !authority.equals(treeUri.getAuthority())
+                || !DocumentsContract.isTreeUri(treeUri)
+            ) {
+                continue;
+            }
+
+            try {
+                treeDocumentIds.put(DocumentsContract.getTreeDocumentId(treeUri), treeUri);
+            } catch (IllegalArgumentException | UnsupportedOperationException ex) {
+                // An unreadable tree id cannot cover anything: keep the grant,
+                // but never treat it as a candidate.
+            }
+        }
+
+        String coveringId = DocumentImagePathPolicy.findCoveringTreeDocumentId(
+            documentId,
+            treeDocumentIds.keySet()
+        );
+        return coveringId == null ? null : treeDocumentIds.get(coveringId);
+    }
+
+    private Uri resolveDocumentImageUri(
+        Uri treeUri,
+        String treeDocumentId,
+        String documentId,
+        String source
+    ) {
+        String childDocumentId = DocumentImagePathPolicy.resolveChildDocumentId(
+            treeDocumentId,
+            documentId,
+            source
+        );
+        if (childDocumentId == null) {
+            return null;
+        }
+
+        Uri candidate;
+        try {
+            candidate = DocumentsContract.buildDocumentUriUsingTree(treeUri, childDocumentId);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+
+        return isReadableDocument(candidate) ? candidate : null;
+    }
+
+    // A metadata probe proves the grant actually reaches the child without
+    // reading the image bytes into memory.
+    private boolean isReadableDocument(Uri uri) {
+        try (
+            Cursor cursor = getContext()
+                .getContentResolver()
+                .query(
+                    uri,
+                    new String[] { DocumentsContract.Document.COLUMN_DOCUMENT_ID },
+                    null,
+                    null,
+                    null
+                )
+        ) {
+            return cursor != null && cursor.moveToFirst();
+        } catch (SecurityException | IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    // The folder's own name, read straight from the document id so naming it in
+    // the permission prompt needs no extra query (and no extra grant).
+    private String documentFolderName(String documentId) {
+        String directoryId = DocumentImagePathPolicy.documentDirectoryId(documentId);
+        if (directoryId == null) {
+            return "";
+        }
+
+        int separator = directoryId.lastIndexOf('/');
+        String name = separator >= 0 ? directoryId.substring(separator + 1) : directoryId;
+        // A bare volume root ("primary:") has no folder name of its own.
+        return name.endsWith(":") ? "" : name;
     }
 
     private JSObject buildOpenWithDocumentResult(Uri uri, Intent grantIntent) throws IOException, DocumentReadException {

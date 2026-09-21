@@ -39,14 +39,18 @@ import {
 import OpenLocationsScreen from './features/open-locations/OpenLocationsScreen.vue'
 import CloudBrowserScreen from './features/open-locations/CloudBrowserScreen.vue'
 import CloudNameSheet from './features/open-locations/CloudNameSheet.vue'
+import LocalImageAccessPrompt from './features/editor/components/LocalImageAccessPrompt.vue'
 import {
   ensureAndroidImageResolver,
   formatImportedImageStorageBytes,
   getAndroidImageUserMessage,
   isAndroidImageImportAvailable,
   pickAndroidImageDocument,
+  prepareAndroidDocumentImages,
+  shouldOfferAndroidDocumentImageAccess,
   type ImportedAndroidImageCleanupResult,
 } from './lib/androidImages'
+import { requestAndroidDocumentImageFolderGrant } from './lib/androidDocuments'
 import {
   installAppLifecycleListeners as installAppLifecycleListenerHandles,
   type AppLifecycleListeners,
@@ -259,6 +263,14 @@ const draftExitPromptOpen = ref(false)
 const androidExitPromptOpen = ref(false)
 const incomingOpenPromptOpen = ref(false)
 const incomingOpenName = ref('')
+// Android grants the app the Markdown document alone, so a relative image path
+// such as `images/cover.png` stays unreadable until the user also grants the
+// folder holding it. This prompt asks for that grant before the document
+// renders, so its images appear on first paint.
+const localImagePromptOpen = ref(false)
+const localImagePromptFolder = ref<string | null>(null)
+const localImagePromptCount = ref(0)
+let resolveLocalImagePrompt: ((allow: boolean) => void) | null = null
 // The deferred replacement to run if the user discards the current document
 // after preservation was blocked; cleared whenever the prompt resolves.
 let pendingIncomingOpenProceed: (() => Promise<void>) | null = null
@@ -916,6 +928,11 @@ async function openEditor(markdown: string) {
   // The sheets and their pending ranges belong to the outgoing document.
   closeLinkSheet()
   closeTableSheet()
+  // documentState already points at the incoming document, so this is the one
+  // place every open path passes through: resolve (and, when missing, ask for)
+  // access to the folder beside the document BEFORE it renders, so relative
+  // image paths show on first paint instead of after a reopen.
+  await ensureLocalImageAccess(markdown, documentState.value.sourceUri ?? null)
   await openEditorSessionDocument(markdown)
   void startResumeForOpenedDocument()
   // Long-press entry: Android uses the native suppressed-ActionMode signal;
@@ -1506,6 +1523,64 @@ function rememberAndroidDocument(document: OpenedAndroidDocument) {
       pinnedDocumentIds.value,
     ),
   )
+}
+
+// Android hands the app a grant for the Markdown document alone, so a relative
+// image destination such as `images/cover.png` stays unreadable until the user
+// also grants the folder holding the document. This resolves what the document
+// already links and, when that folder is still unreachable, asks once. Declining
+// costs nothing: the images stay hidden and the next open asks again.
+async function ensureLocalImageAccess(markdown: string, sourceUri: string | null) {
+  let preparation
+  try {
+    preparation = await prepareAndroidDocumentImages({ sourceUri, markdown })
+  } catch (error) {
+    androidDocumentLog.warn('Android document image preparation failed', error)
+    return
+  }
+
+  // Narrows sourceUri for the grant call below, which needs a SAF content URI.
+  if (!sourceUri || !shouldOfferAndroidDocumentImageAccess(preparation, sourceUri)) {
+    return
+  }
+
+  const allow = await requestLocalImageAccessDecision(
+    preparation.folderName,
+    preparation.unresolvedImageCount,
+  )
+  if (!allow) {
+    return
+  }
+
+  try {
+    const result = await requestAndroidDocumentImageFolderGrant(sourceUri)
+    if (result.granted) {
+      await prepareAndroidDocumentImages({ sourceUri, markdown })
+    }
+  } catch (error) {
+    androidDocumentLog.warn('Android document image folder grant failed', error)
+  }
+}
+
+function requestLocalImageAccessDecision(folderName: string | null, imageCount: number) {
+  // A second open while this one is still waiting (an incoming intent, a fast
+  // double tap) must not strand the first open on a promise nobody can settle.
+  resolveLocalImagePrompt?.(false)
+  localImagePromptFolder.value = folderName
+  localImagePromptCount.value = imageCount
+  localImagePromptOpen.value = true
+  return new Promise<boolean>(resolve => {
+    resolveLocalImagePrompt = resolve
+  })
+}
+
+function settleLocalImageAccessPrompt(allow: boolean) {
+  const resolve = resolveLocalImagePrompt
+  resolveLocalImagePrompt = null
+  localImagePromptOpen.value = false
+  localImagePromptFolder.value = null
+  localImagePromptCount.value = 0
+  resolve?.(allow)
 }
 
 async function openAndroidDocumentResult(
@@ -2442,6 +2517,7 @@ async function handleAppBackButton() {
     incomingOpenPromptOpen: incomingOpenPromptOpen.value,
     androidExitPromptOpen: androidExitPromptOpen.value,
     draftExitPromptOpen: draftExitPromptOpen.value,
+    localImagePromptOpen: localImagePromptOpen.value,
     linkSheetOpen: linkSheetOpen.value,
     tableSheetOpen: tableSheetOpen.value,
     editorMenuOpen: editorMenuOpen.value,
@@ -2461,6 +2537,9 @@ async function handleAppBackButton() {
   switch (action) {
     case 'close-incoming-open-prompt':
       keepEditingInsteadOfIncomingOpen()
+      return
+    case 'close-local-image-prompt':
+      settleLocalImageAccessPrompt(false)
       return
     case 'close-android-exit-prompt':
       androidExitPromptOpen.value = false
@@ -3056,6 +3135,14 @@ onBeforeUnmount(() => {
       @save-here="handleCloudSaveHere"
     />
   </div>
+
+  <LocalImageAccessPrompt
+    v-if="localImagePromptOpen"
+    :folder-name="localImagePromptFolder"
+    :image-count="localImagePromptCount"
+    @allow="settleLocalImageAccessPrompt(true)"
+    @decline="settleLocalImageAccessPrompt(false)"
+  />
 
   <CloudNameSheet
     v-if="cloudNameSheetOpen"

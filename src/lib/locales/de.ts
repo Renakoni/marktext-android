@@ -653,4 +653,11 @@ export const de = {
   'cloudBrowser.loading': 'Wird geladen …',
   'cloudBrowser.empty': 'Keine Markdown-Dokumente hier',
   'cloudBrowser.retry': 'Erneut versuchen',
+  'editor.localImages.title': 'Lokale Bilder anzeigen?',
+  'editor.localImages.body.one': 'Dieses Dokument verlinkt 1 Bild im Ordner „{folder}“. Erlaube MarkText den Zugriff auf diesen Ordner, um es anzuzeigen.',
+  'editor.localImages.body.other': 'Dieses Dokument verlinkt {count} Bilder im Ordner „{folder}“. Erlaube MarkText den Zugriff auf diesen Ordner, um sie anzuzeigen.',
+  'editor.localImages.bodyNoFolder.one': 'Dieses Dokument verlinkt 1 Bild daneben. Erlaube MarkText den Zugriff auf den Ordner des Dokuments, um es anzuzeigen.',
+  'editor.localImages.bodyNoFolder.other': 'Dieses Dokument verlinkt {count} Bilder daneben. Erlaube MarkText den Zugriff auf den Ordner des Dokuments, um sie anzuzeigen.',
+  'editor.localImages.allow': 'Erlauben',
+  'editor.localImages.decline': 'Jetzt nicht',
 } satisfies Record<I18nKey, string>

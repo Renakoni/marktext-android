@@ -652,4 +652,11 @@ export const pt = {
   'cloudBrowser.loading': 'Carregando…',
   'cloudBrowser.empty': 'Nenhum documento Markdown aqui',
   'cloudBrowser.retry': 'Tentar novamente',
+  'editor.localImages.title': 'Mostrar imagens locais?',
+  'editor.localImages.body.one': 'Este documento vincula 1 imagem guardada na pasta «{folder}». Permita que o MarkText aceda a essa pasta para a mostrar.',
+  'editor.localImages.body.other': 'Este documento vincula {count} imagens guardadas na pasta «{folder}». Permita que o MarkText aceda a essa pasta para as mostrar.',
+  'editor.localImages.bodyNoFolder.one': 'Este documento vincula 1 imagem guardada ao lado dele. Permita que o MarkText aceda à pasta do documento para a mostrar.',
+  'editor.localImages.bodyNoFolder.other': 'Este documento vincula {count} imagens guardadas ao lado dele. Permita que o MarkText aceda à pasta do documento para as mostrar.',
+  'editor.localImages.allow': 'Permitir',
+  'editor.localImages.decline': 'Agora não',
 } satisfies Record<I18nKey, string>

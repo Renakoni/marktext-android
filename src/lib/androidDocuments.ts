@@ -193,6 +193,31 @@ interface AndroidDocumentsPlugin {
     fileUri: string
     bytes: number
   } | { canceled: true }>
+  resolveDocumentImages(options: {
+    sourceUri: string
+    sources: string[]
+  }): Promise<AndroidDocumentImageAccessResult>
+  requestDocumentImageFolderAccess(options: { sourceUri: string }): Promise<{
+    canceled?: boolean
+    granted: boolean
+    treeUri?: string
+  }>
+}
+
+export interface AndroidDocumentImageAccessResult {
+  // False for providers whose document ids carry no directory component (cloud
+  // drives): the document can have no local siblings, so no folder prompt
+  // should be offered.
+  supported: boolean
+  access: 'granted' | 'missing'
+  folderName?: string
+  // Present when access is granted: enough for the web resolver to derive
+  // sibling document URIs synchronously.
+  treeUri?: string
+  treeDocumentId?: string
+  documentDirectoryId?: string
+  // Relative sources the native side could confirm as readable documents.
+  resolved?: Record<string, string>
 }
 
 export class AndroidDocumentError extends Error {
@@ -332,10 +357,64 @@ export async function cleanupAndroidDocumentGrants(
   }
 }
 
+/**
+ * Asks Android whether the document's folder is reachable and which of its
+ * relative image sources resolve. Never throws for an unsupported document:
+ * the result carries `supported: false` instead.
+ */
+export async function resolveAndroidDocumentImages(
+  sourceUri: string,
+  sources: readonly string[],
+): Promise<AndroidDocumentImageAccessResult> {
+  ensureAndroidDocumentsAvailable()
+  const result = await AndroidDocuments.resolveDocumentImages({
+    sourceUri,
+    sources: [...new Set(sources)],
+  })
+
+  return {
+    supported: Boolean(result?.supported),
+    access: result?.access === 'granted' ? 'granted' : 'missing',
+    folderName: typeof result?.folderName === 'string' ? result.folderName : undefined,
+    treeUri: typeof result?.treeUri === 'string' ? result.treeUri : undefined,
+    treeDocumentId:
+      typeof result?.treeDocumentId === 'string' ? result.treeDocumentId : undefined,
+    documentDirectoryId:
+      typeof result?.documentDirectoryId === 'string' ? result.documentDirectoryId : undefined,
+    resolved: normalizeResolvedDocumentImages(result?.resolved),
+  }
+}
+
+/**
+ * Opens the system folder picker so the user can grant read access to the
+ * folder holding the document; Android persists the grant for later opens.
+ */
+export async function requestAndroidDocumentImageFolderGrant(sourceUri: string) {
+  ensureAndroidDocumentsAvailable()
+  const result = await AndroidDocuments.requestDocumentImageFolderAccess({ sourceUri })
+  return {
+    canceled: Boolean(result?.canceled),
+    granted: Boolean(result?.granted),
+  }
+}
+
+function normalizeResolvedDocumentImages(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object') {
+    return {}
+  }
+
+  const resolved: Record<string, string> = {}
+  for (const [source, uri] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof uri === 'string' && uri.length > 0) {
+      resolved[source] = uri
+    }
+  }
+  return resolved
+}
+
 export async function addAndroidOpenWithDocumentListener(
   listener: (event: AndroidOpenWithDocumentEvent) => void,
-) {
-  ensureAndroidDocumentsAvailable()
+) {  ensureAndroidDocumentsAvailable()
   return AndroidDocuments.addListener('openWithDocument', event => {
     listener(normalizeOpenWithDocumentEvent(event))
   })
